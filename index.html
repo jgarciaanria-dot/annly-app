@@ -604,11 +604,13 @@ body{font-family:'Inter',sans-serif;background-color:#E8E9EC;background-image:ur
       linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="#C9A24B" stroke-width="0.75" opacity="0.55"/>\n`;
 
 const midAngle = (k + 0.5) * step;
-      const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
+const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
 
-      // Contra-rotación para el ícono (se mantiene igual que antes)
-      const desiredMod = ((90 - midAngle - 8) % 360 + 360) % 360;
-      const counterAngle = ((360 - desiredMod) % 360 + 360) % 360;
+// Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
+let rotDeg = ((midAngle % 360) + 360) % 360;
+if (rotDeg > 180) rotDeg -= 360;
+if (rotDeg > 90) rotDeg -= 180;
+if (rotDeg < -90) rotDeg += 180;
 
       // Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
       let rotDeg = midAngle % 360;
