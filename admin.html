@@ -292,10 +292,16 @@ const CATS=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
 let SERVICES=[];
 let editId=null;
 
-function loadServices(){
-  const saved=localStorage.getItem('vss_hair_services');
-  if(saved){ SERVICES=JSON.parse(saved); }
-  else { SERVICES=getDefaultServices(); saveServices(); }
+// ===== FIX: ahora lee de Supabase vía Sheets.getServicios() =====
+async function loadServices(){
+  try {
+    const servicios = await Sheets.getServicios();
+    if(servicios && servicios.length > 0){
+      SERVICES = servicios;
+      return;
+    }
+  } catch(e) { console.error('Error cargando de Supabase:', e); }
+  SERVICES = getDefaultServices();
 }
 
 function getDefaultServices(){
@@ -320,14 +326,9 @@ function getDefaultServices(){
   ];
 }
 
+// ===== FIX: ahora guarda en Supabase vía Sheets.guardarServicios() =====
 function saveServices(){
-  localStorage.setItem('vss_hair_services', JSON.stringify(SERVICES));
-  fetch(CONFIG.sheets.scriptUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'guardarServicios', servicios: JSON.stringify(SERVICES)})
-  }).catch(e => console.error('Error guardando en Sheets:', e));
+  Sheets.guardarServicios(SERVICES).catch(e => console.error('Error guardando en Supabase:', e));
 }
 
 function renderAdmin(){
@@ -671,26 +672,7 @@ async function guardarRuleta(){
 
 async function loadGanadoresRuleta(){
   const cont = document.getElementById('lista-ganadores-ruleta');
-  try {
-    const url = CONFIG.sheets.scriptUrl + '?action=getRuletaGanadores&_=' + Date.now();
-    const res = await fetch(url);
-    const data = await res.json();
-    const ganadores = data.ganadores || [];
-    if(ganadores.length===0){
-      cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Aún no hay ganadores registrados.</p>';
-      return;
-    }
-    cont.innerHTML = ganadores.slice(-15).reverse().map(g=>`
-      <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div>
-          <p style="font-size:13px;font-weight:500;color:#1a1a1a;margin:0;">${g.nombre||'Sin nombre'} <span style="color:#aaa;font-weight:400;">· ${g.telefono||''}</span></p>
-          <p style="font-size:12px;color:#888;margin:2px 0 0;">${g.premio}${g.codigoCanje?' · '+g.codigoCanje:''}</p>
-        </div>
-        <span style="font-size:11px;padding:3px 9px;border-radius:999px;background:${g.canjeado==='si'?'#E8F5E9':'#FFF8EC'};color:${g.canjeado==='si'?'#2E7D32':'#8B6F3E'};font-weight:500;white-space:nowrap;">${g.canjeado==='si'?'Canjeado':'Pendiente'}</span>
-      </div>`).join('');
-  } catch(e){
-    cont.innerHTML = '<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar ganadores.</p>';
-  }
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Función de ganadores pendiente de conectar a Supabase.</p>';
 }
 
 // ===== CITAS =====
@@ -1007,8 +989,10 @@ async function guardarReservaVIP(){
   alert('Cita guardada para ' + clientaSeleccionadaParaReserva.nombre + '.');
 }
 
-loadServices();
-renderAdmin();
+// ===== FIX: bootstrap corregido — espera a loadServices() antes de renderizar =====
+loadServices().then(() => {
+  renderAdmin();
+});
 loadBloqueos();
 </script>
 </body>
