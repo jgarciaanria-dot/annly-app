@@ -632,7 +632,7 @@ const midAngle = (k + 0.5) * step;
       ).join('');
 
       textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
-      textsHtml += `<text x="${icon.x}" y="${icon.y}" font-size="12" text-anchor="middle" transform="rotate(${counterAngle.toFixed(1)} ${icon.x} ${icon.y})">🎁</text>\n`;
+      
       segmentos.push({ id: segId, premio: premiosActivos[k].premio, angle: midAngle });
     }
 
