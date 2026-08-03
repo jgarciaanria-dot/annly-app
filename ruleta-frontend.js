@@ -96,7 +96,7 @@ async function girarRuletaUI(identificador, nombre, citaId) {
   }
   const segFinal = seg || RULETA_SEGMENTOS_ACTIVOS[0];
 
-  const desiredMod = ((90 - segFinal.angle - 8) % 360 + 360) % 360;
+  const desiredMod = ((0 - segFinal.angle) % 360 + 360) % 360;
   const currentMod = ((anguloActual % 360) + 360) % 360;
   const adjustment = ((desiredMod - currentMod) % 360 + 360) % 360;
   const finalAngle = anguloActual + 2520 + adjustment; // 7 vueltas + ajuste
