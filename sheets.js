@@ -198,7 +198,21 @@ const Sheets = {
     await sbClient.from('roulette_wins').update({ usado: true }).eq('business_id', BUSINESS_ID).eq('codigo_cupon', (codigo || '').toUpperCase().trim());
     return { ok: true };
   },
-
+async getGanadoresRuleta() {
+    const { data, error } = await sbClient
+      .from('roulette_wins')
+      .select('*, roulette_prizes(nombre)')
+      .eq('business_id', BUSINESS_ID)
+      .order('ganado_en', { ascending: false });
+    if (error || !data) return [];
+    return data.map(w => ({
+      nombre: w.nombre,
+      telefono: w.telefono,
+      premio: w.roulette_prizes?.nombre || '',
+      codigoCanje: w.codigo_cupon,
+      canjeado: w.usado ? 'si' : 'no'
+    }));
+  },
   // ---------- CLIENTAS ----------
   async getClientas() {
     const { data } = await sbClient.from('clients').select('*').eq('business_id', BUSINESS_ID);
