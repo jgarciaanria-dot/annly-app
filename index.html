@@ -614,11 +614,14 @@ body{font-family:'Inter',sans-serif;background-color:#E8E9EC;background-image:ur
       pathsHtml += `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
       linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="#C9A24B" stroke-width="0.75" opacity="0.55"/>\n`;
 
-      const midAngle = (k + 0.5) * step;
+const midAngle = (k + 0.5) * step;
       const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
 
-      // Rotación fija tipo abanico: el texto siempre queda legible,
-      // nunca boca abajo, sin importar dónde termine al girar.
+      // Contra-rotación para el ícono (se mantiene igual que antes)
+      const desiredMod = ((90 - midAngle - 8) % 360 + 360) % 360;
+      const counterAngle = ((360 - desiredMod) % 360 + 360) % 360;
+
+      // Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
       let rotDeg = midAngle % 360;
       if (rotDeg > 90 && rotDeg < 270) rotDeg -= 180;
 
@@ -630,7 +633,6 @@ body{font-family:'Inter',sans-serif;background-color:#E8E9EC;background-image:ur
 
       textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
       textsHtml += `<text x="${icon.x}" y="${icon.y}" font-size="12" text-anchor="middle" transform="rotate(${counterAngle.toFixed(1)} ${icon.x} ${icon.y})">🎁</text>\n`;
-
       segmentos.push({ id: segId, premio: premiosActivos[k].premio, angle: midAngle });
     }
 
