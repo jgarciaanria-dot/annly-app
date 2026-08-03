@@ -3,9 +3,9 @@
 // Cubre index.html (sitio público) y admin.html (panel)
 // =========================================================
 
-const SUPABASE_URL = 'PEGA_AQUI_TU_PROJECT_URL';
-const SUPABASE_KEY = 'PEGA_AQUI_TU_PUBLISHABLE_KEY';
-const BUSINESS_ID = 'PEGA_AQUI_EL_UUID_DEL_NEGOCIO_DE_STAGING';
+const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
+const BUSINESS_ID = '0eeae4cd-7460-4d53-8e60-4658200910e3';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
