@@ -178,7 +178,7 @@ const Sheets = {
       business_id: BUSINESS_ID, telefono: identificador, nombre, prize_id: elegido.id, codigo_cupon: codigo, usado: false
     }]);
     if (elegido.stock !== null) await sbClient.from('roulette_prizes').update({ stock: elegido.stock - 1 }).eq('id', elegido.id);
-    return { ok: true, premio: elegido.nombre, codigoCanje: codigo };
+    return { ok: true, esPremioReal: true, premio: elegido.nombre, codigoCanje: codigo };
   },
 
   async validarCupon(codigo) {
