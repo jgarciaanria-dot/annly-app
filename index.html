@@ -604,26 +604,21 @@ body{font-family:'Inter',sans-serif;background-color:#E8E9EC;background-image:ur
       linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="#C9A24B" stroke-width="0.75" opacity="0.55"/>\n`;
 
 const midAngle = (k + 0.5) * step;
-const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
-
-// Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
-let rotDeg = ((midAngle % 360) + 360) % 360;
-if (rotDeg > 180) rotDeg -= 360;
-if (rotDeg > 90) rotDeg -= 180;
-if (rotDeg < -90) rotDeg += 180;
+      const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
 
       // Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
-      let rotDeg = midAngle % 360;
-      if (rotDeg > 90 && rotDeg < 270) rotDeg -= 180;
+      let rotDeg = ((midAngle % 360) + 360) % 360;
+      if (rotDeg > 180) rotDeg -= 360;
+      if (rotDeg > 90) rotDeg -= 180;
+      if (rotDeg < -90) rotDeg += 180;
 
       const lineas = ruletaWordWrap(premiosActivos[k].premio, maxLineLen);
       const startY = parseFloat(headline.y) - ((lineas.length - 1) * lineHeight) / 2;
       const tspans = lineas.map((linea, i) =>
         `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lineHeight}">${ruletaEscapeHtml(linea)}</tspan>`
       ).join('');
-
       textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
-      
+
       segmentos.push({ id: segId, premio: premiosActivos[k].premio, angle: midAngle });
     }
 
