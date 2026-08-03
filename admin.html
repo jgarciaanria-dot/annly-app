@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin — Vicelly Hair & Beauty</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--forest:#0D1F1A;--gold:#C9A96E;--gold-dark:#8B6F3E;--bg:#F5F7F5;--radius:10px;--radius-lg:14px;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:#1a1a1a;min-height:100vh;}
+.adm-hdr{background:#FBF8F2;border-bottom:2px solid #C9A96E;padding:1.5rem;display:flex;align-items:center;justify-content:space-between;}
+.adm-hdr-title{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:700;color:#3A372F;letter-spacing:.02em;}
+.adm-hdr-sub{font-size:11px;color:#A89878;margin-top:4px;letter-spacing:.16em;text-transform:uppercase;}
+.adm-hdr-back{color:#9A8A6A;font-size:12px;text-decoration:none;display:flex;align-items:center;gap:5px;transition:color .15s;}
+.adm-hdr-back:hover{color:#7A6F58;}
+.adm-body{padding:1rem;}
+.adm-sec{background:#fff;border:0.5px solid #E4EBE4;border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden;}
+.adm-sec-hdr{padding:.875rem 1rem;border-bottom:0.5px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;}
+.adm-sec-title{font-size:13px;font-weight:500;color:var(--forest);display:flex;align-items:center;gap:7px;}
+.adm-sec-title::before{content:'';width:3px;height:14px;background:var(--gold);border-radius:2px;}
+.btn-add{display:flex;align-items:center;gap:5px;padding:7px 14px;background:#F7F4ED;color:#7A6F58;border:1px solid #E5DCC9;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s;}
+.btn-add:hover{background:#F0EBDF;}
+.btn-add:hover{opacity:.85;}
+.svc-row{display:flex;align-items:center;gap:10px;padding:.75rem 1rem;border-bottom:0.5px solid #f5f5f5;transition:background .15s;}
+.svc-row:last-child{border-bottom:none;}
+.svc-row:hover{background:#fafafa;}
+.svc-toggle{position:relative;width:36px;height:20px;flex-shrink:0;}
+.svc-toggle input{opacity:0;width:0;height:0;position:absolute;}
+.svc-toggle-track{position:absolute;inset:0;border-radius:999px;background:#ddd;cursor:pointer;transition:background .2s;}
+.svc-toggle input:checked+.svc-toggle-track{background:#4CAF50;}
+.svc-toggle-thumb{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s;}
+.svc-toggle input:checked~.svc-toggle-thumb{transform:translateX(16px);}
+.svc-info{flex:1;min-width:0;}
+.svc-nm{font-size:13px;font-weight:500;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.svc-meta{font-size:11px;color:#aaa;margin-top:1px;}
+.svc-actions{display:flex;gap:6px;flex-shrink:0;}
+.btn-ico{width:32px;height:32px;border-radius:9px;border:1px solid #E5DCC9;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
+.btn-ico:hover{background:#F7F4ED;}
+.btn-ico i{font-size:15px;color:#7A6F58;}
+.btn-ico.del{border-color:#E8D5CE;}
+.btn-ico.del:hover{background:#FBF3F0;}
+.btn-ico.del i{color:#A86B5C;}
+
+/* MODAL */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center;}
+.ov.open{display:flex;}
+@media(min-width:500px){.ov{align-items:center;padding:1rem;}}
+.modal{background:#fff;border-radius:var(--radius-lg) var(--radius-lg) 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:slideUp .3s cubic-bezier(.34,1.2,.64,1);}
+@media(min-width:500px){.modal{border-radius:var(--radius-lg);}}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+.modal-hdr{padding:.875rem 1rem;border-bottom:0.5px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:#1a1a1a;}
+.modal-close{background:#f5f5f5;border:none;width:28px;height:28px;border-radius:50%;font-size:18px;cursor:pointer;color:#888;display:flex;align-items:center;justify-content:center;}
+.modal-body{padding:1rem;}
+.fg{margin-bottom:.75rem;}
+.flbl{font-size:10px;font-weight:500;color:#aaa;margin-bottom:4px;display:block;letter-spacing:.06em;text-transform:uppercase;}
+.fi{width:100%;padding:9px 12px;font-size:13px;border:0.5px solid #eee;border-radius:var(--radius);color:#1a1a1a;font-family:inherit;transition:border-color .15s;}
+.fi:focus{outline:none;border-color:var(--gold);}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.incl-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.incl-inp{display:flex;gap:6px;align-items:center;}
+.incl-inp .fi{flex:1;}
+.btn-rem-incl{width:28px;height:28px;flex-shrink:0;border-radius:50%;border:0.5px solid #eee;background:transparent;cursor:pointer;font-size:14px;color:#aaa;display:flex;align-items:center;justify-content:center;}
+.btn-rem-incl:hover{border-color:#fca5a5;color:#e57373;}
+.btn-add-incl{display:flex;align-items:center;gap:5px;padding:6px 10px;background:transparent;border:0.5px dashed #E5D8B8;border-radius:8px;font-size:12px;color:var(--gold-dark);cursor:pointer;width:100%;justify-content:center;}
+.btn-add-incl:hover{background:#faf8f3;}
+.btn-save{width:100%;padding:13px;background:#F7F4ED;color:#3A372F;border:1px solid #E5DCC9;border-radius:10px;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;cursor:pointer;margin-top:.5rem;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-save:hover{background:#F0EBDF;}
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem;}
+.cat-pill{padding:5px 12px;border-radius:999px;font-size:12px;cursor:pointer;border:0.5px solid #eee;background:#fff;color:#666;transition:all .15s;}
+.cat-pill.sel{background:var(--forest);color:var(--gold);border-color:var(--forest);}
+.eval-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:10px;background:#F8F3FB;color:#7C4DA0;border:0.5px solid #D9C5E8;margin-left:6px;}
+.adm-tabs{display:flex;gap:4px;margin-bottom:1.25rem;border-bottom:1px solid #EDE8DC;overflow-x:auto;}
+.adm-tab{padding:10px 18px;background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;font-size:13px;font-weight:500;color:#999;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.adm-tab:hover{color:#4A4844;}
+.adm-tab.active{color:#4A4844;border-bottom-color:#C9A96E;}
+.hora-bloq{border:0.5px solid #E5D8B8;border-radius:8px;padding:8px 3px;text-align:center;font-size:12px;cursor:pointer;transition:all .15s;}
+.hora-bloq.sel{background:#E05555;color:#fff;border-color:#E05555;}
+.bloq-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#FFF5F5;border:0.5px solid #FFD9D9;border-radius:8px;margin-bottom:8px;font-size:13px;}
+.bloq-item-del{width:26px;height:26px;border-radius:6px;border:none;background:#fff;color:#E05555;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.premio-card{background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:12px;margin-bottom:8px;}
+.premio-card-top{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<div class="adm-hdr">
+  <div>
+    <div class="adm-hdr-title">Vicelly Sánchez Studio</div>
+    <div class="adm-hdr-sub">Panel de administración</div>
+  </div>
+  <a href="index.html" class="adm-hdr-back"><i class="ti ti-arrow-left"></i> Ver sitio</a>
+</div>
+
+<div class="adm-body">
+  <div class="adm-tabs">
+    <button class="adm-tab active" id="tab-servicios" onclick="switchTab('servicios')">Servicios</button>
+    <button class="adm-tab" id="tab-citas" onclick="switchTab('citas')">Citas</button>
+    <button class="adm-tab" id="tab-bloqueos" onclick="switchTab('bloqueos')">Bloquear días</button>
+    <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')">Promo</button>
+    <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')">Ruleta</button>
+    <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')">Clientas</button>
+  </div>
+
+  <div id="panel-servicios">
+    <div id="seccionesServicios"></div>
+    <div style="text-align:center;padding:1rem 0;">
+      <button class="btn-add" onclick="openModal(null)" style="margin:auto;padding:10px 20px;font-size:13px;">
+        <i class="ti ti-plus"></i> Agregar nuevo servicio
+      </button>
+    </div>
+  </div>
+
+  <div id="panel-citas" style="display:none;">
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Hoy y próximos 7 días</span></div>
+      <div id="lista-citas" style="padding:0.5rem 1rem 1rem;">
+        <p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando citas...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-bloqueos" style="display:none;">
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Bloquear rango de días</span></div>
+      <div style="padding:1rem;">
+        <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Bloquea uno o varios días seguidos (vacaciones, feriados). Las clientas verán esos días como "No disponible".</p>
+        <div class="frow">
+          <div class="fg"><label class="flbl">Desde</label><input class="fi" type="date" id="bloq-inicio"/></div>
+          <div class="fg"><label class="flbl">Hasta</label><input class="fi" type="date" id="bloq-fin"/></div>
+        </div>
+        <input class="fi" id="bloq-motivo" placeholder="Motivo (opcional): Vacaciones, Feriado..." style="margin-bottom:10px;"/>
+        <button class="btn-add" onclick="agregarBloqueoRango()" style="width:100%;justify-content:center;padding:10px;"><i class="ti ti-plus"></i> Bloquear estos días</button>
+      </div>
+    </div>
+
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Bloquear horas de un día</span></div>
+      <div style="padding:1rem;">
+        <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Bloquea horas específicas de un día sin cerrar el día completo.</p>
+        <div class="fg"><label class="flbl">Día</label><input class="fi" type="date" id="bloq-hora-dia" onchange="renderHorasBloqueo()"/></div>
+        <div id="horas-bloqueo-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;"></div>
+        <button class="btn-add" onclick="guardarHorasBloqueo()" style="width:100%;justify-content:center;padding:10px;"><i class="ti ti-check"></i> Guardar horas bloqueadas</button>
+      </div>
+    </div>
+
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Bloqueos activos</span></div>
+      <div id="lista-bloqueos" style="padding:0.5rem 1rem 1rem;"></div>
+    </div>
+  </div>
+
+  <div id="panel-promo" style="display:none;">
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Ventana promocional</span></div>
+      <div style="padding:1rem;">
+        <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Configura una ventana emergente con animación que aparece cuando las clientas entran al sitio.</p>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+          <span style="font-size:13px;color:#1a1a1a;font-weight:500;">Mostrar promoción</span>
+          <label class="svc-toggle">
+            <input type="checkbox" id="promo-activa" onchange="togglePromoActiva()"/>
+            <div class="svc-toggle-track"></div>
+            <div class="svc-toggle-thumb"></div>
+          </label>
+        </div>
+
+        <div class="fg"><label class="flbl">Tema / animación</label>
+          <select class="fi" id="promo-tema">
+            <option value="mundial">⚽ Mundial (gol)</option>
+            <option value="regalo">🎁 Navidad / Cumpleaños (regalo)</option>
+            <option value="corazon">💝 San Valentín / Día de la Madre (corazón)</option>
+            <option value="fiesta">🎉 Genérico (confeti)</option>
+          </select>
+        </div>
+        <div class="fg"><label class="flbl">Etiqueta superior</label><input class="fi" id="promo-etiqueta" placeholder="PROMO MUNDIAL"/></div>
+        <div class="fg"><label class="flbl">Texto de festejo</label><input class="fi" id="promo-festejo" placeholder="¡GOOOL!"/></div>
+        <div class="fg"><label class="flbl">Servicio en promo</label>
+          <select class="fi" id="promo-servicio" onchange="autoPrecioPromo()"><option value="">Selecciona un servicio...</option></select>
+        </div>
+        <div class="frow">
+          <div class="fg"><label class="flbl">Precio normal</label><input class="fi" id="promo-precio-normal" type="number" placeholder="35"/></div>
+          <div class="fg"><label class="flbl">Precio promo</label><input class="fi" id="promo-precio-promo" type="number" placeholder="20"/></div>
+        </div>
+        <div class="fg"><label class="flbl">Vigencia</label><input class="fi" id="promo-vigencia" placeholder="Válido durante el Mundial"/></div>
+
+        <button class="btn-save" onclick="guardarPromo()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar promoción</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-ruleta" style="display:none;">
+    <div class="adm-sec">
+      <div class="adm-sec-hdr">
+        <span class="adm-sec-title">Ruleta de premios</span>
+        <label class="svc-toggle">
+          <input type="checkbox" id="ruleta-activa" onchange="toggleRuletaActiva()"/>
+          <div class="svc-toggle-track"></div>
+          <div class="svc-toggle-thumb"></div>
+        </label>
+      </div>
+      <div style="padding:1rem;">
+        <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Controla si la ruleta aparece después de confirmar una cita, y ajusta los premios y sus probabilidades. Las probabilidades son pesos relativos — no necesitan sumar exactamente 100, pero se recomienda mantenerlo así para leerlas como porcentaje directo. Los cambios aquí (nombres, cantidad de premios, activo/inactivo) se reflejan solos en la rueda visual, sin tocar código.</p>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+          <span style="font-size:12px;color:#888;">Suma de probabilidades activas</span>
+          <span id="ruleta-suma" style="font-size:14px;font-weight:600;color:var(--gold-dark);">0</span>
+        </div>
+
+        <div id="lista-premios-ruleta"></div>
+
+        <button class="btn-add" onclick="agregarPremio()" style="width:100%;justify-content:center;padding:10px;margin-top:8px;margin-bottom:8px;"><i class="ti ti-plus"></i> Agregar premio</button>
+        <button class="btn-save" onclick="guardarRuleta()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios de la ruleta</button>
+      </div>
+    </div>
+
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Ganadores recientes</span></div>
+      <div id="lista-ganadores-ruleta" style="padding:0.5rem 1rem 1rem;">
+        <p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-clientas" style="display:none;">
+    <div class="adm-sec">
+      <div class="adm-sec-hdr">
+        <span class="adm-sec-title">Clientas</span>
+        <button class="btn-add" onclick="openModalClienta(null)"><i class="ti ti-plus"></i> Agregar</button>
+      </div>
+      <div style="padding:1rem;">
+        <input class="fi" id="buscar-clienta" placeholder="Buscar por nombre o teléfono..." oninput="renderClientas()" style="margin-bottom:12px;">
+        <div id="lista-clientas"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CLIENTA (editar/agregar) -->
+<div class="ov" id="ov-modal-clienta">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-clienta-title">Nueva clienta</span>
+      <button class="modal-close" onclick="closeModalClienta()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="mc-nombre"/></div>
+      <div class="fg"><label class="flbl">Teléfono / WhatsApp</label><input class="fi" id="mc-telefono"/></div>
+      <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="mc-correo"/></div>
+      <div class="fg"><label class="flbl">Notas (opcional)</label><textarea class="fi" id="mc-notas" rows="2" style="resize:vertical;"></textarea></div>
+      <button class="btn-save" onclick="guardarClientaModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar clienta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESERVAR (para una clienta VIP) -->
+<div class="ov" id="ov-modal-reservar">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-reservar-title">Reservar</span>
+      <button class="modal-close" onclick="closeModalReservar()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label class="flbl">Servicio</label><input class="fi" id="mr-servicio" placeholder="Lo que pidió la clienta"/></div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Fecha</label><input class="fi" type="date" id="mr-fecha"/></div>
+        <div class="fg"><label class="flbl">Hora</label><input class="fi" type="time" id="mr-hora"/></div>
+      </div>
+      <div class="fg"><label class="flbl">Duración (minutos)</label><input class="fi" type="number" id="mr-duracion" value="60" min="15" step="15"/></div>
+      <div class="fg"><label class="flbl">Nota (opcional)</label><textarea class="fi" id="mr-nota" rows="2" style="resize:vertical;"></textarea></div>
+      <button class="btn-save" onclick="guardarReservaVIP()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cita</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-title">Nuevo servicio</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="sheets.js"></script>
+<script>
+const CATS=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+let SERVICES=[];
+let editId=null;
+
+function loadServices(){
+  const saved=localStorage.getItem('vss_hair_services');
+  if(saved){ SERVICES=JSON.parse(saved); }
+  else { SERVICES=getDefaultServices(); saveServices(); }
+}
+
+function getDefaultServices(){
+  return [
+    {id:'eval',name:'Cita de Evaluación',cat:'Básicos',price:10,dur:'30 min',durMin:30,active:true,esEval:true,desc:'El punto de partida para cualquier servicio de color, alisado o tratamiento intensivo. Analizamos tu historial capilar, tratamientos químicos previos, tipo y textura para diseñar el plan perfecto para ti.',includes:['Análisis de historial capilar','Diagnóstico de tipo y textura','Revisión de tratamientos previos','Plan de servicio personalizado','Recomendación de productos','Prueba de mechón']},
+    {id:'lavblower',name:'Lavado y Blower',cat:'Básicos',price:25,precioTexto:'desde $25',dur:'40–60 min',durMin:60,active:true,esEval:false,desc:'Limpieza profunda con productos de marcas profesionales Truss, Wella y L\'Oréal, adaptados al tipo y necesidad de tu cabello.',includes:['Lavado con champú profesional','Acondicionador o mascarilla','Protector térmico','Blower con cepillo profesional','Acabado con brillo']},
+    {id:'lavcrteblower',name:'Lavado, Corte y Blower',cat:'Básicos',price:65,precioTexto:'desde $65',dur:'~90 min',durMin:90,active:true,esEval:false,desc:'Lavado técnico con productos de alta gama, corte personalizado y blower profesional.',includes:['Lavado técnico con marca profesional','Asesoría de corte personalizado','Corte a tu preferencia','Protector térmico','Blower con cepillo redondo']},
+    {id:'peinpro',name:'Peinado Profesional',cat:'Básicos',price:0,precioTexto:'consultar',dur:'según estilo',durMin:60,active:true,esEval:false,desc:'Peinado social elegante ideal para salidas y ocasiones especiales.',includes:['Secado y preparación de cabello','Peinado a elección','Fijador profesional','Acabado duradero']},
+    {id:'peinglam',name:'Peinado Glam & Evento',cat:'Básicos',price:0,precioTexto:'consultar',dur:'~60 min',durMin:60,active:true,esEval:false,desc:'Look sofisticado para eventos, celebraciones y sesiones de fotos.',includes:['Secado profesional','Peinado de evento o glam','Fijador de larga duración','Retoque y detalle final']},
+    {id:'fastrepair',name:'Fast Repair Truss',cat:'Tratamientos',price:65,dur:'60–90 min',durMin:90,active:true,esEval:false,desc:'Tratamiento de hidratación y nutrición intensiva en 4 pasos.',includes:['Champú Fast Repair','Mascarilla Net Mask','Cera vegana Infusión','Sellado con calor','Blower con protectores']},
+    {id:'trussinfusion',name:'Recuperación Truss Infusión',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'~2 hrs',durMin:120,active:true,esEval:false,desc:'Cera vegana + Fast Repair + Net Mask para cabello muy dañado.',includes:['Cera vegana Infusión','Fast Repair 3 productos','Mascarilla reparadora Net Mask','Blower con protectores de calor']},
+    {id:'ultimatewella',name:'Ultimate Repair Wella',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,desc:'Fórmula vegana que repara y reconstruye la fibra capilar.',includes:['Diagnóstico capilar previo','Aplicación Ultimate Repair','Sellado de cutícula','Acabado suave y brillante']},
+    {id:'celulasmadre',name:'Células Madre',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,desc:'Regenera, nutre y fortalece el cabello dañado desde la raíz.',includes:['Champú de preparación','Aplicación de células madre','Masaje capilar activador','Blower y acabado final']},
+    {id:'combocm',name:'Combo Células Madre + Rubber Gel',cat:'Tratamientos',price:75,dur:'consultar',durMin:120,active:true,esEval:false,desc:'Brillo, suavidad y nutrición — cabello y manos en una sola sesión.',includes:['Tratamiento Células Madre completo','Rubber Gel en manos','Nutrición con fórmula vegana']},
+    {id:'highliss',name:'High Liss Orgánico Truss',cat:'Alisados',price:0,precioTexto:'consultar',dur:'3–3.5 hrs',durMin:210,active:true,esEval:false,desc:'Control de frizz y volumen sin alisar al 100%.',includes:['Lavado preparatorio','Aplicación High Liss Truss','Plancha y sellado','Blower con protectores']},
+    {id:'ybera',name:'Ybera Alisado Orgánico',cat:'Alisados',price:120,precioTexto:'desde $120',dur:'consultar',durMin:180,active:true,esEval:false,desc:'Alisado orgánico por onza. Requiere evaluación previa.',includes:['Evaluación previa requerida','Lavado de preparación','Aplicación Ybera por zonas','Plancha y sellado']},
+    {id:'retoque',name:'Retoque de Raíz',cat:'Color',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,desc:'Aplicación precisa de tinte en raíces.',includes:['Lavado de equilibrio de pH','Aplicación de tinte en raíces','Enjuague y tratamiento post-color','Blower y acabado final']},
+    {id:'colorglobal',name:'Color Global',cat:'Color',price:0,precioTexto:'consultar',dur:'4–5 hrs',durMin:270,active:true,esEval:false,desc:'Cambio o refuerzo de tono completo con tratamientos incluidos.',includes:['Consulta de color previa','Aplicación de color completo','Tratamiento post-color','Blower profesional final']},
+    {id:'balayage',name:'Balayage',cat:'Color',price:0,precioTexto:'consultar',dur:'consultar',durMin:180,active:true,esEval:false,desc:'Iluminación a mano libre. Requiere cita de evaluación previa.',includes:['Cita de evaluación previa obligatoria','Preparación capilar','Técnica balayage a mano libre','Blower y acabado final']},
+    {id:'instexten',name:'Instalación de Extensiones',cat:'Extensiones',price:0,precioTexto:'consultar',dur:'variable',durMin:120,active:true,esEval:false,desc:'Instalación profesional. Tiempo según cantidad de paquetes.',includes:['Consulta de cantidad y método','Lavado especial pre-instalación','Instalación profesional','Blower con protectores de calor']},
+    {id:'retiromantenimiento',name:'Retiro y Mantenimiento',cat:'Extensiones',price:0,precioTexto:'consultar',dur:'2–3 hrs',durMin:150,active:true,esEval:false,desc:'Retiro cuidadoso + lavado especial + blower con protectores.',includes:['Retiro cuidadoso de extensiones','Lavado especial post-retiro','Mascarilla nutritiva','Blower con protectores de calor']},
+  ];
+}
+
+function saveServices(){
+  localStorage.setItem('vss_hair_services', JSON.stringify(SERVICES));
+  fetch(CONFIG.sheets.scriptUrl, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'guardarServicios', servicios: JSON.stringify(SERVICES)})
+  }).catch(e => console.error('Error guardando en Sheets:', e));
+}
+
+function renderAdmin(){
+  let html='';
+  CATS.forEach(cat=>{
+    const svcs=SERVICES.filter(s=>s.cat===cat);
+    if(!svcs.length) return;
+    html+=`<div class="adm-sec">
+      <div class="adm-sec-hdr">
+        <span class="adm-sec-title">${cat}</span>
+        <button class="btn-add" onclick="openModal(null,'${cat}')"><i class="ti ti-plus"></i> Agregar</button>
+      </div>`;
+    svcs.forEach(s=>{
+      const precio=s.precioTexto||(s.price>0?'$'+s.price.toFixed(2):'A consultar');
+      html+=`<div class="svc-row">
+        <label class="svc-toggle">
+          <input type="checkbox" ${s.active?'checked':''} onchange="toggleActive('${s.id}',this.checked)"/>
+          <div class="svc-toggle-track"></div>
+          <div class="svc-toggle-thumb"></div>
+        </label>
+        <div class="svc-info">
+          <div class="svc-nm">${s.name}${s.esEval?'<span class="eval-badge"><i class="ti ti-test-pipe" style="font-size:10px;"></i> Evaluación</span>':''}</div>
+          <div class="svc-meta">${precio} · ${s.dur} · ${cat}</div>
+        </div>
+        <div class="svc-actions">
+          <button class="btn-ico" onclick="openModal('${s.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+          <button class="btn-ico del" onclick="eliminar('${s.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('seccionesServicios').innerHTML=html;
+}
+
+function toggleActive(id,val){
+  const s=SERVICES.find(s=>s.id===id);
+  if(s){s.active=val;saveServices();}
+}
+
+function eliminar(id){
+  if(!confirm('¿Eliminar este servicio?')) return;
+  SERVICES=SERVICES.filter(s=>s.id!==id);
+  saveServices(); renderAdmin();
+}
+
+function openModal(id,catDefault='Básicos'){
+  editId=id;
+  const s=id?SERVICES.find(s=>s.id===id):null;
+  const cats=CATS.map(c=>`<div class="cat-pill${(s?s.cat:catDefault)===c?' sel':''}" onclick="selCat(this,'${c}')">${c}</div>`).join('');
+  const incls=s?s.includes:[''];
+  const inclHtml=incls.map((inc,i)=>`<div class="incl-inp" id="incl-${i}">
+    <input class="fi incl-val" value="${inc}" placeholder="Ej: Champú profesional"/>
+    <button class="btn-rem-incl" onclick="remIncl(${i})"><i class="ti ti-x" style="font-size:12px;"></i></button>
+  </div>`).join('');
+
+  document.getElementById('modal-title').textContent=s?'Editar servicio':'Nuevo servicio';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="fg"><label class="flbl">Nombre del servicio</label><input class="fi" id="m-name" value="${s?s.name:''}"/></div>
+    <div class="fg"><label class="flbl">Categoría</label><div class="cats" id="cats-wrap">${cats}</div></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Precio ($)</label><input class="fi" id="m-price" type="number" min="0" step="0.01" value="${s?s.price:0}" placeholder="0 = consultar"/></div>
+      <div class="fg"><label class="flbl">Texto de precio</label><input class="fi" id="m-precio-texto" value="${s&&s.precioTexto?s.precioTexto:''}" placeholder="ej: desde $25"/></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Duración (texto)</label><input class="fi" id="m-dur" value="${s?s.dur:''}"/></div>
+      <div class="fg"><label class="flbl">Duración (minutos)</label><input class="fi" id="m-durmin" type="number" min="15" step="15" value="${s?s.durMin:60}"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Descripción</label><textarea class="fi" id="m-desc" rows="3" style="resize:vertical;">${s?s.desc:''}</textarea></div>
+    <div class="fg">
+      <label class="flbl">Qué incluye</label>
+      <div class="incl-list" id="incl-list">${inclHtml}</div>
+      <button class="btn-add-incl" onclick="addIncl()"><i class="ti ti-plus" style="font-size:12px;"></i> Agregar ítem</button>
+    </div>
+
+    <div style="background:#F9F7F3;border:0.5px solid #E8DFC8;border-radius:10px;padding:14px;margin-bottom:.75rem;">
+      <p style="font-size:10px;font-weight:500;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;">Configuración de abono</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;margin-bottom:10px;cursor:pointer;">
+        <input type="checkbox" id="m-abono" ${s&&s.requiereAbono?'checked':''} style="width:16px;height:16px;accent-color:var(--gold);" onchange="toggleAbono(this.checked)">
+        Requiere abono para confirmar cita
+      </label>
+      <div id="abono-fields" style="display:${s&&s.requiereAbono?'block':'none'}">
+        <div class="frow">
+          <div class="fg"><label class="flbl">Monto del abono ($)</label><input class="fi" id="m-abono-monto" type="number" min="1" step="0.01" value="${s&&s.abonoMonto?s.abonoMonto:10}" placeholder="10.00"/></div>
+          <div class="fg"><label class="flbl">Tipo de abono</label>
+            <select class="fi" id="m-abono-tipo">
+              <option value="descontable" ${s&&s.abonoTipo==='descontable'?'selected':''}>Descontable del servicio</option>
+              <option value="noreembolsable" ${s&&s.abonoTipo==='noreembolsable'?'selected':''}>No reembolsable</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-save" onclick="guardar()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios</button>`;
+  document.getElementById('ov-modal').classList.add('open');
+}
+
+function toggleAbono(val){
+  document.getElementById('abono-fields').style.display=val?'block':'none';
+}
+
+function selCat(el,cat){
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function addIncl(){
+  const list=document.getElementById('incl-list');
+  const i=list.children.length;
+  const div=document.createElement('div');
+  div.className='incl-inp'; div.id='incl-'+i;
+  div.innerHTML=`<input class="fi incl-val" placeholder="Ej: Tratamiento incluido"/><button class="btn-rem-incl" onclick="remIncl(${i})"><i class="ti ti-x" style="font-size:12px;"></i></button>`;
+  list.appendChild(div);
+}
+
+function remIncl(i){
+  const el=document.getElementById('incl-'+i);
+  if(el) el.remove();
+}
+
+function getCatSel(){
+  const sel=document.querySelector('.cat-pill.sel');
+  return sel?sel.textContent:'Básicos';
+}
+
+function guardar(){
+  const nombre=document.getElementById('m-name').value.trim();
+  if(!nombre){alert('El nombre es obligatorio.');return;}
+  const price=parseFloat(document.getElementById('m-price').value)||0;
+  const precioTexto=document.getElementById('m-precio-texto').value.trim();
+  const dur=document.getElementById('m-dur').value.trim();
+  const durMin=parseInt(document.getElementById('m-durmin').value)||60;
+  const desc=document.getElementById('m-desc').value.trim();
+  const esEval = editId ? (SERVICES.find(s=>s.id===editId)?.esEval || false) : false;
+  const requiereAbono=document.getElementById('m-abono').checked;
+  const abonoMonto=requiereAbono?parseFloat(document.getElementById('m-abono-monto').value)||10:null;
+  const abonoTipo=requiereAbono?document.getElementById('m-abono-tipo').value:'noreembolsable';
+  const cat=getCatSel();
+  const includes=Array.from(document.querySelectorAll('.incl-val')).map(el=>el.value.trim()).filter(Boolean);
+
+  if(editId){
+    const idx=SERVICES.findIndex(s=>s.id===editId);
+    if(idx>-1) SERVICES[idx]={...SERVICES[idx],name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,esEval,requiereAbono,abonoMonto,abonoTipo};
+  } else {
+    const newId=nombre.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').substring(0,16)+'_'+Date.now();
+    SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,requiereAbono,abonoMonto,abonoTipo,desc,includes});
+  }
+  saveServices(); closeModal(); renderAdmin();
+}
+
+function closeModal(){document.getElementById('ov-modal').classList.remove('open');}
+
+// ===== BLOQUEOS =====
+let BLOQUEOS = {dias:[], horas:{}};
+const HORAS_DIA = ['8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
+
+async function loadBloqueos(){
+  try {
+    BLOQUEOS = await Sheets.getBloqueos();
+    if(!BLOQUEOS.dias) BLOQUEOS.dias = [];
+    if(!BLOQUEOS.horas) BLOQUEOS.horas = {};
+  } catch(e){ BLOQUEOS = {dias:[], horas:{}}; }
+  renderListaBloqueos();
+}
+
+function saveBloqueos(){
+  Sheets.guardarBloqueos(BLOQUEOS);
+  renderListaBloqueos();
+}
+
+function switchTab(tab){
+  document.getElementById('tab-servicios').classList.toggle('active', tab==='servicios');
+  document.getElementById('tab-citas').classList.toggle('active', tab==='citas');
+  document.getElementById('tab-bloqueos').classList.toggle('active', tab==='bloqueos');
+  document.getElementById('tab-promo').classList.toggle('active', tab==='promo');
+  document.getElementById('tab-ruleta').classList.toggle('active', tab==='ruleta');
+  document.getElementById('tab-clientas').classList.toggle('active', tab==='clientas');
+  document.getElementById('panel-servicios').style.display = tab==='servicios'?'block':'none';
+  document.getElementById('panel-citas').style.display = tab==='citas'?'block':'none';
+  document.getElementById('panel-bloqueos').style.display = tab==='bloqueos'?'block':'none';
+  document.getElementById('panel-promo').style.display = tab==='promo'?'block':'none';
+  document.getElementById('panel-ruleta').style.display = tab==='ruleta'?'block':'none';
+  document.getElementById('panel-clientas').style.display = tab==='clientas'?'block':'none';
+  if(tab==='citas') loadCitas();
+  if(tab==='promo') loadPromo();
+  if(tab==='ruleta') loadRuleta();
+  if(tab==='clientas') loadClientas();
+}
+
+// ===== PROMO =====
+let PROMO={activa:false};
+
+async function loadPromo(){
+  try { PROMO = await Sheets.getPromo(); }
+  catch(e){ PROMO={activa:false}; }
+  // Llenar el select con los servicios existentes
+  const sel=document.getElementById('promo-servicio');
+  sel.innerHTML='<option value="">Selecciona un servicio...</option>'+
+    SERVICES.map(s=>`<option value="${s.name.replace(/"/g,'&quot;')}">${s.name}</option>`).join('');
+  document.getElementById('promo-activa').checked = !!PROMO.activa;
+  if(PROMO.tema) document.getElementById('promo-tema').value = PROMO.tema;
+  document.getElementById('promo-etiqueta').value = PROMO.etiqueta||'';
+  document.getElementById('promo-festejo').value = PROMO.festejo||'';
+  document.getElementById('promo-servicio').value = PROMO.servicio||'';
+  document.getElementById('promo-precio-normal').value = PROMO.precioNormal||'';
+  document.getElementById('promo-precio-promo').value = PROMO.precioPromo||'';
+  document.getElementById('promo-vigencia').value = PROMO.vigencia||'';
+}
+
+function togglePromoActiva(){
+  PROMO.activa = document.getElementById('promo-activa').checked;
+}
+
+function autoPrecioPromo(){
+  const nombre=document.getElementById('promo-servicio').value;
+  const svc=SERVICES.find(s=>s.name===nombre);
+  if(svc && svc.price>0){
+    document.getElementById('promo-precio-normal').value=svc.price;
+  }
+}
+
+function guardarPromo(){
+  PROMO = {
+    activa: document.getElementById('promo-activa').checked,
+    tema: document.getElementById('promo-tema').value,
+    etiqueta: document.getElementById('promo-etiqueta').value.trim(),
+    festejo: document.getElementById('promo-festejo').value.trim(),
+    servicio: document.getElementById('promo-servicio').value.trim(),
+    precioNormal: document.getElementById('promo-precio-normal').value,
+    precioPromo: document.getElementById('promo-precio-promo').value,
+    vigencia: document.getElementById('promo-vigencia').value.trim()
+  };
+  Sheets.guardarPromo(PROMO);
+  alert('Promoción guardada.');
+}
+
+// ===== RULETA =====
+let RULETA_CONFIG = {activa:false, premios:[]};
+
+async function loadRuleta(){
+  const cont=document.getElementById('lista-premios-ruleta');
+  cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>';
+  try { RULETA_CONFIG = await Sheets.getRuletaConfig(); }
+  catch(e){ RULETA_CONFIG = {activa:false, premios:[]}; }
+  if(!RULETA_CONFIG.premios) RULETA_CONFIG.premios = [];
+  document.getElementById('ruleta-activa').checked = !!RULETA_CONFIG.activa;
+  renderPremios();
+  loadGanadoresRuleta();
+}
+
+function premioRowHtml(p, idx){
+  const stockVal = (p.stock===null || p.stock===undefined) ? '' : p.stock;
+  return `<div class="premio-card" data-idx="${idx}">
+    <div class="premio-card-top">
+      <input class="fi premio-nombre" value="${(p.premio||'').replace(/"/g,'&quot;')}" style="flex:1;font-weight:500;" placeholder="Nombre del premio">
+      <label class="svc-toggle" style="flex-shrink:0;">
+        <input type="checkbox" class="premio-activo" ${p.activo?'checked':''}/>
+        <div class="svc-toggle-track"></div>
+        <div class="svc-toggle-thumb"></div>
+      </label>
+      <button class="btn-ico del" onclick="eliminarPremio(${idx})" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </div>
+    <div class="frow">
+      <div class="fg" style="margin-bottom:0;"><label class="flbl">Probabilidad</label><input class="fi premio-prob" type="number" min="0" step="1" value="${p.probabilidad||0}"></div>
+      <div class="fg" style="margin-bottom:0;"><label class="flbl">Stock (vacío = ilimitado)</label><input class="fi premio-stock" type="number" min="0" value="${stockVal}"></div>
+    </div>
+  </div>`;
+}
+
+function renderPremios(){
+  const cont = document.getElementById('lista-premios-ruleta');
+  if(RULETA_CONFIG.premios.length===0){
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay premios configurados.</p>';
+    return;
+  }
+  cont.innerHTML = RULETA_CONFIG.premios.map((p,i)=>premioRowHtml(p,i)).join('');
+  cont.querySelectorAll('.premio-prob, .premio-activo').forEach(inp=>{
+    inp.addEventListener('input', actualizarSumaProbabilidades);
+    inp.addEventListener('change', actualizarSumaProbabilidades);
+  });
+  actualizarSumaProbabilidades();
+}
+
+function actualizarSumaProbabilidades(){
+  let suma = 0;
+  document.querySelectorAll('#lista-premios-ruleta .premio-card').forEach(row=>{
+    const activo = row.querySelector('.premio-activo').checked;
+    const prob = parseFloat(row.querySelector('.premio-prob').value) || 0;
+    if(activo) suma += prob;
+  });
+  document.getElementById('ruleta-suma').textContent = suma;
+}
+
+function agregarPremio(){
+  RULETA_CONFIG.premios.push({premio:'Nuevo premio', probabilidad:0, activo:true, stock:null});
+  renderPremios();
+}
+
+function eliminarPremio(idx){
+  if(!confirm('¿Eliminar este premio de la lista?')) return;
+  RULETA_CONFIG.premios.splice(idx,1);
+  renderPremios();
+}
+
+function toggleRuletaActiva(){
+  // solo actualiza el valor en memoria; se guarda al presionar "Guardar cambios"
+}
+
+function recolectarPremiosDesdeDOM(){
+  const filas = document.querySelectorAll('#lista-premios-ruleta .premio-card');
+  const premios = [];
+  filas.forEach(row=>{
+    const nombre = row.querySelector('.premio-nombre').value.trim();
+    const activo = row.querySelector('.premio-activo').checked;
+    const prob = parseFloat(row.querySelector('.premio-prob').value) || 0;
+    const stockRaw = row.querySelector('.premio-stock').value.trim();
+    premios.push({
+      premio: nombre,
+      probabilidad: prob,
+      activo: activo,
+      stock: stockRaw === '' ? null : parseInt(stockRaw)
+    });
+  });
+  return premios;
+}
+
+async function guardarRuleta(){
+  const premios = recolectarPremiosDesdeDOM();
+  if(premios.some(p=>!p.premio)){
+    alert('Todos los premios necesitan un nombre.');
+    return;
+  }
+  const payload = {
+    activa: document.getElementById('ruleta-activa').checked,
+    premios: premios
+  };
+  await Sheets.guardarRuletaConfig(payload);
+  RULETA_CONFIG = payload;
+  alert('Ruleta actualizada. Los cambios se verán en la rueda la próxima vez que alguien cargue la agenda.');
+}
+
+async function loadGanadoresRuleta(){
+  const cont = document.getElementById('lista-ganadores-ruleta');
+  try {
+    const url = CONFIG.sheets.scriptUrl + '?action=getRuletaGanadores&_=' + Date.now();
+    const res = await fetch(url);
+    const data = await res.json();
+    const ganadores = data.ganadores || [];
+    if(ganadores.length===0){
+      cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Aún no hay ganadores registrados.</p>';
+      return;
+    }
+    cont.innerHTML = ganadores.slice(-15).reverse().map(g=>`
+      <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <p style="font-size:13px;font-weight:500;color:#1a1a1a;margin:0;">${g.nombre||'Sin nombre'} <span style="color:#aaa;font-weight:400;">· ${g.telefono||''}</span></p>
+          <p style="font-size:12px;color:#888;margin:2px 0 0;">${g.premio}${g.codigoCanje?' · '+g.codigoCanje:''}</p>
+        </div>
+        <span style="font-size:11px;padding:3px 9px;border-radius:999px;background:${g.canjeado==='si'?'#E8F5E9':'#FFF8EC'};color:${g.canjeado==='si'?'#2E7D32':'#8B6F3E'};font-weight:500;white-space:nowrap;">${g.canjeado==='si'?'Canjeado':'Pendiente'}</span>
+      </div>`).join('');
+  } catch(e){
+    cont.innerHTML = '<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar ganadores.</p>';
+  }
+}
+
+// ===== CITAS =====
+const MESES_CITAS={'enero':0,'febrero':1,'marzo':2,'abril':3,'mayo':4,'junio':5,'julio':6,'agosto':7,'septiembre':8,'octubre':9,'noviembre':10,'diciembre':11};
+
+function parseFechaCita(fechaStr){
+  // "12 de Junio 2026" -> Date
+  try {
+    const partes=fechaStr.split(' de ');
+    if(partes.length<2) return null;
+    const dia=parseInt(partes[0].trim());
+    const resto=partes[1].trim().split(' ');
+    const mes=MESES_CITAS[resto[0].toLowerCase()];
+    const anio=parseInt(resto[1]);
+    if(isNaN(dia)||mes===undefined||isNaN(anio)) return null;
+    return new Date(anio,mes,dia);
+  } catch(e){ return null; }
+}
+
+async function loadCitas(){
+  const cont=document.getElementById('lista-citas');
+  cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando citas...</p>';
+  let citas=[];
+  try { citas=await Sheets.getCitas(); }
+  catch(e){ cont.innerHTML='<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar citas.</p>'; return; }
+
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const limite=new Date(hoy); limite.setDate(limite.getDate()+7);
+
+  // Filtrar hoy + próximos 7 días
+  const filtradas=citas.map(c=>({...c,_fecha:parseFechaCita(c.fecha)}))
+    .filter(c=>c._fecha && c._fecha>=hoy && c._fecha<=limite)
+    .sort((a,b)=>{
+      if(a._fecha.getTime()!==b._fecha.getTime()) return a._fecha-b._fecha;
+      return horaAMin(a.hora)-horaAMin(b.hora);
+    });
+
+  if(filtradas.length===0){
+    cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay citas en los próximos 7 días.</p>';
+    return;
+  }
+
+  // Agrupar por fecha
+  const grupos={};
+  filtradas.forEach(c=>{
+    const key=c.fecha;
+    if(!grupos[key]) grupos[key]=[];
+    grupos[key].push(c);
+  });
+
+  let html='';
+  Object.keys(grupos).forEach(fecha=>{
+    const esHoy=grupos[fecha][0]._fecha.getTime()===hoy.getTime();
+    html+=`<div style="margin-bottom:14px;">
+      <p style="font-size:12px;font-weight:600;color:var(--forest);margin:0 0 8px;letter-spacing:.02em;">${esHoy?'HOY · ':''}${fecha}</p>`;
+    grupos[fecha].forEach(c=>{
+      html+=`<div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 12px;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">
+          <div style="flex:1;">
+            <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin:0 0 2px;">${c.nombre}</p>
+            <p style="font-size:12px;color:#888;margin:0;">${c.servicio}</p>
+          </div>
+          <div style="text-align:right;">
+            <p style="font-size:13px;font-weight:600;color:var(--gold-dark);margin:0;">${c.hora}</p>
+            <p style="font-size:10px;color:#aaa;margin:2px 0 0;">~${c.duracion} min</p>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  cont.innerHTML=html;
+}
+
+function horaAMin(horaStr){
+  // "8:00 AM" o "1:30 PM" -> minutos
+  try {
+    const m=horaStr.match(/(\d+):(\d+)\s*(AM|PM|a\.m\.|p\.m\.)?/i);
+    if(!m) return 0;
+    let h=parseInt(m[1]); const min=parseInt(m[2]);
+    const ampm=(m[3]||'').toUpperCase().replace(/\./g,'');
+    if(ampm==='PM'&&h<12) h+=12;
+    if(ampm==='AM'&&h===12) h=0;
+    return h*60+min;
+  } catch(e){ return 0; }
+}
+
+function fmtFecha(iso){
+  const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [a,m,d]=iso.split('-');
+  return parseInt(d)+' de '+meses[parseInt(m)-1]+' '+a;
+}
+
+function agregarBloqueoRango(){
+  const inicio=document.getElementById('bloq-inicio').value;
+  const fin=document.getElementById('bloq-fin').value;
+  const motivo=document.getElementById('bloq-motivo').value.trim();
+  if(!inicio||!fin){alert('Selecciona fecha de inicio y fin.');return;}
+  if(fin<inicio){alert('La fecha fin debe ser igual o posterior a la de inicio.');return;}
+  let d=new Date(inicio+'T00:00:00');
+  const f=new Date(fin+'T00:00:00');
+  while(d<=f){
+    const iso=d.toISOString().split('T')[0];
+    if(!BLOQUEOS.dias.find(x=>x.fecha===iso)){
+      BLOQUEOS.dias.push({fecha:iso, motivo:motivo||'No disponible'});
+    }
+    d.setDate(d.getDate()+1);
+  }
+  document.getElementById('bloq-inicio').value='';
+  document.getElementById('bloq-fin').value='';
+  document.getElementById('bloq-motivo').value='';
+  saveBloqueos();
+  alert('Días bloqueados correctamente.');
+}
+
+function renderHorasBloqueo(){
+  const dia=document.getElementById('bloq-hora-dia').value;
+  const grid=document.getElementById('horas-bloqueo-grid');
+  if(!dia){grid.innerHTML='';return;}
+  const bloqueadas=BLOQUEOS.horas[dia]||[];
+  grid.innerHTML=HORAS_DIA.map(h=>{
+    const sel=bloqueadas.includes(h)?' sel':'';
+    const lbl=fmtHora12(h);
+    return `<div class="hora-bloq${sel}" onclick="toggleHoraBloqueo('${h}')">${lbl}</div>`;
+  }).join('');
+}
+
+function fmtHora12(h){
+  const [hh,mm]=h.split(':');
+  const n=parseInt(hh);
+  return (n>12?n-12:n)+':'+mm+(n>=12?' PM':' AM');
+}
+
+let horasSeleccionadas=[];
+function toggleHoraBloqueo(h){
+  const dia=document.getElementById('bloq-hora-dia').value;
+  if(!BLOQUEOS.horas[dia]) BLOQUEOS.horas[dia]=[];
+  const idx=BLOQUEOS.horas[dia].indexOf(h);
+  if(idx>-1) BLOQUEOS.horas[dia].splice(idx,1);
+  else BLOQUEOS.horas[dia].push(h);
+  renderHorasBloqueo();
+}
+
+function guardarHorasBloqueo(){
+  const dia=document.getElementById('bloq-hora-dia').value;
+  if(!dia){alert('Selecciona un día.');return;}
+  // limpiar si quedó vacío
+  if(BLOQUEOS.horas[dia] && BLOQUEOS.horas[dia].length===0) delete BLOQUEOS.horas[dia];
+  saveBloqueos();
+  alert('Horas bloqueadas guardadas.');
+}
+
+function renderListaBloqueos(){
+  const cont=document.getElementById('lista-bloqueos');
+  if(!cont) return;
+  let html='';
+  // Días completos
+  BLOQUEOS.dias.sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach((b,i)=>{
+    html+=`<div class="bloq-item"><span><strong>${fmtFecha(b.fecha)}</strong> · ${b.motivo}</span><button class="bloq-item-del" onclick="eliminarBloqueoDia('${b.fecha}')"><i class="ti ti-x"></i></button></div>`;
+  });
+  // Horas sueltas
+  Object.keys(BLOQUEOS.horas).sort().forEach(dia=>{
+    if(BLOQUEOS.horas[dia].length>0){
+      const horas=BLOQUEOS.horas[dia].map(fmtHora12).join(', ');
+      html+=`<div class="bloq-item"><span><strong>${fmtFecha(dia)}</strong> · Horas: ${horas}</span><button class="bloq-item-del" onclick="eliminarBloqueoHoras('${dia}')"><i class="ti ti-x"></i></button></div>`;
+    }
+  });
+  cont.innerHTML=html||'<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay bloqueos activos.</p>';
+}
+
+function eliminarBloqueoDia(fecha){
+  BLOQUEOS.dias=BLOQUEOS.dias.filter(b=>b.fecha!==fecha);
+  saveBloqueos();
+}
+
+function eliminarBloqueoHoras(dia){
+  delete BLOQUEOS.horas[dia];
+  saveBloqueos();
+}
+
+// ===== CLIENTAS =====
+let CLIENTAS = [];
+let clientaSeleccionadaParaReserva = null;
+let editClientaIdx = null;
+
+async function loadClientas(){
+  const cont = document.getElementById('lista-clientas');
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>';
+  try { CLIENTAS = await Sheets.getClientas(); }
+  catch(e){ CLIENTAS = []; }
+  renderClientas();
+}
+
+function renderClientas(){
+  const cont = document.getElementById('lista-clientas');
+  const filtro = (document.getElementById('buscar-clienta').value || '').toLowerCase().trim();
+  const filtradas = CLIENTAS.filter(c =>
+    !filtro || c.nombre.toLowerCase().includes(filtro) || (c.telefono||'').includes(filtro)
+  );
+
+  if (filtradas.length === 0){
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay clientas para mostrar.</p>';
+    return;
+  }
+
+  cont.innerHTML = filtradas.map(c => {
+    const idxReal = CLIENTAS.indexOf(c);
+    return `<div class="svc-row" style="padding:.75rem 0;">
+      <div class="svc-info">
+        <div class="svc-nm">${c.nombre}</div>
+        <div class="svc-meta">${c.telefono}${c.correo ? ' · '+c.correo : ''}${c.notas ? ' · '+c.notas : ''}</div>
+      </div>
+      <div class="svc-actions">
+        <button class="btn-ico" onclick="abrirModalReservar(${idxReal})" title="Reservar"><i class="ti ti-calendar-plus"></i></button>
+        <button class="btn-ico" onclick="openModalClienta(${idxReal})" title="Editar"><i class="ti ti-edit"></i></button>
+        <button class="btn-ico del" onclick="eliminarClienta(${idxReal})" title="Eliminar"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function eliminarClienta(idx){
+  if (!confirm('¿Eliminar esta clienta de la lista?')) return;
+  CLIENTAS.splice(idx, 1);
+  Sheets.guardarClientas(CLIENTAS);
+  renderClientas();
+}
+
+function openModalClienta(idx){
+  editClientaIdx = idx;
+  const c = idx !== null ? CLIENTAS[idx] : null;
+  document.getElementById('modal-clienta-title').textContent = c ? 'Editar clienta' : 'Nueva clienta';
+  document.getElementById('mc-nombre').value = c ? c.nombre : '';
+  document.getElementById('mc-telefono').value = c ? c.telefono : '';
+  document.getElementById('mc-correo').value = c ? (c.correo||'') : '';
+  document.getElementById('mc-notas').value = c ? (c.notas||'') : '';
+  document.getElementById('ov-modal-clienta').classList.add('open');
+}
+
+function closeModalClienta(){
+  document.getElementById('ov-modal-clienta').classList.remove('open');
+}
+
+function guardarClientaModal(){
+  const nombre = document.getElementById('mc-nombre').value.trim();
+  const telefono = document.getElementById('mc-telefono').value.trim();
+  const correo = document.getElementById('mc-correo').value.trim();
+  const notas = document.getElementById('mc-notas').value.trim();
+  if (!nombre || !telefono){ alert('Nombre y teléfono son obligatorios.'); return; }
+
+  const clienta = { nombre, telefono, correo, notas };
+  if (editClientaIdx !== null){
+    CLIENTAS[editClientaIdx] = clienta;
+  } else {
+    CLIENTAS.push(clienta);
+  }
+  Sheets.guardarClientas(CLIENTAS);
+  closeModalClienta();
+  renderClientas();
+}
+
+function abrirModalReservar(idx){
+  clientaSeleccionadaParaReserva = CLIENTAS[idx];
+  document.getElementById('modal-reservar-title').textContent = 'Reservar — ' + clientaSeleccionadaParaReserva.nombre;
+  document.getElementById('mr-servicio').value = '';
+  document.getElementById('mr-fecha').value = '';
+  document.getElementById('mr-hora').value = '';
+  document.getElementById('mr-duracion').value = 60;
+  document.getElementById('mr-nota').value = '';
+  document.getElementById('ov-modal-reservar').classList.add('open');
+}
+
+function closeModalReservar(){
+  document.getElementById('ov-modal-reservar').classList.remove('open');
+}
+
+const MESES_RESERVA = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+async function guardarReservaVIP(){
+  const servicio = document.getElementById('mr-servicio').value.trim();
+  const fechaRaw = document.getElementById('mr-fecha').value;
+  const horaRaw = document.getElementById('mr-hora').value;
+  const duracion = parseInt(document.getElementById('mr-duracion').value) || 60;
+  const nota = document.getElementById('mr-nota').value.trim();
+
+  if (!servicio || !fechaRaw || !horaRaw){ alert('Completa servicio, fecha y hora.'); return; }
+
+  const [anio, mes, dia] = fechaRaw.split('-').map(Number);
+  const fechaFormateada = `${dia} de ${MESES_RESERVA[mes-1]} ${anio}`;
+
+  const cita = {
+    nombre: clientaSeleccionadaParaReserva.nombre,
+    telefono: clientaSeleccionadaParaReserva.telefono,
+    correo: clientaSeleccionadaParaReserva.correo || '',
+    servicio: servicio,
+    categoria: 'VIP',
+    precioTotal: 0,
+    precioEsConsultar: true,
+    fecha: fechaFormateada,
+    hora: horaRaw,
+    duracionMin: duracion,
+    comprobante: 'Atención directa VIP',
+    nota: nota,
+    abonoMonto: 0,
+    abonoTipo: '',
+    metodoPago: '',
+    omitirCorreos: true
+  };
+
+  try { await Sheets.guardarCita(cita); }
+  catch(e){ console.error(e); }
+
+  closeModalReservar();
+  alert('Cita guardada para ' + clientaSeleccionadaParaReserva.nombre + '.');
+}
+
+loadServices();
+renderAdmin();
+loadBloqueos();
+</script>
+</body>
+</html>
