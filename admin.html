@@ -672,7 +672,24 @@ async function guardarRuleta(){
 
 async function loadGanadoresRuleta(){
   const cont = document.getElementById('lista-ganadores-ruleta');
-  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Función de ganadores pendiente de conectar a Supabase.</p>';
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>';
+  try {
+    const ganadores = await Sheets.getGanadoresRuleta();
+    if(ganadores.length===0){
+      cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Aún no hay ganadores registrados.</p>';
+      return;
+    }
+    cont.innerHTML = ganadores.slice(0,15).map(g=>`
+      <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <p style="font-size:13px;font-weight:500;color:#1a1a1a;margin:0;">${g.nombre||'Sin nombre'} <span style="color:#aaa;font-weight:400;">· ${g.telefono||''}</span></p>
+          <p style="font-size:12px;color:#888;margin:2px 0 0;">${g.premio}${g.codigoCanje?' · '+g.codigoCanje:''}</p>
+        </div>
+        <span style="font-size:11px;padding:3px 9px;border-radius:999px;background:${g.canjeado==='si'?'#E8F5E9':'#FFF8EC'};color:${g.canjeado==='si'?'#2E7D32':'#8B6F3E'};font-weight:500;white-space:nowrap;">${g.canjeado==='si'?'Canjeado':'Pendiente'}</span>
+      </div>`).join('');
+  } catch(e){
+    cont.innerHTML = '<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar ganadores.</p>';
+  }
 }
 
 // ===== CITAS =====
