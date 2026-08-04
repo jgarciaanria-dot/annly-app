@@ -19,7 +19,15 @@ window.ANNLY_BUSINESS = null;
 
 async function resolverNegocio() {
   const params = new URLSearchParams(window.location.search);
-  const slug = params.get('n') || 'demo'; // 'demo' = negocio de staging por defecto
+  let slug = params.get('n'); // sigue funcionando para pruebas rápidas (?n=slug)
+
+  if (!slug) {
+    // En producción (annly.app/slug), el negocio se identifica por la ruta
+    const segmentos = window.location.pathname.split('/').filter(Boolean);
+    // Ignora nombres de archivo tipo admin.html si quedaran sueltos en la ruta
+    slug = segmentos.find(s => !s.includes('.')) || 'demo';
+  }
+
   const { data, error } = await sbClient.from('businesses').select('*').eq('slug', slug).maybeSingle();
   if (error || !data) {
     console.error('No se encontró ningún negocio activo para el slug:', slug, error);
