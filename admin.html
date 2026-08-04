@@ -787,25 +787,114 @@ async function loadCitas(){
   cont.innerHTML=html;
 }
 
-async function cancelarCitaAdmin(id, nombre){
-  if(!confirm(`¿Cancelar la cita de ${nombre}?`)) return;
-  try {
-    await Sheets.cancelarCita(id);
-    loadCitas();
-  } catch(e){ alert('No se pudo cancelar la cita.'); }
-}
-
+// ===== REPROGRAMAR (con calendario real) =====
 let reprogramarCitaId = null;
-function abrirModalReprogramar(id, fechaISO, horaISO, nombre){
+let rpCalY, rpCalM, rpSelectedDay = null, rpSelTime = null;
+let rpBloqueosCache = { dias: [], horas: {} };
+let rpDurMin = 60;
+
+async function abrirModalReprogramar(id, fechaISO, horaISO, nombre, duracionMin){
   reprogramarCitaId = id;
+  rpDurMin = duracionMin || 60;
   document.getElementById('modal-reprogramar-title').textContent = 'Reprogramar — ' + nombre;
-  document.getElementById('rp-fecha').value = fechaISO;
-  document.getElementById('rp-hora').value = horaISO.slice(0,5);
+  const [y,m] = fechaISO.split('-');
+  rpCalY = parseInt(y); rpCalM = parseInt(m) - 1;
+  rpSelectedDay = null; rpSelTime = null;
+  document.getElementById('timeSecAdmin').style.display = 'none';
+  document.getElementById('btnGuardarReprogramar').disabled = true;
+
+  try { rpBloqueosCache = await Sheets.getBloqueos(); } catch(e){ rpBloqueosCache = {dias:[],horas:{}}; }
+
+  renderCalAdmin();
   document.getElementById('ov-modal-reprogramar').classList.add('open');
 }
 
 function closeModalReprogramar(){
   document.getElementById('ov-modal-reprogramar').classList.remove('open');
+}
+
+function chMoAdmin(d){
+  rpCalM += d;
+  if(rpCalM < 0){ rpCalM = 11; rpCalY--; }
+  if(rpCalM > 11){ rpCalM = 0; rpCalY++; }
+  rpSelectedDay = null; rpSelTime = null;
+  document.getElementById('timeSecAdmin').style.display = 'none';
+  document.getElementById('btnGuardarReprogramar').disabled = true;
+  renderCalAdmin();
+}
+
+function renderCalAdmin(){
+  document.getElementById('calMoLblAdmin').textContent = MESES[rpCalM] + ' ' + rpCalY;
+  const dn = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  let h = dn.map((d,i) => `<div class="cdn${i===0?' dom':''}">${d}</div>`).join('');
+  const first = new Date(rpCalY, rpCalM, 1).getDay();
+  const days = new Date(rpCalY, rpCalM+1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<first;i++) h += `<div class="cd emp"></div>`;
+  for(let d=1; d<=days; d++){
+    const dt = new Date(rpCalY, rpCalM, d);
+    const dow = dt.getDay();
+    const iso = fechaISO(rpCalY, rpCalM, d);
+    const isBloq = rpBloqueosCache.dias.some(b => b.fecha === iso);
+    const isPast = dt < today, isDom = dow === 0, isSel = rpSelectedDay === d;
+    let cls = 'cd';
+    if(isPast) cls += ' pst'; else if(isDom) cls += ' dom'; else if(isBloq) cls += ' bloq';
+    if(isSel && !isPast && !isDom && !isBloq) cls += ' sel';
+    const ok = !isPast && !isDom && !isBloq;
+    h += `<div class="${cls}" ${ok?`onclick="selDayAdmin(${d})"`:''}>${d}</div>`;
+  }
+  document.getElementById('calGridAdmin').innerHTML = h;
+}
+
+async function selDayAdmin(d){
+  rpSelectedDay = d; rpSelTime = null;
+  renderCalAdmin();
+  document.getElementById('timeSecAdmin').style.display = 'block';
+  document.getElementById('btnGuardarReprogramar').disabled = true;
+  const grid = document.getElementById('timeGridAdmin');
+  grid.innerHTML = '<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
+  const fechaStr = d + ' de ' + MESES[rpCalM] + ' ' + rpCalY;
+  let ocupadas = [];
+  try { ocupadas = await Sheets.getHorasOcupadas(fechaStr); } catch(e){ ocupadas = []; }
+  renderTimesAdmin(ocupadas);
+}
+
+function renderTimesAdmin(ocupadas){
+  const slots = genSlots();
+  const grid = document.getElementById('timeGridAdmin');
+  const iso = fechaISO(rpCalY, rpCalM, rpSelectedDay);
+  const horasBloqueadas = rpBloqueosCache.horas[iso] || [];
+  grid.innerHTML = '';
+  slots.forEach(({key, lbl}) => {
+    const ocupada = isBlocked(key, ocupadas, rpDurMin);
+    const bloqueada = horasBloqueadas.includes(key);
+    const blocked = ocupada || bloqueada;
+    const div = document.createElement('div');
+    div.className = 'ts' + (blocked ? ' tkn' : '') + (rpSelTime === key ? ' sel' : '');
+    div.textContent = lbl;
+    if(!blocked) div.onclick = () => {
+      rpSelTime = key;
+      renderTimesAdmin(ocupadas);
+      document.getElementById('btnGuardarReprogramar').disabled = false;
+    };
+    grid.appendChild(div);
+  });
+}
+
+async function guardarReprogramacion(){
+  if(!rpSelectedDay || !rpSelTime){ alert('Selecciona fecha y hora.'); return; }
+  const fechaISOStr = fechaISO(rpCalY, rpCalM, rpSelectedDay);
+  try {
+    await Sheets.reprogramarCita(reprogramarCitaId, fechaISOStr, rpSelTime);
+    closeModalReprogramar();
+    loadCitas();
+  } catch(e){ alert('No se pudo reprogramar la cita.'); }
+}
+
+async function cancelarCitaAdmin(id, nombre){
+  if(!confirm(`¿Cancelar la cita de ${nombre}?`)) return;
+  try { await Sheets.cancelarCita(id); loadCitas(); }
+  catch(e){ alert('No se pudo cancelar la cita.'); }
 }
 
 async function guardarReprogramacion(){
