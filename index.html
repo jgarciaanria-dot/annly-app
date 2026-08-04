@@ -677,24 +677,21 @@ function fechaISO(y,m,d){
   return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
 }
 
-async function loadServices(){
-  try {
-    const servicios = await Sheets.getServicios();
-    if(servicios && servicios.length > 0){
-      SERVICES = servicios;
-      return;
-    }
-  } catch(e) {
-    console.log('Fallback a localStorage:', e);
+window.AnnlyReady.then(() => {
+  const b = window.ANNLY_BUSINESS;
+  if (b) {
+    if (b.color_primario) document.documentElement.style.setProperty('--gold', b.color_primario);
+    if (b.color_secundario) document.documentElement.style.setProperty('--gold-dark', b.color_secundario);
+    const h1 = document.querySelector('.hdr h1');
+    if (h1 && b.nombre) h1.textContent = b.nombre.toUpperCase();
+    document.title = (b.nombre || 'Annly') + ' — Reservas';
   }
-  const saved = localStorage.getItem('vss_hair_services');
-  if(saved){
-    SERVICES = JSON.parse(saved);
-  } else {
-    SERVICES = getDefaultServices();
-  }
-}
-
+  loadServices().then(() => { renderServices(); });
+  loadBloqueos();
+  loadPromo();
+  loadRuletaConfig();
+  try{Sheets.initSheet();}catch(e){}
+});
 function getDefaultServices(){
   return [
       {id:'eval',name:'Cita de Evaluación',cat:'Básicos',price:10,dur:'30 min',durMin:30,active:true,esEval:true,
