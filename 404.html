@@ -919,7 +919,7 @@ function renderServices(){
     html+=`<div class="sec-label">${cat}</div><div class="grid">`;
     svcs.forEach((s,i)=>{
       const icon=SVC_ICONS[s.id]||'ti-star';
-      const isLast=i===svcs.length-1&&svcs.length%2!==0;
+      const isLast=i===svcs.length-1&&svcs.length%2!==0&&svcs.length>1;
       html+=buildCard(s,icon,isLast);
     });
     html+='</div>';
