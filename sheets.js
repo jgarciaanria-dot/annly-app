@@ -3,11 +3,34 @@
 // Cubre index.html (sitio público) y admin.html (panel)
 // =========================================================
 
-const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
-const BUSINESS_ID = '0eeae4cd-7460-4d53-8e60-4658200910e3';
+const SUPABASE_URL = 'PEGA_AQUI_TU_PROJECT_URL';
+const SUPABASE_KEY = 'PEGA_AQUI_TU_PUBLISHABLE_KEY';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// =========================================================
+// RESOLUCIÓN DINÁMICA DEL NEGOCIO (multi-tenant)
+// Hoy: por parámetro ?n=slug en la URL (simulación en GitHub Pages).
+// En producción con subdominios: se reemplaza el origen del slug
+// por window.location.hostname.split('.')[0] — el resto no cambia.
+// =========================================================
+let BUSINESS_ID = null;
+window.ANNLY_BUSINESS = null;
+
+async function resolverNegocio() {
+  const params = new URLSearchParams(window.location.search);
+  const slug = params.get('n') || 'demo'; // 'demo' = negocio de staging por defecto
+  const { data, error } = await sbClient.from('businesses').select('*').eq('slug', slug).maybeSingle();
+  if (error || !data) {
+    console.error('No se encontró ningún negocio activo para el slug:', slug, error);
+    return;
+  }
+  BUSINESS_ID = data.id;
+  window.ANNLY_BUSINESS = data;
+}
+
+// Promesa exportada: index.html y admin.html la esperan antes de pintar nada
+window.AnnlyReady = resolverNegocio();
 
 const MESES_MAP = { enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11 };
 const MESES_ARR = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -38,6 +61,7 @@ const Sheets = {
 
   // ---------- SERVICIOS ----------
   async getServicios() {
+    await window.AnnlyReady;
     const { data, error } = await sbClient.from('services').select('*').eq('business_id', BUSINESS_ID);
     if (error || !data) return [];
     return data.map(s => ({
@@ -50,6 +74,7 @@ const Sheets = {
 
   // Reemplaza el catálogo completo del negocio (borra y re-inserta)
   async guardarServicios(serviciosArr) {
+    await window.AnnlyReady;
     const servicios = typeof serviciosArr === 'string' ? JSON.parse(serviciosArr) : serviciosArr;
     await sbClient.from('services').delete().eq('business_id', BUSINESS_ID);
     if (!servicios.length) return;
@@ -66,6 +91,7 @@ const Sheets = {
 
   // ---------- BLOQUEOS ----------
   async getBloqueos() {
+    await window.AnnlyReady;
     const { data: fechas } = await sbClient.from('blocked_dates').select('fecha,motivo').eq('business_id', BUSINESS_ID);
     const { data: horas } = await sbClient.from('blocked_hours').select('fecha,hora').eq('business_id', BUSINESS_ID);
     const horasObj = {};
@@ -74,6 +100,7 @@ const Sheets = {
   },
 
   async guardarBloqueos(bloqueos) {
+    await window.AnnlyReady;
     await sbClient.from('blocked_dates').delete().eq('business_id', BUSINESS_ID);
     await sbClient.from('blocked_hours').delete().eq('business_id', BUSINESS_ID);
     if (bloqueos.dias?.length) {
@@ -90,6 +117,7 @@ const Sheets = {
 
   // ---------- CITAS ----------
   async getHorasOcupadas(fechaStr) {
+    await window.AnnlyReady;
     const fechaISO = parseFechaTexto(fechaStr);
     if (!fechaISO) return [];
     const { data } = await sbClient.from('appointments').select('hora, duracion_min')
@@ -97,30 +125,18 @@ const Sheets = {
     return (data || []).map(c => ({ hora: formatHoraSitio(c.hora), duracion: c.duracion_min || 60 }));
   },
 
-async getCitas() {
+  async getCitas() {
+    await window.AnnlyReady;
     const { data } = await sbClient.from('appointments').select('*').eq('business_id', BUSINESS_ID).neq('estado', 'cancelada');
     return (data || []).map(c => ({
-      id: c.id,
       nombre: c.cliente_nombre, telefono: c.cliente_telefono, servicio: c.servicio_nombre,
-      fecha: isoAFechaTexto(c.fecha), fechaISO: c.fecha, horaISO: c.hora,
-      hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
+      fecha: isoAFechaTexto(c.fecha), hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
       duracion: c.duracion_min
     }));
   },
-    
-  async cancelarCita(id) {
-    const { error } = await sbClient.from('appointments').update({ estado: 'cancelada' }).eq('id', id);
-    if (error) { console.error('Error cancelando cita:', error); throw error; }
-    return { ok: true };
-  },
-
-  async reprogramarCita(id, nuevaFechaISO, nuevaHora) {
-    const { error } = await sbClient.from('appointments').update({ fecha: nuevaFechaISO, hora: nuevaHora }).eq('id', id);
-    if (error) { console.error('Error reprogramando cita:', error); throw error; }
-    return { ok: true };
-  },
 
   async guardarCita(cita) {
+    await window.AnnlyReady;
     const fechaISO = parseFechaTexto(cita.fecha);
     const { error } = await sbClient.from('appointments').insert([{
       business_id: BUSINESS_ID, cliente_nombre: cita.nombre, cliente_telefono: cita.telefono,
@@ -136,6 +152,7 @@ async getCitas() {
 
   // ---------- PROMO (banner emergente) ----------
   async getPromo() {
+    await window.AnnlyReady;
     const { data } = await sbClient.from('promo_banner').select('*').eq('business_id', BUSINESS_ID).maybeSingle();
     if (!data) return { activa: false };
     return {
@@ -146,6 +163,7 @@ async getCitas() {
   },
 
   async guardarPromo(promo) {
+    await window.AnnlyReady;
     await sbClient.from('promo_banner').upsert({
       business_id: BUSINESS_ID, activa: promo.activa, tema: promo.tema, etiqueta: promo.etiqueta,
       festejo: promo.festejo, servicio: promo.servicio, precio_normal: promo.precioNormal || null,
@@ -155,6 +173,7 @@ async getCitas() {
 
   // ---------- RULETA ----------
   async getRuletaConfig() {
+    await window.AnnlyReady;
     const { data: feat } = await sbClient.from('business_features').select('ruleta_premios').eq('business_id', BUSINESS_ID).maybeSingle();
     const { data: premios } = await sbClient.from('roulette_prizes').select('*').eq('business_id', BUSINESS_ID);
     return {
@@ -164,6 +183,7 @@ async getCitas() {
   },
 
   async guardarRuletaConfig(payload) {
+    await window.AnnlyReady;
     await sbClient.from('business_features').update({ ruleta_premios: payload.activa }).eq('business_id', BUSINESS_ID);
     await sbClient.from('roulette_prizes').delete().eq('business_id', BUSINESS_ID);
     if (payload.premios?.length) {
@@ -174,6 +194,7 @@ async getCitas() {
   },
 
   async verificarElegibilidadRuleta(tel) {
+    await window.AnnlyReady;
     const { data: yaParticipo } = await sbClient.from('roulette_wins').select('id').eq('business_id', BUSINESS_ID).eq('telefono', tel).limit(1);
     if (yaParticipo?.length) return { elegible: false };
     const { data: feat } = await sbClient.from('business_features').select('ruleta_premios').eq('business_id', BUSINESS_ID).maybeSingle();
@@ -181,6 +202,7 @@ async getCitas() {
   },
 
   async girarRuleta(identificador, nombre, citaId) {
+    await window.AnnlyReady;
     const { data: premios } = await sbClient.from('roulette_prizes').select('*').eq('business_id', BUSINESS_ID).eq('activo', true);
     const disponibles = (premios || []).filter(p => p.stock === null || p.stock > 0);
     if (!disponibles.length) return { ok: false, motivo: 'sin_premios' };
@@ -192,10 +214,11 @@ async getCitas() {
       business_id: BUSINESS_ID, telefono: identificador, nombre, prize_id: elegido.id, codigo_cupon: codigo, usado: false
     }]);
     if (elegido.stock !== null) await sbClient.from('roulette_prizes').update({ stock: elegido.stock - 1 }).eq('id', elegido.id);
-    return { ok: true, esPremioReal: true, premio: elegido.nombre, codigoCanje: codigo };
+    return { ok: true, premio: elegido.nombre, codigoCanje: codigo };
   },
 
   async validarCupon(codigo) {
+    await window.AnnlyReady;
     const cod = (codigo || '').toUpperCase().trim();
     if (!cod) return { valido: false, motivo: 'codigo_vacio' };
     const { data } = await sbClient.from('roulette_wins').select('*').eq('business_id', BUSINESS_ID).eq('codigo_cupon', cod).maybeSingle();
@@ -209,31 +232,20 @@ async getCitas() {
   },
 
   async marcarCuponCanjeado(codigo) {
+    await window.AnnlyReady;
     await sbClient.from('roulette_wins').update({ usado: true }).eq('business_id', BUSINESS_ID).eq('codigo_cupon', (codigo || '').toUpperCase().trim());
     return { ok: true };
   },
-async getGanadoresRuleta() {
-    const { data, error } = await sbClient
-      .from('roulette_wins')
-      .select('*, roulette_prizes(nombre)')
-      .eq('business_id', BUSINESS_ID)
-      .order('ganado_en', { ascending: false });
-    if (error || !data) return [];
-    return data.map(w => ({
-      nombre: w.nombre,
-      telefono: w.telefono,
-      premio: w.roulette_prizes?.nombre || '',
-      codigoCanje: w.codigo_cupon,
-      canjeado: w.usado ? 'si' : 'no'
-    }));
-  },
+
   // ---------- CLIENTAS ----------
   async getClientas() {
+    await window.AnnlyReady;
     const { data } = await sbClient.from('clients').select('*').eq('business_id', BUSINESS_ID);
     return (data || []).map(c => ({ nombre: c.nombre, telefono: c.telefono, correo: c.email, notas: c.notas }));
   },
 
   async guardarClientas(clientasArr) {
+    await window.AnnlyReady;
     const clientas = typeof clientasArr === 'string' ? JSON.parse(clientasArr) : clientasArr;
     await sbClient.from('clients').delete().eq('business_id', BUSINESS_ID);
     if (!clientas.length) return;
