@@ -104,6 +104,18 @@ const Sheets = {
       fecha: isoAFechaTexto(c.fecha), hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
       duracion: c.duracion_min
     }));
+    
+  },
+  async cancelarCita(id) {
+    const { error } = await sbClient.from('appointments').update({ estado: 'cancelada' }).eq('id', id);
+    if (error) { console.error('Error cancelando cita:', error); throw error; }
+    return { ok: true };
+  },
+
+  async reprogramarCita(id, nuevaFechaISO, nuevaHora) {
+    const { error } = await sbClient.from('appointments').update({ fecha: nuevaFechaISO, hora: nuevaHora }).eq('id', id);
+    if (error) { console.error('Error reprogramando cita:', error); throw error; }
+    return { ok: true };
   },
 
   async guardarCita(cita) {
