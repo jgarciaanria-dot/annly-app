@@ -262,15 +262,20 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:#1a1a1a;min-heigh
       <button class="modal-close" onclick="closeModalReprogramar()">×</button>
     </div>
     <div class="modal-body">
-      <div class="frow">
-        <div class="fg"><label class="flbl">Nueva fecha</label><input class="fi" type="date" id="rp-fecha"/></div>
-        <div class="fg"><label class="flbl">Nueva hora</label><input class="fi" type="time" id="rp-hora"/></div>
+      <div class="cal-nav">
+        <button class="cal-nb" onclick="chMoAdmin(-1)">‹</button>
+        <span class="cal-mo" id="calMoLblAdmin"></span>
+        <button class="cal-nb" onclick="chMoAdmin(1)">›</button>
       </div>
-      <button class="btn-save" onclick="guardarReprogramacion()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios</button>
+      <div class="cal-g" id="calGridAdmin"></div>
+      <div id="timeSecAdmin" style="display:none;margin-top:1rem;">
+        <p style="font-size:10px;font-weight:500;color:var(--gold);margin-bottom:6px;letter-spacing:.1em;text-transform:uppercase;">Horas disponibles</p>
+        <div class="time-g" id="timeGridAdmin"></div>
+      </div>
+      <button class="btn-save" id="btnGuardarReprogramar" disabled onclick="guardarReprogramacion()"><i class="ti ti-check" style="font-size:17px;"></i> Confirmar nuevo horario</button>
     </div>
   </div>
 </div>
-
 <!-- MODAL RESERVAR (para una clienta VIP) -->
 <div class="ov" id="ov-modal-reservar">
   <div class="modal">
