@@ -807,6 +807,21 @@ async function guardarReprogramacion(){
   const fecha = document.getElementById('rp-fecha').value;
   const hora = document.getElementById('rp-hora').value;
   if(!fecha || !hora){ alert('Completa fecha y hora.'); return; }
+
+  // Verifica si esa fecha/hora ya tiene otra cita (como advertencia, no bloqueo)
+  try {
+    const [y,m,d] = fecha.split('-');
+    const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const fechaTexto = `${parseInt(d)} de ${meses[parseInt(m)-1]} ${y}`;
+    const ocupadas = await Sheets.getHorasOcupadas(fechaTexto);
+    const horaCorta = hora; // "HH:MM"
+    const yaOcupada = ocupadas.some(o => o.hora === (parseInt(horaCorta.split(':')[0]) + ':' + horaCorta.split(':')[1]));
+    if(yaOcupada){
+      const continuar = confirm('⚠️ Ya existe otra cita en esa fecha y hora. ¿Quieres reprogramar de todas formas?');
+      if(!continuar) return;
+    }
+  } catch(e){ console.error('No se pudo verificar disponibilidad:', e); }
+
   try {
     await Sheets.reprogramarCita(reprogramarCitaId, fecha, hora);
     closeModalReprogramar();
