@@ -82,6 +82,20 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:#1a1a1a;min-heigh
 .bloq-item-del{width:26px;height:26px;border-radius:6px;border:none;background:#fff;color:#E05555;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
 .premio-card{background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:12px;margin-bottom:8px;}
 .premio-card-top{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+
+/* Calendario (usado en el modal de reprogramar) */
+.cdn{text-align:center;font-size:10px;color:#bbb;padding:4px 0;letter-spacing:.04em;}
+.cdn.dom{color:#f0a0a0;}
+.cd{text-align:center;font-size:12px;padding:8px 2px;border-radius:8px;cursor:pointer;transition:background .12s,color .12s;color:#333;}
+.cd:hover:not(.emp):not(.pst):not(.dom){background:#f5f0e8;color:var(--gold-dark);}
+.cd.sel{background:var(--gold);color:white;font-weight:600;}
+.cd.emp,.cd.pst{color:#ddd;cursor:default;}
+.cd.dom{color:#e0c0c0;cursor:default;}
+.cd.bloq{color:#ccc;cursor:default;text-decoration:line-through;}
+.ts{border:0.5px solid #E5D8B8;border-radius:8px;padding:9px 3px;text-align:center;font-size:12px;cursor:pointer;transition:all .15s;position:relative;}
+.ts:hover:not(.tkn){border-color:var(--gold);color:var(--gold-dark);}
+.ts.sel{border:1.5px solid #C9A96E;color:#7A5C28;font-weight:600;background:#FBF7EF;}
+.ts.tkn{opacity:.25;cursor:default;}
 </style>
 </head>
 <body>
@@ -255,27 +269,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:#1a1a1a;min-heigh
   </div>
 </div>
 
-<div class="ov" id="ov-modal-reprogramar">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-title" id="modal-reprogramar-title">Reprogramar</span>
-      <button class="modal-close" onclick="closeModalReprogramar()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="cal-nav">
-        <button class="cal-nb" onclick="chMoAdmin(-1)">‹</button>
-        <span class="cal-mo" id="calMoLblAdmin"></span>
-        <button class="cal-nb" onclick="chMoAdmin(1)">›</button>
-      </div>
-      <div class="cal-g" id="calGridAdmin"></div>
-      <div id="timeSecAdmin" style="display:none;margin-top:1rem;">
-        <p style="font-size:10px;font-weight:500;color:var(--gold);margin-bottom:6px;letter-spacing:.1em;text-transform:uppercase;">Horas disponibles</p>
-        <div class="time-g" id="timeGridAdmin"></div>
-      </div>
-      <button class="btn-save" id="btnGuardarReprogramar" disabled onclick="guardarReprogramacion()"><i class="ti ti-check" style="font-size:17px;"></i> Confirmar nuevo horario</button>
-    </div>
-  </div>
-</div>
 <!-- MODAL RESERVAR (para una clienta VIP) -->
 <div class="ov" id="ov-modal-reservar">
   <div class="modal">
@@ -292,6 +285,29 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:#1a1a1a;min-heigh
       <div class="fg"><label class="flbl">Duración (minutos)</label><input class="fi" type="number" id="mr-duracion" value="60" min="15" step="15"/></div>
       <div class="fg"><label class="flbl">Nota (opcional)</label><textarea class="fi" id="mr-nota" rows="2" style="resize:vertical;"></textarea></div>
       <button class="btn-save" onclick="guardarReservaVIP()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cita</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REPROGRAMAR (con calendario visual) -->
+<div class="ov" id="ov-modal-reprogramar">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-reprogramar-title">Reprogramar</span>
+      <button class="modal-close" onclick="closeModalReprogramar()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="cal-nav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <button class="cal-nb" onclick="chMoAdmin(-1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">‹</button>
+        <span class="cal-mo" id="calMoLblAdmin" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;"></span>
+        <button class="cal-nb" onclick="chMoAdmin(1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">›</button>
+      </div>
+      <div class="cal-g" id="calGridAdmin" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+      <div id="timeSecAdmin" style="display:none;margin-top:1rem;">
+        <p style="font-size:10px;font-weight:500;color:var(--gold-dark);margin-bottom:6px;letter-spacing:.1em;text-transform:uppercase;">Horas disponibles</p>
+        <div class="time-g" id="timeGridAdmin" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;"></div>
+      </div>
+      <button class="btn-save" id="btnGuardarReprogramar" disabled onclick="guardarReprogramacion()"><i class="ti ti-check" style="font-size:17px;"></i> Confirmar nuevo horario</button>
     </div>
   </div>
 </div>
@@ -693,24 +709,7 @@ async function guardarRuleta(){
 
 async function loadGanadoresRuleta(){
   const cont = document.getElementById('lista-ganadores-ruleta');
-  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>';
-  try {
-    const ganadores = await Sheets.getGanadoresRuleta();
-    if(ganadores.length===0){
-      cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Aún no hay ganadores registrados.</p>';
-      return;
-    }
-    cont.innerHTML = ganadores.slice(0,15).map(g=>`
-      <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div>
-          <p style="font-size:13px;font-weight:500;color:#1a1a1a;margin:0;">${g.nombre||'Sin nombre'} <span style="color:#aaa;font-weight:400;">· ${g.telefono||''}</span></p>
-          <p style="font-size:12px;color:#888;margin:2px 0 0;">${g.premio}${g.codigoCanje?' · '+g.codigoCanje:''}</p>
-        </div>
-        <span style="font-size:11px;padding:3px 9px;border-radius:999px;background:${g.canjeado==='si'?'#E8F5E9':'#FFF8EC'};color:${g.canjeado==='si'?'#2E7D32':'#8B6F3E'};font-weight:500;white-space:nowrap;">${g.canjeado==='si'?'Canjeado':'Pendiente'}</span>
-      </div>`).join('');
-  } catch(e){
-    cont.innerHTML = '<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar ganadores.</p>';
-  }
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Función de ganadores pendiente de conectar a Supabase.</p>';
 }
 
 // ===== CITAS =====
@@ -740,6 +739,7 @@ async function loadCitas(){
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   const limite=new Date(hoy); limite.setDate(limite.getDate()+7);
 
+  // Filtrar hoy + próximos 7 días
   const filtradas=citas.map(c=>({...c,_fecha:parseFechaCita(c.fecha)}))
     .filter(c=>c._fecha && c._fecha>=hoy && c._fecha<=limite)
     .sort((a,b)=>{
@@ -752,6 +752,7 @@ async function loadCitas(){
     return;
   }
 
+  // Agrupar por fecha
   const grupos={};
   filtradas.forEach(c=>{
     const key=c.fecha;
@@ -777,7 +778,7 @@ async function loadCitas(){
           </div>
         </div>
         <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="btn-ico" style="width:auto;padding:0 12px;height:28px;font-size:11px;gap:4px;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-calendar-time"></i> Reprogramar</button>
+          <button class="btn-ico" style="width:auto;padding:0 12px;height:28px;font-size:11px;gap:4px;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
           <button class="btn-ico del" style="width:auto;padding:0 12px;height:28px;font-size:11px;gap:4px;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
         </div>
       </div>`;
@@ -787,17 +788,48 @@ async function loadCitas(){
   cont.innerHTML=html;
 }
 
-// ===== REPROGRAMAR (con calendario real) =====
+// ===== Funciones auxiliares de calendario (copiadas de index.html) =====
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function fechaISO(y,m,d){
+  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+
+function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+
+function genSlots(){
+  const slots=[];
+  let h=8,m=0;
+  while(h<16||(h===16&&m===0)){
+    const key=h+':'+(m===0?'00':'30');
+    const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
+    slots.push({key,lbl});
+    m+=30; if(m>=60){m=0;h++;}
+  }
+  return slots;
+}
+
+function isBlocked(slotKey,citas,durSvc){
+  const slotMin=timeToMin(slotKey);
+  for(const c of citas){
+    const occMin=timeToMin(c.hora);
+    const occDur=parseInt(c.duracion)||60;
+    if(slotMin<occMin+occDur && slotMin+durSvc>occMin) return true;
+  }
+  return false;
+}
+
+// ===== REPROGRAMAR / CANCELAR (con calendario real) =====
 let reprogramarCitaId = null;
 let rpCalY, rpCalM, rpSelectedDay = null, rpSelTime = null;
 let rpBloqueosCache = { dias: [], horas: {} };
 let rpDurMin = 60;
 
-async function abrirModalReprogramar(id, fechaISO, horaISO, nombre, duracionMin){
+async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duracionMin){
   reprogramarCitaId = id;
   rpDurMin = duracionMin || 60;
   document.getElementById('modal-reprogramar-title').textContent = 'Reprogramar — ' + nombre;
-  const [y,m] = fechaISO.split('-');
+  const [y,m] = fechaISOStr.split('-');
   rpCalY = parseInt(y); rpCalM = parseInt(m) - 1;
   rpSelectedDay = null; rpSelTime = null;
   document.getElementById('timeSecAdmin').style.display = 'none';
@@ -895,32 +927,6 @@ async function cancelarCitaAdmin(id, nombre){
   if(!confirm(`¿Cancelar la cita de ${nombre}?`)) return;
   try { await Sheets.cancelarCita(id); loadCitas(); }
   catch(e){ alert('No se pudo cancelar la cita.'); }
-}
-
-async function guardarReprogramacion(){
-  const fecha = document.getElementById('rp-fecha').value;
-  const hora = document.getElementById('rp-hora').value;
-  if(!fecha || !hora){ alert('Completa fecha y hora.'); return; }
-
-  // Verifica si esa fecha/hora ya tiene otra cita (como advertencia, no bloqueo)
-  try {
-    const [y,m,d] = fecha.split('-');
-    const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    const fechaTexto = `${parseInt(d)} de ${meses[parseInt(m)-1]} ${y}`;
-    const ocupadas = await Sheets.getHorasOcupadas(fechaTexto);
-    const horaCorta = hora; // "HH:MM"
-    const yaOcupada = ocupadas.some(o => o.hora === (parseInt(horaCorta.split(':')[0]) + ':' + horaCorta.split(':')[1]));
-    if(yaOcupada){
-      const continuar = confirm('⚠️ Ya existe otra cita en esa fecha y hora. ¿Quieres reprogramar de todas formas?');
-      if(!continuar) return;
-    }
-  } catch(e){ console.error('No se pudo verificar disponibilidad:', e); }
-
-  try {
-    await Sheets.reprogramarCita(reprogramarCitaId, fecha, hora);
-    closeModalReprogramar();
-    loadCitas();
-  } catch(e){ alert('No se pudo reprogramar la cita.'); }
 }
 
 function horaAMin(horaStr){
