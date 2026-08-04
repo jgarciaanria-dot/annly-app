@@ -421,7 +421,13 @@ function saveServices(){
 
 function renderAdmin(){
   let html='';
-  CATS.forEach(cat=>{
+  const categoriasReales=[...new Set(SERVICES.map(s=>s.cat).filter(Boolean))];
+  if(!categoriasReales.length){
+    document.getElementById('seccionesServicios').innerHTML=
+      '<div class="adm-sec" style="padding:2rem 1rem;text-align:center;color:var(--ink-soft);font-size:13px;">Todavía no tienes servicios. Agrega el primero con el botón de abajo.</div>';
+    return;
+  }
+  categoriasReales.forEach(cat=>{
     const svcs=SERVICES.filter(s=>s.cat===cat);
     if(!svcs.length) return;
     html+=`<div class="adm-sec">
@@ -466,7 +472,10 @@ function eliminar(id){
 function openModal(id,catDefault='Básicos'){
   editId=id;
   const s=id?SERVICES.find(s=>s.id===id):null;
-  const cats=CATS.map(c=>`<div class="cat-pill${(s?s.cat:catDefault)===c?' sel':''}" onclick="selCat(this,'${c}')">${c}</div>`).join('');
+  // Sugerencias dinámicas: categorías que este negocio ya usa (no una lista fija de Vicelly)
+  const categoriasExistentes=[...new Set(SERVICES.map(sv=>sv.cat).filter(Boolean))];
+  const valorInicial=s?s.cat:(categoriasExistentes[0]||catDefault);
+  const cats=categoriasExistentes.map(c=>`<div class="cat-pill${valorInicial===c?' sel':''}" onclick="document.getElementById('m-cat').value='${c.replace(/'/g,"\\'")}';">${c}</div>`).join('');
   const incls=s?s.includes:[''];
   const inclHtml=incls.map((inc,i)=>`<div class="incl-inp" id="incl-${i}">
     <input class="fi incl-val" value="${inc}" placeholder="Ej: Champú profesional"/>
@@ -476,7 +485,10 @@ function openModal(id,catDefault='Básicos'){
   document.getElementById('modal-title').textContent=s?'Editar servicio':'Nuevo servicio';
   document.getElementById('modal-body').innerHTML=`
     <div class="fg"><label class="flbl">Nombre del servicio</label><input class="fi" id="m-name" value="${s?s.name:''}"/></div>
-    <div class="fg"><label class="flbl">Categoría</label><div class="cats" id="cats-wrap">${cats}</div></div>
+    <div class="fg"><label class="flbl">Categoría (escribe la tuya, o elige una ya usada)</label>
+      <input class="fi" id="m-cat" value="${valorInicial}" placeholder="Ej: Cortes, Combos, Faciales..." style="margin-bottom:8px;"/>
+      ${cats?`<div class="cats" id="cats-wrap">${cats}</div>`:''}
+    </div>
     <div class="frow">
       <div class="fg"><label class="flbl">Precio ($)</label><input class="fi" id="m-price" type="number" min="0" step="0.01" value="${s?s.price:0}" placeholder="0 = consultar"/></div>
       <div class="fg"><label class="flbl">Texto de precio</label><input class="fi" id="m-precio-texto" value="${s&&s.precioTexto?s.precioTexto:''}" placeholder="ej: desde $25"/></div>
@@ -538,8 +550,8 @@ function remIncl(i){
 }
 
 function getCatSel(){
-  const sel=document.querySelector('.cat-pill.sel');
-  return sel?sel.textContent:'Básicos';
+  const campo=document.getElementById('m-cat');
+  return (campo && campo.value.trim()) ? campo.value.trim() : 'Básicos';
 }
 
 function guardar(){
