@@ -140,7 +140,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 
 <div class="adm-hdr">
   <div>
-    <div class="adm-hdr-title">Vicelly Sánchez Studio</div>
+    <div class="adm-hdr-title" id="adm-hdr-title">Panel de administración</div>
     <div class="adm-hdr-sub">Panel de administración</div>
   </div>
   <a href="index.html" class="adm-hdr-back"><i class="ti ti-arrow-left"></i> Ver sitio</a>
@@ -385,7 +385,11 @@ async function loadServices(){
       return;
     }
   } catch(e) { console.error('Error cargando de Supabase:', e); }
-  SERVICES = getDefaultServices();
+  if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly') {
+    SERVICES = getDefaultServices(); // solo Vicelly usa este catálogo de respaldo
+  } else {
+    SERVICES = []; // negocio nuevo: catálogo vacío de verdad
+  }
 }
 
 function getDefaultServices(){
@@ -1236,11 +1240,19 @@ async function guardarReservaVIP(){
   alert('Cita guardada para ' + clientaSeleccionadaParaReserva.nombre + '.');
 }
 
-// ===== FIX: bootstrap corregido — espera a loadServices() antes de renderizar =====
-loadServices().then(() => {
-  renderAdmin();
+// ===== Branding dinámico + arranque único (multi-tenant) =====
+window.AnnlyReady.then(() => {
+  const b = window.ANNLY_BUSINESS;
+  if (b) {
+    const titleEl = document.getElementById('adm-hdr-title');
+    if (titleEl && b.nombre) titleEl.textContent = b.nombre;
+    document.title = 'Admin — ' + (b.nombre || 'Annly');
+  }
+  loadServices().then(() => {
+    renderAdmin();
+  });
+  loadBloqueos();
 });
-loadBloqueos();
 </script>
 </body>
 </html>
