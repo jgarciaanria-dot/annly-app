@@ -675,7 +675,6 @@ function fechaISO(y,m,d){
   return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
 }
 
-// ===== FIX: función restaurada (se había perdido en una edición anterior) =====
 async function loadServices(){
   try {
     const servicios = await Sheets.getServicios();
@@ -689,8 +688,10 @@ async function loadServices(){
   const saved = localStorage.getItem('vss_hair_services');
   if(saved){
     SERVICES = JSON.parse(saved);
+  } else if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly') {
+    SERVICES = getDefaultServices(); // solo Vicelly usa este catálogo de respaldo
   } else {
-    SERVICES = getDefaultServices();
+    SERVICES = []; // negocio nuevo: catálogo vacío de verdad
   }
 }
 
