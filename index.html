@@ -694,11 +694,14 @@ async function loadServices(){
   } catch(e) {
     console.log('Fallback a localStorage:', e);
   }
-  const saved = localStorage.getItem('vss_hair_services');
+  const saved = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly')
+    ? localStorage.getItem('vss_hair_services') : null;
   if(saved){
     SERVICES = JSON.parse(saved);
+  } else if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly') {
+    SERVICES = getDefaultServices(); // solo Vicelly usa este catálogo de respaldo
   } else {
-    SERVICES = getDefaultServices();
+    SERVICES = []; // negocio nuevo: catálogo vacío de verdad
   }
 }
 
@@ -843,7 +846,18 @@ let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
 
 function renderServices(){
-  const cats=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+  if(!SERVICES.length){
+    document.getElementById('serviceList').innerHTML =
+      `<div style="text-align:center;padding:3rem 1.5rem;color:var(--page-label-text);opacity:.7;">
+        <i class="ti ti-calendar-off" style="font-size:32px;display:block;margin-bottom:.75rem;"></i>
+        <p style="font-size:13px;">Este negocio todavía no tiene servicios cargados.</p>
+      </div>`;
+    return;
+  }
+  const knownOrder=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+  const presentes=[...new Set(SERVICES.map(s=>s.cat).filter(Boolean))];
+  const extra=presentes.filter(c=>!knownOrder.includes(c));
+  const cats=[...knownOrder, ...extra];
   let html='';
   cats.forEach(cat=>{
     const svcs=SERVICES.filter(s=>s.cat===cat&&s.active);
