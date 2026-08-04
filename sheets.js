@@ -97,15 +97,17 @@ const Sheets = {
     return (data || []).map(c => ({ hora: formatHoraSitio(c.hora), duracion: c.duracion_min || 60 }));
   },
 
-  async getCitas() {
+async getCitas() {
     const { data } = await sbClient.from('appointments').select('*').eq('business_id', BUSINESS_ID).neq('estado', 'cancelada');
     return (data || []).map(c => ({
+      id: c.id,
       nombre: c.cliente_nombre, telefono: c.cliente_telefono, servicio: c.servicio_nombre,
-      fecha: isoAFechaTexto(c.fecha), hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
+      fecha: isoAFechaTexto(c.fecha), fechaISO: c.fecha, horaISO: c.hora,
+      hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
       duracion: c.duracion_min
     }));
-    
   },
+    
   async cancelarCita(id) {
     const { error } = await sbClient.from('appointments').update({ estado: 'cancelada' }).eq('id', id);
     if (error) { console.error('Error cancelando cita:', error); throw error; }
