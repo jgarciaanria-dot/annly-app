@@ -719,7 +719,6 @@ async function loadCitas(){
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   const limite=new Date(hoy); limite.setDate(limite.getDate()+7);
 
-  // Filtrar hoy + próximos 7 días
   const filtradas=citas.map(c=>({...c,_fecha:parseFechaCita(c.fecha)}))
     .filter(c=>c._fecha && c._fecha>=hoy && c._fecha<=limite)
     .sort((a,b)=>{
@@ -732,7 +731,6 @@ async function loadCitas(){
     return;
   }
 
-  // Agrupar por fecha
   const grupos={};
   filtradas.forEach(c=>{
     const key=c.fecha;
@@ -757,11 +755,47 @@ async function loadCitas(){
             <p style="font-size:10px;color:#aaa;margin:2px 0 0;">~${c.duracion} min</p>
           </div>
         </div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="btn-ico" style="width:auto;padding:0 12px;height:28px;font-size:11px;gap:4px;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-calendar-time"></i> Reprogramar</button>
+          <button class="btn-ico del" style="width:auto;padding:0 12px;height:28px;font-size:11px;gap:4px;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
+        </div>
       </div>`;
     });
     html+=`</div>`;
   });
   cont.innerHTML=html;
+}
+
+async function cancelarCitaAdmin(id, nombre){
+  if(!confirm(`¿Cancelar la cita de ${nombre}?`)) return;
+  try {
+    await Sheets.cancelarCita(id);
+    loadCitas();
+  } catch(e){ alert('No se pudo cancelar la cita.'); }
+}
+
+let reprogramarCitaId = null;
+function abrirModalReprogramar(id, fechaISO, horaISO, nombre){
+  reprogramarCitaId = id;
+  document.getElementById('modal-reprogramar-title').textContent = 'Reprogramar — ' + nombre;
+  document.getElementById('rp-fecha').value = fechaISO;
+  document.getElementById('rp-hora').value = horaISO.slice(0,5);
+  document.getElementById('ov-modal-reprogramar').classList.add('open');
+}
+
+function closeModalReprogramar(){
+  document.getElementById('ov-modal-reprogramar').classList.remove('open');
+}
+
+async function guardarReprogramacion(){
+  const fecha = document.getElementById('rp-fecha').value;
+  const hora = document.getElementById('rp-hora').value;
+  if(!fecha || !hora){ alert('Completa fecha y hora.'); return; }
+  try {
+    await Sheets.reprogramarCita(reprogramarCitaId, fecha, hora);
+    closeModalReprogramar();
+    loadCitas();
+  } catch(e){ alert('No se pudo reprogramar la cita.'); }
 }
 
 function horaAMin(horaStr){
