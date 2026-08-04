@@ -255,6 +255,22 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:#1a1a1a;min-heigh
   </div>
 </div>
 
+<div class="ov" id="ov-modal-reprogramar">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-reprogramar-title">Reprogramar</span>
+      <button class="modal-close" onclick="closeModalReprogramar()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="frow">
+        <div class="fg"><label class="flbl">Nueva fecha</label><input class="fi" type="date" id="rp-fecha"/></div>
+        <div class="fg"><label class="flbl">Nueva hora</label><input class="fi" type="time" id="rp-hora"/></div>
+      </div>
+      <button class="btn-save" onclick="guardarReprogramacion()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL RESERVAR (para una clienta VIP) -->
 <div class="ov" id="ov-modal-reservar">
   <div class="modal">
