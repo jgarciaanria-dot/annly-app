@@ -3,282 +3,368 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Annly — La agenda para cualquier negocio que reserva citas</title>
+<title>Annly — La agenda que nunca duerme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --violet:#8B5CF6;
-  --pink:#EC4899;
-  --violet-deep:#5B21B6;
-  --cream:#FBF8F5;
-  --ink:#231A2E;
-  --ink-soft:#6B6178;
-  --line:#E8E1F0;
-  --paper:#FFFFFF;
+  --violet:#7C3AED;--violet-deep:#5B21B6;--pink:#EC4899;
+  --ink:#1A1625;--ink-soft:#5B5568;
+  --bg:#FBFAFD;--paper:#FFFFFF;--line:#EDE9F5;
+  --grad:linear-gradient(120deg,var(--violet),var(--pink));
 }
-html{scroll-behavior:smooth;}
-body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;}
-.wrap{max-width:1180px;margin:0 auto;padding-left:2.5rem;padding-right:2.5rem;}
-.icon{width:18px;height:18px;flex-shrink:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+img{max-width:100%;display:block;}
+.wrap{max-width:1180px;margin:0 auto;padding-left:1.5rem;padding-right:1.5rem;}
 
 /* ---------- NAV ---------- */
 .nav{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;}
-.logo{font-family:'Fraunces',serif;font-size:23px;font-weight:700;letter-spacing:-0.01em;}
+.logo{font-size:22px;font-weight:800;letter-spacing:-0.01em;}
 .logo span{color:var(--pink);}
 .nav-links{display:flex;gap:2rem;list-style:none;}
-.nav-links a{text-decoration:none;color:var(--ink-soft);font-size:14px;font-weight:500;}
+.nav-links a{text-decoration:none;color:var(--ink-soft);font-size:14.5px;font-weight:500;}
 .nav-links a:hover{color:var(--ink);}
-.nav-cta{background:linear-gradient(135deg,var(--violet),var(--pink));color:white;border:none;padding:.6rem 1.35rem;border-radius:999px;font-size:13.5px;font-weight:600;cursor:pointer;box-shadow:0 8px 20px -8px rgba(139,92,246,.5);}
+.nav-right{display:flex;align-items:center;gap:1.25rem;}
+.nav-login{color:var(--ink-soft);text-decoration:none;font-size:14px;font-weight:500;}
+.btn-grad{background:var(--grad);color:white;border:none;padding:.7rem 1.4rem;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;box-shadow:0 8px 20px -8px rgba(124,58,237,.5);}
 
 /* ---------- HERO ---------- */
-.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:2.5rem;align-items:center;padding:1.5rem 0 2.25rem;}
-.eyebrow{display:inline-flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--line);padding:.35rem .8rem;border-radius:999px;font-size:12px;color:var(--ink-soft);font-weight:500;margin-bottom:.9rem;}
-.eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--pink);}
-h1{font-family:'Fraunces',serif;font-size:38px;line-height:1.08;font-weight:600;letter-spacing:-.02em;margin-bottom:.85rem;}
-h1 em{font-style:italic;font-weight:500;background:linear-gradient(120deg,var(--violet),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;}
-.sub{font-size:15px;line-height:1.55;color:var(--ink-soft);max-width:420px;margin-bottom:1.35rem;}
-.hero-ctas{display:flex;gap:12px;align-items:center;margin-bottom:1.1rem;}
-.btn-primary{background:var(--ink);color:white;border:none;padding:.85rem 1.5rem;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:transform .15s;}
-.btn-primary:hover{transform:translateY(-2px);}
-.btn-secondary{background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:.85rem 1.35rem;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;}
-.trust-row{display:flex;gap:18px;flex-wrap:wrap;}
-.trust-item{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);}
-.trust-item .icon{color:var(--violet);}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:2.5rem;align-items:center;padding:1.5rem 0 3rem;}
+.eyebrow{font-size:12.5px;font-weight:700;color:var(--violet);letter-spacing:.04em;margin-bottom:.9rem;}
+h1{font-size:44px;line-height:1.08;font-weight:800;letter-spacing:-.02em;margin-bottom:1.1rem;}
+h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero-sub{font-size:16px;line-height:1.6;color:var(--ink-soft);max-width:440px;margin-bottom:1.6rem;}
+.hero-ctas{display:flex;gap:12px;margin-bottom:1.1rem;}
+.btn-dark{background:var(--ink);color:white;border:none;padding:.9rem 1.6rem;border-radius:999px;font-size:14.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none;}
+.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:.9rem 1.5rem;border-radius:999px;font-size:14.5px;font-weight:600;cursor:pointer;text-decoration:none;}
+.trust-row{display:flex;gap:20px;flex-wrap:wrap;}
+.trust-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);}
+.trust-item svg{color:var(--violet);flex-shrink:0;}
 
-/* signature: el ticket de cita */
-.ticket-wrap{position:relative;}
-.ticket{background:var(--paper);border-radius:20px;padding:1.4rem;box-shadow:0 24px 48px -18px rgba(91,33,182,.25),0 4px 16px -6px rgba(0,0,0,.06);position:relative;transform:rotate(-1.2deg);}
-.ticket::before,.ticket::after{content:'';position:absolute;width:22px;height:22px;background:var(--cream);border-radius:50%;top:50%;transform:translateY(-50%);}
-.ticket::before{left:-11px;} .ticket::after{right:-11px;}
-.ticket-perf{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);border-top:2px dashed var(--line);}
-.ticket-head{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:1.1rem;}
-.ticket-brand{font-family:'Fraunces',serif;font-weight:600;font-size:14px;}
-.ticket-badge{background:#ECFDF5;color:#059669;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;display:flex;align-items:center;gap:5px;}
-.ticket-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#059669;}
-.ticket-title{font-size:12px;color:var(--ink-soft);margin-bottom:2px;}
-.ticket-client{font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-bottom:.95rem;}
-.ticket-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.1rem;}
-.ticket-field label{display:block;font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
-.ticket-field div{font-size:13.5px;font-weight:600;}
-.ticket-strip{padding-top:1.1rem;display:flex;justify-content:space-between;align-items:center;}
-.avatars{display:flex;}
-.avatars span{width:26px;height:26px;border-radius:50%;border:2px solid white;margin-left:-8px;background:linear-gradient(135deg,var(--violet),var(--pink));}
-.avatars span:first-child{margin-left:0;}
-.ticket-price{font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--violet-deep);}
-.float-card{position:absolute;background:var(--paper);border-radius:14px;box-shadow:0 16px 32px -14px rgba(0,0,0,.15);padding:10px 13px;display:flex;align-items:center;gap:9px;}
-.float-1{top:-14px;right:-20px;transform:rotate(4deg);}
-.float-1 .dot{width:28px;height:28px;border-radius:50%;background:#FDF2F8;display:flex;align-items:center;justify-content:center;color:var(--pink);}
-.float-1 .txt strong{display:block;font-size:12px;}
-.float-1 .txt span{font-size:10.5px;color:var(--ink-soft);}
-.float-2{bottom:-12px;left:-16px;transform:rotate(-3deg);}
-.float-2 .txt strong{font-family:'Fraunces',serif;font-size:17px;display:block;}
-.float-2 .txt span{font-size:10px;color:var(--ink-soft);}
+.hero-visual{position:relative;}
+.hero-photo-wrap{position:relative;border-radius:28px;overflow:hidden;aspect-ratio:4/4.6;box-shadow:0 30px 60px -20px rgba(91,33,182,.3);}
+.hero-photo-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 100%,rgba(124,58,237,.35),transparent 60%);z-index:2;pointer-events:none;}
+.hero-photo{width:100%;height:100%;object-fit:cover;}
+.hero-blob{position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(236,72,153,.25),transparent 70%);z-index:-1;}
 
-/* ---------- CATEGORÍAS: fila delgada ---------- */
-.cats{padding:.5rem 0 1.5rem;border-top:1px solid var(--line);}
-.cats-inner{display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;padding-top:1.25rem;}
-.cats-label{font-size:12.5px;color:var(--ink-soft);white-space:nowrap;}
-.cats-row{display:flex;flex-wrap:wrap;gap:8px;}
-.cat-chip{display:inline-flex;align-items:center;gap:6px;background:var(--paper);border:1.5px dashed var(--line);border-radius:999px;padding:.35rem .75rem;font-size:12px;font-weight:600;}
-.cat-chip .icon{width:14px;height:14px;color:var(--violet);}
+.float-card{position:absolute;background:var(--paper);border-radius:14px;box-shadow:0 16px 36px -14px rgba(26,22,37,.25);padding:12px 15px;z-index:5;}
+.float-1{top:14px;left:-34px;display:flex;align-items:center;gap:9px;}
+.float-1 .dot{width:26px;height:26px;border-radius:50%;background:#ECFDF5;display:flex;align-items:center;justify-content:center;color:#059669;flex-shrink:0;}
+.float-1 strong{display:block;font-size:12.5px;}
+.float-1 span{font-size:11px;color:var(--ink-soft);}
+.float-2{bottom:26px;right:-30px;min-width:172px;}
+.float-2-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-soft);padding:3px 0;}
+.float-2-row svg{color:var(--violet);flex-shrink:0;}
 
-/* ---------- FEATURES: lista compacta 2 columnas ---------- */
-.feat-section{padding:1.75rem 0;border-top:1px solid var(--line);}
-.feat-head{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:1.35rem;flex-wrap:wrap;}
-.feat-head h2{font-family:'Fraunces',serif;font-size:24px;font-weight:600;letter-spacing:-.01em;}
-.feat-head h2 em{font-style:italic;font-weight:500;background:linear-gradient(120deg,var(--violet),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;}
-.feat-head p{font-size:13px;color:var(--ink-soft);}
-.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem 2.5rem;}
-.feat-item{display:flex;gap:12px;align-items:flex-start;}
-.feat-ico{width:36px;height:36px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
-.feat-ico .icon{color:var(--violet-deep);}
-.feat-item h3{font-size:14.5px;font-weight:700;margin-bottom:2px;}
-.feat-item p{font-size:12.5px;color:var(--ink-soft);line-height:1.45;}
-.bg-1{background:#FDF2F8;} .bg-2{background:#F3E8FF;} .bg-3{background:#EEF2FF;}
-.bg-4{background:#ECFDF5;} .bg-5{background:#FFF7ED;} .bg-6{background:#F0F9FF;}
+/* ---------- ICON STRIP ---------- */
+.strip{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:1.5rem 0;}
+.strip-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;text-align:center;}
+.strip-item svg{color:var(--violet);margin-bottom:6px;}
+.strip-item span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);line-height:1.3;}
 
-/* ---------- TESTIMONIOS: tira compacta ---------- */
-.testi{padding:1.75rem 0;border-top:1px solid var(--line);}
-.testi-head{font-family:'Fraunces',serif;font-size:22px;font-weight:600;margin-bottom:1.1rem;}
-.testi-head em{font-style:italic;font-weight:500;background:linear-gradient(120deg,var(--violet),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;}
-.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
-.testi-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:1.1rem;}
-.testi-stars{color:var(--pink);font-size:12px;margin-bottom:.5rem;letter-spacing:1px;}
-.testi-quote{font-size:12.5px;color:var(--ink);line-height:1.5;margin-bottom:.75rem;}
-.testi-person{display:flex;align-items:center;gap:9px;}
-.testi-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--pink));flex-shrink:0;}
-.testi-person strong{display:block;font-size:12.5px;}
-.testi-person span{font-size:11px;color:var(--ink-soft);}
+/* ---------- CATEGORIES ---------- */
+.cat-section{padding:4.5rem 0 3.5rem;}
+.cat-layout{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;}
+.cat-photos{position:relative;height:440px;}
+.cat-photo{position:absolute;border-radius:18px;overflow:hidden;box-shadow:0 20px 40px -16px rgba(26,22,37,.25);}
+.cat-photo img{width:100%;height:100%;object-fit:cover;}
+.cat-photo-1{top:0;left:0;width:52%;height:52%;}
+.cat-photo-2{top:6%;right:0;width:44%;height:44%;}
+.cat-photo-3{bottom:0;left:8%;width:44%;height:44%;}
+.cat-photo-4{bottom:2%;right:4%;width:48%;height:48%;}
+.cat-badge{position:absolute;bottom:10px;left:10px;background:rgba(26,22,37,.75);backdrop-filter:blur(4px);color:white;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:999px;display:flex;align-items:center;gap:5px;}
+.cat-eyebrow{font-size:12.5px;font-weight:700;color:var(--pink);letter-spacing:.04em;margin-bottom:.6rem;}
+h2{font-size:32px;font-weight:800;letter-spacing:-.01em;line-height:1.15;margin-bottom:1rem;}
+h2 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.cat-copy{font-size:15px;color:var(--ink-soft);line-height:1.65;margin-bottom:1.3rem;max-width:440px;}
+.check-list{list-style:none;margin-bottom:1.5rem;}
+.check-list li{display:flex;align-items:flex-start;gap:10px;font-size:14.5px;color:var(--ink);margin-bottom:9px;}
+.check-list svg{color:var(--violet);flex-shrink:0;margin-top:2px;}
+.badge-new{background:var(--grad);color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle;}
 
-/* ---------- CTA FINAL ---------- */
-.final-cta{margin:1.75rem 0 2.5rem;background:linear-gradient(120deg,var(--violet-deep),var(--pink));border-radius:24px;padding:2rem 2.25rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap;color:white;}
-.final-cta h2{font-family:'Fraunces',serif;font-size:24px;font-weight:600;margin-bottom:.3rem;}
-.final-cta p{font-size:13.5px;opacity:.85;}
-.final-cta .btn-primary{background:white;color:var(--violet-deep);}
+/* ---------- FEATURES + MOCKUP ---------- */
+.feat-section{padding:3.5rem 0 4.5rem;background:var(--paper);border-top:1px solid var(--line);}
+.feat-layout{display:grid;grid-template-columns:1fr 1.1fr;gap:3rem;align-items:center;}
+.feat-eyebrow{font-size:12.5px;font-weight:700;color:var(--violet);letter-spacing:.04em;margin-bottom:.6rem;}
+.feat-copy{font-size:15px;color:var(--ink-soft);line-height:1.65;margin-bottom:1.5rem;max-width:420px;}
+.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.6rem;}
+.feat-item{display:flex;gap:10px;align-items:flex-start;}
+.feat-item svg{color:var(--violet);flex-shrink:0;margin-top:2px;}
+.feat-item strong{display:block;font-size:14px;}
+.feat-item span{font-size:12.5px;color:var(--ink-soft);}
+.feat-links{display:flex;align-items:center;gap:1.2rem;}
+.link-grad{color:var(--violet);text-decoration:none;font-size:14px;font-weight:600;}
 
-footer{border-top:1px solid var(--line);padding:1.5rem 0 2rem;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink-soft);}
+.mockup{position:relative;}
+.mockup-tablet{background:var(--ink);border-radius:20px;padding:14px;box-shadow:0 30px 60px -20px rgba(26,22,37,.35);}
+.mockup-screen{background:var(--paper);border-radius:10px;overflow:hidden;padding:16px;}
+.mockup-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.mockup-topbar .logo{font-size:14px;}
+.mockup-tabs{display:flex;gap:6px;}
+.mockup-tab{font-size:10.5px;padding:4px 10px;border-radius:999px;background:var(--bg);color:var(--ink-soft);}
+.mockup-tab.on{background:var(--grad);color:white;}
+.mockup-row{display:flex;gap:10px;font-size:11px;padding:8px 0;border-bottom:1px solid var(--line);}
+.mockup-time{color:var(--ink-soft);width:38px;flex-shrink:0;}
+.mockup-block{flex:1;border-radius:7px;padding:6px 10px;}
+.mockup-phone{position:absolute;bottom:-30px;right:-24px;width:150px;background:var(--ink);border-radius:22px;padding:8px;box-shadow:0 24px 48px -18px rgba(26,22,37,.4);}
+.mockup-phone-screen{background:var(--paper);border-radius:15px;overflow:hidden;}
+.mockup-phone img{height:70px;width:100%;object-fit:cover;}
+.mockup-phone-body{padding:10px;}
+.mockup-phone-body strong{font-size:10.5px;display:block;}
+.mockup-phone-body span{font-size:9px;color:var(--ink-soft);}
+.mockup-days{display:flex;gap:5px;margin:8px 0;}
+.mockup-day{flex:1;text-align:center;font-size:8.5px;padding:5px 0;border-radius:6px;background:var(--bg);}
+.mockup-day.on{background:var(--grad);color:white;}
+.mockup-btn-sm{background:var(--grad);color:white;text-align:center;font-size:9.5px;font-weight:700;padding:7px;border-radius:8px;}
 
-@media (max-width:880px){
-  .wrap{padding-left:1.25rem;padding-right:1.25rem;}
-  .hero{grid-template-columns:1fr;padding:1.25rem 0 2rem;gap:2.5rem;}
+/* ---------- TESTIMONIALS ---------- */
+.testi-section{padding:4rem 0;text-align:center;}
+.testi-eyebrow{font-size:12.5px;font-weight:700;color:var(--pink);letter-spacing:.04em;margin-bottom:.5rem;}
+.testi-title{margin-bottom:2.5rem;}
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
+.testi-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:1.6rem;text-align:left;}
+.testi-stars{color:#F5A524;font-size:13px;margin-bottom:.8rem;}
+.testi-quote{font-size:14px;color:var(--ink);line-height:1.6;margin-bottom:1.2rem;}
+.testi-person{display:flex;align-items:center;gap:10px;}
+.testi-avatar{width:38px;height:38px;border-radius:50%;background:var(--grad);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;}
+.testi-person strong{display:block;font-size:13.5px;}
+.testi-person span{font-size:12px;color:var(--ink-soft);}
+
+/* ---------- FINAL CTA ---------- */
+.final-cta{position:relative;border-radius:28px;overflow:hidden;margin:1rem 0 4rem;min-height:280px;display:flex;align-items:center;}
+.final-cta img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+.final-cta::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,rgba(26,22,37,.92),rgba(91,33,182,.75));z-index:1;}
+.final-cta-content{position:relative;z-index:2;padding:3rem;color:white;max-width:560px;}
+.final-eyebrow{font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.7);margin-bottom:.7rem;}
+.final-cta-content h2{color:white;font-size:30px;margin-bottom:.7rem;}
+.final-cta-content p{font-size:15px;color:rgba(255,255,255,.8);margin-bottom:1.5rem;line-height:1.6;}
+.btn-white{background:white;color:var(--violet-deep);border:none;padding:.95rem 1.7rem;border-radius:999px;font-size:14.5px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;}
+
+/* ---------- FOOTER ---------- */
+footer{border-top:1px solid var(--line);padding:2rem 0;}
+.foot-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem;}
+.foot-links{display:flex;gap:1.6rem;list-style:none;}
+.foot-links a{color:var(--ink-soft);text-decoration:none;font-size:13.5px;}
+.foot-social{display:flex;gap:12px;}
+.foot-social a{width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);text-decoration:none;}
+.foot-bottom{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;gap:8px;}
+
+@media (max-width:900px){
   .nav-links{display:none;}
+  .hero{grid-template-columns:1fr;padding:1rem 0 2rem;}
   h1{font-size:32px;}
-  .ticket-wrap{max-width:360px;margin:0 auto;}
-  .cats-inner{flex-direction:column;align-items:flex-start;gap:.75rem;}
-  .feat-grid{grid-template-columns:1fr;}
+  .hero-visual{order:-1;max-width:340px;margin:0 auto 1rem;}
+  .strip-grid{grid-template-columns:repeat(3,1fr);gap:1.5rem;}
+  .cat-layout,.feat-layout{grid-template-columns:1fr;}
+  .cat-photos{height:320px;order:-1;}
   .testi-grid{grid-template-columns:1fr;}
-  .final-cta{flex-direction:column;align-items:flex-start;}
+  .mockup-phone{display:none;}
+  .final-cta-content{padding:2rem 1.5rem;}
 }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-
 <nav class="nav">
-  <div class="logo">Annly<span>·</span></div>
+  <div class="logo">Annly<span>.</span></div>
   <ul class="nav-links">
-    <li><a href="#">Funciones</a></li>
-    <li><a href="#">Precios</a></li>
-    <li><a href="#">Recursos</a></li>
-    <li><a href="#">Contacto</a></li>
+    <li><a href="#funciones">Funciones</a></li>
+    <li><a href="#precios">Precios</a></li>
+    <li><a href="#recursos">Recursos</a></li>
+    <li><a href="#contacto">Contacto</a></li>
   </ul>
-  <button class="nav-cta">Empieza gratis</button>
+  <div class="nav-right">
+    <a href="#" class="nav-login">Iniciar sesión</a>
+    <a href="#" class="btn-grad">Empieza gratis</a>
+  </div>
 </nav>
 
 <section class="hero">
   <div>
-    <div class="eyebrow">Para cualquier negocio que agenda citas</div>
+    <div class="eyebrow">MÁS CITAS. MENOS ESTRÉS.</div>
     <h1>La agenda que <em>nunca duerme</em>, ni tu negocio tampoco.</h1>
-    <p class="sub">Salones, barberías, spas, estéticas o cualquier servicio con reservas: Annly reemplaza el cuaderno, el WhatsApp y las llamadas perdidas por una agenda digital que reserva, confirma y fideliza — sin que tú tengas que estar pendiente.</p>
+    <p class="hero-sub">Annly te ayuda a recibir reservas 24/7, automatizar recordatorios, evitar cancelaciones y hacer crecer tu negocio — todo en un solo lugar.</p>
     <div class="hero-ctas">
-      <button class="btn-primary">Empieza gratis
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
-      <button class="btn-secondary">Ver una demo</button>
+      <a href="#" class="btn-dark">Empieza gratis
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a href="#" class="btn-outline">Ver una demo</a>
     </div>
     <div class="trust-row">
-      <div class="trust-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>14 días gratis</div>
-      <div class="trust-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Sin tarjeta</div>
-      <div class="trust-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Listo en un día</div>
+      <div class="trust-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>14 días gratis</div>
+      <div class="trust-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Sin tarjeta</div>
+      <div class="trust-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Listo en un día</div>
     </div>
   </div>
 
-  <div class="ticket-wrap">
-    <div class="ticket">
-      <div class="ticket-perf"></div>
-      <div class="ticket-head">
-        <div class="ticket-brand">Annly</div>
-        <div class="ticket-badge">Confirmada</div>
+  <div class="hero-visual">
+    <div class="hero-blob"></div>
+    <div class="hero-photo-wrap">
+      <img class="hero-photo" src="https://images.unsplash.com/photo-1486403184395-fc4990866136?auto=format&fit=crop&w=800&q=80" alt="Estilista revisando su agenda en el celular"/>
+    </div>
+    <div class="float-card float-1">
+      <div class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <div><strong>¡Nueva cita!</strong><span>Sofía H. · Corte + Color · 3:00 PM</span></div>
+    </div>
+    <div class="float-card float-2">
+      <div class="mockup-topbar" style="margin-bottom:8px;"><strong style="font-size:11.5px;">Tu semana</strong></div>
+      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>Reserva online</div>
+      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>Recordatorios automáticos</div>
+      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>Gestión de clientes</div>
+      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Reportes de crecimiento</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<section class="strip">
+  <div class="wrap">
+    <div class="strip-grid">
+      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Reservas 24/7</span></div>
+      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg><span>Recordatorios automáticos</span></div>
+      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Gestión de clientes</span></div>
+      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg><span>Pagos online (opcional)</span></div>
+      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span>Reportes y estadísticas</span></div>
+      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6M2 7h20v5H2zM12 22V7M12 7c-2 0-3.5-1.5-3.5-3.5S10 0 12 0s3.5 1.5 3.5 3.5S14 7 12 7z"/></svg><span>Certificados de regalo <span class="badge-new">Nuevo</span></span></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+<section class="cat-section" id="funciones">
+  <div class="cat-layout">
+    <div class="cat-photos">
+      <div class="cat-photo cat-photo-1"><img src="https://images.unsplash.com/photo-1770253980732-dfed1cfdfa43?auto=format&fit=crop&w=500&q=80" alt="Barbería"/><span class="cat-badge">✂️ Barberías</span></div>
+      <div class="cat-photo cat-photo-2"><img src="https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=500&q=80" alt="Estilista"/><span class="cat-badge">💇 Estilistas</span></div>
+      <div class="cat-photo cat-photo-3"><img src="https://images.unsplash.com/photo-1761276297686-f507ca9fe8b6?auto=format&fit=crop&w=500&q=80" alt="Tatuador"/><span class="cat-badge">🖋️ Tatuadores</span></div>
+      <div class="cat-photo cat-photo-4"><img src="https://images.unsplash.com/photo-1677682692989-0e54aa104350?auto=format&fit=crop&w=500&q=80" alt="Spa"/><span class="cat-badge">🧖 Spas y estéticas</span></div>
+    </div>
+    <div>
+      <div class="cat-eyebrow">PARA CADA TALENTO, UNA SOLUCIÓN</div>
+      <h2>Diseñada para negocios que <em>viven de las citas</em>.</h2>
+      <p class="cat-copy">Sin importar tu rubro, Annly se adapta a tu forma de trabajar. Configura tus servicios, horarios y equipo en minutos, y deja que tus clientes reserven cuando quieran.</p>
+      <ul class="check-list">
+        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Personaliza tu agenda y tus servicios</li>
+        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Gestiona a todo tu equipo desde un solo panel</li>
+        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Reduce las ausencias con recordatorios</li>
+        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Vende certificados de regalo canjeables <span class="badge-new">Nuevo</span></li>
+      </ul>
+      <a href="#" class="btn-dark">Conoce todas las funciones
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="feat-section" id="precios">
+  <div class="wrap">
+    <div class="feat-layout">
+      <div>
+        <div class="feat-eyebrow">TU NEGOCIO, EN TUS MANOS</div>
+        <h2>Todo lo que necesitas para crecer, <em>en un solo lugar</em>.</h2>
+        <p class="feat-copy">Ahorra tiempo, organiza tu día y enfócate en lo importante: tus clientes.</p>
+        <div class="feat-grid">
+          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><div><strong>Reservas online 24/7</strong><span>Sin llamadas ni mensajes</span></div></div>
+          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg><div><strong>Recordatorios automáticos</strong><span>Menos citas olvidadas</span></div></div>
+          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg><div><strong>Gestión de clientes</strong><span>Historial y preferencias</span></div></div>
+          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg><div><strong>Pagos y abonos</strong><span>Opcional, a tu ritmo</span></div></div>
+          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><div><strong>Reportes de crecimiento</strong><span>Tus números, claros</span></div></div>
+          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6M2 7h20v5H2zM12 22V7"/></svg><div><strong>Certificados de regalo</strong><span>Ingresos extra, sin cita</span></div></div>
+        </div>
+        <div class="feat-links">
+          <a href="#" class="btn-grad">Empieza gratis</a>
+          <a href="#" class="link-grad">Ver todas las funciones →</a>
+        </div>
       </div>
-      <div class="ticket-title">Reserva para</div>
-      <div class="ticket-client">Sofía Herrera</div>
-      <div class="ticket-grid">
-        <div class="ticket-field"><label>Servicio</label><div>Corte + Color</div></div>
-        <div class="ticket-field"><label>Con</label><div>Equipo A</div></div>
-        <div class="ticket-field"><label>Fecha</label><div>Sáb, 18 mayo</div></div>
-        <div class="ticket-field"><label>Hora</label><div>3:00 PM</div></div>
-      </div>
-      <div class="ticket-strip">
-        <div class="avatars"><span></span><span></span><span></span></div>
-        <div class="ticket-price">$85.00</div>
-      </div>
-      <div class="float-card float-1">
-        <div class="dot"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6M2 7h20v5H2zM12 22V7M12 7c-2 0-3.5-1.5-3.5-3.5S10 0 12 0s3.5 1.5 3.5 3.5S14 7 12 7z"/></svg></div>
-        <div class="txt"><strong>¡Cupón ganado!</strong><span>15% próxima cita</span></div>
-      </div>
-      <div class="float-card float-2">
-        <div class="txt"><strong>+28</strong><span>citas esta semana</span></div>
+
+      <div class="mockup">
+        <div class="mockup-tablet">
+          <div class="mockup-screen">
+            <div class="mockup-topbar">
+              <div class="logo">Annly<span>.</span></div>
+              <div class="mockup-tabs"><span class="mockup-tab on">Día</span><span class="mockup-tab">Semana</span><span class="mockup-tab">Mes</span></div>
+            </div>
+            <div class="mockup-row"><span class="mockup-time">9:00</span><div class="mockup-block" style="background:#F3E8FF;">María López · Corte de cabello</div></div>
+            <div class="mockup-row"><span class="mockup-time">10:00</span><div class="mockup-block" style="background:#FDF2F8;">Carlos Méndez · Barba</div></div>
+            <div class="mockup-row"><span class="mockup-time">11:00</span><div class="mockup-block" style="background:#FFF7ED;">Valentina Ríos · Coloración</div></div>
+            <div class="mockup-row"><span class="mockup-time">12:00</span><div class="mockup-block" style="background:#F0F9FF;">Sofía Herrera · Corte + Color</div></div>
+            <div class="mockup-row" style="border-bottom:none;"><span class="mockup-time">1:00</span><div class="mockup-block" style="background:#ECFDF5;">Lucía Torres · Tratamiento facial</div></div>
+          </div>
+        </div>
+        <div class="mockup-phone">
+          <div class="mockup-phone-screen">
+            <img src="https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=300&q=80" alt="Servicio"/>
+            <div class="mockup-phone-body">
+              <strong>Corte + Color</strong><span>$85.00 · 90 min</span>
+              <div class="mockup-days">
+                <div class="mockup-day">VIE<br>16</div><div class="mockup-day on">SÁB<br>17</div><div class="mockup-day">DOM<br>18</div><div class="mockup-day">LUN<br>19</div>
+              </div>
+              <div class="mockup-btn-sm">Reservar ahora</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="cats">
-  <div class="cats-inner">
-    <span class="cats-label">Un solo sistema para:</span>
-    <div class="cats-row">
-      <span class="cat-chip">Salones</span>
-      <span class="cat-chip">Barberías</span>
-      <span class="cat-chip">Spas</span>
-      <span class="cat-chip">Estéticas</span>
-      <span class="cat-chip">Dental</span>
-      <span class="cat-chip">Entrenadores</span>
-      <span class="cat-chip">Terapeutas</span>
-      <span class="cat-chip">Y más</span>
-    </div>
-  </div>
-</section>
-
-<section class="feat-section">
-  <div class="feat-head">
-    <h2>Todo lo que necesitas para <em>crecer</em></h2>
-    <p>Se adapta a cómo ya trabajas, sin importar el rubro.</p>
-  </div>
-  <div class="feat-grid">
-    <div class="feat-item">
-      <div class="feat-ico bg-1"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-      <div><h3>Reservas 24/7</h3><p>Tus clientes agendan solos, a cualquier hora, sin una llamada.</p></div>
-    </div>
-    <div class="feat-item">
-      <div class="feat-ico bg-2"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
-      <div><h3>Agenda por colaborador</h3><p>Cada persona ve solo sus propias citas y horario.</p></div>
-    </div>
-    <div class="feat-item">
-      <div class="feat-ico bg-3"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg></div>
-      <div><h3>Confirmaciones automáticas</h3><p>Correos y recordatorios que se envían solos.</p></div>
-    </div>
-    <div class="feat-item">
-      <div class="feat-ico bg-4"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6M2 7h20v5H2zM12 22V7"/></svg></div>
-      <div><h3>Promos y ruleta de premios</h3><p>Cupones y descuentos que los hacen volver.</p></div>
-    </div>
-    <div class="feat-item">
-      <div class="feat-ico bg-5"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>
-      <div><h3>Reportes claros</h3><p>Citas, ingresos y clientes frecuentes, de un vistazo.</p></div>
-    </div>
-    <div class="feat-item">
-      <div class="feat-ico bg-6"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
-      <div><h3>Panel a tu medida</h3><p>Colores, logo y servicios propios — tu marca.</p></div>
-    </div>
-  </div>
-</section>
-
-<section class="testi">
-  <div class="testi-head">Ellos ya están <em>creciendo</em> con Annly</div>
+<section class="testi-section">
+  <div class="testi-eyebrow">CLIENTES FELICES, NEGOCIOS QUE CRECEN</div>
+  <h2 class="testi-title">Ellos ya confían en <em>Annly</em></h2>
   <div class="testi-grid">
     <div class="testi-card">
       <div class="testi-stars">★★★★★</div>
-      <p class="testi-quote">"Mis citas no paran de crecer. Mis clientes aman lo fácil que es reservar."</p>
-      <div class="testi-person"><div class="testi-avatar"></div><div><strong>María G.</strong><span>Salón de belleza</span></div></div>
+      <p class="testi-quote">"Desde que uso Annly, mi agenda siempre está llena. Mis clientes aman lo fácil que es reservar."</p>
+      <div class="testi-person"><div class="testi-avatar">D</div><div><strong>Daniel R.</strong><span>Barbero</span></div></div>
     </div>
     <div class="testi-card">
       <div class="testi-stars">★★★★★</div>
-      <p class="testi-quote">"La agenda del equipo nos cambió la vida. Todo organizado, sin choques."</p>
-      <div class="testi-person"><div class="testi-avatar"></div><div><strong>Carlos R.</strong><span>Barbería</span></div></div>
+      <p class="testi-quote">"Me ahorra horas de trabajo y mis clientes ya no se olvidan de sus citas. Es increíble."</p>
+      <div class="testi-person"><div class="testi-avatar">C</div><div><strong>Camila G.</strong><span>Estilista</span></div></div>
     </div>
     <div class="testi-card">
       <div class="testi-stars">★★★★★</div>
-      <p class="testi-quote">"Los recordatorios y promos nos ayudaron a llenar espacios vacíos."</p>
-      <div class="testi-person"><div class="testi-avatar"></div><div><strong>Valeria T.</strong><span>Estudio de uñas</span></div></div>
+      <p class="testi-quote">"La mejor inversión para mi estudio. Puedo enfocarme en tatuar y Annly se encarga del resto."</p>
+      <div class="testi-person"><div class="testi-avatar">J</div><div><strong>Javier M.</strong><span>Tatuador</span></div></div>
     </div>
   </div>
 </section>
 
 <section class="final-cta">
-  <div>
-    <h2>Empieza hoy y transforma tu negocio</h2>
-    <p>Más organización. Más clientes. Más libertad.</p>
+  <img src="https://images.unsplash.com/photo-1557349800-5b9b168f3f53?auto=format&fit=crop&w=1400&q=70" alt=""/>
+  <div class="final-cta-content">
+    <div class="final-eyebrow">ES MOMENTO DE LLEVAR TU NEGOCIO AL SIGUIENTE NIVEL</div>
+    <h2>Empieza hoy, sin riesgos.</h2>
+    <p>Prueba Annly gratis por 14 días y descubre por qué cada vez más profesionales confían en nosotros.</p>
+    <a href="#" class="btn-white">Empieza gratis
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
   </div>
-  <button class="btn-primary">Empieza gratis ahora</button>
 </section>
 
 <footer>
-  <div class="logo" style="font-size:17px;color:var(--ink);">Annly</div>
-  <div>© 2026 Annly. Todos los derechos reservados.</div>
+  <div class="foot-top">
+    <div class="logo">Annly<span>.</span></div>
+    <ul class="foot-links">
+      <li><a href="#">Funciones</a></li>
+      <li><a href="#">Precios</a></li>
+      <li><a href="#">Recursos</a></li>
+      <li><a href="#">Contacto</a></li>
+    </ul>
+    <div class="foot-social">
+      <a href="#" aria-label="Instagram"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></a>
+      <a href="#" aria-label="Facebook"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+      <a href="#" aria-label="TikTok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12a4 4 0 104 4V4a5 5 0 005 5"/></svg></a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>Más citas. Más clientes. Más tiempo para ti.</span>
+    <span>© 2026 Annly. Todos los derechos reservados.</span>
+  </div>
 </footer>
-
 </div>
+
 </body>
 </html>
