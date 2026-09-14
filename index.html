@@ -1,370 +1,337 @@
-<!DOCTYPE html>
-<html lang="es">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="Annly: agenda digital para negocios que viven de sus citas. Reservas 24/7, recordatorios, clientes, equipo y más."/>
+<meta property="og:title" content="Annly — La agenda que nunca duerme"/>
+<meta property="og:description" content="Recibe reservas 24/7 y organiza tu negocio desde un solo lugar."/>
 <title>Annly — La agenda que nunca duerme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --violet:#7C3AED;--violet-deep:#5B21B6;--pink:#EC4899;
-  --ink:#1A1625;--ink-soft:#5B5568;
-  --bg:#FBFAFD;--paper:#FFFFFF;--line:#EDE9F5;
-  --grad:linear-gradient(120deg,var(--violet),var(--pink));
+  --ink:#211a2d;--muted:#6c6478;--violet:#8b5cf6;--violet2:#a855f7;
+  --pink:#ec4899;--paper:#fff;--bg:#fcfaf8;--soft:#f5efff;
+  --line:#e9e1ee;--dark:#211a2d;
+  --grad:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);
+  --shadow:0 24px 70px rgba(55,31,88,.13);
+  --radius:26px;
 }
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;}
-img{max-width:100%;display:block;}
-.wrap{max-width:1180px;margin:0 auto;padding-left:1.5rem;padding-right:1.5rem;}
+html{scroll-behavior:smooth}
+body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+img{display:block;width:100%;object-fit:cover}
+a{color:inherit}
+.wrap{width:min(1180px,calc(100% - 48px));margin:auto}
+.serif{font-family:"DM Serif Display",serif}
+.gradient{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-size:11px;letter-spacing:.16em;font-weight:800;color:var(--violet);text-transform:uppercase;margin-bottom:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:999px;padding:14px 21px;text-decoration:none;font-weight:700;font-size:14px;transition:.3s ease;cursor:pointer}
+.btn-dark{background:var(--dark);color:#fff;box-shadow:0 12px 28px rgba(33,26,45,.18)}
+.btn-dark:hover{transform:translateY(-3px);box-shadow:0 17px 32px rgba(33,26,45,.25)}
+.btn-grad{background:var(--grad);color:#fff;box-shadow:0 12px 28px rgba(139,92,246,.25)}
+.btn-grad:hover{transform:translateY(-3px);box-shadow:0 17px 35px rgba(139,92,246,.35)}
+.btn-light{border:1px solid var(--line);background:rgba(255,255,255,.72);backdrop-filter:blur(10px)}
+.btn-light:hover{transform:translateY(-3px);background:#fff}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .8s ease,transform .8s ease}
+.reveal.visible{opacity:1;transform:none}
 
-/* ---------- NAV ---------- */
-.nav{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 0;}
-.logo{font-size:22px;font-weight:800;letter-spacing:-0.01em;}
-.logo span{color:var(--pink);}
-.nav-links{display:flex;gap:2rem;list-style:none;}
-.nav-links a{text-decoration:none;color:var(--ink-soft);font-size:14.5px;font-weight:500;}
-.nav-links a:hover{color:var(--ink);}
-.nav-right{display:flex;align-items:center;gap:1.25rem;}
-.nav-login{color:var(--ink-soft);text-decoration:none;font-size:14px;font-weight:500;}
-.btn-grad{background:var(--grad);color:white;border:none;padding:.7rem 1.4rem;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;box-shadow:0 8px 20px -8px rgba(124,58,237,.5);}
+/* NAV */
+.site-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 0;transition:.35s ease}
+.site-nav.scrolled{background:rgba(252,250,248,.78);backdrop-filter:blur(18px);border-bottom:1px solid rgba(233,225,238,.8)}
+.nav{height:54px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:25px;font-weight:800;letter-spacing:-.05em}.logo span{color:var(--pink)}
+.nav-links{display:flex;gap:31px;list-style:none}.nav-links a{text-decoration:none;color:var(--muted);font-size:13.5px;font-weight:600;transition:.2s}.nav-links a:hover{color:var(--ink)}
+.nav-right{display:flex;align-items:center;gap:18px}.login{text-decoration:none;color:var(--muted);font-size:13.5px;font-weight:600}
+.menu-btn{display:none;border:0;background:transparent;padding:8px}
 
-/* ---------- HERO ---------- */
-.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:2.5rem;align-items:center;padding:1.5rem 0 3rem;}
-.eyebrow{font-size:12.5px;font-weight:700;color:var(--violet);letter-spacing:.04em;margin-bottom:.9rem;}
-h1{font-size:44px;line-height:1.08;font-weight:800;letter-spacing:-.02em;margin-bottom:1.1rem;}
-h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.hero-sub{font-size:16px;line-height:1.6;color:var(--ink-soft);max-width:440px;margin-bottom:1.6rem;}
-.hero-ctas{display:flex;gap:12px;margin-bottom:1.1rem;}
-.btn-dark{background:var(--ink);color:white;border:none;padding:.9rem 1.6rem;border-radius:999px;font-size:14.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none;}
-.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:.9rem 1.5rem;border-radius:999px;font-size:14.5px;font-weight:600;cursor:pointer;text-decoration:none;}
-.trust-row{display:flex;gap:20px;flex-wrap:wrap;}
-.trust-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);}
-.trust-item svg{color:var(--violet);flex-shrink:0;}
+/* HERO */
+.hero{position:relative;padding:145px 0 72px;min-height:730px;display:grid;grid-template-columns:.92fr 1.08fr;align-items:center;gap:40px}
+.hero::before{content:"";position:absolute;width:600px;height:600px;right:-260px;top:80px;background:radial-gradient(circle,rgba(196,181,253,.30),transparent 68%);pointer-events:none;z-index:-1}
+.hero-copy{position:relative;z-index:2}
+.hero h1{font-size:clamp(48px,5.4vw,76px);line-height:.98;letter-spacing:-.045em;margin-bottom:25px;max-width:720px}
+.hero h1 em{font-family:"DM Serif Display",serif;font-style:italic;font-weight:400}
+.hero-sub{font-size:17px;line-height:1.7;color:var(--muted);max-width:570px;margin-bottom:27px}
+.ctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.trust{display:flex;gap:20px;flex-wrap:wrap;color:var(--muted);font-size:12.5px}.trust span{display:flex;align-items:center;gap:6px}.trust i{color:var(--violet)}
+.hero-stage{position:relative;min-height:560px}
+.hero-orb{position:absolute;width:450px;height:450px;border-radius:50%;background:linear-gradient(145deg,#f2ddff,#fce7f3);right:25px;top:50px}
+.hero-image{position:absolute;right:30px;top:0;width:min(480px,82%);height:530px;border-radius:150px 150px 30px 30px;overflow:hidden;box-shadow:0 38px 90px rgba(91,33,182,.2)}
+.hero-image img{height:100%;object-position:center}
+.hero-image:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(33,26,45,.08))}
+.float{position:absolute;background:rgba(255,255,255,.93);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.9);box-shadow:var(--shadow);border-radius:18px;z-index:4}
+.new-booking{left:0;top:78px;padding:13px 16px;display:flex;gap:10px;align-items:center}
+.check{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;background:#ecfdf5;color:#059669}
+.float strong{font-size:12px;display:block}.float small{font-size:10px;color:var(--muted);display:block;margin-top:2px}
+.week{right:-4px;bottom:48px;width:205px;padding:15px}
+.week-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px}.week-head b{font-size:13px}
+.week-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}.week-row i{color:var(--violet)}
+.growth{position:absolute;right:40px;top:18px;padding:11px 14px;display:flex;gap:9px;align-items:center}.growth b{color:#059669;font-size:12px}
 
-.hero-visual{position:relative;}
-.hero-photo-wrap{position:relative;border-radius:28px;overflow:hidden;aspect-ratio:4/4.6;box-shadow:0 30px 60px -20px rgba(91,33,182,.3);}
-.hero-photo-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 100%,rgba(124,58,237,.35),transparent 60%);z-index:2;pointer-events:none;}
-.hero-photo{width:100%;height:100%;object-fit:cover;}
-.hero-blob{position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(236,72,153,.25),transparent 70%);z-index:-1;}
+/* STRIP */
+.strip{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.strip-grid{display:grid;grid-template-columns:repeat(6,1fr);padding:24px 0}
+.strip-item{text-align:center;border-right:1px solid var(--line);padding:0 10px;color:var(--muted);font-size:11.5px;font-weight:700}
+.strip-item:last-child{border:0}.strip-item i{display:block;color:var(--violet);margin-bottom:7px}
 
-.float-card{position:absolute;background:var(--paper);border-radius:14px;box-shadow:0 16px 36px -14px rgba(26,22,37,.25);padding:12px 15px;z-index:5;}
-.float-1{top:14px;left:-34px;display:flex;align-items:center;gap:9px;}
-.float-1 .dot{width:26px;height:26px;border-radius:50%;background:#ECFDF5;display:flex;align-items:center;justify-content:center;color:#059669;flex-shrink:0;}
-.float-1 strong{display:block;font-size:12.5px;}
-.float-1 span{font-size:11px;color:var(--ink-soft);}
-.float-2{bottom:26px;right:-30px;min-width:172px;}
-.float-2-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-soft);padding:3px 0;}
-.float-2-row svg{color:var(--violet);flex-shrink:0;}
+/* RUBROS */
+.section{padding:105px 0}.section-head{max-width:650px;margin-bottom:46px}.section-head h2{font-family:"DM Serif Display",serif;font-size:clamp(38px,4.2vw,57px);line-height:1.02;letter-spacing:-.025em;margin-bottom:15px}.section-head p{color:var(--muted);line-height:1.7;font-size:15px}
+.industries{display:grid;grid-template-columns:1.15fr .85fr;gap:24px;align-items:stretch}
+.ind-left,.ind-right{display:grid;gap:24px}.ind-left{grid-template-columns:1.2fr .8fr}.ind-right{grid-template-columns:1fr 1fr}
+.ind-card{position:relative;min-height:250px;border-radius:var(--radius);overflow:hidden;box-shadow:0 20px 50px rgba(33,26,45,.11)}
+.ind-card.tall{min-height:525px}.ind-card img{height:100%;transition:transform .7s cubic-bezier(.2,.8,.2,1)}.ind-card:hover img{transform:scale(1.06)}
+.ind-card:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(24,16,31,.62))}
+.ind-tag{position:absolute;z-index:2;left:17px;bottom:16px;color:#fff;font-weight:700;font-size:12px;background:rgba(33,26,45,.58);backdrop-filter:blur(9px);padding:8px 12px;border-radius:999px}
 
-/* ---------- ICON STRIP ---------- */
-.strip{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:1.5rem 0;}
-.strip-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;text-align:center;}
-.strip-item svg{color:var(--violet);margin-bottom:6px;}
-.strip-item span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);line-height:1.3;}
+/* PRODUCT */
+.product-section{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.product-grid{display:grid;grid-template-columns:.78fr 1.22fr;gap:70px;align-items:center}
+.feature-list{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin:28px 0}.feature{display:flex;gap:11px}.feature i{color:var(--violet);flex:none}.feature b{display:block;font-size:13.5px;margin-bottom:3px}.feature small{color:var(--muted);font-size:11.5px;line-height:1.4}
+.dashboard{position:relative;padding:13px;border-radius:28px;background:#221b2e;box-shadow:0 38px 90px rgba(33,26,45,.24);transform:perspective(1200px) rotateY(-4deg)}
+.dash-screen{background:#fbfaff;border-radius:18px;overflow:hidden}.dash-bar{height:55px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);font-size:12px}.dash-tabs{display:flex;gap:5px}.dash-tab{padding:6px 10px;border-radius:7px;background:#f3eef8;color:var(--muted)}.dash-tab.on{background:var(--grad);color:#fff}
+.calendar{display:grid;grid-template-columns:55px repeat(5,1fr);padding:14px;gap:6px}.time{color:#91879d;font-size:9px;padding-top:9px}.slot{height:58px;border-radius:9px;padding:8px;font-size:9px;font-weight:600}.s1{background:#eee7ff}.s2{background:#fce7f3}.s3{background:#fff1dc}.s4{background:#e6f5ff}.s5{background:#e8f8ef}
+.phone{position:absolute;width:170px;right:-28px;bottom:-45px;background:#211a2d;padding:7px;border-radius:25px;box-shadow:0 25px 60px rgba(33,26,45,.35)}.phone-screen{background:#fff;border-radius:19px;overflow:hidden}.phone-screen img{height:90px}.phone-body{padding:12px}.phone-body b{font-size:11px}.phone-body small{display:block;color:var(--muted);font-size:9px;margin:3px 0 9px}.days{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.day{font-size:8px;text-align:center;padding:6px 0;background:#f7f4f9;border-radius:6px}.day.on{background:var(--grad);color:#fff}.reserve{margin-top:8px;padding:8px;background:var(--grad);border-radius:8px;color:#fff;text-align:center;font-size:9px;font-weight:800}
 
-/* ---------- CATEGORIES ---------- */
-.cat-section{padding:4.5rem 0 3.5rem;}
-.cat-layout{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;}
-.cat-photos{position:relative;height:440px;}
-.cat-photo{position:absolute;border-radius:18px;overflow:hidden;box-shadow:0 20px 40px -16px rgba(26,22,37,.25);}
-.cat-photo img{width:100%;height:100%;object-fit:cover;}
-.cat-photo-1{top:0;left:0;width:52%;height:52%;}
-.cat-photo-2{top:6%;right:0;width:44%;height:44%;}
-.cat-photo-3{bottom:0;left:8%;width:44%;height:44%;}
-.cat-photo-4{bottom:2%;right:4%;width:48%;height:48%;}
-.cat-badge{position:absolute;bottom:10px;left:10px;background:rgba(26,22,37,.75);backdrop-filter:blur(4px);color:white;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:999px;display:flex;align-items:center;gap:5px;}
-.cat-eyebrow{font-size:12.5px;font-weight:700;color:var(--pink);letter-spacing:.04em;margin-bottom:.6rem;}
-h2{font-size:32px;font-weight:800;letter-spacing:-.01em;line-height:1.15;margin-bottom:1rem;}
-h2 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.cat-copy{font-size:15px;color:var(--ink-soft);line-height:1.65;margin-bottom:1.3rem;max-width:440px;}
-.check-list{list-style:none;margin-bottom:1.5rem;}
-.check-list li{display:flex;align-items:flex-start;gap:10px;font-size:14.5px;color:var(--ink);margin-bottom:9px;}
-.check-list svg{color:var(--violet);flex-shrink:0;margin-top:2px;}
-.badge-new{background:var(--grad);color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle;}
+/* HOW */
+.how{background:#fbf8ff}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.step{background:#fff;border:1px solid var(--line);border-radius:24px;padding:29px;position:relative}.step-num{font-family:"DM Serif Display";font-size:42px;color:#d8c9f7;line-height:1}.step h3{font-size:18px;margin:14px 0 7px}.step p{font-size:13px;color:var(--muted);line-height:1.6}.step:after{content:"→";position:absolute;right:-18px;top:42%;font-size:24px;color:var(--violet)}.step:last-child:after{display:none}
 
-/* ---------- FEATURES + MOCKUP ---------- */
-.feat-section{padding:3.5rem 0 4.5rem;background:var(--paper);border-top:1px solid var(--line);}
-.feat-layout{display:grid;grid-template-columns:1fr 1.1fr;gap:3rem;align-items:center;}
-.feat-eyebrow{font-size:12.5px;font-weight:700;color:var(--violet);letter-spacing:.04em;margin-bottom:.6rem;}
-.feat-copy{font-size:15px;color:var(--ink-soft);line-height:1.65;margin-bottom:1.5rem;max-width:420px;}
-.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.6rem;}
-.feat-item{display:flex;gap:10px;align-items:flex-start;}
-.feat-item svg{color:var(--violet);flex-shrink:0;margin-top:2px;}
-.feat-item strong{display:block;font-size:14px;}
-.feat-item span{font-size:12.5px;color:var(--ink-soft);}
-.feat-links{display:flex;align-items:center;gap:1.2rem;}
-.link-grad{color:var(--violet);text-decoration:none;font-size:14px;font-weight:600;}
+/* TESTIMONIALS */
+.testimonials{padding-top:90px}.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.testi{padding:28px;border:1px solid var(--line);background:#fff;border-radius:24px}.stars{color:#f3a51f;letter-spacing:2px;font-size:12px;margin-bottom:15px}.quote{font-family:"DM Serif Display";font-size:20px;line-height:1.3;margin-bottom:24px}.person{display:flex;align-items:center;gap:10px}.avatar{width:40px;height:40px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800}.person b{display:block;font-size:12px}.person small{color:var(--muted);font-size:11px}
 
-.mockup{position:relative;}
-.mockup-tablet{background:var(--ink);border-radius:20px;padding:14px;box-shadow:0 30px 60px -20px rgba(26,22,37,.35);}
-.mockup-screen{background:var(--paper);border-radius:10px;overflow:hidden;padding:16px;}
-.mockup-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-.mockup-topbar .logo{font-size:14px;}
-.mockup-tabs{display:flex;gap:6px;}
-.mockup-tab{font-size:10.5px;padding:4px 10px;border-radius:999px;background:var(--bg);color:var(--ink-soft);}
-.mockup-tab.on{background:var(--grad);color:white;}
-.mockup-row{display:flex;gap:10px;font-size:11px;padding:8px 0;border-bottom:1px solid var(--line);}
-.mockup-time{color:var(--ink-soft);width:38px;flex-shrink:0;}
-.mockup-block{flex:1;border-radius:7px;padding:6px 10px;}
-.mockup-phone{position:absolute;bottom:-30px;right:-24px;width:150px;background:var(--ink);border-radius:22px;padding:8px;box-shadow:0 24px 48px -18px rgba(26,22,37,.4);}
-.mockup-phone-screen{background:var(--paper);border-radius:15px;overflow:hidden;}
-.mockup-phone img{height:70px;width:100%;object-fit:cover;}
-.mockup-phone-body{padding:10px;}
-.mockup-phone-body strong{font-size:10.5px;display:block;}
-.mockup-phone-body span{font-size:9px;color:var(--ink-soft);}
-.mockup-days{display:flex;gap:5px;margin:8px 0;}
-.mockup-day{flex:1;text-align:center;font-size:8.5px;padding:5px 0;border-radius:6px;background:var(--bg);}
-.mockup-day.on{background:var(--grad);color:white;}
-.mockup-btn-sm{background:var(--grad);color:white;text-align:center;font-size:9.5px;font-weight:700;padding:7px;border-radius:8px;}
+/* CTA */
+.final{position:relative;margin:0 0 75px;min-height:410px;border-radius:32px;overflow:hidden;display:flex;align-items:center}.final img{position:absolute;inset:0;height:100%;filter:saturate(.8)}.final:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(30,20,39,.94),rgba(83,38,111,.68),rgba(30,20,39,.15))}.final-content{position:relative;z-index:2;color:#fff;padding:60px;max-width:650px}.final-content h2{font-family:"DM Serif Display";font-size:clamp(42px,5vw,62px);line-height:1;margin-bottom:15px}.final-content p{color:rgba(255,255,255,.78);line-height:1.7;margin-bottom:24px;max-width:500px}.final .btn{background:#fff;color:#5b21b6}
 
-/* ---------- TESTIMONIALS ---------- */
-.testi-section{padding:4rem 0;text-align:center;}
-.testi-eyebrow{font-size:12.5px;font-weight:700;color:var(--pink);letter-spacing:.04em;margin-bottom:.5rem;}
-.testi-title{margin-bottom:2.5rem;}
-.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
-.testi-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:1.6rem;text-align:left;}
-.testi-stars{color:#F5A524;font-size:13px;margin-bottom:.8rem;}
-.testi-quote{font-size:14px;color:var(--ink);line-height:1.6;margin-bottom:1.2rem;}
-.testi-person{display:flex;align-items:center;gap:10px;}
-.testi-avatar{width:38px;height:38px;border-radius:50%;background:var(--grad);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;}
-.testi-person strong{display:block;font-size:13.5px;}
-.testi-person span{font-size:12px;color:var(--ink-soft);}
+/* FOOTER */
+footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.footer-links{display:flex;gap:24px;list-style:none}.footer-links a{text-decoration:none;color:var(--muted);font-size:12.5px}.social{display:flex;gap:8px}.social a{width:34px;height:34px;display:grid;place-items:center;background:#f6f2f8;border-radius:50%;color:var(--muted)}.footer-bottom{display:flex;justify-content:space-between;gap:15px;margin-top:25px;color:var(--muted);font-size:11px}
 
-/* ---------- FINAL CTA ---------- */
-.final-cta{position:relative;border-radius:28px;overflow:hidden;margin:1rem 0 4rem;min-height:280px;display:flex;align-items:center;}
-.final-cta img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
-.final-cta::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,rgba(26,22,37,.92),rgba(91,33,182,.75));z-index:1;}
-.final-cta-content{position:relative;z-index:2;padding:3rem;color:white;max-width:560px;}
-.final-eyebrow{font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.7);margin-bottom:.7rem;}
-.final-cta-content h2{color:white;font-size:30px;margin-bottom:.7rem;}
-.final-cta-content p{font-size:15px;color:rgba(255,255,255,.8);margin-bottom:1.5rem;line-height:1.6;}
-.btn-white{background:white;color:var(--violet-deep);border:none;padding:.95rem 1.7rem;border-radius:999px;font-size:14.5px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;}
-
-/* ---------- FOOTER ---------- */
-footer{border-top:1px solid var(--line);padding:2rem 0;}
-.foot-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem;}
-.foot-links{display:flex;gap:1.6rem;list-style:none;}
-.foot-links a{color:var(--ink-soft);text-decoration:none;font-size:13.5px;}
-.foot-social{display:flex;gap:12px;}
-.foot-social a{width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);text-decoration:none;}
-.foot-bottom{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;gap:8px;}
-
-@media (max-width:900px){
-  .nav-links{display:none;}
-  .hero{grid-template-columns:1fr;padding:1rem 0 2rem;}
-  h1{font-size:32px;}
-  .hero-visual{order:-1;max-width:340px;margin:0 auto 1rem;}
-  .strip-grid{grid-template-columns:repeat(3,1fr);gap:1.5rem;}
-  .cat-layout,.feat-layout{grid-template-columns:1fr;}
-  .cat-photos{height:320px;order:-1;}
-  .testi-grid{grid-template-columns:1fr;}
-  .mockup-phone{display:none;}
-  .final-cta-content{padding:2rem 1.5rem;}
+/* MOBILE */
+@media(max-width:980px){
+  .nav-links,.login{display:none}.menu-btn{display:block}.nav-right{gap:8px}
+  .hero{grid-template-columns:1fr;padding-top:115px}.hero-stage{order:-1;min-height:440px}.hero-image{height:420px;width:70%;right:15%}.hero-orb{width:360px;height:360px;right:10%;top:30px}.new-booking{left:4%;top:55px}.week{right:2%;bottom:20px}.growth{right:5%;top:5px}
+  .strip-grid{grid-template-columns:repeat(3,1fr);gap:22px}.strip-item:nth-child(3){border:0}
+  .industries,.product-grid{grid-template-columns:1fr}.product-grid{gap:50px}.dashboard{max-width:760px;margin:auto}
 }
+@media(max-width:680px){
+  .wrap{width:min(100% - 30px,1180px)}.hero{padding-bottom:55px}.hero h1{font-size:46px}.hero-sub{font-size:15px}
+  .hero-stage{min-height:370px}.hero-image{height:350px;width:72%;right:14%;border-radius:110px 110px 24px 24px}.hero-orb{width:300px;height:300px}.float{transform:scale(.88)}.new-booking{left:-3px}.week{right:-3px}.growth{display:none}
+  .strip-grid{grid-template-columns:repeat(2,1fr);padding:20px 0}.strip-item{border-right:0}
+  .section{padding:75px 0}.ind-left,.ind-right{grid-template-columns:1fr}.ind-card,.ind-card.tall{min-height:280px}.ind-right{grid-template-columns:1fr 1fr}
+  .feature-list{grid-template-columns:1fr}.phone{right:-4px;width:145px;bottom:-30px}.calendar{padding:8px}.slot{height:48px;font-size:8px}
+  .steps,.testi-grid{grid-template-columns:1fr}.step:after{display:none}.final-content{padding:38px 28px}.final{min-height:390px}.footer-links{width:100%;justify-content:space-between;gap:10px}.footer-bottom{flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1;transform:none;transition:none}.btn,.ind-card img{transition:none}}
 </style>
-</head>
-<body>
-
-<div class="wrap">
-<nav class="nav">
-  <div class="logo">Annly<span>.</span></div>
-  <ul class="nav-links">
-    <li><a href="#funciones">Funciones</a></li>
-    <li><a href="#precios">Precios</a></li>
-    <li><a href="#recursos">Recursos</a></li>
-    <li><a href="#contacto">Contacto</a></li>
-  </ul>
-  <div class="nav-right">
-    <a href="#" class="nav-login">Iniciar sesión</a>
-    <a href="#" class="btn-grad">Empieza gratis</a>
+</head><body>
+<header class="site-nav" id="nav">
+  <div class="wrap nav">
+    <a class="logo" href="#" aria-label="Annly inicio">Annly<span>.</span></a>
+    <ul class="nav-links">
+      <li><a href="#funciones">Funciones</a></li>
+      <li><a href="#rubros">Para quién</a></li>
+      <li><a href="#como-funciona">Cómo funciona</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="#" class="login">Iniciar sesión</a>
+      <a href="#" class="btn btn-grad">Empieza gratis <i data-lucide="arrow-right" width="15"></i></a>
+      <button class="menu-btn" aria-label="Abrir menú"><i data-lucide="menu"></i></button>
+    </div>
   </div>
-</nav>
+</header>
 
-<section class="hero">
-  <div>
+<main>
+<section class="wrap hero">
+  <div class="hero-copy reveal">
     <div class="eyebrow">MÁS CITAS. MENOS ESTRÉS.</div>
-    <h1>La agenda que <em>nunca duerme</em>, ni tu negocio tampoco.</h1>
+    <h1 class="serif">La agenda que <em class="gradient">nunca duerme</em>, ni tu negocio tampoco.</h1>
     <p class="hero-sub">Annly te ayuda a recibir reservas 24/7, automatizar recordatorios, evitar cancelaciones y hacer crecer tu negocio — todo en un solo lugar.</p>
-    <div class="hero-ctas">
-      <a href="#" class="btn-dark">Empieza gratis
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </a>
-      <a href="#" class="btn-outline">Ver una demo</a>
+    <div class="ctas">
+      <a href="#" class="btn btn-dark">Empieza gratis <i data-lucide="arrow-right" width="16"></i></a>
+      <a href="#funciones" class="btn btn-light">Ver cómo funciona</a>
     </div>
-    <div class="trust-row">
-      <div class="trust-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>14 días gratis</div>
-      <div class="trust-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Sin tarjeta</div>
-      <div class="trust-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Listo en un día</div>
+    <div class="trust">
+      <span><i data-lucide="check" width="15"></i>14 días gratis</span>
+      <span><i data-lucide="check" width="15"></i>Sin tarjeta</span>
+      <span><i data-lucide="check" width="15"></i>Listo en minutos</span>
     </div>
   </div>
 
-  <div class="hero-visual">
-    <div class="hero-blob"></div>
-    <div class="hero-photo-wrap">
-      <img class="hero-photo" src="https://images.unsplash.com/photo-1486403184395-fc4990866136?auto=format&fit=crop&w=800&q=80" alt="Estilista revisando su agenda en el celular"/>
+  <div class="hero-stage reveal">
+    <div class="hero-orb"></div>
+    <div class="hero-image">
+      <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1000&q=88" alt="Profesional de belleza gestionando su agenda desde el teléfono">
     </div>
-    <div class="float-card float-1">
-      <div class="dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
-      <div><strong>¡Nueva cita!</strong><span>Sofía H. · Corte + Color · 3:00 PM</span></div>
+    <div class="float new-booking">
+      <div class="check"><i data-lucide="check" width="15"></i></div>
+      <div><strong>¡Nueva cita!</strong><small>Sofía H. · Corte + Color · 3:00 PM</small></div>
     </div>
-    <div class="float-card float-2">
-      <div class="mockup-topbar" style="margin-bottom:8px;"><strong style="font-size:11.5px;">Tu semana</strong></div>
-      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>Reserva online</div>
-      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>Recordatorios automáticos</div>
-      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>Gestión de clientes</div>
-      <div class="float-2-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Reportes de crecimiento</div>
+    <div class="float growth"><i data-lucide="trending-up" width="16"></i><b>+28% reservas</b></div>
+    <div class="float week">
+      <div class="week-head"><b>Tu semana</b><span>●</span></div>
+      <div class="week-row"><i data-lucide="calendar" width="13"></i>Reservas online</div>
+      <div class="week-row"><i data-lucide="bell" width="13"></i>Recordatorios automáticos</div>
+      <div class="week-row"><i data-lucide="users" width="13"></i>Gestión de clientes</div>
+      <div class="week-row"><i data-lucide="bar-chart-3" width="13"></i>Reportes de crecimiento</div>
     </div>
   </div>
 </section>
-</div>
 
 <section class="strip">
-  <div class="wrap">
-    <div class="strip-grid">
-      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Reservas 24/7</span></div>
-      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg><span>Recordatorios automáticos</span></div>
-      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span>Gestión de clientes</span></div>
-      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg><span>Pagos online (opcional)</span></div>
-      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span>Reportes y estadísticas</span></div>
-      <div class="strip-item"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6M2 7h20v5H2zM12 22V7M12 7c-2 0-3.5-1.5-3.5-3.5S10 0 12 0s3.5 1.5 3.5 3.5S14 7 12 7z"/></svg><span>Certificados de regalo <span class="badge-new">Nuevo</span></span></div>
-    </div>
-  </div>
+ <div class="wrap strip-grid">
+   <div class="strip-item"><i data-lucide="calendar-days"></i>Reservas 24/7</div>
+   <div class="strip-item"><i data-lucide="bell"></i>Recordatorios</div>
+   <div class="strip-item"><i data-lucide="users"></i>Clientes</div>
+   <div class="strip-item"><i data-lucide="credit-card"></i>Pagos online</div>
+   <div class="strip-item"><i data-lucide="chart-no-axes-combined"></i>Reportes</div>
+   <div class="strip-item"><i data-lucide="gift"></i>Certificados de regalo</div>
+ </div>
 </section>
 
-<div class="wrap">
-<section class="cat-section" id="funciones">
-  <div class="cat-layout">
-    <div class="cat-photos">
-      <div class="cat-photo cat-photo-1"><img src="https://images.unsplash.com/photo-1770253980732-dfed1cfdfa43?auto=format&fit=crop&w=500&q=80" alt="Barbería"/><span class="cat-badge">✂️ Barberías</span></div>
-      <div class="cat-photo cat-photo-2"><img src="https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=500&q=80" alt="Estilista"/><span class="cat-badge">💇 Estilistas</span></div>
-      <div class="cat-photo cat-photo-3"><img src="https://images.unsplash.com/photo-1761276297686-f507ca9fe8b6?auto=format&fit=crop&w=500&q=80" alt="Tatuador"/><span class="cat-badge">🖋️ Tatuadores</span></div>
-      <div class="cat-photo cat-photo-4"><img src="https://images.unsplash.com/photo-1677682692989-0e54aa104350?auto=format&fit=crop&w=500&q=80" alt="Spa"/><span class="cat-badge">🧖 Spas y estéticas</span></div>
-    </div>
-    <div>
-      <div class="cat-eyebrow">PARA CADA TALENTO, UNA SOLUCIÓN</div>
-      <h2>Diseñada para negocios que <em>viven de las citas</em>.</h2>
-      <p class="cat-copy">Sin importar tu rubro, Annly se adapta a tu forma de trabajar. Configura tus servicios, horarios y equipo en minutos, y deja que tus clientes reserven cuando quieran.</p>
-      <ul class="check-list">
-        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Personaliza tu agenda y tus servicios</li>
-        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Gestiona a todo tu equipo desde un solo panel</li>
-        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Reduce las ausencias con recordatorios</li>
-        <li><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Vende certificados de regalo canjeables <span class="badge-new">Nuevo</span></li>
-      </ul>
-      <a href="#" class="btn-dark">Conoce todas las funciones
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </a>
-    </div>
+<section class="wrap section" id="rubros">
+  <div class="section-head reveal">
+    <div class="eyebrow">UNA AGENDA. MUCHAS PROFESIONES.</div>
+    <h2>Diseñada para negocios que <em class="gradient">viven de las citas.</em></h2>
+    <p>Barberos, tatuadores, estilistas, terapeutas, spas y profesionales independientes: Annly se adapta a la forma en que trabajas.</p>
   </div>
-</section>
 
-<section class="feat-section" id="precios">
-  <div class="wrap">
-    <div class="feat-layout">
-      <div>
-        <div class="feat-eyebrow">TU NEGOCIO, EN TUS MANOS</div>
-        <h2>Todo lo que necesitas para crecer, <em>en un solo lugar</em>.</h2>
-        <p class="feat-copy">Ahorra tiempo, organiza tu día y enfócate en lo importante: tus clientes.</p>
-        <div class="feat-grid">
-          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><div><strong>Reservas online 24/7</strong><span>Sin llamadas ni mensajes</span></div></div>
-          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg><div><strong>Recordatorios automáticos</strong><span>Menos citas olvidadas</span></div></div>
-          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg><div><strong>Gestión de clientes</strong><span>Historial y preferencias</span></div></div>
-          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg><div><strong>Pagos y abonos</strong><span>Opcional, a tu ritmo</span></div></div>
-          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><div><strong>Reportes de crecimiento</strong><span>Tus números, claros</span></div></div>
-          <div class="feat-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6M2 7h20v5H2zM12 22V7"/></svg><div><strong>Certificados de regalo</strong><span>Ingresos extra, sin cita</span></div></div>
-        </div>
-        <div class="feat-links">
-          <a href="#" class="btn-grad">Empieza gratis</a>
-          <a href="#" class="link-grad">Ver todas las funciones →</a>
-        </div>
-      </div>
-
-      <div class="mockup">
-        <div class="mockup-tablet">
-          <div class="mockup-screen">
-            <div class="mockup-topbar">
-              <div class="logo">Annly<span>.</span></div>
-              <div class="mockup-tabs"><span class="mockup-tab on">Día</span><span class="mockup-tab">Semana</span><span class="mockup-tab">Mes</span></div>
-            </div>
-            <div class="mockup-row"><span class="mockup-time">9:00</span><div class="mockup-block" style="background:#F3E8FF;">María López · Corte de cabello</div></div>
-            <div class="mockup-row"><span class="mockup-time">10:00</span><div class="mockup-block" style="background:#FDF2F8;">Carlos Méndez · Barba</div></div>
-            <div class="mockup-row"><span class="mockup-time">11:00</span><div class="mockup-block" style="background:#FFF7ED;">Valentina Ríos · Coloración</div></div>
-            <div class="mockup-row"><span class="mockup-time">12:00</span><div class="mockup-block" style="background:#F0F9FF;">Sofía Herrera · Corte + Color</div></div>
-            <div class="mockup-row" style="border-bottom:none;"><span class="mockup-time">1:00</span><div class="mockup-block" style="background:#ECFDF5;">Lucía Torres · Tratamiento facial</div></div>
-          </div>
-        </div>
-        <div class="mockup-phone">
-          <div class="mockup-phone-screen">
-            <img src="https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=300&q=80" alt="Servicio"/>
-            <div class="mockup-phone-body">
-              <strong>Corte + Color</strong><span>$85.00 · 90 min</span>
-              <div class="mockup-days">
-                <div class="mockup-day">VIE<br>16</div><div class="mockup-day on">SÁB<br>17</div><div class="mockup-day">DOM<br>18</div><div class="mockup-day">LUN<br>19</div>
-              </div>
-              <div class="mockup-btn-sm">Reservar ahora</div>
-            </div>
-          </div>
-        </div>
+  <div class="industries reveal">
+    <div class="ind-left">
+      <article class="ind-card tall">
+        <img src="https://images.unsplash.com/photo-1532710093739-9470acff8788?auto=format&fit=crop&w=900&q=85" alt="Tatuador trabajando">
+        <span class="ind-tag">✦ Tatuadores</span>
+      </article>
+      <div class="ind-right">
+        <article class="ind-card">
+          <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=700&q=85" alt="Estilista en salón">
+          <span class="ind-tag">✂ Estilistas</span>
+        </article>
+        <article class="ind-card">
+          <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=700&q=85" alt="Barbero atendiendo a un cliente">
+          <span class="ind-tag">✦ Barberías</span>
+        </article>
+        <article class="ind-card">
+          <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=700&q=85" alt="Tratamiento de spa">
+          <span class="ind-tag">◌ Spas y estética</span>
+        </article>
+        <article class="ind-card">
+          <img src="https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=700&q=85" alt="Profesional de bienestar">
+          <span class="ind-tag">♡ Terapeutas</span>
+        </article>
       </div>
     </div>
   </div>
 </section>
 
-<section class="testi-section">
-  <div class="testi-eyebrow">CLIENTES FELICES, NEGOCIOS QUE CRECEN</div>
-  <h2 class="testi-title">Ellos ya confían en <em>Annly</em></h2>
-  <div class="testi-grid">
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <p class="testi-quote">"Desde que uso Annly, mi agenda siempre está llena. Mis clientes aman lo fácil que es reservar."</p>
-      <div class="testi-person"><div class="testi-avatar">D</div><div><strong>Daniel R.</strong><span>Barbero</span></div></div>
+<section class="product-section section" id="funciones">
+ <div class="wrap product-grid">
+  <div class="reveal">
+    <div class="eyebrow">TU NEGOCIO, EN TUS MANOS</div>
+    <h2 class="section-head" style="margin-bottom:0"><span style="font-family:'DM Serif Display';font-size:clamp(38px,4.2vw,57px);line-height:1">Todo lo que necesitas para crecer, <em class="gradient">en un solo lugar.</em></span></h2>
+    <p style="color:var(--muted);line-height:1.7;margin-top:18px">Ahorra tiempo, organiza tu día y enfócate en lo importante: tus clientes.</p>
+    <div class="feature-list">
+      <div class="feature"><i data-lucide="calendar-check"></i><div><b>Reservas online 24/7</b><small>Sin llamadas ni mensajes.</small></div></div>
+      <div class="feature"><i data-lucide="bell-ring"></i><div><b>Recordatorios automáticos</b><small>Menos citas olvidadas.</small></div></div>
+      <div class="feature"><i data-lucide="contact"></i><div><b>Gestión de clientes</b><small>Historial y preferencias.</small></div></div>
+      <div class="feature"><i data-lucide="credit-card"></i><div><b>Pagos y abonos</b><small>Opcional, a tu ritmo.</small></div></div>
+      <div class="feature"><i data-lucide="chart-column"></i><div><b>Reportes de crecimiento</b><small>Tus números, claros.</small></div></div>
+      <div class="feature"><i data-lucide="gift"></i><div><b>Certificados de regalo</b><small>Ingresos extra, sin cita.</small></div></div>
     </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <p class="testi-quote">"Me ahorra horas de trabajo y mis clientes ya no se olvidan de sus citas. Es increíble."</p>
-      <div class="testi-person"><div class="testi-avatar">C</div><div><strong>Camila G.</strong><span>Estilista</span></div></div>
+    <a href="#" class="btn btn-grad">Empieza gratis <i data-lucide="arrow-right" width="15"></i></a>
+  </div>
+
+  <div class="dashboard reveal">
+    <div class="dash-screen">
+      <div class="dash-bar"><strong>Annly.</strong><div class="dash-tabs"><span class="dash-tab on">Día</span><span class="dash-tab">Semana</span><span class="dash-tab">Mes</span></div></div>
+      <div class="calendar">
+        <div></div><b style="font-size:9px;color:#6c6478">LUN</b><b style="font-size:9px;color:#6c6478">MAR</b><b style="font-size:9px;color:#6c6478">MIÉ</b><b style="font-size:9px;color:#6c6478">JUE</b>
+        <div class="time">9:00</div><div class="slot s1">María López<br><small>Corte</small></div><div></div><div class="slot s2">Carlos Méndez<br><small>Barba</small></div><div></div>
+        <div class="time">10:00</div><div></div><div class="slot s3">Valentina Ríos<br><small>Coloración</small></div><div></div><div class="slot s4">Sofía Herrera<br><small>Corte + Color</small></div>
+        <div class="time">11:00</div><div class="slot s5">Lucía Torres<br><small>Facial</small></div><div></div><div class="slot s1">Ana Pérez<br><small>Manicure</small></div><div></div>
+        <div class="time">12:00</div><div></div><div class="slot s4">Pedro Díaz<br><small>Tatuaje</small></div><div></div><div class="slot s2">Laura G.<br><small>Masaje</small></div>
+      </div>
     </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <p class="testi-quote">"La mejor inversión para mi estudio. Puedo enfocarme en tatuar y Annly se encarga del resto."</p>
-      <div class="testi-person"><div class="testi-avatar">J</div><div><strong>Javier M.</strong><span>Tatuador</span></div></div>
+    <div class="phone">
+      <div class="phone-screen">
+        <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=400&q=80" alt="Servicio de belleza">
+        <div class="phone-body">
+          <b>Corte + Color</b><small>$85.00 · 90 min</small>
+          <div class="days"><span class="day">VIE<br>16</span><span class="day on">SÁB<br>17</span><span class="day">DOM<br>18</span><span class="day">LUN<br>19</span></div>
+          <div class="reserve">Reservar ahora</div>
+        </div>
+      </div>
     </div>
   </div>
+ </div>
 </section>
 
-<section class="final-cta">
-  <img src="https://images.unsplash.com/photo-1557349800-5b9b168f3f53?auto=format&fit=crop&w=1400&q=70" alt=""/>
-  <div class="final-cta-content">
-    <div class="final-eyebrow">ES MOMENTO DE LLEVAR TU NEGOCIO AL SIGUIENTE NIVEL</div>
-    <h2>Empieza hoy, sin riesgos.</h2>
-    <p>Prueba Annly gratis por 14 días y descubre por qué cada vez más profesionales confían en nosotros.</p>
-    <a href="#" class="btn-white">Empieza gratis
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </a>
+<section class="how section" id="como-funciona">
+ <div class="wrap">
+  <div class="section-head reveal">
+    <div class="eyebrow">ASÍ DE SIMPLE</div>
+    <h2>Deja de perseguir citas. <em class="gradient">Empieza a recibirlas.</em></h2>
   </div>
+  <div class="steps">
+   <article class="step reveal"><div class="step-num">01</div><h3>Configura tu negocio</h3><p>Agrega tus servicios, horarios, profesionales y disponibilidad en minutos.</p></article>
+   <article class="step reveal"><div class="step-num">02</div><h3>Comparte tu enlace</h3><p>Tu página de reservas queda lista para compartir en Instagram, WhatsApp o donde quieras.</p></article>
+   <article class="step reveal"><div class="step-num">03</div><h3>Recibe reservas automáticamente</h3><p>Tus clientes eligen servicio, fecha y hora mientras tú te concentras en trabajar.</p></article>
+  </div>
+ </div>
 </section>
+
+<section class="wrap testimonials section">
+ <div class="section-head reveal" style="text-align:center;margin-left:auto;margin-right:auto">
+   <div class="eyebrow">CLIENTES FELICES, NEGOCIOS QUE CRECEN</div>
+   <h2>Ellos ya confían en <em class="gradient">Annly.</em></h2>
+ </div>
+ <div class="testi-grid">
+  <article class="testi reveal"><div class="stars">★★★★★</div><p class="quote">“Desde que uso Annly, mi agenda está mucho más organizada y mis clientes reservan sin escribirme.”</p><div class="person"><div class="avatar">D</div><div><b>Daniel R.</b><small>Barbero</small></div></div></article>
+  <article class="testi reveal"><div class="stars">★★★★★</div><p class="quote">“Me ahorra horas de trabajo y mis clientes ya no se olvidan de sus citas. Es increíble.”</p><div class="person"><div class="avatar">C</div><div><b>Camila G.</b><small>Estilista</small></div></div></article>
+  <article class="testi reveal"><div class="stars">★★★★★</div><p class="quote">“Puedo enfocarme en mi trabajo y dejar que Annly se encargue de la agenda.”</p><div class="person"><div class="avatar">J</div><div><b>Javier M.</b><small>Tatuador</small></div></div></article>
+ </div>
+</section>
+
+<section class="wrap" id="contacto">
+ <div class="final reveal">
+  <img src="https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=1600&q=85" alt="Espacio profesional de bienestar">
+  <div class="final-content">
+   <div class="eyebrow" style="color:#f5d0fe">ES MOMENTO DE LLEVAR TU NEGOCIO AL SIGUIENTE NIVEL</div>
+   <h2>Tu talento merece una mejor agenda.</h2>
+   <p>Prueba Annly gratis por 14 días y descubre cuánto tiempo puedes recuperar para dedicarlo a tus clientes.</p>
+   <a href="#" class="btn">Empieza gratis <i data-lucide="arrow-right" width="16"></i></a>
+  </div>
+ </div>
+</section>
+</main>
 
 <footer>
-  <div class="foot-top">
-    <div class="logo">Annly<span>.</span></div>
-    <ul class="foot-links">
-      <li><a href="#">Funciones</a></li>
-      <li><a href="#">Precios</a></li>
-      <li><a href="#">Recursos</a></li>
-      <li><a href="#">Contacto</a></li>
-    </ul>
-    <div class="foot-social">
-      <a href="#" aria-label="Instagram"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></a>
-      <a href="#" aria-label="Facebook"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
-      <a href="#" aria-label="TikTok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12a4 4 0 104 4V4a5 5 0 005 5"/></svg></a>
-    </div>
+ <div class="wrap">
+  <div class="footer-top">
+   <div class="logo">Annly<span>.</span></div>
+   <ul class="footer-links"><li><a href="#funciones">Funciones</a></li><li><a href="#">Precios</a></li><li><a href="#">Recursos</a></li><li><a href="#contacto">Contacto</a></li></ul>
+   <div class="social"><a href="#" aria-label="Instagram"><i data-lucide="instagram" width="15"></i></a><a href="#" aria-label="Facebook"><i data-lucide="facebook" width="15"></i></a><a href="#" aria-label="TikTok"><i data-lucide="music-2" width="15"></i></a></div>
   </div>
-  <div class="foot-bottom">
-    <span>Más citas. Más clientes. Más tiempo para ti.</span>
-    <span>© 2026 Annly. Todos los derechos reservados.</span>
-  </div>
+  <div class="footer-bottom"><span>Más citas. Más clientes. Más tiempo para ti.</span><span>© 2026 Annly. Todos los derechos reservados.</span></div>
+ </div>
 </footer>
-</div>
 
+<script>
+lucide.createIcons();
+
+const nav=document.getElementById('nav');
+window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',window.scrollY>18),{passive:true});
+
+const observer=new IntersectionObserver(entries=>{
+ entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach((el,i)=>{
+ el.style.transitionDelay=Math.min(i*35,180)+'ms';observer.observe(el);
+});
+
+document.querySelector('.menu-btn')?.addEventListener('click',()=>{
+ const links=document.querySelector('.nav-links');
+ const open=links.style.display==='flex';
+ links.style.cssText=open?'':'display:flex;position:absolute;top:70px;left:15px;right:15px;background:#fff;padding:20px;border:1px solid #e9e1ee;border-radius:18px;flex-direction:column;gap:18px;box-shadow:0 20px 50px rgba(33,26,45,.14)';
+});
+</script>
 </body>
-</html>
