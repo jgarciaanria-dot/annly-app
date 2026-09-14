@@ -167,6 +167,19 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1;transform:none;transition:none}.btn,.ind-card img{transition:none}}
 </style>
+<style>
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.feature-card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:24px;min-height:250px;box-shadow:0 14px 40px rgba(40,25,60,.05);transition:.35s}
+.feature-card:hover{transform:translateY(-5px);box-shadow:0 22px 50px rgba(40,25,60,.10)}
+.feature-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#f1e8ff,#fce8f4);color:var(--violet);margin-bottom:17px}
+.feature-card h3{font-size:17px;margin-bottom:9px}
+.feature-card h3 small{font-size:10px;color:var(--violet);background:#f1e8ff;border-radius:999px;padding:4px 7px}
+.feature-card p{font-size:12px;line-height:1.72;color:var(--muted)}
+.feature-card p strong{color:var(--ink)}
+.feature-pill{display:inline-block;margin-top:16px;font-size:10px;font-weight:800;color:var(--violet);background:#f7f1ff;border-radius:999px;padding:6px 9px}
+@media(max-width:980px){.feature-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){.feature-grid{grid-template-columns:1fr}}
+</style>
 </head><body>
 <header class="site-nav" id="nav">
   <div class="wrap nav">
@@ -270,46 +283,22 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
   </div>
 </section>
 
-<section class="product-section section" id="funciones">
- <div class="wrap product-grid">
-  <div class="reveal">
-    <div class="eyebrow">TU NEGOCIO, EN TUS MANOS</div>
-    <h2 class="section-head" style="margin-bottom:0"><span style="font-family:'DM Serif Display';font-size:clamp(38px,4.2vw,57px);line-height:1">Todo lo que necesitas para crecer, <em class="gradient">en un solo lugar.</em></span></h2>
-    <p style="color:var(--muted);line-height:1.7;margin-top:18px">Ahorra tiempo, organiza tu día y enfócate en lo importante: tus clientes.</p>
-    <div class="feature-list">
-      <div class="feature"><i data-lucide="calendar-check"></i><div><b>Reservas online 24/7</b><small>Sin llamadas ni mensajes.</small></div></div>
-      <div class="feature"><i data-lucide="bell-ring"></i><div><b>Recordatorios automáticos</b><small>Menos citas olvidadas.</small></div></div>
-      <div class="feature"><i data-lucide="contact"></i><div><b>Gestión de clientes</b><small>Historial y preferencias.</small></div></div>
-      <div class="feature"><i data-lucide="credit-card"></i><div><b>Pagos y abonos</b><small>Opcional, a tu ritmo.</small></div></div>
-      <div class="feature"><i data-lucide="chart-column"></i><div><b>Reportes de crecimiento</b><small>Tus números, claros.</small></div></div>
-      <div class="feature"><i data-lucide="gift"></i><div><b>Certificados de regalo</b><small>Ingresos extra, sin cita.</small></div></div>
+<section class="wrap section" id="funciones">
+  <div class="section-head reveal">
+    <div>
+      <div class="eyebrow">TODO LO QUE NECESITAS PARA GESTIONAR TUS CITAS</div>
+      <h2>Más que una agenda.<br><em class="gradient">Un negocio conectado.</em></h2>
     </div>
-    <a href="#" class="btn btn-grad">Empieza gratis <i data-lucide="arrow-right" width="15"></i></a>
+    <p>Annly centraliza reservas, clientes, pagos, comunicaciones y disponibilidad para que tú te concentres en atender.</p>
   </div>
-
-  <div class="dashboard reveal">
-    <div class="dash-screen">
-      <div class="dash-bar"><strong>Annly.</strong><div class="dash-tabs"><span class="dash-tab on">Día</span><span class="dash-tab">Semana</span><span class="dash-tab">Mes</span></div></div>
-      <div class="calendar">
-        <div></div><b style="font-size:9px;color:#6c6478">LUN</b><b style="font-size:9px;color:#6c6478">MAR</b><b style="font-size:9px;color:#6c6478">MIÉ</b><b style="font-size:9px;color:#6c6478">JUE</b>
-        <div class="time">9:00</div><div class="slot s1">María López<br><small>Corte</small></div><div></div><div class="slot s2">Carlos Méndez<br><small>Barba</small></div><div></div>
-        <div class="time">10:00</div><div></div><div class="slot s3">Valentina Ríos<br><small>Coloración</small></div><div></div><div class="slot s4">Sofía Herrera<br><small>Corte + Color</small></div>
-        <div class="time">11:00</div><div class="slot s5">Lucía Torres<br><small>Facial</small></div><div></div><div class="slot s1">Ana Pérez<br><small>Manicure</small></div><div></div>
-        <div class="time">12:00</div><div></div><div class="slot s4">Pedro Díaz<br><small>Tatuaje</small></div><div></div><div class="slot s2">Laura G.<br><small>Masaje</small></div>
-      </div>
-    </div>
-    <div class="phone">
-      <div class="phone-screen">
-        <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=400&q=80" alt="Servicio de belleza">
-        <div class="phone-body">
-          <b>Corte + Color</b><small>$85.00 · 90 min</small>
-          <div class="days"><span class="day">VIE<br>16</span><span class="day on">SÁB<br>17</span><span class="day">DOM<br>18</span><span class="day">LUN<br>19</span></div>
-          <div class="reserve">Reservar ahora</div>
-        </div>
-      </div>
-    </div>
+  <div class="feature-grid">
+    <article class="feature-card reveal"><div class="feature-icon"><i data-lucide="calendar-days"></i></div><h3>Agenda inteligente</h3><p>Configura horarios, servicios y disponibilidad. Bloquea vacaciones, días festivos, descansos o cualquier espacio en el que no quieras recibir reservas.</p><span class="feature-pill">Disponibilidad bajo control</span></article>
+    <article class="feature-card reveal"><div class="feature-icon"><i data-lucide="bell-ring"></i></div><h3>Confirmaciones y recordatorios</h3><p>Confirma citas y reservas en tiempo real. Cliente y negocio reciben notificaciones por correo, y los recordatorios ayudan a reducir las ausencias.</p><span class="feature-pill">Cliente + negocio</span></article>
+    <article class="feature-card reveal"><div class="feature-icon"><i data-lucide="wallet-cards"></i></div><h3>Pagos integrados</h3><p>Integra <strong>Yappy</strong> y una pasarela de pagos para facilitar reservas, abonos o pagos online según la configuración de tu negocio.</p><span class="feature-pill">Yappy + pasarela</span></article>
+    <article class="feature-card reveal"><div class="feature-icon"><i data-lucide="message-circle"></i></div><h3>Botón de WhatsApp</h3><p>Permite que tus clientes contacten rápidamente al negocio desde la experiencia de reserva mediante un botón directo de WhatsApp.</p><span class="feature-pill">Contacto directo</span></article>
+    <article class="feature-card reveal"><div class="feature-icon"><i data-lucide="bot"></i></div><h3>Agente virtual <small>opcional</small></h3><p>Activa un agente virtual para responder automáticamente preguntas frecuentes y orientar a tus clientes sin tener que contestar cada mensaje manualmente.</p><span class="feature-pill">Automatización opcional</span></article>
+    <article class="feature-card reveal"><div class="feature-icon"><i data-lucide="users-round"></i></div><h3>Clientes y equipo</h3><p>Gestiona clientes, profesionales y servicios desde un solo lugar. Ideal para profesionales independientes y equipos de varias personas.</p><span class="feature-pill">1 a múltiples usuarios</span></article>
   </div>
- </div>
 </section>
 
 <section class="pricing section" id="precios">
@@ -345,7 +334,8 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
         <li><i data-lucide="check" width="14"></i>Todo lo de Basic</li>
         <li><i data-lucide="check" width="14"></i>Hasta 3 usuarios</li>
         <li><i data-lucide="check" width="14"></i>Gestión de equipo</li>
-        <li><i data-lucide="check" width="14"></i>Pagos y abonos opcionales</li>
+        <li><i data-lucide="check" width="14"></i>Yappy y pagos online</li>
+        <li><i data-lucide="check" width="14"></i>WhatsApp</li>
       </ul>
       <a href="#" class="btn btn-grad">Elegir Medium <i data-lucide="arrow-right" width="15"></i></a>
     </article>
@@ -359,6 +349,7 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
         <li><i data-lucide="check" width="14"></i>Todo lo de Medium</li>
         <li><i data-lucide="check" width="14"></i>4+ usuarios</li>
         <li><i data-lucide="check" width="14"></i>Escala con tu equipo</li>
+        <li><i data-lucide="check" width="14"></i>Agente virtual opcional</li>
         <li><i data-lucide="check" width="14"></i>Precio desde $65/mes</li>
       </ul>
       <a href="#contacto" class="btn btn-dark">Hablar con Annly</a>
