@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="description" content="Annly: agenda digital para negocios que viven de sus citas. Reservas 24/7, recordatorios, clientes, equipo y más."/>
 <meta property="og:title" content="Annly — La agenda que nunca duerme"/>
-<meta property="og:description" content="Recibe reservas 24/7 y organiza tu negocio desde un solo lugar."/>
+<meta property="og:description" content="Recibe reservas 24/7 y organiza tu negocio desde un solo lugar. Planes desde $30/mes."/>
 <title>Annly — La agenda que nunca duerme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,12 +77,20 @@ a{color:inherit}
 
 /* RUBROS */
 .section{padding:105px 0}.section-head{max-width:650px;margin-bottom:46px}.section-head h2{font-family:"DM Serif Display",serif;font-size:clamp(38px,4.2vw,57px);line-height:1.02;letter-spacing:-.025em;margin-bottom:15px}.section-head p{color:var(--muted);line-height:1.7;font-size:15px}
-.industries{display:grid;grid-template-columns:1.15fr .85fr;gap:24px;align-items:stretch}
-.ind-left,.ind-right{display:grid;gap:24px}.ind-left{grid-template-columns:1.2fr .8fr}.ind-right{grid-template-columns:1fr 1fr}
-.ind-card{position:relative;min-height:250px;border-radius:var(--radius);overflow:hidden;box-shadow:0 20px 50px rgba(33,26,45,.11)}
-.ind-card.tall{min-height:525px}.ind-card img{height:100%;transition:transform .7s cubic-bezier(.2,.8,.2,1)}.ind-card:hover img{transform:scale(1.06)}
-.ind-card:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(24,16,31,.62))}
-.ind-tag{position:absolute;z-index:2;left:17px;bottom:16px;color:#fff;font-weight:700;font-size:12px;background:rgba(33,26,45,.58);backdrop-filter:blur(9px);padding:8px 12px;border-radius:999px}
+.industries{display:grid;grid-template-columns:1.08fr .92fr;gap:62px;align-items:center}
+.ind-collage{display:grid;grid-template-columns:1.18fr .82fr;grid-template-rows:1fr 1fr;gap:14px;min-height:525px}
+.ind-card{position:relative;min-height:0;border-radius:22px;overflow:hidden;box-shadow:0 20px 50px rgba(33,26,45,.11)}
+.ind-card.main{grid-row:1 / span 2}
+.ind-card img{height:100%;transition:transform .7s cubic-bezier(.2,.8,.2,1)}
+.ind-card:hover img{transform:scale(1.06)}
+.ind-card:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(24,16,31,.58))}
+.ind-tag{position:absolute;z-index:2;left:15px;bottom:15px;color:#fff;font-weight:700;font-size:11px;background:rgba(33,26,45,.58);backdrop-filter:blur(9px);padding:8px 11px;border-radius:999px}
+.ind-copy .eyebrow{margin-bottom:12px}
+.ind-copy h2{font-family:"DM Serif Display",serif;font-size:clamp(40px,4.5vw,59px);line-height:1.01;letter-spacing:-.025em;margin-bottom:17px}
+.ind-copy p{color:var(--muted);line-height:1.7;font-size:14px;max-width:500px;margin-bottom:20px}.ind-copy:before{content:"";display:block;width:46px;height:4px;border-radius:99px;background:var(--grad);margin-bottom:18px}
+.ind-points{display:grid;gap:10px;margin:0 0 24px;padding:0;list-style:none}
+.ind-points li{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
+.ind-points i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#efe7ff;color:var(--violet);flex:none}
 
 /* PRODUCT */
 .product-section{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -92,6 +100,27 @@ a{color:inherit}
 .dash-screen{background:#fbfaff;border-radius:18px;overflow:hidden}.dash-bar{height:55px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);font-size:12px}.dash-tabs{display:flex;gap:5px}.dash-tab{padding:6px 10px;border-radius:7px;background:#f3eef8;color:var(--muted)}.dash-tab.on{background:var(--grad);color:#fff}
 .calendar{display:grid;grid-template-columns:55px repeat(5,1fr);padding:14px;gap:6px}.time{color:#91879d;font-size:9px;padding-top:9px}.slot{height:58px;border-radius:9px;padding:8px;font-size:9px;font-weight:600}.s1{background:#eee7ff}.s2{background:#fce7f3}.s3{background:#fff1dc}.s4{background:#e6f5ff}.s5{background:#e8f8ef}
 .phone{position:absolute;width:170px;right:-28px;bottom:-45px;background:#211a2d;padding:7px;border-radius:25px;box-shadow:0 25px 60px rgba(33,26,45,.35)}.phone-screen{background:#fff;border-radius:19px;overflow:hidden}.phone-screen img{height:90px}.phone-body{padding:12px}.phone-body b{font-size:11px}.phone-body small{display:block;color:var(--muted);font-size:9px;margin:3px 0 9px}.days{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.day{font-size:8px;text-align:center;padding:6px 0;background:#f7f4f9;border-radius:6px}.day.on{background:var(--grad);color:#fff}.reserve{margin-top:8px;padding:8px;background:var(--grad);border-radius:8px;color:#fff;text-align:center;font-size:9px;font-weight:800}
+
+
+/* PRICING */
+.pricing{background:#fbf8ff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pricing-head{text-align:center;max-width:720px;margin:0 auto 46px}
+.pricing-head h2{font-family:"DM Serif Display",serif;font-size:clamp(40px,4.5vw,59px);line-height:1.02;letter-spacing:-.025em;margin-bottom:14px}
+.pricing-head p{color:var(--muted);font-size:14px;line-height:1.7}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+.price-card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:30px;position:relative;box-shadow:0 12px 35px rgba(55,31,88,.06);display:flex;flex-direction:column}
+.price-card.featured{border:2px solid var(--violet);box-shadow:0 22px 55px rgba(139,92,246,.16);transform:translateY(-8px)}
+.price-badge{position:absolute;top:16px;right:16px;background:var(--soft);color:var(--violet);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:6px 9px;border-radius:999px}
+.price-card h3{font-size:18px;margin-bottom:6px}
+.price-users{font-size:12px;color:var(--muted);margin-bottom:22px}
+.price{font-family:"DM Serif Display",serif;font-size:52px;line-height:1;margin-bottom:5px}
+.price span{font-family:"DM Sans",sans-serif;font-size:13px;color:var(--muted)}
+.price-note{font-size:11px;color:var(--muted);min-height:18px;margin-bottom:20px}
+.price-features{list-style:none;display:grid;gap:11px;margin:0 0 26px}
+.price-features li{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--muted)}
+.price-features i{color:var(--violet);flex:none;margin-top:1px}
+.price-card .btn{margin-top:auto;width:100%}
+.price-foot{text-align:center;color:var(--muted);font-size:11px;margin-top:25px}
 
 /* HOW */
 .how{background:#fbf8ff}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.step{background:#fff;border:1px solid var(--line);border-radius:24px;padding:29px;position:relative}.step-num{font-family:"DM Serif Display";font-size:42px;color:#d8c9f7;line-height:1}.step h3{font-size:18px;margin:14px 0 7px}.step p{font-size:13px;color:var(--muted);line-height:1.6}.step:after{content:"→";position:absolute;right:-18px;top:42%;font-size:24px;color:var(--violet)}.step:last-child:after{display:none}
@@ -106,12 +135,28 @@ a{color:inherit}
 footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.footer-links{display:flex;gap:24px;list-style:none}.footer-links a{text-decoration:none;color:var(--muted);font-size:12.5px}.social{display:flex;gap:8px}.social a{width:34px;height:34px;display:grid;place-items:center;background:#f6f2f8;border-radius:50%;color:var(--muted)}.footer-bottom{display:flex;justify-content:space-between;gap:15px;margin-top:25px;color:var(--muted);font-size:11px}
 
 /* MOBILE */
+
+@media(max-width:980px){
+  .industries{grid-template-columns:1fr;gap:40px}
+  .ind-collage{min-height:500px}
+  .price-grid{grid-template-columns:1fr}
+  .price-card.featured{transform:none}
+}
+
 @media(max-width:980px){
   .nav-links,.login{display:none}.menu-btn{display:block}.nav-right{gap:8px}
   .hero{grid-template-columns:1fr;padding-top:115px}.hero-stage{order:-1;min-height:440px}.hero-image{height:420px;width:70%;right:15%}.hero-orb{width:360px;height:360px;right:10%;top:30px}.new-booking{left:4%;top:55px}.week{right:2%;bottom:20px}.growth{right:5%;top:5px}
   .strip-grid{grid-template-columns:repeat(3,1fr);gap:22px}.strip-item:nth-child(3){border:0}
   .industries,.product-grid{grid-template-columns:1fr}.product-grid{gap:50px}.dashboard{max-width:760px;margin:auto}
 }
+
+@media(max-width:680px){
+  .ind-collage{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;min-height:390px;gap:9px}
+  .ind-card.main{grid-row:1 / span 2}
+  .ind-tag{font-size:9px;left:8px;bottom:8px;padding:6px 8px}
+  .price-card{padding:25px}
+}
+
 @media(max-width:680px){
   .wrap{width:min(100% - 30px,1180px)}.hero{padding-bottom:55px}.hero h1{font-size:46px}.hero-sub{font-size:15px}
   .hero-stage{min-height:370px}.hero-image{height:350px;width:72%;right:14%;border-radius:110px 110px 24px 24px}.hero-orb{width:300px;height:300px}.float{transform:scale(.88)}.new-booking{left:-3px}.week{right:-3px}.growth{display:none}
@@ -129,6 +174,7 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
     <ul class="nav-links">
       <li><a href="#funciones">Funciones</a></li>
       <li><a href="#rubros">Para quién</a></li>
+      <li><a href="#precios">Precios</a></li>
       <li><a href="#como-funciona">Cómo funciona</a></li>
       <li><a href="#contacto">Contacto</a></li>
     </ul>
@@ -189,36 +235,37 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
 </section>
 
 <section class="wrap section" id="rubros">
-  <div class="section-head reveal">
-    <div class="eyebrow">UNA AGENDA. MUCHAS PROFESIONES.</div>
-    <h2>Diseñada para negocios que <em class="gradient">viven de las citas.</em></h2>
-    <p>Barberos, tatuadores, estilistas, terapeutas, spas y profesionales independientes: Annly se adapta a la forma en que trabajas.</p>
-  </div>
-
-  <div class="industries reveal">
-    <div class="ind-left">
-      <article class="ind-card tall">
-        <img src="https://images.unsplash.com/photo-1745777761096-081db6e036e7?auto=format&fit=crop&fm=jpg&q=85&w=1200" alt="Tatuador trabajando">
+  <div class="industries">
+    <div class="ind-collage reveal">
+      <article class="ind-card main">
+        <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1000&q=88" alt="Barbero atendiendo a un cliente">
+        <span class="ind-tag">✦ Barberías</span>
+      </article>
+      <article class="ind-card">
+        <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=700&q=88" alt="Estilista trabajando en un salón">
+        <span class="ind-tag">✂ Estilistas</span>
+      </article>
+      <article class="ind-card">
+        <img src="https://images.unsplash.com/photo-1745777761096-081db6e036e7?auto=format&fit=crop&fm=jpg&q=88&w=900" alt="Tatuador trabajando">
         <span class="ind-tag">✦ Tatuadores</span>
       </article>
-      <div class="ind-right">
-        <article class="ind-card">
-          <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=700&q=85" alt="Estilista en salón">
-          <span class="ind-tag">✂ Estilistas</span>
-        </article>
-        <article class="ind-card">
-          <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=700&q=85" alt="Barbero atendiendo a un cliente">
-          <span class="ind-tag">✦ Barberías</span>
-        </article>
-        <article class="ind-card">
-          <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=700&q=85" alt="Tratamiento de spa">
-          <span class="ind-tag">◌ Spas y estética</span>
-        </article>
-        <article class="ind-card">
-          <img src="https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=700&q=85" alt="Profesional de bienestar">
-          <span class="ind-tag">♡ Terapeutas</span>
-        </article>
-      </div>
+      <article class="ind-card">
+        <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=700&q=88" alt="Tratamiento de spa">
+        <span class="ind-tag">◌ Spas y estética</span>
+      </article>
+    </div>
+
+    <div class="ind-copy reveal">
+      <div class="eyebrow">PARA CADA TALENTO, UNA SOLUCIÓN</div>
+      <h2>Diseñada para negocios que <em class="gradient">viven de las citas.</em></h2>
+      <p>Sin importar tu rubro, Annly se adapta a la forma en que trabajas. Configura tus servicios, horarios y equipo en minutos, y deja que tus clientes reserven cuando quieran.</p>
+      <ul class="ind-points">
+        <li><i data-lucide="check" width="11"></i>Personaliza tu agenda y servicios</li>
+        <li><i data-lucide="check" width="11"></i>Gestiona múltiples profesionales</li>
+        <li><i data-lucide="check" width="11"></i>Reduce las ausencias</li>
+        <li><i data-lucide="check" width="11"></i>Da una experiencia profesional a tus clientes</li>
+      </ul>
+      <a href="#funciones" class="btn btn-dark">Conoce todas las funciones <i data-lucide="arrow-right" width="15"></i></a>
     </div>
   </div>
 </section>
@@ -265,6 +312,63 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
  </div>
 </section>
 
+<section class="pricing section" id="precios">
+ <div class="wrap">
+  <div class="pricing-head reveal">
+    <div class="eyebrow">PRECIOS SIMPLES Y TRANSPARENTES</div>
+    <h2>Elige el plan que <em class="gradient">crece contigo.</em></h2>
+    <p>Empieza con lo que necesitas hoy y cambia de plan cuando tu equipo y tu negocio crezcan.</p>
+  </div>
+
+  <div class="price-grid">
+    <article class="price-card reveal">
+      <h3>Basic</h3>
+      <div class="price-users">1 usuario</div>
+      <div class="price">$30 <span>/mes</span></div>
+      <div class="price-note">Para profesionales independientes.</div>
+      <ul class="price-features">
+        <li><i data-lucide="check" width="14"></i>Agenda y reservas online</li>
+        <li><i data-lucide="check" width="14"></i>Recordatorios automáticos</li>
+        <li><i data-lucide="check" width="14"></i>Gestión de clientes</li>
+        <li><i data-lucide="check" width="14"></i>Reportes</li>
+      </ul>
+      <a href="#" class="btn btn-light">Elegir Basic</a>
+    </article>
+
+    <article class="price-card featured reveal">
+      <div class="price-badge">Más popular</div>
+      <h3>Medium</h3>
+      <div class="price-users">1–3 usuarios</div>
+      <div class="price">$45 <span>/mes</span></div>
+      <div class="price-note">Para equipos pequeños que están creciendo.</div>
+      <ul class="price-features">
+        <li><i data-lucide="check" width="14"></i>Todo lo de Basic</li>
+        <li><i data-lucide="check" width="14"></i>Hasta 3 usuarios</li>
+        <li><i data-lucide="check" width="14"></i>Gestión de equipo</li>
+        <li><i data-lucide="check" width="14"></i>Pagos y abonos opcionales</li>
+      </ul>
+      <a href="#" class="btn btn-grad">Elegir Medium <i data-lucide="arrow-right" width="15"></i></a>
+    </article>
+
+    <article class="price-card reveal">
+      <h3>Pro</h3>
+      <div class="price-users">4+ usuarios</div>
+      <div class="price">$65 <span>/mes</span></div>
+      <div class="price-note">Desde $65/mes según el tamaño del equipo.</div>
+      <ul class="price-features">
+        <li><i data-lucide="check" width="14"></i>Todo lo de Medium</li>
+        <li><i data-lucide="check" width="14"></i>4+ usuarios</li>
+        <li><i data-lucide="check" width="14"></i>Escala con tu equipo</li>
+        <li><i data-lucide="check" width="14"></i>Precio desde $65/mes</li>
+      </ul>
+      <a href="#contacto" class="btn btn-dark">Hablar con Annly</a>
+    </article>
+  </div>
+
+  <div class="price-foot">Todos los precios están expresados en USD.</div>
+ </div>
+</section>
+
 <section class="how section" id="como-funciona">
  <div class="wrap">
   <div class="section-head reveal">
@@ -308,7 +412,7 @@ footer{border-top:1px solid var(--line);padding:34px 0}.footer-top{display:flex;
  <div class="wrap">
   <div class="footer-top">
    <div class="logo">Annly<span>.</span></div>
-   <ul class="footer-links"><li><a href="#funciones">Funciones</a></li><li><a href="#">Precios</a></li><li><a href="#">Recursos</a></li><li><a href="#contacto">Contacto</a></li></ul>
+   <ul class="footer-links"><li><a href="#funciones">Funciones</a></li><li><a href="#precios">Precios</a></li><li><a href="#">Recursos</a></li><li><a href="#contacto">Contacto</a></li></ul>
    <div class="social"><a href="#" aria-label="Instagram"><i data-lucide="instagram" width="15"></i></a><a href="#" aria-label="Facebook"><i data-lucide="facebook" width="15"></i></a><a href="#" aria-label="TikTok"><i data-lucide="music-2" width="15"></i></a></div>
   </div>
   <div class="footer-bottom"><span>Más citas. Más clientes. Más tiempo para ti.</span><span>© 2026 Annly. Todos los derechos reservados.</span></div>
