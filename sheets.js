@@ -3,8 +3,8 @@
 // Cubre index.html (sitio público) y admin.html (panel)
 // =========================================================
 
-const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
+const SUPABASE_URL = 'PEGA_AQUI_TU_PROJECT_URL';
+const SUPABASE_KEY = 'PEGA_AQUI_TU_PUBLISHABLE_KEY';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -18,16 +18,24 @@ let BUSINESS_ID = null;
 window.ANNLY_BUSINESS = null;
 
 async function resolverNegocio() {
-  const params = new URLSearchParams(window.location.search);
-  let slug = params.get('n'); // sigue funcionando para pruebas rápidas (?n=slug)
-
-  if (!slug) {
-    // En producción (annly.app/slug), el negocio se identifica por la ruta
-    const segmentos = window.location.pathname.split('/').filter(Boolean);
-    // Ignora nombres de archivo tipo admin.html si quedaran sueltos en la ruta
-    slug = segmentos.find(s => !s.includes('.')) || 'demo';
+  // Si hay sesión activa (admin logueado), su negocio se resuelve por dueño, no por URL
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (session && session.user) {
+    const { data, error } = await sbClient.from('businesses').select('*').eq('owner_user_id', session.user.id).maybeSingle();
+    if (!error && data) {
+      BUSINESS_ID = data.id;
+      window.ANNLY_BUSINESS = data;
+      return;
+    }
   }
 
+  // Sin sesión (sitio público, nadie inicia sesión para reservar) -> resolver por slug
+  const params = new URLSearchParams(window.location.search);
+  let slug = params.get('n');
+  if (!slug) {
+    const segmentos = window.location.pathname.split('/').filter(Boolean);
+    slug = segmentos.find(s => !s.includes('.')) || 'demo';
+  }
   const { data, error } = await sbClient.from('businesses').select('*').eq('slug', slug).maybeSingle();
   if (error || !data) {
     console.error('No se encontró ningún negocio activo para el slug:', slug, error);
@@ -36,6 +44,25 @@ async function resolverNegocio() {
   BUSINESS_ID = data.id;
   window.ANNLY_BUSINESS = data;
 }
+
+// Autenticación (usada por admin.html)
+window.AnnlyAuth = {
+  async login(email, password) {
+    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    window.AnnlyReady = resolverNegocio(); // vuelve a resolver, ahora con sesión
+    await window.AnnlyReady;
+    return data;
+  },
+  async logout() {
+    await sbClient.auth.signOut();
+    window.location.reload();
+  },
+  async getSession() {
+    const { data } = await sbClient.auth.getSession();
+    return data.session;
+  }
+};
 
 // Promesa exportada: index.html y admin.html la esperan antes de pintar nada
 window.AnnlyReady = resolverNegocio();
