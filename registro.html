@@ -80,6 +80,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   align-items:flex-start;
   justify-content:space-between;
   gap:14px;
+  position:relative;
 }
 .mobile-tagline{
   flex:1;
@@ -301,7 +302,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   .brand-panel{display:none;}
   .form-panel{padding:1.2rem 1rem;min-height:100vh;}
   .form-inner{max-width:520px;padding:.6rem .8rem 1.5rem;}
-  .mobile-head{display:flex;margin-bottom:1.8rem;}
+  .mobile-head{display:flex;margin-bottom:1.8rem;min-height:58px;}
   .mobile-logo{
     display:block;
     font-family:'Playfair Display',serif;
@@ -320,7 +321,12 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 }
 @media (max-width:480px){
   .mobile-logo{font-size:31px;}
-  .mobile-tagline{font-size:11.5px;max-width:175px;}
+  .mobile-tagline{
+    left:57%;
+    width:190px;
+    max-width:190px;
+    font-size:13.5px;
+  }
   .step-item{min-width:57px;}
   .step-item span{font-size:10px;}
   .step-line{width:24px;}
