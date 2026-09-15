@@ -6,8 +6,6 @@
 const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
 
-const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 // =========================================================
 // RESOLUCIÓN DINÁMICA DEL NEGOCIO (multi-tenant)
 // Hoy: por parámetro ?n=slug en la URL (simulación en GitHub Pages).
@@ -68,6 +66,64 @@ window.AnnlyAuth = {
   async getSession() {
     const { data } = await sbClient.auth.getSession();
     return data.session;
+  },
+  // Registro self-service: crea el usuario, el negocio, y los vincula, todo en un paso
+  async registrar({ email, password, nombreNegocio, categoria, whatsapp, colorPrimario, colorSecundario }) {
+    // 1. Generar un slug único a partir del nombre del negocio
+    const base = nombreNegocio.toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
+      .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    let slug = base;
+    let intento = 1;
+    while (true) {
+      const { data: existe } = await sbClient.from('businesses').select('id').eq('slug', slug).maybeSingle();
+      if (!existe) break;
+      intento++;
+      slug = `${base}-${intento}`;
+    }
+
+    // 2. Crear el usuario en Supabase Auth
+    const { data: authData, error: authError } = await sbClient.auth.signUp({ email, password });
+    if (authError) throw authError;
+    const userId = authData.user?.id;
+    if (!userId) throw new Error('No se pudo crear el usuario.');
+
+    // 3. Asegurar que hay sesión activa (algunos proyectos requieren confirmar correo primero)
+    if (!authData.session) {
+      const { error: loginError } = await sbClient.auth.signInWithPassword({ email, password });
+      if (loginError) throw loginError; // el correo probablemente requiere confirmación
+    }
+
+    // 4. Crear el negocio, vinculado al usuario recién creado
+    const trialVence = new Date();
+    trialVence.setDate(trialVence.getDate() + 14);
+    const { data: negocio, error: bizError } = await sbClient.from('businesses').insert([{
+      nombre: nombreNegocio,
+      slug,
+      categoria: categoria || null,
+      whatsapp: whatsapp || null,
+      color_primario: colorPrimario || '#7C3AED',
+      color_secundario: colorSecundario || '#EC4899',
+      plan: 'trial',
+      trial_vence_en: trialVence.toISOString().split('T')[0],
+      activo: true,
+      owner_user_id: userId
+    }]).select().single();
+    if (bizError) throw bizError;
+
+    // 5. Crear su fila de business_features (todo apagado salvo promociones)
+    await sbClient.from('business_features').insert([{
+      business_id: negocio.id,
+      ruleta_premios: false,
+      clientes_vip: false,
+      promociones: true,
+      dominio_personalizado: false
+    }]);
+
+    BUSINESS_ID = negocio.id;
+    window.ANNLY_BUSINESS = negocio;
+    window.ANNLY_AUTHENTICATED = true;
+    return negocio;
   }
 };
 
