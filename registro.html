@@ -77,27 +77,25 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 
 .mobile-head{
   display:none;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:14px;
+  width:100%;
   position:relative;
 }
 .mobile-tagline{
-  flex:1;
-  max-width:220px;
-  margin-top:3px;
+  width:100%;
+  margin:0;
   font-family:'Playfair Display',serif;
   font-style:italic;
-  font-size:13px;
-  line-height:1.2;
+  font-size:30px;
+  font-weight:700;
+  line-height:1.08;
   color:#5E586D;
-  text-align:right;
-  transform:rotate(-1deg);
+  text-align:center;
 }
 .mobile-tagline i{
   color:var(--pink);
-  font-size:17px;
-  margin-left:3px;
+  font-size:24px;
+  margin-left:4px;
+  font-style:normal;
 }
 
 /* ---------- LEFT: BRANDING PANEL ---------- */
@@ -302,17 +300,43 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   .brand-panel{display:none;}
   .form-panel{padding:1.2rem 1rem;min-height:100vh;}
   .form-inner{max-width:520px;padding:.6rem .8rem 1.5rem;}
-  .mobile-head{display:flex;margin-bottom:1.8rem;min-height:58px;}
+
+  /* Header móvil: logo a la izquierda + mensaje realmente centrado */
+  .mobile-head{
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    margin-bottom:1.65rem;
+  }
+
   .mobile-logo{
     display:block;
+    align-self:flex-start;
     font-family:'Playfair Display',serif;
     font-size:34px;
     font-weight:700;
     letter-spacing:-1px;
-    margin:0;
+    margin:0 0 18px;
     color:var(--ink);
   }
+
   .mobile-logo span{color:var(--pink);}
+
+  .mobile-tagline{
+    display:block;
+    width:100%;
+    padding:0 8px;
+    font-size:30px;
+    line-height:1.08;
+    font-weight:700;
+    text-align:center;
+  }
+
+  .mobile-tagline i{
+    font-size:23px;
+    color:var(--pink);
+  }
+
   .steps{margin-bottom:2.05rem;}
   .step-item{min-width:62px;}
   .step-item span{font-size:10.5px;}
@@ -320,14 +344,28 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   .step-title{font-size:34px;}
 }
 @media (max-width:480px){
-  .mobile-head{min-height:76px;margin-bottom:1.45rem;}
-  .mobile-logo{font-size:31px;}
-  .mobile-tagline{
-    left:57%;
-    width:190px;
-    max-width:190px;
-    font-size:13.5px;
+  .mobile-head{
+    margin-bottom:1.45rem;
   }
+
+  .mobile-logo{
+    font-size:31px;
+    margin-bottom:17px;
+  }
+
+  /* En móvil pequeño el slogan ocupa todo el ancho disponible y queda centrado */
+  .mobile-tagline{
+    width:100%;
+    padding:0 2px;
+    font-size:27px;
+    line-height:1.08;
+    text-align:center;
+  }
+
+  .mobile-tagline i{
+    font-size:21px;
+  }
+
   .step-item{min-width:57px;}
   .step-item span{font-size:10px;}
   .step-line{width:24px;}
