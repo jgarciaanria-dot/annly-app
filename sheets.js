@@ -3,7 +3,7 @@
 // Cubre index.html (sitio público) y admin.html (panel)
 // =========================================================
 
-const SUPABASE_URL = 'https://lkxslwghyfibfouarzfi.supabase.co';
+const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
