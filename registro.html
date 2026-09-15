@@ -16,6 +16,89 @@
 body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh;}
 .layout{display:grid;grid-template-columns:minmax(480px,1fr) minmax(480px,1fr);min-height:100vh;background:#fff;}
 
+
+/* ---------- ANNLY HEADER + STEP STORY ---------- */
+.desktop-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:22px;
+  position:relative;
+  z-index:2;
+}
+.desktop-tagline{
+  max-width:220px;
+  margin-top:6px;
+  font-family:'Playfair Display',serif;
+  font-style:italic;
+  font-size:14px;
+  line-height:1.25;
+  color:#5E586D;
+  transform:rotate(-2deg);
+}
+.desktop-tagline b{
+  color:var(--pink);
+  font-size:22px;
+  display:inline-block;
+  margin-left:6px;
+  transform:rotate(15deg);
+}
+
+.steps-wrap{
+  display:flex;
+  justify-content:center;
+  width:100%;
+}
+.steps{
+  justify-content:center;
+  gap:10px;
+}
+.step-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:7px;
+  min-width:66px;
+}
+.step-item span{
+  font-size:11px;
+  font-weight:700;
+  color:#9791A4;
+  white-space:nowrap;
+  transition:color .25s;
+}
+.step-item:first-child span{
+  color:var(--violet);
+}
+.step-line{
+  margin-top:-18px;
+  width:34px;
+}
+
+.mobile-head{
+  display:none;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.mobile-tagline{
+  flex:1;
+  max-width:220px;
+  margin-top:3px;
+  font-family:'Playfair Display',serif;
+  font-style:italic;
+  font-size:13px;
+  line-height:1.2;
+  color:#5E586D;
+  text-align:right;
+  transform:rotate(-1deg);
+}
+.mobile-tagline i{
+  color:var(--pink);
+  font-size:17px;
+  margin-left:3px;
+}
+
 /* ---------- LEFT: BRANDING PANEL ---------- */
 .brand-panel{
   background:
@@ -209,6 +292,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   .form-panel{padding:2rem 2rem;}
   .brand-title{font-size:42px;}
   .form-inner{padding:1.5rem 1.4rem 2rem;}
+  .desktop-tagline{font-size:12px;max-width:180px;}
 }
 .mobile-logo{display:none;}
 
@@ -217,21 +301,29 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   .brand-panel{display:none;}
   .form-panel{padding:1.2rem 1rem;min-height:100vh;}
   .form-inner{max-width:520px;padding:.6rem .8rem 1.5rem;}
+  .mobile-head{display:flex;margin-bottom:1.8rem;}
   .mobile-logo{
     display:block;
     font-family:'Playfair Display',serif;
     font-size:34px;
     font-weight:700;
     letter-spacing:-1px;
-    margin:0 0 1.7rem;
+    margin:0;
     color:var(--ink);
   }
   .mobile-logo span{color:var(--pink);}
-  .steps{margin-bottom:2.2rem;}
+  .steps{margin-bottom:2.25rem;}
+  .step-item{min-width:62px;}
+  .step-item span{font-size:10.5px;}
+  .step-line{width:30px;}
   .step-title{font-size:34px;}
 }
 @media (max-width:480px){
-  .mobile-logo{font-size:32px;margin-bottom:1.35rem;}
+  .mobile-logo{font-size:31px;}
+  .mobile-tagline{font-size:11.5px;max-width:175px;}
+  .step-item{min-width:57px;}
+  .step-item span{font-size:10px;}
+  .step-line{width:24px;}
   .steps{margin-bottom:1.8rem;}
   .palette-grid,.social-row{grid-template-columns:1fr;}
   .finput{min-height:54px;}
@@ -244,7 +336,10 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   <div class="brand-panel">
     <div class="brand-blob blob-1"></div>
     <div class="brand-blob blob-2"></div>
-    <div class="logo">Annly<span>.</span></div>
+    <div class="desktop-head">
+      <div class="logo">Annly<span>.</span></div>
+      <div class="desktop-tagline">A tan solo 3 sencillos pasos de empezar a agendar <b>↘</b></div>
+    </div>
     <div class="brand-eyebrow">MÁS CITAS. MENOS ESTRÉS.</div>
     <h1 class="brand-title">Empieza hoy a hacer crecer <em>tu negocio</em>.</h1>
     <p class="brand-sub">Crea tu cuenta gratis y lleva el control de tus citas, clientes y servicios en un solo lugar.</p>
@@ -268,13 +363,27 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 
   <div class="form-panel">
     <div class="form-inner">
-      <div class="mobile-logo">Annly<span>.</span></div>
-      <div class="steps">
-        <div class="step-dot active" id="dot-1">1</div>
-        <div class="step-line"></div>
-        <div class="step-dot" id="dot-2">2</div>
-        <div class="step-line"></div>
-        <div class="step-dot" id="dot-3">3</div>
+      <div class="mobile-head">
+        <div class="mobile-logo">Annly<span>.</span></div>
+        <div class="mobile-tagline">A tan solo 3 sencillos pasos<br>de empezar a agendar <i>✦</i></div>
+      </div>
+      <div class="steps-wrap">
+        <div class="steps">
+          <div class="step-item">
+            <div class="step-dot active" id="dot-1">1</div>
+            <span>Tu negocio</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-item">
+            <div class="step-dot" id="dot-2">2</div>
+            <span>Tu cuenta</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-item">
+            <div class="step-dot" id="dot-3">3</div>
+            <span>¡Listo!</span>
+          </div>
+        </div>
       </div>
 
       <!-- PASO 1: datos del negocio -->
@@ -396,6 +505,12 @@ function irPaso(n){
     document.getElementById('step-'+i).classList.toggle('active', i===n);
     document.getElementById('dot-'+i).classList.toggle('active', i===n);
     document.getElementById('dot-'+i).classList.toggle('done', i<n);
+
+    const stepItem = document.querySelector('#dot-'+i).closest('.step-item');
+    if(stepItem){
+      const label = stepItem.querySelector('span');
+      label.style.color = i <= n ? 'var(--violet)' : '#9791A4';
+    }
   }
 }
 
