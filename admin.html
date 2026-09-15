@@ -138,12 +138,25 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 </head>
 <body>
 
+<div id="login-screen" style="position:fixed;inset:0;background:#2E2B2B;z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem;">
+  <div style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:360px;">
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:1.25rem;text-align:center;">Iniciar sesión</h2>
+    <div class="fg"><label class="flbl">Correo</label><input class="fi" id="login-email" type="email" placeholder="tu@correo.com"/></div>
+    <div class="fg"><label class="flbl">Contraseña</label><input class="fi" id="login-pass" type="password" placeholder="••••••••"/></div>
+    <p id="login-error" style="color:#C2695A;font-size:12px;min-height:16px;margin-bottom:.5rem;"></p>
+    <button class="btn-save" onclick="hacerLogin()"><i class="ti ti-lock-open" style="font-size:17px;"></i> Entrar</button>
+  </div>
+</div>
+
 <div class="adm-hdr">
   <div>
     <div class="adm-hdr-title" id="adm-hdr-title">Panel de administración</div>
     <div class="adm-hdr-sub">Panel de administración</div>
   </div>
-  <a href="index.html" class="adm-hdr-back"><i class="ti ti-arrow-left"></i> Ver sitio</a>
+  <div style="display:flex;gap:8px;">
+    <a href="index.html" class="adm-hdr-back"><i class="ti ti-arrow-left"></i> Ver sitio</a>
+    <button onclick="window.AnnlyAuth.logout()" class="adm-hdr-back" style="background:none;cursor:pointer;font-family:inherit;"><i class="ti ti-logout"></i> Salir</button>
+  </div>
 </div>
 
 <div class="adm-body">
@@ -372,6 +385,44 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 <script src="config.js"></script>
 <script src="sheets.js"></script>
 <script>
+// ===== LOGIN (Fase 1: autenticación real) =====
+async function hacerLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Completa correo y contraseña.'; return; }
+  try {
+    await window.AnnlyAuth.login(email, pass);
+    if(!window.ANNLY_BUSINESS){
+      errEl.textContent = 'Este correo no tiene ningún negocio vinculado todavía.';
+      await window.AnnlyAuth.logout();
+      return;
+    }
+    document.getElementById('login-screen').style.display = 'none';
+    arrancarPanelAdmin();
+  } catch(e){
+    errEl.textContent = 'Correo o contraseña incorrectos.';
+  }
+}
+
+async function arrancarPanelAdmin(){
+  const b = window.ANNLY_BUSINESS;
+  const titleEl = document.getElementById('adm-hdr-title');
+  if (titleEl && b.nombre) titleEl.textContent = b.nombre;
+  document.title = 'Admin — ' + (b.nombre || 'Annly');
+  loadServices().then(() => { renderAdmin(); });
+  loadBloqueos();
+}
+
+(async function verificarSesionInicial(){
+  await window.AnnlyReady;
+  if(window.ANNLY_BUSINESS){
+    document.getElementById('login-screen').style.display = 'none';
+    arrancarPanelAdmin();
+  }
+})();
+
 const CATS=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
 let SERVICES=[];
 let editId=null;
@@ -1252,19 +1303,7 @@ async function guardarReservaVIP(){
   alert('Cita guardada para ' + clientaSeleccionadaParaReserva.nombre + '.');
 }
 
-// ===== Branding dinámico + arranque único (multi-tenant) =====
-window.AnnlyReady.then(() => {
-  const b = window.ANNLY_BUSINESS;
-  if (b) {
-    const titleEl = document.getElementById('adm-hdr-title');
-    if (titleEl && b.nombre) titleEl.textContent = b.nombre;
-    document.title = 'Admin — ' + (b.nombre || 'Annly');
-  }
-  loadServices().then(() => {
-    renderAdmin();
-  });
-  loadBloqueos();
-});
+// El arranque ahora ocurre en verificarSesionInicial() / hacerLogin(), al inicio del archivo
 </script>
 </body>
 </html>
