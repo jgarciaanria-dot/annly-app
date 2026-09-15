@@ -394,7 +394,7 @@ async function hacerLogin(){
   if(!email || !pass){ errEl.textContent = 'Completa correo y contraseña.'; return; }
   try {
     await window.AnnlyAuth.login(email, pass);
-    if(!window.ANNLY_BUSINESS){
+    if(!window.ANNLY_AUTHENTICATED || !window.ANNLY_BUSINESS){
       errEl.textContent = 'Este correo no tiene ningún negocio vinculado todavía.';
       await window.AnnlyAuth.logout();
       return;
@@ -417,7 +417,7 @@ async function arrancarPanelAdmin(){
 
 (async function verificarSesionInicial(){
   await window.AnnlyReady;
-  if(window.ANNLY_BUSINESS){
+  if(window.ANNLY_AUTHENTICATED && window.ANNLY_BUSINESS){
     document.getElementById('login-screen').style.display = 'none';
     arrancarPanelAdmin();
   }
