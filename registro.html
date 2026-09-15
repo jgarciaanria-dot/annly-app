@@ -210,14 +210,28 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   .brand-title{font-size:42px;}
   .form-inner{padding:1.5rem 1.4rem 2rem;}
 }
+.mobile-logo{display:none;}
+
 @media (max-width:860px){
   .layout{grid-template-columns:1fr;}
   .brand-panel{display:none;}
-  .form-panel{padding:1.5rem 1rem;min-height:100vh;}
-  .form-inner{max-width:520px;padding:1rem .8rem 1.5rem;}
+  .form-panel{padding:1.2rem 1rem;min-height:100vh;}
+  .form-inner{max-width:520px;padding:.6rem .8rem 1.5rem;}
+  .mobile-logo{
+    display:block;
+    font-family:'Playfair Display',serif;
+    font-size:34px;
+    font-weight:700;
+    letter-spacing:-1px;
+    margin:0 0 1.7rem;
+    color:var(--ink);
+  }
+  .mobile-logo span{color:var(--pink);}
+  .steps{margin-bottom:2.2rem;}
   .step-title{font-size:34px;}
 }
 @media (max-width:480px){
+  .mobile-logo{font-size:32px;margin-bottom:1.35rem;}
   .steps{margin-bottom:1.8rem;}
   .palette-grid,.social-row{grid-template-columns:1fr;}
   .finput{min-height:54px;}
@@ -254,6 +268,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 
   <div class="form-panel">
     <div class="form-inner">
+      <div class="mobile-logo">Annly<span>.</span></div>
       <div class="steps">
         <div class="step-dot active" id="dot-1">1</div>
         <div class="step-line"></div>
