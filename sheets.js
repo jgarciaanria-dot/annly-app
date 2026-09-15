@@ -3,8 +3,8 @@
 // Cubre index.html (sitio público) y admin.html (panel)
 // =========================================================
 
-const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
+const SUPABASE_URL = 'PEGA_AQUI_TU_PROJECT_URL';
+const SUPABASE_KEY = 'PEGA_AQUI_TU_PUBLISHABLE_KEY';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -18,6 +18,8 @@ let BUSINESS_ID = null;
 window.ANNLY_BUSINESS = null;
 
 async function resolverNegocio() {
+  window.ANNLY_AUTHENTICATED = false;
+
   // Si hay sesión activa (admin logueado), su negocio se resuelve por dueño, no por URL
   const { data: { session } } = await sbClient.auth.getSession();
   if (session && session.user) {
@@ -25,8 +27,12 @@ async function resolverNegocio() {
     if (!error && data) {
       BUSINESS_ID = data.id;
       window.ANNLY_BUSINESS = data;
+      window.ANNLY_AUTHENTICATED = true;
       return;
     }
+    // Hay sesión, pero ningún negocio vinculado a este usuario todavía
+    window.ANNLY_BUSINESS = null;
+    return;
   }
 
   // Sin sesión (sitio público, nadie inicia sesión para reservar) -> resolver por slug
@@ -43,6 +49,7 @@ async function resolverNegocio() {
   }
   BUSINESS_ID = data.id;
   window.ANNLY_BUSINESS = data;
+  // ANNLY_AUTHENTICATED queda en false: esto es el sitio público, no una sesión de admin
 }
 
 // Autenticación (usada por admin.html)
