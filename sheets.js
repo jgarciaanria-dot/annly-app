@@ -4,7 +4,7 @@
 // =========================================================
 
 const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_...';
+const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
