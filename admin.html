@@ -818,7 +818,7 @@ function renderAdmin(){
         ? `<img src="${s.imagenUrl}" style="width:100%;height:100%;object-fit:cover;"/>`
         : `<i class="ti ${iconoPorCategoria(cat)}" style="font-size:16px;color:${icoFg};"></i>`;
       html+=`<div class="svc-row">
-        <div style="width:36px;height:36px;border-radius:10px;background:${s.imagenUrl?'transparent':icoBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+        <div style="width:44px;height:44px;border-radius:10px;background:${s.imagenUrl?'transparent':icoBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
           ${icoHtml}
         </div>
         <label class="svc-toggle">
@@ -1274,9 +1274,12 @@ async function loadCitas(){
           <div style="flex:1;min-width:0;">
             <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}</p>
             <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
-            <span style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
-              <span style="width:5px;height:5px;border-radius:50%;background:${cat.fg};"></span>${c.categoria||'Servicio'}
-            </span>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
+                <span style="width:5px;height:5px;border-radius:50%;background:${cat.fg};"></span>${c.categoria||'Servicio'}
+              </span>
+              <span style="font-size:12px;font-weight:700;color:var(--ink);">${c.precioEsConsultar?'A consultar':(c.precioFinal!=null?'$'+parseFloat(c.precioFinal).toFixed(2):(c.precioTotal!=null?'$'+parseFloat(c.precioTotal).toFixed(2):''))}</span>
+            </div>
           </div>
         </div>
         <div style="display:flex;gap:7px;margin-top:11px;">
