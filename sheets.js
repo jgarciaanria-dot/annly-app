@@ -277,6 +277,22 @@ const Sheets = {
     if (error) { console.error('Error guardando la cita:', error); throw error; }
   },
 
+  async reprogramarCita(id, fechaISO, hora) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('appointments')
+      .update({ fecha: fechaISO, hora: hora })
+      .eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) { console.error('Error reprogramando la cita:', error); throw error; }
+  },
+
+  async cancelarCita(id) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('appointments')
+      .update({ estado: 'cancelada' })
+      .eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) { console.error('Error cancelando la cita:', error); throw error; }
+  },
+
   // ---------- PROMO (banner emergente) ----------
   async getPromo() {
     await window.AnnlyReady;
