@@ -384,15 +384,15 @@ body.modo-oscuro .card-icon{
     <p id="footer-tagline" style="font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--footer-text-faint);text-transform:uppercase;margin-top:2px;"></p>
   </div>
   <div style="padding:.875rem 1.25rem 0;text-align:center;">
-    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:.875rem;text-align:center;">
-      <div>
-        <p style="font-size:10px;color:var(--footer-label);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Horario</p>
-        <p id="footer-horario" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
-      </div>
-      <div style="height:0.5px;width:60px;margin:0 auto;background:rgba(var(--gold-rgb),.25);"></div>
-      <div>
+    <div style="display:flex;justify-content:center;align-items:flex-start;gap:16px;margin-bottom:.875rem;">
+      <div style="text-align:center;flex:1;">
         <p style="font-size:10px;color:var(--footer-label);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Ubicación</p>
         <p id="footer-direccion" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
+      </div>
+      <div style="width:0.5px;background:rgba(var(--gold-rgb),.2);align-self:stretch;"></div>
+      <div style="text-align:center;flex:1;">
+        <p style="font-size:10px;color:var(--footer-label);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Horario</p>
+        <p id="footer-horario" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
       </div>
     </div>
     <div style="height:0.5px;background:rgba(var(--gold-rgb),.15);margin-bottom:.75rem;"></div>
@@ -810,7 +810,7 @@ window.AnnlyReady.then(() => {
     const tagEl = document.getElementById('hdr-tagline');
     if (tagEl) tagEl.textContent = b.tagline || '';
     const footerTagEl = document.getElementById('footer-tagline');
-    if (footerTagEl) footerTagEl.textContent = b.tagline || '';
+    if (footerTagEl) footerTagEl.textContent = b.footer_mensaje || '';
 
     // WhatsApp flotante
     const waLink = document.getElementById('wa-float-link');
@@ -1228,7 +1228,7 @@ function goForm(){
       <div class="fg"><label class="flbl">WhatsApp</label><input class="fi" id="fp" placeholder="+507..."/></div>
     </div>
     <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe" placeholder="tu@correo.com"/></div>
-    <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fnote" placeholder="Tipo de cabello, tratamientos previos, color deseado..."/></div>
+    <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fnote" placeholder="Alguna preferencia o detalle que debamos saber..."/></div>
     <div class="fg">
       <label class="flbl">¿Tienes un cupón de descuento?</label>
       <div style="display:flex;gap:8px;">
