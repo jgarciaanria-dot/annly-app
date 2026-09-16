@@ -814,9 +814,12 @@ function renderAdmin(){
       const esRosa=idxColor%2===1; idxColor++;
       const icoBg=esRosa?'var(--accent2-soft)':'var(--accent-soft)';
       const icoFg=esRosa?'var(--accent2)':'var(--charcoal)';
+      const icoHtml = s.imagenUrl
+        ? `<img src="${s.imagenUrl}" style="width:100%;height:100%;object-fit:cover;"/>`
+        : `<i class="ti ${iconoPorCategoria(cat)}" style="font-size:16px;color:${icoFg};"></i>`;
       html+=`<div class="svc-row">
-        <div style="width:36px;height:36px;border-radius:10px;background:${icoBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <i class="ti ${iconoPorCategoria(cat)}" style="font-size:16px;color:${icoFg};"></i>
+        <div style="width:36px;height:36px;border-radius:10px;background:${s.imagenUrl?'transparent':icoBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+          ${icoHtml}
         </div>
         <label class="svc-toggle">
           <input type="checkbox" ${s.active?'checked':''} onchange="toggleActive('${s.id}',this.checked)"/>
@@ -868,6 +871,20 @@ function openModal(id,catDefault='Básicos'){
   document.getElementById('modal-title').textContent=s?'Editar servicio':'Nuevo servicio';
   document.getElementById('modal-body').innerHTML=`
     <div class="fg"><label class="flbl">Nombre del servicio</label><input class="fi" id="m-name" value="${s?s.name:''}"/></div>
+    <div class="fg">
+      <label class="flbl">Foto del servicio (opcional)</label>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="m-img-preview" style="width:60px;height:60px;border-radius:10px;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+          ${s && s.imagenUrl ? `<img src="${s.imagenUrl}" style="width:100%;height:100%;object-fit:cover;"/>` : `<i class="ti ti-photo" style="font-size:20px;color:var(--ink-soft);"></i>`}
+        </div>
+        <div>
+          <input type="file" id="m-img-file" accept="image/*" style="display:none;" onchange="subirImagenServicioModal()"/>
+          <button type="button" class="btn-add" onclick="document.getElementById('m-img-file').click()"><i class="ti ti-upload"></i> Subir foto</button>
+          <p id="m-img-msg" style="font-size:11px;color:var(--ink-soft);margin-top:6px;"></p>
+        </div>
+      </div>
+      <input type="hidden" id="m-img-url" value="${s && s.imagenUrl ? s.imagenUrl : ''}"/>
+    </div>
     <div class="fg"><label class="flbl">Categoría (escribe la tuya, o elige una ya usada)</label>
       <input class="fi" id="m-cat" value="${valorInicial}" placeholder="Ej: Básicos, Combos, Premium..." style="margin-bottom:8px;"/>
       ${cats?`<div class="cats" id="cats-wrap">${cats}</div>`:''}
@@ -937,6 +954,23 @@ function getCatSel(){
   return (campo && campo.value.trim()) ? campo.value.trim() : 'Básicos';
 }
 
+async function subirImagenServicioModal(){
+  const input = document.getElementById('m-img-file');
+  const file = input.files[0];
+  if(!file) return;
+  const msgEl = document.getElementById('m-img-msg');
+  msgEl.textContent = 'Subiendo...';
+  try {
+    const url = await Sheets.subirImagenServicio(file);
+    document.getElementById('m-img-url').value = url;
+    document.getElementById('m-img-preview').innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;"/>`;
+    msgEl.textContent = 'Foto actualizada.';
+  } catch(e){
+    console.error(e);
+    msgEl.textContent = 'No se pudo subir la foto.';
+  }
+}
+
 function guardar(){
   const nombre=document.getElementById('m-name').value.trim();
   if(!nombre){alert('El nombre es obligatorio.');return;}
@@ -951,13 +985,14 @@ function guardar(){
   const abonoTipo=requiereAbono?document.getElementById('m-abono-tipo').value:'noreembolsable';
   const cat=getCatSel();
   const includes=Array.from(document.querySelectorAll('.incl-val')).map(el=>el.value.trim()).filter(Boolean);
+  const imagenUrl=document.getElementById('m-img-url').value.trim()||null;
 
   if(editId){
     const idx=SERVICES.findIndex(s=>s.id===editId);
-    if(idx>-1) SERVICES[idx]={...SERVICES[idx],name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,esEval,requiereAbono,abonoMonto,abonoTipo};
+    if(idx>-1) SERVICES[idx]={...SERVICES[idx],name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,esEval,requiereAbono,abonoMonto,abonoTipo,imagenUrl};
   } else {
     const newId=nombre.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').substring(0,16)+'_'+Date.now();
-    SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,requiereAbono,abonoMonto,abonoTipo,desc,includes});
+    SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,requiereAbono,abonoMonto,abonoTipo,desc,includes,imagenUrl});
   }
   saveServices(); closeModal(); renderAdmin();
 }
