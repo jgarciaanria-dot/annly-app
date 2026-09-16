@@ -783,6 +783,7 @@ async function confirmar(dayStr){
     metodoPago:tieneAbono?pagoTipo:'', citaId:citaId,
     cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal};
   try{await Sheets.guardarCita(cita);}catch(e){console.error(e);}
+  try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
   if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
   await new Promise(r=>setTimeout(r,900));
   const precioStr=esConsultar?'Por confirmar':(curSvc.precioTexto&&curSvc.precioTexto.toLowerCase().includes('desde')?'Desde $'+precio.toFixed(2):'$'+precio.toFixed(2));
