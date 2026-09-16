@@ -280,7 +280,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       <button class="login-btn" onclick="hacerLogin()">Entrar <i class="ti ti-arrow-right"></i></button>
       <div class="login-divider">o continúa con</div>
       <div class="login-oauth">
-        <button type="button" class="login-oauth-btn" onclick="oauthProximamente('Google')"><img src="https://www.google.com/favicon.ico" alt=""/> Google</button>
+        <button type="button" class="login-oauth-btn" onclick="loginConGoogle()"><img src="https://www.google.com/favicon.ico" alt=""/> Google</button>
         <button type="button" class="login-oauth-btn" onclick="oauthProximamente('Microsoft')"><i class="ti ti-brand-windows" style="color:#00A4EF;font-size:16px;"></i> Microsoft</button>
       </div>
       <p class="login-signup">¿Aún no tienes una cuenta? <a href="registro.html">Regístrate aquí <i class="ti ti-arrow-right" style="font-size:11px;"></i></a></p>
@@ -598,6 +598,19 @@ function oauthProximamente(proveedor){
   errEl.textContent = 'Inicio de sesión con ' + proveedor + ' — muy pronto disponible.';
 }
 
+async function loginConGoogle(){
+  const errEl = document.getElementById('login-error');
+  errEl.style.color = '#C2695A';
+  errEl.textContent = '';
+  try {
+    await window.AnnlyAuth.loginWithOAuth('google');
+    // A partir de aquí la página se va a Google; no hay más que hacer en este clic.
+  } catch(e){
+    console.error(e);
+    errEl.textContent = 'No se pudo iniciar sesión con Google. Intenta de nuevo.';
+  }
+}
+
 function toggleLoginPass(){
   const input = document.getElementById('login-pass');
   const icon = document.getElementById('login-pass-toggle');
@@ -665,6 +678,12 @@ async function arrancarPanelAdmin(){
   if(window.ANNLY_AUTHENTICATED && window.ANNLY_BUSINESS){
     document.getElementById('login-screen').style.display = 'none';
     arrancarPanelAdmin();
+  } else if(window.ANNLY_AUTHENTICATED && !window.ANNLY_BUSINESS){
+    // Volvió con sesión (ej. tras iniciar sesión con Google) pero ese correo
+    // no tiene ningún negocio de Annly vinculado todavía.
+    document.getElementById('login-error').style.color = '#C2695A';
+    document.getElementById('login-error').textContent = 'Esta cuenta no tiene ningún negocio vinculado todavía.';
+    await window.AnnlyAuth.logoutSilent();
   }
 })();
 
