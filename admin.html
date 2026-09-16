@@ -167,6 +167,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')">Promo</button>
     <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')">Ruleta</button>
     <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')">Clientas</button>
+    <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')">Perfil</button>
   </div>
 
   <div id="panel-servicios">
@@ -309,6 +310,63 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
         <div id="lista-clientas"></div>
       </div>
     </div>
+  </div>
+
+  <div id="panel-perfil" style="display:none;">
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Logo</span></div>
+      <div style="padding:1rem;display:flex;align-items:center;gap:16px;">
+        <div id="pf-logo-preview" style="width:70px;height:70px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:24px;color:var(--gold-dark);"></div>
+        <div>
+          <input type="file" id="pf-logo-file" accept="image/*" style="display:none;" onchange="subirLogoPerfil()"/>
+          <button class="btn-add" onclick="document.getElementById('pf-logo-file').click()"><i class="ti ti-upload"></i> Subir logo</button>
+          <p id="pf-logo-msg" style="font-size:11px;color:var(--ink-soft);margin-top:6px;"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Información del negocio</span></div>
+      <div style="padding:1rem;">
+        <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="pf-nombre"/></div>
+        <div class="fg"><label class="flbl">Frase / tagline</label><input class="fi" id="pf-tagline" placeholder="Ej: Nutrición, brillo y vida para tu cabello."/></div>
+        <div class="frow">
+          <div class="fg"><label class="flbl">Categoría</label>
+            <select class="fi" id="pf-categoria">
+              <option value="">Sin definir</option>
+              <option value="Salón de belleza">Salón de belleza</option>
+              <option value="Barbería">Barbería</option>
+              <option value="Spa">Spa</option>
+              <option value="Estética">Estética</option>
+              <option value="Tatuajes">Tatuajes</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="fg"><label class="flbl">WhatsApp</label><input class="fi" id="pf-whatsapp" placeholder="50760001111"/></div>
+        </div>
+        <div class="fg"><label class="flbl">Instagram (sin @)</label><input class="fi" id="pf-instagram" placeholder="minegocio"/></div>
+        <div class="fg"><label class="flbl">Dirección</label><input class="fi" id="pf-direccion" placeholder="Obarrio, Salón Plaza, Suite 113"/></div>
+        <div class="fg"><label class="flbl">Horario</label><input class="fi" id="pf-horario" placeholder="Lun-Vie 9AM-6PM | Sáb 9AM-2PM"/></div>
+      </div>
+    </div>
+
+    <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Colores y estilo</span></div>
+      <div style="padding:1rem;">
+        <div class="cats" id="pf-paleta-grid" style="margin-bottom:1rem;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+          <span style="font-size:13px;font-weight:600;">Modo oscuro</span>
+          <label class="svc-toggle">
+            <input type="checkbox" id="pf-modo-oscuro"/>
+            <div class="svc-toggle-track"></div>
+            <div class="svc-toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <p id="pf-msg" style="font-size:12px;text-align:center;min-height:16px;"></p>
+    <button class="btn-save" onclick="guardarPerfil()" style="margin-bottom:2rem;"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios del perfil</button>
   </div>
 </div>
 
@@ -657,16 +715,19 @@ function switchTab(tab){
   document.getElementById('tab-promo').classList.toggle('active', tab==='promo');
   document.getElementById('tab-ruleta').classList.toggle('active', tab==='ruleta');
   document.getElementById('tab-clientas').classList.toggle('active', tab==='clientas');
+  document.getElementById('tab-perfil').classList.toggle('active', tab==='perfil');
   document.getElementById('panel-servicios').style.display = tab==='servicios'?'block':'none';
   document.getElementById('panel-citas').style.display = tab==='citas'?'block':'none';
   document.getElementById('panel-bloqueos').style.display = tab==='bloqueos'?'block':'none';
   document.getElementById('panel-promo').style.display = tab==='promo'?'block':'none';
   document.getElementById('panel-ruleta').style.display = tab==='ruleta'?'block':'none';
   document.getElementById('panel-clientas').style.display = tab==='clientas'?'block':'none';
+  document.getElementById('panel-perfil').style.display = tab==='perfil'?'block':'none';
   if(tab==='citas') loadCitas();
   if(tab==='promo') loadPromo();
   if(tab==='ruleta') loadRuleta();
   if(tab==='clientas') loadClientas();
+  if(tab==='perfil') loadPerfil();
 }
 
 // ===== PROMO =====
@@ -1301,6 +1362,97 @@ async function guardarReservaVIP(){
 
   closeModalReservar();
   alert('Cita guardada para ' + clientaSeleccionadaParaReserva.nombre + '.');
+}
+
+// ===== PERFIL DEL NEGOCIO =====
+const PALETAS_PERFIL = [
+  { nombre:'Violeta', primario:'#7C3AED', secundario:'#EC4899' },
+  { nombre:'Ámbar Urbano', primario:'#F77F00', secundario:'#1D1D1D' },
+  { nombre:'Esmeralda', primario:'#0F766E', secundario:'#84CC16' },
+  { nombre:'Coral', primario:'#E85D4F', secundario:'#F4A261' },
+  { nombre:'Marino Elegante', primario:'#1E3A5F', secundario:'#C9A96E' },
+  { nombre:'Carbón & Oro', primario:'#2D2D2D', secundario:'#C9A96E' }
+];
+let pfPaletaSel = null;
+
+function renderPaletaPerfil(){
+  const grid = document.getElementById('pf-paleta-grid');
+  grid.innerHTML = PALETAS_PERFIL.map((p,i) => `
+    <div class="cat-pill${pfPaletaSel===i?' sel':''}" style="display:flex;align-items:center;gap:7px;padding:8px 12px;" onclick="pfPaletaSel=${i};renderPaletaPerfil();">
+      <span style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,${p.primario},${p.secundario});flex-shrink:0;"></span>${p.nombre}
+    </div>`).join('');
+}
+
+function loadPerfil(){
+  const b = window.ANNLY_BUSINESS || {};
+  document.getElementById('pf-nombre').value = b.nombre || '';
+  document.getElementById('pf-tagline').value = b.tagline || '';
+  document.getElementById('pf-categoria').value = b.categoria || '';
+  document.getElementById('pf-whatsapp').value = b.whatsapp || '';
+  document.getElementById('pf-instagram').value = b.instagram || '';
+  document.getElementById('pf-direccion').value = b.direccion || '';
+  document.getElementById('pf-horario').value = b.horario_texto || '';
+  document.getElementById('pf-modo-oscuro').checked = b.modo_fondo === 'oscuro';
+
+  pfPaletaSel = PALETAS_PERFIL.findIndex(p => p.primario.toLowerCase() === (b.color_primario||'').toLowerCase());
+  renderPaletaPerfil();
+
+  const preview = document.getElementById('pf-logo-preview');
+  if(b.logo_url){
+    preview.innerHTML = `<img src="${b.logo_url}" style="width:100%;height:100%;object-fit:cover;"/>`;
+  } else {
+    preview.innerHTML = (b.nombre||'A').trim().charAt(0).toUpperCase();
+  }
+}
+
+async function subirLogoPerfil(){
+  const input = document.getElementById('pf-logo-file');
+  const file = input.files[0];
+  if(!file) return;
+  const msgEl = document.getElementById('pf-logo-msg');
+  msgEl.textContent = 'Subiendo...';
+  try {
+    const url = await Sheets.subirLogo(file);
+    await Sheets.actualizarPerfil({ logo_url: url });
+    document.getElementById('pf-logo-preview').innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;"/>`;
+    msgEl.textContent = 'Logo actualizado.';
+  } catch(e){
+    console.error(e);
+    msgEl.textContent = 'No se pudo subir el logo.';
+  }
+}
+
+async function guardarPerfil(){
+  const msgEl = document.getElementById('pf-msg');
+  msgEl.style.color = 'var(--ink-soft)';
+  msgEl.textContent = 'Guardando...';
+
+  const datos = {
+    nombre: document.getElementById('pf-nombre').value.trim(),
+    tagline: document.getElementById('pf-tagline').value.trim(),
+    categoria: document.getElementById('pf-categoria').value,
+    whatsapp: document.getElementById('pf-whatsapp').value.trim(),
+    instagram: document.getElementById('pf-instagram').value.trim(),
+    direccion: document.getElementById('pf-direccion').value.trim(),
+    horario_texto: document.getElementById('pf-horario').value.trim(),
+    modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro'
+  };
+  if(pfPaletaSel !== null && pfPaletaSel >= 0){
+    datos.color_primario = PALETAS_PERFIL[pfPaletaSel].primario;
+    datos.color_secundario = PALETAS_PERFIL[pfPaletaSel].secundario;
+  }
+
+  try {
+    await Sheets.actualizarPerfil(datos);
+    const titleEl = document.getElementById('adm-hdr-title');
+    if(titleEl && datos.nombre) titleEl.textContent = datos.nombre;
+    msgEl.style.color = '#4A9D6E';
+    msgEl.textContent = '¡Perfil actualizado!';
+  } catch(e){
+    console.error(e);
+    msgEl.style.color = '#C2695A';
+    msgEl.textContent = 'No se pudo guardar. Intenta de nuevo.';
+  }
 }
 
 // El arranque ahora ocurre en verificarSesionInicial() / hacerLogin(), al inicio del archivo
