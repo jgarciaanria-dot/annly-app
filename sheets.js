@@ -359,5 +359,23 @@ const Sheets = {
     await sbClient.from('clients').insert(
       clientas.map(c => ({ business_id: BUSINESS_ID, nombre: c.nombre, telefono: c.telefono, email: c.correo, notas: c.notas }))
     );
+  },
+
+  // ---------- PERFIL DEL NEGOCIO ----------
+  async actualizarPerfil(datos) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('businesses').update(datos).eq('id', BUSINESS_ID);
+    if (error) throw error;
+    Object.assign(window.ANNLY_BUSINESS, datos);
+  },
+
+  async subirLogo(file) {
+    await window.AnnlyReady;
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+    const path = `${BUSINESS_ID}-${Date.now()}.${ext}`;
+    const { error: upErr } = await sbClient.storage.from('logos').upload(path, file, { upsert: true });
+    if (upErr) throw upErr;
+    const { data } = sbClient.storage.from('logos').getPublicUrl(path);
+    return data.publicUrl;
   }
 };
