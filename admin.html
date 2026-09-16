@@ -125,6 +125,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .adm-hdr-sub{font-size:10px;color:var(--charcoal);margin-top:3px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;}
 .adm-hdr-back{color:var(--ink-soft);font-size:12.5px;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;padding:7px 13px;border:1px solid var(--line);border-radius:999px;}
 .adm-hdr-back:hover{color:var(--charcoal);border-color:var(--charcoal);}
+@media(max-width:600px){
+  .adm-hdr-back{padding:8px;}
+  .adm-hdr-back span.hdr-btn-txt{display:none;}
+}
 
 .adm-body{padding:1.25rem 1rem 3rem;max-width:640px;margin:0 auto;}
 
@@ -295,8 +299,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <div class="adm-hdr-sub">Panel de administración</div>
   </div>
   <div style="display:flex;gap:8px;">
-    <a href="index.html" class="adm-hdr-back"><i class="ti ti-arrow-left"></i> Ver sitio</a>
-    <button onclick="window.AnnlyAuth.logout()" class="adm-hdr-back" style="background:none;cursor:pointer;font-family:inherit;"><i class="ti ti-logout"></i> Salir</button>
+    <a href="index.html" id="adm-hdr-ver-sitio" target="_blank" class="adm-hdr-back"><i class="ti ti-arrow-left"></i><span class="hdr-btn-txt">Ver sitio</span></a>
+    <button type="button" id="adm-hdr-copiar-link" class="adm-hdr-back" style="cursor:pointer;background:none;font-family:inherit;" onclick="copiarLinkNegocio()"><i class="ti ti-link"></i><span class="hdr-btn-txt">Copiar link</span></button>
+    <button onclick="window.AnnlyAuth.logout()" class="adm-hdr-back" style="background:none;cursor:pointer;font-family:inherit;"><i class="ti ti-logout"></i><span class="hdr-btn-txt">Salir</span></button>
   </div>
 </div>
 
@@ -660,8 +665,22 @@ async function arrancarPanelAdmin(){
   const titleEl = document.getElementById('adm-hdr-title');
   if (titleEl && b.nombre) titleEl.textContent = b.nombre;
   document.title = 'Admin — ' + (b.nombre || 'Annly');
+  if (b.slug) document.getElementById('adm-hdr-ver-sitio').href = '/' + b.slug;
   loadServices().then(() => { renderAdmin(); });
   loadBloqueos();
+}
+
+function copiarLinkNegocio(){
+  const b = window.ANNLY_BUSINESS;
+  if (!b || !b.slug) return;
+  const url = window.location.origin + '/' + b.slug;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('adm-hdr-copiar-link');
+    const txt = btn.querySelector('.hdr-btn-txt');
+    const original = txt ? txt.textContent : '';
+    if (txt) txt.textContent = '¡Copiado!';
+    setTimeout(() => { if (txt) txt.textContent = original; }, 1800);
+  });
 }
 
 (async function verificarSesionInicial(){
