@@ -9,8 +9,9 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --charcoal:#2E2B2B;--charcoal2:#3A3A3A;
-  --gold:#C9A96E;--gold-light:#E8D9BC;--gold-dark:#8B6F3E;
+  --charcoal:#7C3AED;--charcoal2:#5B21B6;
+  --gold:#7C3AED;--gold-light:#FFFFFF;--gold-dark:#5B21B6;
+  --accent-soft:#F3EBFC;--accent2:#EC4899;--accent2-soft:#FCEAF2;
   --bg:#F7F6F3;--paper:#FFFFFF;
   --line:#EAE5DB;--line-soft:#F1EEE7;
   --ink:#242220;--ink-soft:#8A8378;
@@ -99,7 +100,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 
 .login-divider{display:flex;align-items:center;gap:10px;margin:1.1rem 0;font-size:11px;color:var(--ink-soft);}
 .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--line);}
-.login-oauth{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.login-oauth{display:grid;grid-template-columns:1fr;gap:9px;}
 .login-oauth-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s;}
 .login-oauth-btn:hover{border-color:#D8CCEF;background:#FBF8FE;}
 .login-oauth-btn img{width:16px;height:16px;}
@@ -113,16 +114,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 
 /* ---------- HEADER ---------- */
 .adm-hdr{
-  background:var(--charcoal);
-  padding:1.5rem 1.5rem 1.75rem;
+  background:var(--paper);
+  border-bottom:1px solid var(--line);
+  padding:1.15rem 1.25rem;
   display:flex;align-items:center;justify-content:space-between;
   position:relative;
 }
-.adm-hdr::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(to right,transparent,var(--gold) 20%,var(--gold-light) 50%,var(--gold) 80%,transparent);}
-.adm-hdr-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#fff;letter-spacing:.01em;}
-.adm-hdr-sub{font-size:10.5px;color:var(--gold-light);margin-top:5px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;}
-.adm-hdr-back{color:rgba(255,255,255,.6);font-size:12.5px;text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .15s;padding:8px 14px;border:1px solid rgba(255,255,255,.15);border-radius:999px;}
-.adm-hdr-back:hover{color:#fff;border-color:rgba(255,255,255,.35);}
+.adm-hdr::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(to right,transparent,var(--charcoal) 20%,var(--accent2) 50%,var(--charcoal) 80%,transparent);}
+.adm-hdr-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700;color:var(--ink);letter-spacing:.01em;}
+.adm-hdr-sub{font-size:10px;color:var(--charcoal);margin-top:3px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;}
+.adm-hdr-back{color:var(--ink-soft);font-size:12.5px;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;padding:7px 13px;border:1px solid var(--line);border-radius:999px;}
+.adm-hdr-back:hover{color:var(--charcoal);border-color:var(--charcoal);}
 
 .adm-body{padding:1.25rem 1rem 3rem;max-width:640px;margin:0 auto;}
 
@@ -134,7 +136,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 }
 .adm-tab{padding:9px 16px;background:transparent;border:none;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:all .18s;white-space:nowrap;letter-spacing:.01em;}
 .adm-tab:hover{color:var(--ink);}
-.adm-tab.active{color:#fff;background:var(--charcoal);box-shadow:0 2px 8px -2px rgba(46,43,43,.35);}
+.adm-tab.active{color:var(--charcoal2);background:var(--accent-soft);box-shadow:none;}
 
 /* ---------- SECTIONS ---------- */
 .adm-sec{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);margin-bottom:1rem;overflow:hidden;box-shadow:var(--shadow-sm);}
@@ -142,8 +144,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .adm-sec-title{font-size:13.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:9px;letter-spacing:.01em;}
 .adm-sec-title::before{content:'';width:3px;height:15px;background:linear-gradient(var(--gold),var(--gold-dark));border-radius:2px;}
 
-.btn-add{display:flex;align-items:center;gap:6px;padding:8px 15px;background:var(--charcoal);color:#fff;border:none;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
-.btn-add:hover{background:#1f1d1d;transform:translateY(-1px);}
+.btn-add{display:flex;align-items:center;gap:6px;padding:8px 15px;background:var(--paper);color:var(--charcoal2);border:1.5px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-add:hover{border-color:var(--charcoal);background:var(--accent-soft);transform:translateY(-1px);}
 .btn-add:active{transform:translateY(0);}
 
 /* ---------- SERVICE ROWS ---------- */
@@ -191,13 +193,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .btn-rem-incl:hover{border-color:#E8A99B;color:#C2695A;background:#FDF4F2;}
 .btn-add-incl{display:flex;align-items:center;gap:6px;padding:9px 10px;background:transparent;border:1.5px dashed var(--line);border-radius:var(--radius);font-size:12.5px;color:var(--gold-dark);cursor:pointer;width:100%;justify-content:center;transition:all .15s;}
 .btn-add-incl:hover{background:#FBF8F1;border-color:var(--gold);}
-.btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--charcoal),#1f1d1d);color:var(--gold-light);border:none;border-radius:var(--radius);font-family:'Cormorant Garamond',serif;font-size:16.5px;font-weight:700;cursor:pointer;margin-top:.6rem;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;}
-.btn-save:hover{transform:translateY(-1px);box-shadow:0 6px 16px -4px rgba(46,43,43,.4);}
+.btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--charcoal),var(--charcoal2));color:var(--gold-light);border:none;border-radius:var(--radius);font-family:'Cormorant Garamond',serif;font-size:16.5px;font-weight:700;cursor:pointer;margin-top:.6rem;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;}
+.btn-save:hover{transform:translateY(-1px);box-shadow:0 6px 16px -4px rgba(124,58,237,.35);}
 .btn-save:active{transform:translateY(0);}
 .btn-save:disabled{opacity:.4;cursor:default;transform:none;box-shadow:none;}
 .cats{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:.9rem;}
 .cat-pill{padding:6px 13px;border-radius:999px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--line);background:var(--paper);color:var(--ink-soft);transition:all .15s;}
-.cat-pill.sel{background:var(--charcoal);color:var(--gold-light);border-color:var(--charcoal);}
+.cat-pill.sel{background:var(--accent-soft);color:var(--charcoal2);border-color:var(--charcoal);}
 .eval-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:600;background:#F3EDFB;color:#7C4DA0;border:1px solid #E2D2F5;margin-left:6px;}
 
 .hora-bloq{border:1.5px solid var(--line);border-radius:var(--radius);padding:9px 3px;text-align:center;font-size:12px;cursor:pointer;transition:all .15s;font-weight:500;}
@@ -281,7 +283,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       <div class="login-divider">o continúa con</div>
       <div class="login-oauth">
         <button type="button" class="login-oauth-btn" onclick="loginConGoogle()"><img src="https://www.google.com/favicon.ico" alt=""/> Google</button>
-        <button type="button" class="login-oauth-btn" onclick="oauthProximamente('Microsoft')"><i class="ti ti-brand-windows" style="color:#00A4EF;font-size:16px;"></i> Microsoft</button>
       </div>
       <p class="login-signup">¿Aún no tienes una cuenta? <a href="registro.html">Regístrate aquí <i class="ti ti-arrow-right" style="font-size:11px;"></i></a></p>
     </div>
@@ -321,7 +322,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 
   <div id="panel-citas" style="display:none;">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;">
-      <div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,var(--gold-light),var(--gold));display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <div style="width:50px;height:50px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <i class="ti ti-calendar-event" style="font-size:24px;color:var(--charcoal);"></i>
       </div>
       <div>
@@ -592,11 +593,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 <script src="sheets.js"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
-function oauthProximamente(proveedor){
-  const errEl = document.getElementById('login-error');
-  errEl.style.color = 'var(--ink-soft)';
-  errEl.textContent = 'Inicio de sesión con ' + proveedor + ' — muy pronto disponible.';
-}
 
 async function loginConGoogle(){
   const errEl = document.getElementById('login-error');
@@ -734,6 +730,17 @@ function saveServices(){
   Sheets.guardarServicios(SERVICES).catch(e => console.error('Error guardando en Supabase:', e));
 }
 
+function iconoPorCategoria(cat){
+  const c=(cat||'').toLowerCase();
+  if(c.includes('trata')) return 'ti-droplet';
+  if(c.includes('color')) return 'ti-palette';
+  if(c.includes('alisa')) return 'ti-wind';
+  if(c.includes('extensi')) return 'ti-cut';
+  if(c.includes('uña')||c.includes('manicur')) return 'ti-hand-finger';
+  if(c.includes('masaj')||c.includes('spa')) return 'ti-spa';
+  return 'ti-sparkles';
+}
+
 function renderAdmin(){
   let html='';
   const categoriasReales=[...new Set(SERVICES.map(s=>s.cat).filter(Boolean))];
@@ -742,6 +749,7 @@ function renderAdmin(){
       '<div class="adm-sec" style="padding:2rem 1rem;text-align:center;color:var(--ink-soft);font-size:13px;">Todavía no tienes servicios. Agrega el primero con el botón de abajo.</div>';
     return;
   }
+  let idxColor=0;
   categoriasReales.forEach(cat=>{
     const svcs=SERVICES.filter(s=>s.cat===cat);
     if(!svcs.length) return;
@@ -752,7 +760,13 @@ function renderAdmin(){
       </div>`;
     svcs.forEach(s=>{
       const precio=s.precioTexto||(s.price>0?'$'+s.price.toFixed(2):'A consultar');
+      const esRosa=idxColor%2===1; idxColor++;
+      const icoBg=esRosa?'var(--accent2-soft)':'var(--accent-soft)';
+      const icoFg=esRosa?'var(--accent2)':'var(--charcoal)';
       html+=`<div class="svc-row">
+        <div style="width:36px;height:36px;border-radius:10px;background:${icoBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="ti ${iconoPorCategoria(cat)}" style="font-size:16px;color:${icoFg};"></i>
+        </div>
         <label class="svc-toggle">
           <input type="checkbox" ${s.active?'checked':''} onchange="toggleActive('${s.id}',this.checked)"/>
           <div class="svc-toggle-track"></div>
@@ -1167,7 +1181,7 @@ async function loadCitas(){
             <div style="font-size:10px;color:var(--ink-soft);font-weight:600;">${ampm||''}</div>
             <div style="font-size:9.5px;color:#C7C0B3;margin-top:2px;"><i class="ti ti-clock" style="font-size:9px;"></i> ~${c.duracion}m</div>
           </div>
-          <div style="width:38px;height:38px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--gold-dark);">${inicialesNombre(c.nombre)}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--charcoal2);">${inicialesNombre(c.nombre)}</div>
           <div style="flex:1;min-width:0;">
             <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}</p>
             <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
@@ -1459,9 +1473,14 @@ function renderClientas(){
     return;
   }
 
-  cont.innerHTML = filtradas.map(c => {
+  cont.innerHTML = filtradas.map((c, i) => {
     const idxReal = CLIENTAS.indexOf(c);
+    const inicial = (c.nombre||'?').trim().charAt(0).toUpperCase();
+    const esRosa = i%2===1;
+    const avBg = esRosa?'var(--accent2-soft)':'var(--accent-soft)';
+    const avFg = esRosa?'var(--accent2)':'var(--charcoal)';
     return `<div class="svc-row" style="padding:.75rem 0;">
+      <div style="width:36px;height:36px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:${avFg};">${inicial}</div>
       <div class="svc-info">
         <div class="svc-nm">${c.nombre}</div>
         <div class="svc-meta">${c.telefono}${c.correo ? ' · '+c.correo : ''}${c.notas ? ' · '+c.notas : ''}</div>
