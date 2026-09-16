@@ -603,12 +603,13 @@ async function loginConGoogle(){
   const errEl = document.getElementById('login-error');
   errEl.style.color = '#C2695A';
   errEl.textContent = '';
+  console.log('[Annly Google] Botón clickeado, llamando a signInWithOAuth...');
   try {
     await window.AnnlyAuth.loginWithOAuth('google');
-    // A partir de aquí la página se va a Google; no hay más que hacer en este clic.
+    console.log('[Annly Google] signInWithOAuth resuelto sin error (esto no debería verse si redirige bien)');
   } catch(e){
-    console.error(e);
-    errEl.textContent = 'No se pudo iniciar sesión con Google. Intenta de nuevo.';
+    console.error('[Annly Google] ERROR:', e);
+    errEl.textContent = 'No se pudo iniciar sesión con Google: ' + (e.message || e);
   }
 }
 
@@ -690,15 +691,19 @@ function copiarLinkNegocio(){
     document.getElementById('login-remember').checked = true;
   }
   await window.AnnlyReady;
+  console.log('[Annly] Al cargar la página — Autenticado:', window.ANNLY_AUTHENTICATED, '| Negocio:', window.ANNLY_BUSINESS);
   if(window.ANNLY_AUTHENTICATED && window.ANNLY_BUSINESS){
     document.getElementById('login-screen').style.display = 'none';
     arrancarPanelAdmin();
   } else if(window.ANNLY_AUTHENTICATED && !window.ANNLY_BUSINESS){
     // Volvió con sesión (ej. tras iniciar sesión con Google) pero ese correo
     // no tiene ningún negocio de Annly vinculado todavía.
+    console.log('[Annly] Hay sesión pero SIN negocio vinculado — mostrando error y cerrando sesión.');
     document.getElementById('login-error').style.color = '#C2695A';
     document.getElementById('login-error').textContent = 'Esta cuenta no tiene ningún negocio vinculado todavía.';
     await window.AnnlyAuth.logoutSilent();
+  } else {
+    console.log('[Annly] No hay sesión activa — se queda en la pantalla de login normal.');
   }
 })();
 
