@@ -83,9 +83,11 @@ body.modo-oscuro .card-icon{
 .hdr-divider-diamond{color:var(--gold);font-size:9px;opacity:1;}
 .hdr p{color:var(--hdr-sub-text);font-size:11px;letter-spacing:.2em;position:relative;z-index:2;text-transform:uppercase;}
 .hdr-tagline{
-  font-family:var(--font-heading);font-size:17px;font-style:italic;
-  color:#7A5C28;margin-top:12px;position:relative;z-index:2;letter-spacing:.02em;
-  font-weight:600;
+  font-family:var(--font-heading);font-size:17px;font-style:normal;
+  background:linear-gradient(120deg,var(--gold-dark),var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  margin-top:12px;position:relative;z-index:2;letter-spacing:.01em;
+  font-weight:700;
   animation:slideInLeft .9s cubic-bezier(.25,1,.5,1) both;
   animation-delay:1.3s;
   opacity:0;
@@ -379,7 +381,7 @@ body.modo-oscuro .card-icon{
       <span id="footer-ig-handle" style="font-size:12px;font-weight:500;color:var(--footer-text);"></span>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--gold-rgb),.6)" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
     </a>
-    <p id="footer-tagline" style="font-family:var(--font-heading);font-size:17px;font-weight:600;font-style:italic;color:var(--footer-text-soft);"></p>
+    <p id="footer-tagline" style="font-family:var(--font-heading);font-size:17px;font-weight:700;font-style:normal;color:var(--footer-text-soft);"></p>
   </div>
   <div style="padding:.875rem 1.25rem 0;text-align:center;">
     <div style="display:flex;justify-content:center;align-items:flex-start;gap:16px;margin-bottom:.875rem;">
@@ -801,7 +803,7 @@ window.AnnlyReady.then(() => {
     if (b.instagram) {
       document.getElementById('footer-ig-wrap').style.display = 'block';
       document.getElementById('footer-ig-link').href = 'https://www.instagram.com/' + b.instagram;
-      document.getElementById('footer-ig-handle').textContent = '@' + b.instagram;
+      document.getElementById('footer-ig-handle').textContent = '@' + b.instagram.replace(/^@+/, '');
     }
 
     // Horario y dirección
