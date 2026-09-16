@@ -1432,7 +1432,7 @@ async function guardarPerfil(){
     tagline: document.getElementById('pf-tagline').value.trim(),
     categoria: document.getElementById('pf-categoria').value,
     whatsapp: document.getElementById('pf-whatsapp').value.trim(),
-    instagram: document.getElementById('pf-instagram').value.trim(),
+    instagram: document.getElementById('pf-instagram').value.trim().replace(/^@+/, ''),
     direccion: document.getElementById('pf-direccion').value.trim(),
     horario_texto: document.getElementById('pf-horario').value.trim(),
     modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro'
