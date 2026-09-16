@@ -21,6 +21,63 @@
 html{scroll-behavior:smooth;}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
 
+/* ---------- LOGIN ---------- */
+.login-bg{position:fixed;inset:0;z-index:2000;display:grid;grid-template-columns:1fr 1fr;background:var(--charcoal);overflow:hidden;}
+@media(max-width:860px){.login-bg{grid-template-columns:1fr;}}
+
+.login-photo{position:relative;display:flex;flex-direction:column;padding:3rem 2.6rem;overflow:hidden;
+  background:url('https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80') center/cover;}
+.login-photo::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(100deg,rgba(20,18,16,.95) 0%,rgba(20,18,16,.86) 40%,rgba(20,18,16,.45) 72%,rgba(20,18,16,.2) 100%);}
+@media(max-width:860px){.login-photo{display:none;}}
+
+.login-photo-content{position:relative;z-index:1;color:#fff;display:flex;flex-direction:column;height:100%;}
+.login-photo-logo{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:700;}
+.login-photo-logo span{color:var(--gold);}
+.login-photo-sub{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(232,217,188,.65);margin-top:4px;}
+
+.login-tagline{font-family:'Cormorant Garamond',serif;font-size:2.3rem;line-height:1.16;font-weight:700;margin:2.6rem 0 0;}
+.login-tagline em{font-style:normal;color:var(--gold);}
+
+.login-features{list-style:none;margin-top:2.2rem;display:flex;flex-direction:column;gap:15px;}
+.login-feature{display:flex;align-items:center;gap:12px;}
+.login-feature-ico{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.login-feature-ico i{font-size:17px;color:var(--gold-light);}
+.login-feature b{display:block;font-size:13px;font-weight:600;}
+.login-feature span{display:block;font-size:11.5px;color:rgba(255,255,255,.55);}
+
+.login-quote{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--gold-light);margin-top:2rem;transform:rotate(-1deg);}
+
+.login-photo-foot{font-size:9.5px;letter-spacing:.18em;color:rgba(255,255,255,.42);display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:2rem;border-top:1px solid rgba(255,255,255,.1);}
+
+.login-form-wrap{display:flex;align-items:center;justify-content:center;padding:2rem 1.5rem;overflow-y:auto;background:var(--charcoal);}
+@media(min-width:861px){.login-form-wrap{background:var(--bg);}}
+.login-card{position:relative;background:#fff;border-radius:20px;padding:2.1rem 2rem;width:100%;max-width:380px;box-shadow:0 24px 60px -12px rgba(0,0,0,.4);}
+.login-card-logo{text-align:center;margin-bottom:1.1rem;}
+.login-card-logo b{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;}
+.login-card-logo b span{color:var(--gold);}
+.login-card-logo small{display:block;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);margin-top:2px;}
+.login-welcome{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;text-align:center;margin-bottom:2px;}
+.login-welcome-sub{font-size:12px;color:var(--ink-soft);text-align:center;margin-bottom:1.3rem;}
+
+.field-ico-wrap{position:relative;}
+.field-ico-wrap .fi{padding-left:38px;}
+.field-ico-left{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-soft);font-size:15px;pointer-events:none;}
+.field-ico-right{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--ink-soft);font-size:15px;cursor:pointer;}
+
+.login-row{display:flex;align-items:center;justify-content:space-between;margin:.4rem 0 1rem;font-size:12px;}
+.login-remember{display:flex;align-items:center;gap:6px;color:var(--ink-soft);cursor:pointer;}
+.login-remember input{accent-color:var(--charcoal);width:14px;height:14px;}
+.login-forgot{color:var(--gold-dark);text-decoration:none;font-weight:600;cursor:pointer;}
+.login-forgot:hover{text-decoration:underline;}
+
+.login-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--charcoal);color:#fff;border:none;border-radius:12px;font-size:14.5px;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px -8px rgba(46,43,43,.45);}
+.login-btn i{font-size:17px;}
+
+.login-foot-tag{display:flex;align-items:center;gap:10px;margin-top:1.3rem;font-size:11px;color:var(--ink-soft);}
+.login-foot-tag::before,.login-foot-tag::after{content:'';flex:1;height:1px;background:var(--line);}
+
 /* ---------- HEADER ---------- */
 .adm-hdr{
   background:var(--charcoal);
@@ -138,13 +195,47 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 </head>
 <body>
 
-<div id="login-screen" style="position:fixed;inset:0;background:#2E2B2B;z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem;">
-  <div style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:360px;">
-    <h2 style="font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:1.25rem;text-align:center;">Iniciar sesión</h2>
-    <div class="fg"><label class="flbl">Correo</label><input class="fi" id="login-email" type="email" placeholder="tu@correo.com"/></div>
-    <div class="fg"><label class="flbl">Contraseña</label><input class="fi" id="login-pass" type="password" placeholder="••••••••"/></div>
-    <p id="login-error" style="color:#C2695A;font-size:12px;min-height:16px;margin-bottom:.5rem;"></p>
-    <button class="btn-save" onclick="hacerLogin()"><i class="ti ti-lock-open" style="font-size:17px;"></i> Entrar</button>
+<div id="login-screen" class="login-bg">
+  <div class="login-photo">
+    <div class="login-photo-content">
+      <div>
+        <div class="login-photo-logo">Annly<span>.</span></div>
+        <div class="login-photo-sub">Panel de administración</div>
+      </div>
+      <h1 class="login-tagline">Tu negocio.<br>Tu agenda.<br><em>Así de fácil.</em></h1>
+      <ul class="login-features">
+        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-calendar-event"></i></span><div><b>Gestiona</b><span>tus citas y servicios</span></div></li>
+        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-users"></i></span><div><b>Administra</b><span>tu equipo y clientes</span></div></li>
+        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-chart-bar"></i></span><div><b>Haz crecer</b><span>tu negocio</span></div></li>
+      </ul>
+      <p class="login-quote">"Más tiempo para lo importante"</p>
+      <div class="login-photo-foot"><i class="ti ti-sparkles"></i> BELLEZA &nbsp;·&nbsp; BIENESTAR &nbsp;·&nbsp; RESULTADOS</div>
+    </div>
+  </div>
+  <div class="login-form-wrap">
+    <div class="login-card">
+      <div class="login-card-logo"><b>Annly<span>.</span></b><small>Panel de administración</small></div>
+      <div class="login-welcome">¡Bienvenido de nuevo!</div>
+      <p class="login-welcome-sub">Ingresa a tu cuenta para continuar</p>
+      <div class="fg field-ico-wrap">
+        <label class="flbl">Correo electrónico</label>
+        <i class="ti ti-mail field-ico-left"></i>
+        <input class="fi" id="login-email" type="email" placeholder="tu@correo.com"/>
+      </div>
+      <div class="fg field-ico-wrap">
+        <label class="flbl">Contraseña</label>
+        <i class="ti ti-lock field-ico-left"></i>
+        <input class="fi" id="login-pass" type="password" placeholder="••••••••"/>
+        <i class="ti ti-eye field-ico-right" id="login-pass-toggle" onclick="toggleLoginPass()"></i>
+      </div>
+      <div class="login-row">
+        <label class="login-remember"><input type="checkbox" id="login-remember"/> Recordarme</label>
+        <span class="login-forgot" onclick="olvideMiContrasena()">¿Olvidaste tu contraseña?</span>
+      </div>
+      <p id="login-error" style="color:#C2695A;font-size:12px;min-height:16px;margin-bottom:.5rem;"></p>
+      <button class="login-btn" onclick="hacerLogin()">Entrar <i class="ti ti-arrow-right"></i></button>
+      <div class="login-foot-tag">Tu negocio, siempre contigo</div>
+    </div>
   </div>
 </div>
 
@@ -362,6 +453,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
             <div class="svc-toggle-thumb"></div>
           </label>
         </div>
+        <div style="margin-top:.6rem;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+          <span style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">Texto del footer</span>
+          <p style="font-size:11px;color:var(--ink-soft);margin-bottom:10px;">Si el horario o el copyright se ven poco legibles con tu paleta, cambia el color del texto del footer.</p>
+          <div class="cats">
+            <div class="cat-pill" id="pf-footer-texto-oscuro" onclick="pfFooterTextoSel='oscuro';renderFooterTextoPerfil();">Letras oscuras</div>
+            <div class="cat-pill" id="pf-footer-texto-claro" onclick="pfFooterTextoSel='claro';renderFooterTextoPerfil();">Letras blancas</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -444,10 +543,33 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 <script src="sheets.js"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
+function toggleLoginPass(){
+  const input = document.getElementById('login-pass');
+  const icon = document.getElementById('login-pass-toggle');
+  const mostrar = input.type === 'password';
+  input.type = mostrar ? 'text' : 'password';
+  icon.className = mostrar ? 'ti ti-eye-off field-ico-right' : 'ti ti-eye field-ico-right';
+}
+
+async function olvideMiContrasena(){
+  const errEl = document.getElementById('login-error');
+  const email = document.getElementById('login-email').value.trim();
+  errEl.style.color = '#C2695A';
+  if(!email){ errEl.textContent = 'Escribe tu correo arriba y vuelve a hacer clic aquí.'; return; }
+  try {
+    await window.AnnlyAuth.resetPassword(email);
+    errEl.style.color = '#3a7a3a';
+    errEl.textContent = 'Te enviamos un correo para restablecer tu contraseña.';
+  } catch(e){
+    errEl.textContent = 'No se pudo enviar el correo. Verifica la dirección.';
+  }
+}
+
 async function hacerLogin(){
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
+  errEl.style.color = '#C2695A';
   errEl.textContent = '';
   if(!email || !pass){ errEl.textContent = 'Completa correo y contraseña.'; return; }
   try {
@@ -456,6 +578,11 @@ async function hacerLogin(){
       errEl.textContent = 'Este correo no tiene ningún negocio vinculado todavía.';
       await window.AnnlyAuth.logout();
       return;
+    }
+    if(document.getElementById('login-remember').checked){
+      localStorage.setItem('annly_recordar_correo', email);
+    } else {
+      localStorage.removeItem('annly_recordar_correo');
     }
     document.getElementById('login-screen').style.display = 'none';
     arrancarPanelAdmin();
@@ -474,6 +601,11 @@ async function arrancarPanelAdmin(){
 }
 
 (async function verificarSesionInicial(){
+  const correoRecordado = localStorage.getItem('annly_recordar_correo');
+  if(correoRecordado){
+    document.getElementById('login-email').value = correoRecordado;
+    document.getElementById('login-remember').checked = true;
+  }
   await window.AnnlyReady;
   if(window.ANNLY_AUTHENTICATED && window.ANNLY_BUSINESS){
     document.getElementById('login-screen').style.display = 'none';
@@ -1376,6 +1508,12 @@ const PALETAS_PERFIL = [
   { nombre:'Lavanda Suave', primario:'#B39DDB', secundario:'#5E3A87' }
 ];
 let pfPaletaSel = null;
+let pfFooterTextoSel = 'oscuro';
+
+function renderFooterTextoPerfil(){
+  document.getElementById('pf-footer-texto-oscuro').classList.toggle('sel', pfFooterTextoSel === 'oscuro');
+  document.getElementById('pf-footer-texto-claro').classList.toggle('sel', pfFooterTextoSel === 'claro');
+}
 
 function renderPaletaPerfil(){
   const grid = document.getElementById('pf-paleta-grid');
@@ -1395,6 +1533,8 @@ function loadPerfil(){
   document.getElementById('pf-direccion').value = b.direccion || '';
   document.getElementById('pf-horario').value = b.horario_texto || '';
   document.getElementById('pf-modo-oscuro').checked = b.modo_fondo === 'oscuro';
+  pfFooterTextoSel = b.footer_texto === 'claro' ? 'claro' : 'oscuro';
+  renderFooterTextoPerfil();
 
   pfPaletaSel = PALETAS_PERFIL.findIndex(p => p.primario.toLowerCase() === (b.color_primario||'').toLowerCase());
   renderPaletaPerfil();
@@ -1437,7 +1577,8 @@ async function guardarPerfil(){
     instagram: document.getElementById('pf-instagram').value.trim().replace(/^@+/, ''),
     direccion: document.getElementById('pf-direccion').value.trim(),
     horario_texto: document.getElementById('pf-horario').value.trim(),
-    modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro'
+    modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro',
+    footer_texto: pfFooterTextoSel
   };
   if(pfPaletaSel !== null && pfPaletaSel >= 0){
     datos.color_primario = PALETAS_PERFIL[pfPaletaSel].primario;
