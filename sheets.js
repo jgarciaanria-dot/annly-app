@@ -304,7 +304,8 @@ const Sheets = {
     return (data || []).map(c => ({
       id: c.id, nombre: c.cliente_nombre, telefono: c.cliente_telefono, servicio: c.servicio_nombre,
       fecha: isoAFechaTexto(c.fecha), hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
-      duracion: c.duracion_min, fechaISO: c.fecha, horaISO: c.hora, categoria: c.categoria
+      duracion: c.duracion_min, fechaISO: c.fecha, horaISO: c.hora, categoria: c.categoria,
+      precioTotal: c.precio_total, precioFinal: c.precio_final, precioEsConsultar: c.precio_es_consultar
     }));
   },
 
@@ -441,6 +442,20 @@ const Sheets = {
     await sbClient.from('clients').insert(
       clientas.map(c => ({ business_id: BUSINESS_ID, nombre: c.nombre, telefono: c.telefono, email: c.correo, notas: c.notas }))
     );
+  },
+
+  // Crea o actualiza (por teléfono) un cliente cuando reserva desde el sitio público.
+  // A diferencia de guardarClientas, esto NO borra ni toca al resto de la lista.
+  async upsertClienteDesdeReserva(nombre, telefono, correo) {
+    await window.AnnlyReady;
+    if (!telefono) return; // sin teléfono no hay con qué identificar al cliente de forma confiable
+    const { data: existente } = await sbClient.from('clients').select('id')
+      .eq('business_id', BUSINESS_ID).eq('telefono', telefono).maybeSingle();
+    if (existente) {
+      await sbClient.from('clients').update({ nombre, email: correo || null }).eq('id', existente.id);
+    } else {
+      await sbClient.from('clients').insert([{ business_id: BUSINESS_ID, nombre, telefono, email: correo || null }]);
+    }
   },
 
   // ---------- PERFIL DEL NEGOCIO ----------
