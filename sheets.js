@@ -256,9 +256,9 @@ const Sheets = {
     await window.AnnlyReady;
     const { data } = await sbClient.from('appointments').select('*').eq('business_id', BUSINESS_ID).neq('estado', 'cancelada');
     return (data || []).map(c => ({
-      nombre: c.cliente_nombre, telefono: c.cliente_telefono, servicio: c.servicio_nombre,
+      id: c.id, nombre: c.cliente_nombre, telefono: c.cliente_telefono, servicio: c.servicio_nombre,
       fecha: isoAFechaTexto(c.fecha), hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
-      duracion: c.duracion_min
+      duracion: c.duracion_min, fechaISO: c.fecha, horaISO: c.hora, categoria: c.categoria
     }));
   },
 
