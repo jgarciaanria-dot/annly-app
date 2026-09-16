@@ -230,7 +230,8 @@ const Sheets = {
       id: s.id, name: s.nombre, cat: s.categoria, price: parseFloat(s.precio) || 0,
       precioTexto: s.precio_texto, dur: s.dur, durMin: s.dur_min, active: s.activo,
       esEval: s.es_eval, requiereAbono: s.requiere_abono, abonoMonto: s.abono_monto,
-      abonoTipo: s.abono_tipo, desc: s.descripcion, includes: s.includes || []
+      abonoTipo: s.abono_tipo, desc: s.descripcion, includes: s.includes || [],
+      imagenUrl: s.imagen_url || null
     }));
   },
 
@@ -245,10 +246,20 @@ const Sheets = {
       precio_texto: s.precioTexto || null, dur: s.dur, dur_min: s.durMin, activo: s.active,
       es_eval: s.esEval || false, requiere_abono: s.requiereAbono || false,
       abono_monto: s.abonoMonto, abono_tipo: s.abonoTipo, descripcion: s.desc,
-      includes: s.includes || []
+      includes: s.includes || [], imagen_url: s.imagenUrl || null
     }));
     const { error } = await sbClient.from('services').insert(rows);
     if (error) console.error('Error guardando servicios:', error);
+  },
+
+  async subirImagenServicio(file) {
+    await window.AnnlyReady;
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${BUSINESS_ID}-svc-${Date.now()}.${ext}`;
+    const { error: upErr } = await sbClient.storage.from('servicios').upload(path, file, { upsert: true });
+    if (upErr) throw upErr;
+    const { data } = sbClient.storage.from('servicios').getPublicUrl(path);
+    return data.publicUrl;
   },
 
   // ---------- BLOQUEOS ----------
