@@ -98,7 +98,42 @@ window.AnnlyAuth = {
   },
   // Registro self-service: crea el usuario, el negocio, y los vincula, todo en un paso
   async registrar({ email, password, nombreNegocio, categoria, whatsapp, colorPrimario, colorSecundario }) {
-    // 1. Generar un slug único a partir del nombre del negocio
+    // 1. Crear el usuario en Supabase Auth
+    const { data: authData, error: authError } = await sbClient.auth.signUp({ email, password });
+    if (authError) throw authError;
+    const userId = authData.user?.id;
+    if (!userId) throw new Error('No se pudo crear el usuario.');
+
+    // 2. Asegurar que hay sesión activa (algunos proyectos requieren confirmar correo primero)
+    if (!authData.session) {
+      const { error: loginError } = await sbClient.auth.signInWithPassword({ email, password });
+      if (loginError) throw loginError; // el correo probablemente requiere confirmación
+    }
+
+    return await this._crearNegocio(userId, { nombreNegocio, categoria, whatsapp, colorPrimario, colorSecundario });
+  },
+
+  // Guarda los datos del paso 1 y 2 del registro antes de mandar al usuario a Google,
+  // porque la redirección de OAuth recarga la página y perdemos cualquier variable JS.
+  async iniciarRegistroConGoogle(datosNegocio) {
+    sessionStorage.setItem('annly_registro_pendiente', JSON.stringify(datosNegocio));
+    const { error } = await sbClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/registro.html' }
+    });
+    if (error) { sessionStorage.removeItem('annly_registro_pendiente'); throw error; }
+  },
+
+  // Al volver de Google ya hay sesión (usuario autenticado); solo falta crear el negocio.
+  async completarRegistroTrasOAuth(datosNegocio) {
+    const { data: userData } = await sbClient.auth.getUser();
+    const userId = userData?.user?.id;
+    if (!userId) throw new Error('No hay sesión activa de Google.');
+    return await this._crearNegocio(userId, datosNegocio);
+  },
+
+  async _crearNegocio(userId, { nombreNegocio, categoria, whatsapp, colorPrimario, colorSecundario }) {
+    // Generar un slug único a partir del nombre del negocio
     const base = nombreNegocio.toLowerCase().trim()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
       .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
@@ -111,19 +146,7 @@ window.AnnlyAuth = {
       slug = `${base}-${intento}`;
     }
 
-    // 2. Crear el usuario en Supabase Auth
-    const { data: authData, error: authError } = await sbClient.auth.signUp({ email, password });
-    if (authError) throw authError;
-    const userId = authData.user?.id;
-    if (!userId) throw new Error('No se pudo crear el usuario.');
-
-    // 3. Asegurar que hay sesión activa (algunos proyectos requieren confirmar correo primero)
-    if (!authData.session) {
-      const { error: loginError } = await sbClient.auth.signInWithPassword({ email, password });
-      if (loginError) throw loginError; // el correo probablemente requiere confirmación
-    }
-
-    // 4. Crear el negocio, vinculado al usuario recién creado
+    // Crear el negocio, vinculado al usuario
     const trialVence = new Date();
     trialVence.setDate(trialVence.getDate() + 14);
     const { data: negocio, error: bizError } = await sbClient.from('businesses').insert([{
@@ -140,7 +163,7 @@ window.AnnlyAuth = {
     }]).select().single();
     if (bizError) throw bizError;
 
-    // 5. Crear su fila de business_features (todo apagado salvo promociones)
+    // Crear su fila de business_features (todo apagado salvo promociones)
     await sbClient.from('business_features').insert([{
       business_id: negocio.id,
       ruleta_premios: false,
