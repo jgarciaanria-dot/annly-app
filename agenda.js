@@ -1,4 +1,4 @@
-  document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
+document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
     document.getElementById('ruletaModal').classList.remove('activo');
   });
 
@@ -398,10 +398,10 @@ function renderServices(){
 function buildCard(s,icon,full=false){
   const precio=s.precioTexto||(s.price>0?'$'+s.price.toFixed(2):'consultar');
   const iconHtml = s.imagenUrl
-    ? `<img src="${s.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+    ? `<img src="${s.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>`
     : `<i class="ti ${icon}" aria-hidden="true"></i>`;
   return `<div class="card${full?' full':''}" onclick="openDetail('${s.id}')">
-    <div class="card-top"><div class="card-icon" style="${s.imagenUrl?'overflow:hidden;background:none;border:none;':''}">${iconHtml}</div><div class="card-name">${s.name}</div></div>
+    <div class="card-top"><div class="card-icon" style="${s.imagenUrl?'overflow:hidden;background:none;border:none;border-radius:12px;':''}">${iconHtml}</div><div class="card-name">${s.name}</div></div>
     <div class="card-desc">${s.desc}</div>
     <div class="card-sep"></div>
     <div class="card-footer"><span class="card-price">${precio}</span><span class="card-dur">${s.dur}</span></div>
@@ -439,7 +439,7 @@ function openDetail(id, esPromo){
   document.getElementById('detail-title').textContent=curSvc.name;
   document.getElementById('detail-body').innerHTML=`
     <div class="svc-banner">
-      <div class="svc-banner-icon" style="${curSvc.imagenUrl?'overflow:hidden;background:none;border:none;':''}">${curSvc.imagenUrl?`<img src="${curSvc.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`:`<i class="ti ${icon}" aria-hidden="true"></i>`}</div>
+      <div class="svc-banner-icon" style="${curSvc.imagenUrl?'overflow:hidden;background:none;border:none;border-radius:12px;':''}">${curSvc.imagenUrl?`<img src="${curSvc.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>`:`<i class="ti ${icon}" aria-hidden="true"></i>`}</div>
       <div>
         <div class="svc-banner-name">${curSvc.name}</div>
         <div class="svc-banner-meta">
