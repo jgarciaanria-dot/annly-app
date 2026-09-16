@@ -312,7 +312,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <button class="adm-tab" id="tab-bloqueos" onclick="switchTab('bloqueos')">Bloquear días</button>
     <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')">Promo</button>
     <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')">Ruleta</button>
-    <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')">Clientas</button>
+    <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')">Clientes</button>
     <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')">Perfil</button>
   </div>
 
@@ -347,7 +347,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Bloquear rango de días</span></div>
       <div style="padding:1rem;">
-        <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Bloquea uno o varios días seguidos (vacaciones, feriados). Las clientas verán esos días como "No disponible".</p>
+        <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Bloquea uno o varios días seguidos (vacaciones, feriados). Los clientes verán esos días como "No disponible".</p>
         <div class="frow">
           <div class="fg"><label class="flbl">Desde</label><input class="fi" type="date" id="bloq-inicio"/></div>
           <div class="fg"><label class="flbl">Hasta</label><input class="fi" type="date" id="bloq-fin"/></div>
@@ -377,7 +377,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Ventana promocional</span></div>
       <div style="padding:1rem;">
-        <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Configura una ventana emergente con animación que aparece cuando las clientas entran al sitio.</p>
+        <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Configura una ventana emergente con animación que aparece cuando los clientes entran al sitio.</p>
 
         <div style="display:flex;align-items:center;justify-content:space-between;background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
           <span style="font-size:13px;color:#1a1a1a;font-weight:500;">Mostrar promoción</span>
@@ -448,7 +448,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
   <div id="panel-clientas" style="display:none;">
     <div class="adm-sec">
       <div class="adm-sec-hdr">
-        <span class="adm-sec-title">Clientas</span>
+        <span class="adm-sec-title">Clientes</span>
         <button class="btn-add" onclick="openModalClienta(null)"><i class="ti ti-plus"></i> Agregar</button>
       </div>
       <div style="padding:1rem;">
@@ -475,7 +475,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       <div class="adm-sec-hdr"><span class="adm-sec-title">Información del negocio</span></div>
       <div style="padding:1rem;">
         <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="pf-nombre"/></div>
-        <div class="fg"><label class="flbl">Frase / tagline</label><input class="fi" id="pf-tagline" placeholder="Ej: Nutrición, brillo y vida para tu cabello."/></div>
+        <div class="fg"><label class="flbl">Frase / tagline (junto al logo, arriba)</label><input class="fi" id="pf-tagline" placeholder="Ej: Calidad y confianza en cada visita"/></div>
+        <div class="fg"><label class="flbl">Mensaje del footer (abajo del todo)</label><input class="fi" id="pf-footer-mensaje" placeholder="Ej: Te esperamos"/></div>
         <div class="frow">
           <div class="fg"><label class="flbl">Categoría</label>
             <select class="fi" id="pf-categoria">
@@ -554,7 +555,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 <div class="ov" id="ov-modal-clienta">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-title" id="modal-clienta-title">Nueva clienta</span>
+      <span class="modal-title" id="modal-clienta-title">Nuevo cliente</span>
       <button class="modal-close" onclick="closeModalClienta()">×</button>
     </div>
     <div class="modal-body">
@@ -562,12 +563,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       <div class="fg"><label class="flbl">Teléfono / WhatsApp</label><input class="fi" id="mc-telefono"/></div>
       <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="mc-correo"/></div>
       <div class="fg"><label class="flbl">Notas (opcional)</label><textarea class="fi" id="mc-notas" rows="2" style="resize:vertical;"></textarea></div>
-      <button class="btn-save" onclick="guardarClientaModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar clienta</button>
+      <button class="btn-save" onclick="guardarClientaModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cliente</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL RESERVAR (para una clienta VIP) -->
+<!-- MODAL RESERVAR (para un cliente VIP) -->
 <div class="ov" id="ov-modal-reservar">
   <div class="modal">
     <div class="modal-hdr">
@@ -575,7 +576,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       <button class="modal-close" onclick="closeModalReservar()">×</button>
     </div>
     <div class="modal-body">
-      <div class="fg"><label class="flbl">Servicio</label><input class="fi" id="mr-servicio" placeholder="Lo que pidió la clienta"/></div>
+      <div class="fg"><label class="flbl">Servicio</label><input class="fi" id="mr-servicio" placeholder="Lo que pidió el cliente"/></div>
       <div class="frow">
         <div class="fg"><label class="flbl">Fecha</label><input class="fi" type="date" id="mr-fecha"/></div>
         <div class="fg"><label class="flbl">Hora</label><input class="fi" type="time" id="mr-hora"/></div>
@@ -861,7 +862,7 @@ function openModal(id,catDefault='Básicos'){
   const cats=categoriasSugeridas.map(c=>`<div class="cat-pill${valorInicial===c?' sel':''}" onclick="document.getElementById('m-cat').value='${c.replace(/'/g,"\\'")}';">${c}</div>`).join('');
   const incls=s?s.includes:[''];
   const inclHtml=incls.map((inc,i)=>`<div class="incl-inp" id="incl-${i}">
-    <input class="fi incl-val" value="${inc}" placeholder="Ej: Champú profesional"/>
+    <input class="fi incl-val" value="${inc}" placeholder="Ej: Producto o material incluido"/>
     <button class="btn-rem-incl" onclick="remIncl(${i})"><i class="ti ti-x" style="font-size:12px;"></i></button>
   </div>`).join('');
 
@@ -869,7 +870,7 @@ function openModal(id,catDefault='Básicos'){
   document.getElementById('modal-body').innerHTML=`
     <div class="fg"><label class="flbl">Nombre del servicio</label><input class="fi" id="m-name" value="${s?s.name:''}"/></div>
     <div class="fg"><label class="flbl">Categoría (escribe la tuya, o elige una ya usada)</label>
-      <input class="fi" id="m-cat" value="${valorInicial}" placeholder="Ej: Cortes, Combos, Faciales..." style="margin-bottom:8px;"/>
+      <input class="fi" id="m-cat" value="${valorInicial}" placeholder="Ej: Básicos, Combos, Premium..." style="margin-bottom:8px;"/>
       ${cats?`<div class="cats" id="cats-wrap">${cats}</div>`:''}
     </div>
     <div class="frow">
@@ -923,7 +924,7 @@ function addIncl(){
   const i=list.children.length;
   const div=document.createElement('div');
   div.className='incl-inp'; div.id='incl-'+i;
-  div.innerHTML=`<input class="fi incl-val" placeholder="Ej: Tratamiento incluido"/><button class="btn-rem-incl" onclick="remIncl(${i})"><i class="ti ti-x" style="font-size:12px;"></i></button>`;
+  div.innerHTML=`<input class="fi incl-val" placeholder="Ej: Item incluido"/><button class="btn-rem-incl" onclick="remIncl(${i})"><i class="ti ti-x" style="font-size:12px;"></i></button>`;
   list.appendChild(div);
 }
 
@@ -1545,7 +1546,7 @@ function renderClientas(){
   );
 
   if (filtradas.length === 0){
-    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay clientas para mostrar.</p>';
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay clientes para mostrar.</p>';
     return;
   }
 
@@ -1571,7 +1572,7 @@ function renderClientas(){
 }
 
 function eliminarClienta(idx){
-  if (!confirm('¿Eliminar esta clienta de la lista?')) return;
+  if (!confirm('¿Eliminar este cliente de la lista?')) return;
   CLIENTAS.splice(idx, 1);
   Sheets.guardarClientas(CLIENTAS);
   renderClientas();
@@ -1580,7 +1581,7 @@ function eliminarClienta(idx){
 function openModalClienta(idx){
   editClientaIdx = idx;
   const c = idx !== null ? CLIENTAS[idx] : null;
-  document.getElementById('modal-clienta-title').textContent = c ? 'Editar clienta' : 'Nueva clienta';
+  document.getElementById('modal-clienta-title').textContent = c ? 'Editar cliente' : 'Nuevo cliente';
   document.getElementById('mc-nombre').value = c ? c.nombre : '';
   document.getElementById('mc-telefono').value = c ? c.telefono : '';
   document.getElementById('mc-correo').value = c ? (c.correo||'') : '';
@@ -1696,6 +1697,7 @@ function loadPerfil(){
   const b = window.ANNLY_BUSINESS || {};
   document.getElementById('pf-nombre').value = b.nombre || '';
   document.getElementById('pf-tagline').value = b.tagline || '';
+  document.getElementById('pf-footer-mensaje').value = b.footer_mensaje || '';
   document.getElementById('pf-categoria').value = b.categoria || '';
   document.getElementById('pf-whatsapp').value = b.whatsapp || '';
   document.getElementById('pf-instagram').value = b.instagram || '';
@@ -1802,6 +1804,7 @@ async function guardarPerfil(){
   const datos = {
     nombre: document.getElementById('pf-nombre').value.trim(),
     tagline: document.getElementById('pf-tagline').value.trim(),
+    footer_mensaje: document.getElementById('pf-footer-mensaje').value.trim(),
     categoria: document.getElementById('pf-categoria').value,
     whatsapp: document.getElementById('pf-whatsapp').value.trim(),
     instagram: document.getElementById('pf-instagram').value.trim().replace(/^@+/, ''),
