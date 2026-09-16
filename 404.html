@@ -1035,6 +1035,15 @@ async function openCal(){
   renderCal();
   openOv('ov-cal');
 }
+function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
+
+function diaCerrado(dow){
+  const h = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  if (!h) return dow===0; // si el negocio no tiene horario configurado todavía, solo domingo cerrado por defecto
+  const bloque = h[bloqueDelDia(dow)];
+  return !bloque || !!bloque.cerrado;
+}
+
 function renderCal(){
   document.getElementById('calMoLbl').textContent=MESES[calM]+' '+calY;
   const dn=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -1048,7 +1057,7 @@ function renderCal(){
     const dow=dt.getDay();
     const iso=fechaISO(calY,calM,d);
     const isBloq=BLOQUEOS.dias.some(b=>b.fecha===iso);
-    const isPast=dt<today,isDom=dow===0,isHoy=dt.getTime()===today.getTime(),isSel=selectedDay===d;
+    const isPast=dt<today,isDom=diaCerrado(dow),isHoy=dt.getTime()===today.getTime(),isSel=selectedDay===d;
     let cls='cd';
     if(isPast) cls+=' pst';
     else if(isDom) cls+=' dom';
@@ -1065,9 +1074,22 @@ function renderCal(){
 function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 
 function genSlots(){
+  const dt=new Date(calY,calM,selectedDay);
+  const dow=dt.getDay();
+  const bloqueCfg=(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado
+    && window.ANNLY_BUSINESS.horario_estructurado[bloqueDelDia(dow)]) || null;
+
+  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si el negocio no tiene horario configurado
+  if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
+    [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
+    [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
+  } else if (bloqueCfg && bloqueCfg.cerrado) {
+    return []; // el negocio está cerrado ese día — sin horarios disponibles
+  }
+
   const slots=[];
-  let h=8,m=0;
-  while(h<16||(h===16&&m===0)){
+  let h=hIni,m=mIni;
+  while(h<hFin||(h===hFin&&m===mFin)){
     const key=h+':'+(m===0?'00':'30');
     const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
     slots.push({key,lbl});
