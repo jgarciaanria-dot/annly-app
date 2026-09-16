@@ -20,29 +20,41 @@ window.ANNLY_BUSINESS = null;
 async function resolverNegocio() {
   window.ANNLY_AUTHENTICATED = false;
 
-  // Solo el panel admin debe resolver el negocio por sesión.
-  // El sitio público (index.html/404.html) SIEMPRE usa el slug de la
-  // ruta, sin importar si el navegador tiene una sesión de admin abierta
-  // (si no, un dueño logueado vería su propio negocio en cualquier sitio público).
+  // El panel admin y el registro necesitan saber si hay una sesión de usuario.
+  // El sitio público (index.html/404.html) SIEMPRE usa el slug de la ruta,
+  // sin importar si el navegador tiene una sesión de admin abierta (si no, un
+  // dueño logueado vería su propio negocio en cualquier sitio público).
   const esPanelAdmin = window.location.pathname.includes('admin.html');
+  const esRegistro = window.location.pathname.includes('registro.html');
 
-  if (esPanelAdmin) {
-    const { data: { session } } = await sbClient.auth.getSession();
+  if (esPanelAdmin || esRegistro) {
+    // No usamos getSession() directo: si venimos de un redirect de Google, el token
+    // todavía se está procesando desde el hash de la URL. Esperamos el primer evento
+    // de auth (que Supabase siempre dispara al iniciar, con la sesión ya resuelta)
+    // en vez de competir con ese procesamiento y leer una sesión vieja del caché.
+    const session = await new Promise((resolve) => {
+      const { data: sub } = sbClient.auth.onAuthStateChange((_event, session) => {
+        sub.subscription.unsubscribe();
+        resolve(session);
+      });
+    });
     if (session && session.user) {
-      const { data, error } = await sbClient.from('businesses').select('*').eq('owner_user_id', session.user.id).maybeSingle();
-      if (!error && data) {
-        BUSINESS_ID = data.id;
-        window.ANNLY_BUSINESS = data;
-        window.ANNLY_AUTHENTICATED = true;
-        return;
+      window.ANNLY_AUTHENTICATED = true;
+      if (esPanelAdmin) {
+        const { data, error } = await sbClient.from('businesses').select('*').eq('owner_user_id', session.user.id).maybeSingle();
+        if (!error && data) {
+          BUSINESS_ID = data.id;
+          window.ANNLY_BUSINESS = data;
+        } else {
+          // Hay sesión, pero ningún negocio vinculado a este usuario todavía
+          window.ANNLY_BUSINESS = null;
+        }
       }
-      // Hay sesión, pero ningún negocio vinculado a este usuario todavía
-      window.ANNLY_BUSINESS = null;
-      return;
     }
+    return; // admin.html y registro.html nunca resuelven negocio por slug
   }
 
-  // Sitio público (o admin sin sesión) -> resolver siempre por slug
+  // Sitio público -> resolver siempre por slug
   const params = new URLSearchParams(window.location.search);
   let slug = params.get('n');
   if (!slug) {
