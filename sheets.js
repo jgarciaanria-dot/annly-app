@@ -20,22 +20,29 @@ window.ANNLY_BUSINESS = null;
 async function resolverNegocio() {
   window.ANNLY_AUTHENTICATED = false;
 
-  // Si hay sesión activa (admin logueado), su negocio se resuelve por dueño, no por URL
-  const { data: { session } } = await sbClient.auth.getSession();
-  if (session && session.user) {
-    const { data, error } = await sbClient.from('businesses').select('*').eq('owner_user_id', session.user.id).maybeSingle();
-    if (!error && data) {
-      BUSINESS_ID = data.id;
-      window.ANNLY_BUSINESS = data;
-      window.ANNLY_AUTHENTICATED = true;
+  // Solo el panel admin debe resolver el negocio por sesión.
+  // El sitio público (index.html/404.html) SIEMPRE usa el slug de la
+  // ruta, sin importar si el navegador tiene una sesión de admin abierta
+  // (si no, un dueño logueado vería su propio negocio en cualquier sitio público).
+  const esPanelAdmin = window.location.pathname.includes('admin.html');
+
+  if (esPanelAdmin) {
+    const { data: { session } } = await sbClient.auth.getSession();
+    if (session && session.user) {
+      const { data, error } = await sbClient.from('businesses').select('*').eq('owner_user_id', session.user.id).maybeSingle();
+      if (!error && data) {
+        BUSINESS_ID = data.id;
+        window.ANNLY_BUSINESS = data;
+        window.ANNLY_AUTHENTICATED = true;
+        return;
+      }
+      // Hay sesión, pero ningún negocio vinculado a este usuario todavía
+      window.ANNLY_BUSINESS = null;
       return;
     }
-    // Hay sesión, pero ningún negocio vinculado a este usuario todavía
-    window.ANNLY_BUSINESS = null;
-    return;
   }
 
-  // Sin sesión (sitio público, nadie inicia sesión para reservar) -> resolver por slug
+  // Sitio público (o admin sin sesión) -> resolver siempre por slug
   const params = new URLSearchParams(window.location.search);
   let slug = params.get('n');
   if (!slug) {
