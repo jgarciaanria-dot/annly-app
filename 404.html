@@ -381,16 +381,16 @@ body.modo-oscuro .card-icon{
       <span id="footer-ig-handle" style="font-size:12px;font-weight:500;color:var(--footer-text);"></span>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--gold-rgb),.6)" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
     </a>
-    <p id="footer-tagline" style="font-family:var(--font-heading);font-size:17px;font-weight:700;font-style:normal;color:var(--footer-text-soft);"></p>
+    <p id="footer-tagline" style="font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--footer-text-faint);text-transform:uppercase;margin-top:2px;"></p>
   </div>
   <div style="padding:.875rem 1.25rem 0;text-align:center;">
-    <div style="display:flex;justify-content:center;align-items:flex-start;gap:16px;margin-bottom:.875rem;">
-      <div style="text-align:center;flex:1;">
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:.875rem;text-align:center;">
+      <div>
         <p style="font-size:10px;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Horario</p>
         <p id="footer-horario" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
       </div>
-      <div style="width:0.5px;background:rgba(var(--gold-rgb),.2);align-self:stretch;"></div>
-      <div style="text-align:center;flex:1;">
+      <div style="height:0.5px;width:60px;margin:0 auto;background:rgba(var(--gold-rgb),.25);"></div>
+      <div>
         <p style="font-size:10px;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Ubicación</p>
         <p id="footer-direccion" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
       </div>
@@ -782,6 +782,11 @@ window.AnnlyReady.then(() => {
             .map(c => Math.round(c + (255 - c) * factorBlanco)).join(',');
           document.documentElement.style.setProperty('--bg-page', 'rgb(' + mezclar(0.90) + ')');
           document.documentElement.style.setProperty('--bg-header', 'rgb(' + mezclar(0.72) + ')');
+          // Footer: se tiñe con el mismo color del negocio en vez de quedar fijo en crema
+          document.documentElement.style.setProperty('--bg-footer', 'rgb(' + mezclar(0.94) + ')');
+          document.documentElement.style.setProperty('--footer-text', b.color_primario);
+          document.documentElement.style.setProperty('--footer-text-soft', 'rgba(' + rgbBase + ',.75)');
+          document.documentElement.style.setProperty('--footer-text-faint', 'rgba(' + rgbBase + ',.45)');
         }
       }
     }
@@ -808,7 +813,7 @@ window.AnnlyReady.then(() => {
 
     // Horario y dirección
     const horEl = document.getElementById('footer-horario');
-    if (horEl) horEl.innerHTML = (b.horario_texto || 'Consulta disponibilidad').replace('|', '<br>');
+    if (horEl) horEl.innerHTML = (b.horario_texto || 'Consulta disponibilidad').replace(/\|/g, '<br>');
     const dirEl = document.getElementById('footer-direccion');
     if (dirEl) dirEl.textContent = b.direccion || '';
     const copyEl = document.getElementById('footer-copyright');
