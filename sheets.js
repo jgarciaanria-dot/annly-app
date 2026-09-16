@@ -72,6 +72,12 @@ window.AnnlyAuth = {
     await sbClient.auth.signOut();
     window.location.reload();
   },
+  async resetPassword(email) {
+    const { error } = await sbClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/admin.html'
+    });
+    if (error) throw error;
+  },
   async getSession() {
     const { data } = await sbClient.auth.getSession();
     return data.session;
