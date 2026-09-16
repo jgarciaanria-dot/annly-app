@@ -72,11 +72,25 @@ window.AnnlyAuth = {
     await sbClient.auth.signOut();
     window.location.reload();
   },
+  async logoutSilent() {
+    await sbClient.auth.signOut();
+    window.ANNLY_AUTHENTICATED = false;
+    window.ANNLY_BUSINESS = null;
+  },
   async resetPassword(email) {
     const { error } = await sbClient.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + '/admin.html'
     });
     if (error) throw error;
+  },
+  async loginWithOAuth(provider) {
+    const { error } = await sbClient.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin + '/admin.html' }
+    });
+    if (error) throw error;
+    // La página se redirige a Google/Microsoft; al volver, supabase-js
+    // detecta la sesión sola y verificarSesionInicial() en admin.html la retoma.
   },
   async getSession() {
     const { data } = await sbClient.auth.getSession();
