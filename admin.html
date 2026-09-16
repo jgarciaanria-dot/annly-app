@@ -492,7 +492,33 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
         </div>
         <div class="fg"><label class="flbl">Instagram (sin @)</label><input class="fi" id="pf-instagram" placeholder="minegocio"/></div>
         <div class="fg"><label class="flbl">Dirección</label><input class="fi" id="pf-direccion" placeholder="Obarrio, Salón Plaza, Suite 113"/></div>
-        <div class="fg"><label class="flbl">Horario</label><input class="fi" id="pf-horario" placeholder="Lun-Vie 9AM-6PM | Sáb 9AM-2PM"/></div>
+        <div class="fg">
+          <label class="flbl">Horario de atención</label>
+          <div style="display:flex;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+            <div class="hor-bloque" data-bloque="lv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Lun-Vie</span>
+              <input type="time" class="fi hor-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+              <span style="font-size:12px;color:var(--ink-soft);">a</span>
+              <input type="time" class="fi hor-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-cerrado" onchange="toggleHorBloque(this)"/> Cerrado</label>
+            </div>
+            <div class="hor-bloque" data-bloque="sab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Sábado</span>
+              <input type="time" class="fi hor-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+              <span style="font-size:12px;color:var(--ink-soft);">a</span>
+              <input type="time" class="fi hor-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-cerrado" onchange="toggleHorBloque(this)"/> Cerrado</label>
+            </div>
+            <div class="hor-bloque" data-bloque="dom" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Domingo</span>
+              <input type="time" class="fi hor-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+              <span style="font-size:12px;color:var(--ink-soft);">a</span>
+              <input type="time" class="fi hor-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+              <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-cerrado" onchange="toggleHorBloque(this)"/> Cerrado</label>
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Estas horas son las que se usan de verdad para calcular a qué hora tus clientes pueden reservar — no es solo texto decorativo.</p>
+        </div>
       </div>
     </div>
 
@@ -1238,10 +1264,25 @@ function fechaISO(y,m,d){
 
 function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 
+function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
+
 function genSlots(){
+  const dt=new Date(rpCalY,rpCalM,rpSelectedDay);
+  const dow=dt.getDay();
+  const bloqueCfg=(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado
+    && window.ANNLY_BUSINESS.horario_estructurado[bloqueDelDia(dow)]) || null;
+
+  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si el negocio no tiene horario configurado
+  if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
+    [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
+    [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
+  } else if (bloqueCfg && bloqueCfg.cerrado) {
+    return [];
+  }
+
   const slots=[];
-  let h=8,m=0;
-  while(h<16||(h===16&&m===0)){
+  let h=hIni,m=mIni;
+  while(h<hFin||(h===hFin&&m===mFin)){
     const key=h+':'+(m===0?'00':'30');
     const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
     slots.push({key,lbl});
@@ -1296,6 +1337,13 @@ function chMoAdmin(d){
   renderCalAdmin();
 }
 
+function diaCerrado(dow){
+  const h = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  if (!h) return dow===0;
+  const bloque = h[bloqueDelDia(dow)];
+  return !bloque || !!bloque.cerrado;
+}
+
 function renderCalAdmin(){
   document.getElementById('calMoLblAdmin').textContent = MESES[rpCalM] + ' ' + rpCalY;
   const dn = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -1309,7 +1357,7 @@ function renderCalAdmin(){
     const dow = dt.getDay();
     const iso = fechaISO(rpCalY, rpCalM, d);
     const isBloq = rpBloqueosCache.dias.some(b => b.fecha === iso);
-    const isPast = dt < today, isDom = dow === 0, isSel = rpSelectedDay === d;
+    const isPast = dt < today, isDom = diaCerrado(dow), isSel = rpSelectedDay === d;
     let cls = 'cd';
     if(isPast) cls += ' pst'; else if(isDom) cls += ' dom'; else if(isBloq) cls += ' bloq';
     if(isSel && !isPast && !isDom && !isBloq) cls += ' sel';
@@ -1652,7 +1700,7 @@ function loadPerfil(){
   document.getElementById('pf-whatsapp').value = b.whatsapp || '';
   document.getElementById('pf-instagram').value = b.instagram || '';
   document.getElementById('pf-direccion').value = b.direccion || '';
-  document.getElementById('pf-horario').value = b.horario_texto || '';
+  cargarHorarioEstructurado(b.horario_estructurado);
   document.getElementById('pf-modo-oscuro').checked = b.modo_fondo === 'oscuro';
   pfFooterTextoSel = b.footer_texto === 'claro' ? 'claro' : 'oscuro';
   renderFooterTextoPerfil();
@@ -1685,11 +1733,72 @@ async function subirLogoPerfil(){
   }
 }
 
-async function guardarPerfil(){
+const HOR_DEFAULT = {
+  lv:  { abre:'09:00', cierra:'18:00', cerrado:false },
+  sab: { abre:'09:00', cierra:'14:00', cerrado:false },
+  dom: { abre:'', cierra:'', cerrado:true }
+};
+
+function toggleHorBloque(checkbox){
+  const bloque = checkbox.closest('.hor-bloque');
+  const desactivar = checkbox.checked;
+  bloque.querySelectorAll('input[type="time"]').forEach(inp => inp.disabled = desactivar);
+}
+
+function cargarHorarioEstructurado(horario){
+  const h = horario || HOR_DEFAULT;
+  ['lv','sab','dom'].forEach(clave => {
+    const bloque = document.querySelector(`.hor-bloque[data-bloque="${clave}"]`);
+    if (!bloque) return;
+    const datos = h[clave] || HOR_DEFAULT[clave];
+    bloque.querySelector('.hor-abre').value = datos.abre || '';
+    bloque.querySelector('.hor-cierra').value = datos.cierra || '';
+    const chk = bloque.querySelector('.hor-cerrado');
+    chk.checked = !!datos.cerrado;
+    toggleHorBloque(chk);
+  });
+}
+
+function leerHorarioEstructurado(){
+  const resultado = {};
+  ['lv','sab','dom'].forEach(clave => {
+    const bloque = document.querySelector(`.hor-bloque[data-bloque="${clave}"]`);
+    const cerrado = bloque.querySelector('.hor-cerrado').checked;
+    resultado[clave] = {
+      abre: cerrado ? '' : bloque.querySelector('.hor-abre').value,
+      cierra: cerrado ? '' : bloque.querySelector('.hor-cierra').value,
+      cerrado
+    };
+  });
+  return resultado;
+}
+
+// "09:00" -> "9AM" | "18:00" -> "6PM" | "13:30" -> "1:30PM"
+function formatHora12(hhmm){
+  if (!hhmm) return '';
+  const [hStr, mStr] = hhmm.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return m === '00' ? `${h}${ampm}` : `${h}:${m}${ampm}`;
+}
+
+function armarHorarioTexto(h){
+  const etiqueta = { lv:'Lun-Vie', sab:'Sáb', dom:'Domingo' };
+  return ['lv','sab','dom'].map(clave => {
+    const d = h[clave];
+    const rango = d.cerrado ? 'Cerrado' : `${formatHora12(d.abre)}-${formatHora12(d.cierra)}`;
+    return `${etiqueta[clave]} ${rango}`;
+  }).join(' | ');
+}
+
+
   const msgEl = document.getElementById('pf-msg');
   msgEl.style.color = 'var(--ink-soft)';
   msgEl.textContent = 'Guardando...';
 
+  const horarioEstructurado = leerHorarioEstructurado();
   const datos = {
     nombre: document.getElementById('pf-nombre').value.trim(),
     tagline: document.getElementById('pf-tagline').value.trim(),
@@ -1697,7 +1806,8 @@ async function guardarPerfil(){
     whatsapp: document.getElementById('pf-whatsapp').value.trim(),
     instagram: document.getElementById('pf-instagram').value.trim().replace(/^@+/, ''),
     direccion: document.getElementById('pf-direccion').value.trim(),
-    horario_texto: document.getElementById('pf-horario').value.trim(),
+    horario_estructurado: horarioEstructurado,
+    horario_texto: armarHorarioTexto(horarioEstructurado),
     modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro',
     footer_texto: pfFooterTextoSel
   };
