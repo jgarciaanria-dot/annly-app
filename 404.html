@@ -34,14 +34,76 @@ body.modo-oscuro{
 body{font-family:'Inter',sans-serif;background-color:var(--bg-page);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.18'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");color:#2c2c2a;min-height:100vh;transition:background-color .25s;}
 @media(min-width:600px){
   body{background-color:var(--charcoal2);}
-  .hdr,#serviceList,.marcas-strip,footer{max-width:480px;margin-left:auto;margin-right:auto;}
+  .hdr,#serviceList,.marcas-strip,footer{
+    max-width:720px;
+    margin-left:auto;
+    margin-right:auto;
+  }
   .hdr{background-color:var(--bg-page);}
   #serviceList{background-color:var(--bg-page);}
   body.modo-oscuro{background-color:#0d0c0b;}
 }
-@media(min-width:900px){
-  .hdr,#serviceList,.marcas-strip,footer{max-width:760px;}
-  .grid{grid-template-columns:1fr 1fr 1fr;}
+
+@media(min-width:1000px){
+  .hdr,#serviceList,.marcas-strip,footer{
+    max-width:1080px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  .hdr{
+    padding:3.5rem 3rem 2.75rem;
+  }
+
+  .hdr-logo,
+  .hdr-logo img{
+    width:150px;
+    height:150px;
+  }
+
+  .hdr h1{font-size:24px;}
+  .hdr-tagline{font-size:21px;}
+
+  .grid{
+    gap:12px;
+    padding-left:1.25rem;
+    padding-right:1.25rem;
+  }
+
+  /* En desktop, la cantidad de servicios determina la cantidad de columnas.
+     Evita tarjetas pequeñas con grandes espacios vacíos. */
+  .grid.grid-count-1{grid-template-columns:1fr;}
+  .grid.grid-count-2{grid-template-columns:1fr 1fr;}
+  .grid.grid-count-3,
+  .grid.grid-count-4,
+  .grid.grid-count-5,
+  .grid.grid-count-6,
+  .grid.grid-count-7,
+  .grid.grid-count-8,
+  .grid.grid-count-9,
+  .grid.grid-count-10,
+  .grid.grid-count-11,
+  .grid.grid-count-12{grid-template-columns:repeat(3,minmax(0,1fr));}
+
+  /* La clase .full fue pensada para el grid de 2 columnas móvil.
+     En desktop no debe hacer que una tarjeta ocupe 2/3 de la fila. */
+  .grid .full{grid-column:auto;}
+
+  .sec-label{
+    padding-left:1.25rem;
+    padding-right:1.25rem;
+    font-size:12px;
+  }
+
+  .eval-wrap{padding-left:1.25rem;padding-right:1.25rem;}
+  .eval-card{padding:1rem 1.15rem;}
+  .eval-name{font-size:19px;}
+  .eval-sub{font-size:12px;}
+
+  .card{padding:.8rem .9rem;}
+  .card-name{font-size:17px;}
+  .card-desc{font-size:11.5px;}
+  .card-price{font-size:16px;}
 }
 
 .wa-float{position:fixed;bottom:16px;right:16px;z-index:999;width:44px;height:44px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.2);text-decoration:none;transition:transform .2s, opacity .25s;opacity:.72;}
@@ -941,7 +1003,7 @@ function renderServices(){
       }
       const otros=svcs.filter(s=>!s.esEval);
       if(otros.length){
-        html+=`<div class="grid">`;
+        html+=`<div class="grid grid-count-${otros.length}">`;
         otros.forEach(s=>{
           const icon=SVC_ICONS[s.id]||'ti-star';
           html+=buildCard(s,icon);
@@ -951,7 +1013,7 @@ function renderServices(){
       return;
     }
 
-    html+=`<div class="sec-label">${cat}</div><div class="grid">`;
+    html+=`<div class="sec-label">${cat}</div><div class="grid grid-count-${svcs.length}">`;
     svcs.forEach((s,i)=>{
       const icon=SVC_ICONS[s.id]||'ti-star';
       const isLast=i===svcs.length-1&&svcs.length%2!==0&&svcs.length>1;
