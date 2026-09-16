@@ -1,0 +1,950 @@
+  document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
+    document.getElementById('ruletaModal').classList.remove('activo');
+  });
+
+  // ============================================================
+  // RUEDA DINÁMICA - se construye desde RuletaConfig, sin código fijo
+  // ============================================================
+  let RULETA_SEGMENTOS_ACTIVOS = [];
+
+  const RULETA_PALETA = [
+    { fill: '#F0D68C', text: '#241B10', muted: '#5C4B22' },
+    { fill: '#C9A24B', text: '#241B10', muted: '#4A3B18' },
+    { fill: '#8A6A24', text: '#F5F1E6', muted: '#D8D4CC' },
+    { fill: '#E3C077', text: '#241B10', muted: '#5C4B22' },
+    { fill: '#B8933D', text: '#241B10', muted: '#4A3B18' },
+    { fill: '#6B5518', text: '#F5F1E6', muted: '#D8D4CC' }
+  ];
+
+  function ruletaPt(cx, cy, r, angleDeg){
+    const rad = angleDeg * Math.PI / 180;
+    return { x: (cx + r * Math.sin(rad)).toFixed(1), y: (cy - r * Math.cos(rad)).toFixed(1) };
+  }
+
+  function ruletaWordWrap(texto, maxLen){
+    const palabras = texto.split(' ');
+    const lineas = [];
+    let actual = '';
+    palabras.forEach(p => {
+      if ((actual + ' ' + p).trim().length > maxLen && actual) {
+        lineas.push(actual.trim());
+        actual = p;
+      } else {
+        actual = (actual + ' ' + p).trim();
+      }
+    });
+    if (actual) lineas.push(actual);
+    return lineas.slice(0, 2); // máximo 2 líneas para que quepa
+  }
+
+  function ruletaEscapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function loadRuletaConfig(){
+    try {
+      const config = await Sheets.getRuletaConfig();
+      const activos = (config.premios || []).filter(p => p.activo);
+      construirRuedaDinamica(activos);
+    } catch(e){
+      console.error('Error cargando config de ruleta:', e);
+    }
+  }
+
+  function construirRuedaDinamica(premiosActivos){
+    const cont = document.getElementById('wheelSvgContainer');
+    const n = premiosActivos.length;
+
+    if (n === 0) {
+      cont.innerHTML = '<p style="color:#8A7A4E;font-size:12px;text-align:center;padding:2rem 0;">La ruleta no tiene premios configurados.</p>';
+      RULETA_SEGMENTOS_ACTIVOS = [];
+      return;
+    }
+
+    const cx = 125, cy = 125, R = 118;
+    const step = 360 / n;
+    const maxLineLen = n <= 4 ? 14 : (n <= 6 ? 11 : 8);
+    const fontSize = n <= 4 ? 15 : (n <= 6 ? 12 : 9);
+    const lineHeight = fontSize * 1.15;
+
+    let pathsHtml = '';
+    let linesHtml = '';
+    let textsHtml = '';
+    const segmentos = [];
+
+    for (let k = 0; k < n; k++) {
+      const p1 = ruletaPt(cx, cy, R, k * step);
+      const p2 = ruletaPt(cx, cy, R, (k + 1) * step);
+      const color = RULETA_PALETA[k % RULETA_PALETA.length];
+      const segId = 'seg' + k;
+
+      pathsHtml += `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
+      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="#C9A24B" stroke-width="0.75" opacity="0.55"/>\n`;
+
+      const midAngle = (k + 0.5) * step;
+      const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
+
+      // Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
+      const rotDeg = midAngle;
+
+      const lineas = ruletaWordWrap(premiosActivos[k].premio, maxLineLen);
+      const startY = parseFloat(headline.y) - ((lineas.length - 1) * lineHeight) / 2;
+      const tspans = lineas.map((linea, i) =>
+        `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lineHeight}">${ruletaEscapeHtml(linea)}</tspan>`
+      ).join('');
+      textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
+
+      segmentos.push({ id: segId, premio: premiosActivos[k].premio, angle: midAngle });
+    }
+
+    const dotsHtml = [
+      [125.0,4.0],[162.4,9.9],[196.1,27.1],[222.9,53.9],[240.1,87.6],[246.0,125.0],
+      [240.1,162.4],[222.9,196.1],[196.1,222.9],[162.4,240.1],[125.0,246.0],[87.6,240.1],
+      [53.9,222.9],[27.1,196.1],[9.9,162.4],[4.0,125.0],[9.9,87.6],[27.1,53.9],[53.9,27.1],[87.6,9.9]
+    ].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="#C9A24B"/>`).join('\n');
+
+    cont.innerHTML = `<svg id="wheelSvg" viewBox="0 0 250 250" width="250" height="250">
+      <circle cx="125" cy="125" r="122" fill="none" stroke="#C9A24B" stroke-width="1" opacity="0.6"/>
+      ${pathsHtml}
+      <circle cx="125" cy="125" r="118" fill="none" stroke="#C9A24B" stroke-width="1.5"/>
+      ${linesHtml}
+      ${dotsHtml}
+      ${textsHtml}
+      <circle cx="125" cy="125" r="34" fill="#0D0C0A" stroke="#C9A24B" stroke-width="2"/>
+    </svg>`;
+
+    RULETA_SEGMENTOS_ACTIVOS = segmentos;
+  }
+
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const SVC_ICONS={
+  eval:'ti-clipboard-list',
+  lavblower:'ti-wind',lavcrteblower:'ti-scissors',
+  peinpro:'ti-sparkles',peinglam:'ti-crown',
+  fastrepair:'ti-droplet',trussinfusion:'ti-leaf',
+  ultimatewella:'ti-heart',celulasmadre:'ti-atom',
+  combocm:'ti-star',
+  highliss:'ti-wave-sine',ybera:'ti-ripple',
+  retoque:'ti-circle-half',colorglobal:'ti-palette',balayage:'ti-brush',
+  instexten:'ti-arrow-merge',retiromantenimiento:'ti-refresh'
+};
+
+let SERVICES=[];
+let BLOQUEOS={dias:[], horas:{}};
+
+async function loadBloqueos(){
+  try {
+    BLOQUEOS = await Sheets.getBloqueos();
+    if(!BLOQUEOS.dias) BLOQUEOS.dias=[];
+    if(!BLOQUEOS.horas) BLOQUEOS.horas={};
+  } catch(e){ BLOQUEOS={dias:[], horas:{}}; }
+}
+
+function fechaISO(y,m,d){
+  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+
+// ===== FIX: función restaurada (se había perdido en una edición anterior) =====
+async function loadServices(){
+  try {
+    const servicios = await Sheets.getServicios();
+    if(servicios && servicios.length > 0){
+      SERVICES = servicios;
+      return;
+    }
+  } catch(e) {
+    console.log('Fallback a localStorage:', e);
+  }
+  const saved = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly')
+    ? localStorage.getItem('vss_hair_services') : null;
+  if(saved){
+    SERVICES = JSON.parse(saved);
+  } else if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly') {
+    SERVICES = getDefaultServices(); // solo Vicelly usa este catálogo de respaldo
+  } else {
+    SERVICES = []; // negocio nuevo: catálogo vacío de verdad
+  }
+}
+
+// ===== Branding dinámico + arranque único (multi-tenant) =====
+function hexToRgb(hex){
+  if(!hex) return null;
+  const m = hex.replace('#','').match(/.{1,2}/g);
+  if(!m || m.length<3) return null;
+  return m.slice(0,3).map(h=>parseInt(h,16)).join(',');
+}
+
+window.AnnlyReady.then(() => {
+  const b = window.ANNLY_BUSINESS;
+  if (b) {
+    if (b.color_primario) {
+      document.documentElement.style.setProperty('--gold', b.color_primario);
+      const rgb = hexToRgb(b.color_primario);
+      if (rgb) document.documentElement.style.setProperty('--gold-rgb', rgb);
+    }
+    if (b.color_secundario) {
+      document.documentElement.style.setProperty('--gold-dark', b.color_secundario);
+      const rgbDark = hexToRgb(b.color_secundario);
+      if (rgbDark) document.documentElement.style.setProperty('--gold-dark-rgb', rgbDark);
+    }
+    const h1 = document.getElementById('hdr-nombre');
+    if (h1 && b.nombre) h1.textContent = b.nombre.toUpperCase();
+    if (b.logo_url) {
+      document.getElementById('hdr-logo').innerHTML =
+        `<img src="${b.logo_url}" alt="${b.nombre || ''}" style="width:130px;height:130px;object-fit:contain;border-radius:50%;"/>`;
+    } else {
+      const inicial = (b.nombre || 'A').trim().charAt(0).toUpperCase();
+      document.getElementById('hdr-logo-fallback').textContent = inicial;
+    }
+    document.title = (b.nombre || 'Annly') + ' — Reservas';
+
+    // Tipografía de títulos: elegante (Vicelly) o básica sans-serif (default para negocios nuevos)
+    const esFuenteElegante = (b.fuente || '').toLowerCase().includes('garamond');
+    document.documentElement.style.setProperty('--font-heading',
+      esFuenteElegante ? "'Cormorant Garamond', serif" : "'Inter', sans-serif");
+
+    // Modo de fondo (claro/oscuro)
+    if (b.modo_fondo === 'oscuro') {
+      document.body.classList.add('modo-oscuro');
+    } else {
+      document.body.classList.remove('modo-oscuro');
+      // Modo claro: tiñe el fondo con el color del propio negocio,
+      // en vez de dejar el gris neutro fijo (que era solo el de Vicelly)
+      if (b.color_primario) {
+        const rgbBase = hexToRgb(b.color_primario);
+        if (rgbBase) {
+          const mezclar = (factorBlanco) => rgbBase.split(',').map(Number)
+            .map(c => Math.round(c + (255 - c) * factorBlanco)).join(',');
+          document.documentElement.style.setProperty('--bg-page', 'rgb(' + mezclar(0.90) + ')');
+          document.documentElement.style.setProperty('--bg-header', 'rgb(' + mezclar(0.72) + ')');
+          // Footer: se tiñe con el mismo color del negocio en vez de quedar fijo en crema
+          document.documentElement.style.setProperty('--bg-footer', 'rgb(' + mezclar(0.94) + ')');
+          document.documentElement.style.setProperty('--footer-text', b.color_primario);
+          document.documentElement.style.setProperty('--footer-text-soft', 'rgba(' + rgbBase + ',.75)');
+          document.documentElement.style.setProperty('--footer-text-faint', 'rgba(' + rgbBase + ',.45)');
+          document.documentElement.style.setProperty('--footer-label', b.color_secundario || b.color_primario);
+        }
+      }
+    }
+
+    // Texto del footer: override manual (negro/blanco) elegido en el Perfil,
+    // por si el tinte automático queda poco legible con alguna paleta
+    if (b.footer_texto === 'claro') {
+      document.documentElement.style.setProperty('--footer-text', '#FFFFFF');
+      document.documentElement.style.setProperty('--footer-text-soft', 'rgba(255,255,255,.85)');
+      document.documentElement.style.setProperty('--footer-text-faint', 'rgba(255,255,255,.6)');
+      document.documentElement.style.setProperty('--footer-label', '#FFFFFF');
+    } else if (b.footer_texto === 'oscuro') {
+      document.documentElement.style.setProperty('--footer-text', '#201b16');
+      document.documentElement.style.setProperty('--footer-text-soft', 'rgba(32,27,22,.75)');
+      document.documentElement.style.setProperty('--footer-text-faint', 'rgba(32,27,22,.45)');
+      document.documentElement.style.setProperty('--footer-label', '#201b16');
+    }
+
+    // Tagline
+    const tagEl = document.getElementById('hdr-tagline');
+    if (tagEl) tagEl.textContent = b.tagline || '';
+    const footerTagEl = document.getElementById('footer-tagline');
+    if (footerTagEl) footerTagEl.textContent = b.footer_mensaje || '';
+
+    // WhatsApp flotante
+    const waLink = document.getElementById('wa-float-link');
+    if (waLink) {
+      if (b.whatsapp) { waLink.href = 'https://wa.me/' + b.whatsapp; waLink.style.display = ''; }
+      else { waLink.style.display = 'none'; }
+    }
+
+    // Instagram (solo se muestra si el negocio tiene uno cargado)
+    if (b.instagram) {
+      document.getElementById('footer-ig-wrap').style.display = 'block';
+      document.getElementById('footer-ig-link').href = 'https://www.instagram.com/' + b.instagram;
+      document.getElementById('footer-ig-handle').textContent = '@' + b.instagram.replace(/^@+/, '');
+    }
+
+    // Horario y dirección
+    const horEl = document.getElementById('footer-horario');
+    if (horEl) horEl.innerHTML = (b.horario_texto || 'Consulta disponibilidad').replace(/\|/g, '<br>');
+    const dirEl = document.getElementById('footer-direccion');
+    if (dirEl) dirEl.textContent = b.direccion || '';
+    const copyEl = document.getElementById('footer-copyright');
+    if (copyEl) copyEl.textContent = '© ' + (b.nombre || 'Annly') + ' · Powered by Annly';
+
+    // La franja de marcas (L'Oréal, Truss, etc.) es contenido específico
+    // de Vicelly — solo se muestra para ese negocio hasta que tengamos
+    // un sistema de "marcas propias" configurable por negocio.
+    if (b.slug === 'vicelly') {
+      document.getElementById('marcas-strip').style.display = 'block';
+    }
+  }
+  loadServices().then(() => { renderServices(); });
+  loadBloqueos();
+  loadPromo();
+  loadRuletaConfig();
+  try{Sheets.initSheet();}catch(e){}
+});
+
+function getDefaultServices(){
+  return [
+      {id:'eval',name:'Cita de Evaluación',cat:'Básicos',price:10,dur:'30 min',durMin:30,active:true,esEval:true,
+        desc:'El punto de partida para cualquier servicio de color, alisado o tratamiento intensivo. Analizamos tu historial capilar, tratamientos químicos previos, tipo y textura para diseñar el plan perfecto para ti.',
+        includes:['Análisis de historial capilar','Diagnóstico de tipo y textura','Revisión de tratamientos previos','Plan de servicio personalizado','Recomendación de productos','Prueba de mechón']},
+      {id:'lavblower',name:'Lavado y Blower',cat:'Básicos',price:25,precioTexto:'desde $25',dur:'40–60 min',durMin:60,active:true,esEval:false,
+        desc:'Limpieza profunda con productos de marcas profesionales Truss, Wella y L\'Oréal, adaptados al tipo y necesidad de tu cabello. Secado con blower profesional para un acabado con volumen, brillo y movimiento natural.',
+        includes:['Lavado con champú profesional','Acondicionador o mascarilla','Protector térmico','Blower con cepillo profesional','Acabado con brillo','Asesoría de cuidado en casa']},
+      {id:'lavcrteblower',name:'Lavado, Corte y Blower',cat:'Básicos',price:65,precioTexto:'desde $65',dur:'~90 min',durMin:90,active:true,esEval:false,
+        desc:'Lavado técnico con productos de alta gama, corte personalizado según tu tipo de cabello y estilo de vida, más blower profesional para un resultado impecable.',
+        includes:['Lavado técnico con marca profesional','Asesoría de corte personalizado','Corte a tu preferencia','Protector térmico','Blower con cepillo redondo','Acabado brillante y definido']},
+      {id:'peinpro',name:'Peinado Profesional',cat:'Básicos',price:0,precioTexto:'consultar',dur:'según estilo',durMin:60,active:true,esEval:false,
+        desc:'Peinado social elegante ideal para salidas, reuniones y ocasiones especiales. Adaptado a tu tipo de cabello y la ocasión, con acabado duradero.',
+        includes:['Secado y preparación de cabello','Peinado a elección','Fijador profesional','Acabado duradero','Asesoría de estilo']},
+      {id:'peinglam',name:'Peinado Glam & Evento',cat:'Básicos',price:0,precioTexto:'consultar',dur:'~60 min',durMin:60,active:true,esEval:false,
+        desc:'Look sofisticado y moderno para eventos, celebraciones, sesiones de fotos o cualquier ocasión especial donde quieras destacar con un toque de elegancia.',
+        includes:['Secado profesional','Peinado de evento o glam','Accesorios a elección','Fijador de larga duración','Retoque y detalle final']},
+      {id:'fastrepair',name:'Fast Repair Truss',cat:'Tratamientos',price:65,dur:'60–90 min',durMin:90,active:true,esEval:false,
+        desc:'Tratamiento de hidratación y nutrición intensiva de la marca Truss en 4 pasos. Restaura la salud del cabello dañado, aporta brillo, suavidad y reduce el frizz en todos los tipos de cabello.',
+        includes:['Champú Fast Repair','Mascarilla Net Mask','Cera vegana Infusión','Sellado con calor','Blower con protectores']},
+      {id:'trussinfusion',name:'Recuperación Truss Infusión',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'~2 hrs',durMin:120,active:true,esEval:false,
+        desc:'El tratamiento más completo de Truss para cabello muy dañado. Combina la cera vegana Infusión, el Fast Repair de 3 productos y la mascarilla reparadora Net Mask para una recuperación profunda.',
+        includes:['Cera vegana Infusión','Fast Repair 3 productos','Mascarilla reparadora Net Mask','Blower con protectores de calor','Sellado y acabado brillante']},
+      {id:'ultimatewella',name:'Ultimate Repair Wella',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,
+        desc:'Fórmula vegana que repara y reconstruye la fibra capilar desde adentro. Restaura la fuerza, aporta brillo y suavidad. Ideal para todo tipo de cabello, especialmente el dañado por químicos o calor.',
+        includes:['Diagnóstico capilar previo','Aplicación Ultimate Repair','Tecnología de reconstrucción','Sellado de cutícula','Acabado suave y brillante']},
+      {id:'celulasmadre',name:'Células Madre',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,
+        desc:'Tratamiento regenerador que nutre y fortalece el cabello dañado desde la raíz. Mejora la elasticidad, el brillo y la suavidad aportando vitalidad al cabello sin vida.',
+        includes:['Champú de preparación','Aplicación de células madre','Masaje capilar activador','Sellado con calor','Blower y acabado final']},
+      {id:'combocm',name:'Combo Células Madre + Rubber Gel',cat:'Tratamientos',price:75,dur:'consultar',durMin:120,active:true,esEval:false,
+        desc:'El combo perfecto para quienes buscan cabello y manos en un solo servicio. Brillo, suavidad, nutrición y fuerza con fórmula vegana. Ideal para cabello seco, dañado o sin vida.',
+        includes:['Tratamiento Células Madre completo','Rubber Gel en manos','Brillo y suavidad garantizados','Nutrición con fórmula vegana','Acabado profesional manos y cabello']},
+      {id:'highliss',name:'High Liss Orgánico Truss',cat:'Alisados',price:0,precioTexto:'consultar',dur:'3–3.5 hrs',durMin:210,active:true,esEval:false,
+        desc:'Alisado progresivo orgánico de la marca Truss para control de frizz y volumen sin alisar el 100% del cabello. Resultados naturales con movimiento. Requiere evaluación previa.',
+        includes:['Lavado preparatorio','Aplicación High Liss Truss','Plancha y sellado','Blower con protectores','Mantenimiento en casa indicado']},
+      {id:'ybera',name:'Ybera Alisado Orgánico',cat:'Alisados',price:120,precioTexto:'desde $120',dur:'consultar',durMin:180,active:true,esEval:false,
+        desc:'Alisado orgánico Ybera, el precio es por onza y media. Por lo general esta cantidad funciona para retocar raíces de aproximadamente 3 a 4 cm de crecimiento. Requiere evaluación previa.',
+        includes:['Evaluación previa requerida','Lavado de preparación','Aplicación Ybera por zonas','Plancha y sellado','Asesoría de mantenimiento']},
+      {id:'retoque',name:'Retoque de Raíz',cat:'Color',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,
+        desc:'Aplicación precisa de tinte solo en las raíces o zona de crecimiento para mantener el color uniforme. Lavado previo con champú que equilibra el pH y elimina residuos de productos anteriores.',
+        includes:['Lavado de equilibrio de pH','Aplicación de tinte en raíces','Control de tiempo técnico','Enjuague y tratamiento post-color','Blower y acabado final']},
+      {id:'colorglobal',name:'Color Global',cat:'Color',price:0,precioTexto:'consultar',dur:'4–5 hrs',durMin:270,active:true,esEval:false,
+        desc:'Aplicación de tinte global para cambiar o reforzar el tono natural del cabello (no incluye decoloración). El servicio dura de 4 a 5 horas e incluye tratamientos de nutrición y protección.',
+        includes:['Consulta de color previa','Lavado preparatorio','Aplicación de color completo','Tratamiento post-color','Blower profesional final']},
+      {id:'balayage',name:'Balayage',cat:'Color',price:0,precioTexto:'consultar',dur:'consultar',durMin:180,active:true,esEval:false,
+        desc:'Técnica de iluminación a mano libre para lograr un efecto natural y luminoso. Requiere cita de evaluación previa. Incluye preparación del cabello con tratamiento de fuerza, lípidos y proteína.',
+        includes:['Cita de evaluación previa obligatoria','Preparación capilar (fuerza + lípidos)','Técnica balayage a mano libre','Tratamiento de brillo post-color','Blower y acabado final']},
+      {id:'instexten',name:'Instalación de Extensiones',cat:'Extensiones',price:0,precioTexto:'consultar',dur:'variable',durMin:120,active:true,esEval:false,
+        desc:'Instalación profesional de extensiones. El tiempo de servicio dependerá de la cantidad de paquetes a instalar. Incluye lavado especial y blower con protectores de calor.',
+        includes:['Consulta de cantidad y método','Lavado especial pre-instalación','Instalación profesional','Blower con protectores de calor','Asesoría de mantenimiento en casa']},
+      {id:'retiromantenimiento',name:'Retiro y Mantenimiento',cat:'Extensiones',price:0,precioTexto:'consultar',dur:'2–3 hrs',durMin:150,active:true,esEval:false,
+        desc:'Servicio de retiro cuidadoso de extensiones + lavado especial + blower con protectores de calor. El tiempo varía según la cantidad de paquetes. No aplica abono para este servicio.',
+        includes:['Retiro cuidadoso de extensiones','Lavado especial post-retiro','Mascarilla nutritiva','Blower con protectores de calor','Asesoría capilar post-extensiones']},
+    ].map(s => ({requiereAbono: false, abonoMonto: null, abonoTipo: null, ...s}));
+}
+
+let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=300;
+let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
+
+function renderServices(){
+  if(!SERVICES.length){
+    document.getElementById('serviceList').innerHTML =
+      `<div style="text-align:center;padding:3rem 1.5rem;color:var(--page-label-text);opacity:.7;">
+        <i class="ti ti-calendar-off" style="font-size:32px;display:block;margin-bottom:.75rem;"></i>
+        <p style="font-size:13px;">Este negocio todavía no tiene servicios cargados.</p>
+      </div>`;
+    return;
+  }
+  const knownOrder=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+  const presentes=[...new Set(SERVICES.map(s=>s.cat).filter(Boolean))];
+  const extra=presentes.filter(c=>!knownOrder.includes(c));
+  const cats=[...knownOrder, ...extra];
+  let html='';
+  cats.forEach(cat=>{
+    const svcs=SERVICES.filter(s=>s.cat===cat&&s.active);
+    if(!svcs.length)return;
+
+    if(cat==='Básicos'){
+      html+=`<div class="sec-label">Básicos</div>`;
+      const evalSvc=svcs.find(s=>s.esEval);
+      if(evalSvc){
+        html+=`<div class="eval-wrap"><div class="eval-card" onclick="openDetail('${evalSvc.id}')">
+          <div class="eval-icon"><i class="ti ti-clipboard-list" aria-hidden="true"></i></div>
+          <div><div class="eval-name">${evalSvc.name}</div><div class="eval-sub">Análisis capilar + prueba de mechón</div></div>
+          <div class="eval-right"><div class="eval-price">$10.00</div><div class="eval-badge">descontable</div></div>
+        </div></div>`;
+      }
+      const otros=svcs.filter(s=>!s.esEval);
+      if(otros.length){
+        html+=`<div class="grid">`;
+        otros.forEach(s=>{
+          const icon=SVC_ICONS[s.id]||'ti-star';
+          html+=buildCard(s,icon);
+        });
+        html+=`</div>`;
+      }
+      return;
+    }
+
+    html+=`<div class="sec-label">${cat}</div><div class="grid">`;
+    svcs.forEach((s,i)=>{
+      const icon=SVC_ICONS[s.id]||'ti-star';
+      const isLast=i===svcs.length-1&&svcs.length%2!==0&&svcs.length>1;
+      html+=buildCard(s,icon,isLast);
+    });
+    html+='</div>';
+  });
+  html+='<div style="padding-bottom:1.5rem;"></div>';
+  document.getElementById('serviceList').innerHTML=html;
+}
+
+function buildCard(s,icon,full=false){
+  const precio=s.precioTexto||(s.price>0?'$'+s.price.toFixed(2):'consultar');
+  const iconHtml = s.imagenUrl
+    ? `<img src="${s.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+    : `<i class="ti ${icon}" aria-hidden="true"></i>`;
+  return `<div class="card${full?' full':''}" onclick="openDetail('${s.id}')">
+    <div class="card-top"><div class="card-icon" style="${s.imagenUrl?'overflow:hidden;background:none;border:none;':''}">${iconHtml}</div><div class="card-name">${s.name}</div></div>
+    <div class="card-desc">${s.desc}</div>
+    <div class="card-sep"></div>
+    <div class="card-footer"><span class="card-price">${precio}</span><span class="card-dur">${s.dur}</span></div>
+    <div class="card-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+  </div>`;
+}
+
+function openDetail(id, esPromo){
+  curSvc=SERVICES.find(s=>s.id===id);
+  if(!curSvc)return;
+  if(esPromo && PROMO_DATA && PROMO_DATA.precioPromo){
+    curSvc={...curSvc, price:parseFloat(PROMO_DATA.precioPromo), precioTexto:null, _promo:true, _precioOriginal:curSvc.price};
+  }
+  const icon=SVC_ICONS[curSvc.id]||'ti-star';
+  const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
+  const incl=curSvc.includes.map(i=>`<div class="incl-item"><span class="incl-dot"></span>${i}</div>`).join('');
+
+  let extraBox='';
+  if(curSvc.esEval){
+    extraBox=`<div class="mechon-box">
+      <div class="mechon-header"><i class="ti ti-test-pipe" aria-hidden="true"></i><span class="mechon-title">Prueba de mechón incluida</span></div>
+      <p class="mechon-text">Realizamos una prueba de mechón para verificar la compatibilidad del color o químico con tu cabello antes de proceder. Esencial para garantizar resultados seguros y predecibles.</p>
+    </div>
+    <div class="note-box"><i class="ti ti-info-circle" aria-hidden="true"></i><span>El abono de <strong>$10.00</strong> se descuenta del servicio que elijas realizar. Si decides no continuar, no hay cobro adicional.</span></div>`;
+  } else if(curSvc.requiereAbono){
+    const montoAb=(curSvc.abonoMonto||10).toFixed(2);
+    const tipoAb=curSvc.abonoTipo==='descontable'?'descontable del servicio':'no reembolsable';
+    extraBox=`<div class="note-box-warn"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Este servicio requiere un abono de <strong>$${montoAb}</strong> (${tipoAb}) para confirmar la cita.</span></div>
+    <div class="note-box-warn"><i class="ti ti-clock" aria-hidden="true"></i><span>Política de cancelación: avisa con al menos <strong>24 horas</strong> de anticipación por WhatsApp.</span></div>`;
+  } else {
+    extraBox=`<div class="note-box"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Este servicio no requiere abono. El pago se realiza el día de tu cita.</span></div>
+    <div class="note-box-warn"><i class="ti ti-clock" aria-hidden="true"></i><span>Política de cancelación: avisa con al menos <strong>24 horas</strong> de anticipación por WhatsApp.</span></div>`;
+  }
+
+  document.getElementById('detail-title').textContent=curSvc.name;
+  document.getElementById('detail-body').innerHTML=`
+    <div class="svc-banner">
+      <div class="svc-banner-icon" style="${curSvc.imagenUrl?'overflow:hidden;background:none;border:none;':''}">${curSvc.imagenUrl?`<img src="${curSvc.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`:`<i class="ti ${icon}" aria-hidden="true"></i>`}</div>
+      <div>
+        <div class="svc-banner-name">${curSvc.name}</div>
+        <div class="svc-banner-meta">
+          <span class="svc-banner-price">${curSvc._promo?`<span style="color:#aaa;text-decoration:line-through;font-weight:400;">$${curSvc._precioOriginal.toFixed(2)}</span> <span style="color:#D95F2B;">${precio}</span> <span style="background:#D95F2B;color:#fff;font-size:9px;padding:2px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;">PROMO</span>`:`${precio}${curSvc.esEval?' · descontable':''}`}</span>
+          <span class="svc-banner-dur">${curSvc.dur}</span>
+        </div>
+      </div>
+    </div>
+    <p class="svc-desc">${curSvc.desc}</p>
+    <p class="incl-title">Incluye</p>
+    <div class="incl-grid">${incl}</div>
+    ${extraBox}
+    <button class="btn-main" onclick="openCal()">Agendar este servicio</button>
+    <button class="btn-ghost" onclick="closeOv('ov-detail')">Volver</button>`;
+  openOv('ov-detail');
+}
+
+async function openCal(){
+  closeOv('ov-detail');
+  selectedDay=null; selTime=null;
+  const now=new Date(); calY=now.getFullYear(); calM=now.getMonth();
+  const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
+  document.getElementById('cal-svc-info').innerHTML=`
+    <span class="svc-pill-name">${curSvc.name}</span>
+    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${curSvc.dur}</span></div>`;
+  document.getElementById('timeSec').style.display='none';
+  document.getElementById('btnContinue').disabled=true;
+
+  // Refresca bloqueos justo antes de mostrar el calendario
+  try { await loadBloqueos(); } catch(e){ console.error(e); }
+
+  renderCal();
+  openOv('ov-cal');
+}
+function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
+
+function diaCerrado(dow){
+  const h = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  if (!h) return dow===0; // si el negocio no tiene horario configurado todavía, solo domingo cerrado por defecto
+  const bloque = h[bloqueDelDia(dow)];
+  return !bloque || !!bloque.cerrado;
+}
+
+function renderCal(){
+  document.getElementById('calMoLbl').textContent=MESES[calM]+' '+calY;
+  const dn=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  let h=dn.map((d,i)=>`<div class="cdn${i===0?' dom':''}">${d}</div>`).join('');
+  const first=new Date(calY,calM,1).getDay();
+  const days=new Date(calY,calM+1,0).getDate();
+  const today=new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<first;i++) h+=`<div class="cd emp"></div>`;
+  for(let d=1;d<=days;d++){
+    const dt=new Date(calY,calM,d);
+    const dow=dt.getDay();
+    const iso=fechaISO(calY,calM,d);
+    const isBloq=BLOQUEOS.dias.some(b=>b.fecha===iso);
+    const isPast=dt<today,isDom=diaCerrado(dow),isHoy=dt.getTime()===today.getTime(),isSel=selectedDay===d;
+    let cls='cd';
+    if(isPast) cls+=' pst';
+    else if(isDom) cls+=' dom';
+    else if(isBloq) cls+=' bloq';
+    if(isHoy) cls+=' hoy';
+    if(isSel&&!isPast&&!isDom&&!isBloq) cls+=' sel';
+    const ok=!isPast&&!isDom&&!isBloq;
+    const title=isBloq?'title="No disponible"':'';
+    h+=`<div class="${cls}" ${title} ${ok?`onclick="selDay2(${d})"`:''} >${d}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML=h;
+}
+
+function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+
+function genSlots(){
+  const dt=new Date(calY,calM,selectedDay);
+  const dow=dt.getDay();
+  const bloqueCfg=(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado
+    && window.ANNLY_BUSINESS.horario_estructurado[bloqueDelDia(dow)]) || null;
+
+  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si el negocio no tiene horario configurado
+  if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
+    [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
+    [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
+  } else if (bloqueCfg && bloqueCfg.cerrado) {
+    return []; // el negocio está cerrado ese día — sin horarios disponibles
+  }
+
+  const slots=[];
+  let h=hIni,m=mIni;
+  while(h<hFin||(h===hFin&&m===mFin)){
+    const key=h+':'+(m===0?'00':'30');
+    const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
+    slots.push({key,lbl});
+    m+=30; if(m>=60){m=0;h++;}
+  }
+  const now=new Date();
+  const esHoy=selectedDay===now.getDate()&&calM===now.getMonth()&&calY===now.getFullYear();
+  if(esHoy){
+    const nowMin=now.getHours()*60+now.getMinutes();
+    return slots.filter(s=>timeToMin(s.key)>nowMin);
+  }
+  return slots;
+}
+
+function isBlocked(slotKey,citas,durSvc){
+  const slotMin=timeToMin(slotKey);
+  for(const c of citas){
+    const occMin=timeToMin(c.hora);
+    const occDur=parseInt(c.duracion)||60;
+    if(slotMin<occMin+occDur && slotMin+durSvc>occMin) return true;
+  }
+  return false;
+}
+
+async function selDay2(d){
+  selectedDay=d; selTime=null;
+  renderCal();
+  document.getElementById('timeSec').style.display='block';
+  document.getElementById('btnContinue').disabled=true;
+  document.getElementById('timeGrid').innerHTML='<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
+  const fechaStr=d+' de '+MESES[calM]+' '+calY;
+  let citasOcupadas=[];
+  try{
+    citasOcupadas=await Sheets.getHorasOcupadas(fechaStr);
+  }catch(e){citasOcupadas=[];}
+  window._citasOcupadas=citasOcupadas;
+  renderTimes();
+}
+
+function renderTimes(){
+  const citas=window._citasOcupadas||[];
+  const durSvc=curSvc.durMin||60;
+  const slots=genSlots();
+  const grid=document.getElementById('timeGrid');
+  const iso=fechaISO(calY,calM,selectedDay);
+  const horasBloqueadas=BLOQUEOS.horas[iso]||[];
+  grid.innerHTML='';
+  slots.forEach(({key,lbl})=>{
+    const ocupada=isBlocked(key,citas,durSvc);
+    const bloqueada=horasBloqueadas.includes(key);
+    const blocked=ocupada||bloqueada;
+    const isSel=selTime===key;
+    const div=document.createElement('div');
+    div.className='ts'+(blocked?' tkn':'')+(isSel?' sel':'');
+    div.textContent=lbl;
+    if(blocked){
+      const sub=document.createElement('span');
+      sub.style.cssText='display:block;font-size:9px;color:#ccc;margin-top:1px;';
+      sub.textContent=bloqueada?'no disp.':'ocupada';
+      div.appendChild(sub);
+    }
+    if(!blocked) div.onclick=()=>{selTime=key;renderTimes();document.getElementById('btnContinue').disabled=false;};
+    grid.appendChild(div);
+  });
+}
+
+function chMo(d){
+  calM+=d;
+  if(calM<0){calM=11;calY--;}
+  if(calM>11){calM=0;calY++;}
+  selectedDay=null; selTime=null;
+  document.getElementById('timeSec').style.display='none';
+  document.getElementById('btnContinue').disabled=true;
+  renderCal();
+}
+
+function goForm(){
+  closeOv('ov-cal');
+  cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+  const dayStr=`${selectedDay} de ${MESES[calM]} ${calY}`;
+  timerSecs=300;
+  const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
+
+  const tieneAbono = curSvc.esEval || curSvc.requiereAbono;
+  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'no reembolsable';
+
+  let pagoSection='';
+  if(tieneAbono){
+    pagoSection=`
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="timer-box" id="timerBox">
+        <div class="timer-val" id="timerVal">5:00</div>
+        <div class="timer-lbl">Tienes <strong>5 minutos</strong> para completar el pago.<br>Si no se confirma, el cupo se libera.</div>
+      </div>
+      <div class="pay-opt sel" id="opt-yappy" onclick="selPago('yappy')">
+        <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
+        <div class="pay-opt-sub">Pago rápido y seguro desde tu app Yappy.</div>
+        <div class="pay-detail">Haz clic en el botón azul, ingresa tu número Yappy y confirma el pago de <strong>$${montoAbono.toFixed(2)}</strong>. Copia el número de comprobante aquí.</div>
+      </div>
+      <div class="pay-opt" id="opt-bank" onclick="selPago('bank')">
+        <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">Banco General</span></div>
+        <div class="pay-opt-sub">Transferencia bancaria a cuenta de ahorros.</div>
+        <div class="pay-detail"><strong>Banco:</strong> Banco General<br><strong>Tipo:</strong> Ahorros<br><strong>Cuenta:</strong> 04-19-99-989328-0<br><strong>Titular:</strong> Vicelly Sanchez Studio<br><strong>Monto:</strong> $${montoAbono.toFixed(2)}<br><span style="color:#e74c3c;font-size:11px;">Incluye tu nombre en la referencia</span></div>
+      </div>
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
+      <a id="btnYappy" href="${YAPPY.link}" target="_blank" class="btn-yappy" onclick="mostrarMensajeRegreso()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5" fill="rgba(255,255,255,0.5)"/></svg>
+        Pagar $${montoAbono.toFixed(2)} con Yappy
+      </a>
+      <div id="msgRegreso" style="display:none;background:#e8f7fd;border:0.5px solid #1AACE3;border-radius:var(--radius);padding:.875rem;margin-bottom:8px;font-size:12px;color:#0f6e8a;line-height:1.6;">
+        ¿Ya pagaste? Yappy no regresa automáticamente. Vuelve aquí, copia el número de comprobante e ingrésalo arriba.
+      </div>
+      <button class="btn-transfer" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>`;
+  } else {
+    pagoSection=`
+      <div class="note-box" style="margin-top:.875rem;">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        <span>Sin abono requerido. El pago se realiza completo el día de tu cita.</span>
+      </div>
+      <div class="note-box-warn">
+        <i class="ti ti-clock" aria-hidden="true"></i>
+        <span>Política de cancelación: avisa con al menos <strong>24 horas</strong> de anticipación por WhatsApp.</span>
+      </div>`;
+  }
+
+  document.getElementById('form-body').innerHTML=`
+    <div style="background:#3A3A3A;border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;">
+      <div style="font-size:15px;font-weight:700;color:var(--gold);font-family:var(--font-heading);">${curSvc.name}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;">${dayStr} · ${selTime} · ${curSvc.dur}</div>
+    </div>
+    <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="fn" placeholder="Tu nombre"/></div>
+      <div class="fg"><label class="flbl">WhatsApp</label><input class="fi" id="fp" placeholder="+507..."/></div>
+    </div>
+    <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe" placeholder="tu@correo.com"/></div>
+    <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fnote" placeholder="Alguna preferencia o detalle que debamos saber..."/></div>
+    <div class="fg">
+      <label class="flbl">¿Tienes un cupón de descuento?</label>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" id="fcupon" placeholder="Ej: RUL-4F2A" style="flex:1;text-transform:uppercase;">
+        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:#2E2B2B;color:#C9A96E;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+      </div>
+      <p id="cuponMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
+    </div>
+    ${pagoSection}
+    <button class="btn-main" id="btnConfirmar" onclick="confirmar('${dayStr}')">Confirmar mi cita</button>`;
+
+  if(tieneAbono) startTimer();
+  openOv('ov-form');
+}
+
+function mostrarMensajeRegreso(){setTimeout(()=>{const m=document.getElementById('msgRegreso');if(m)m.style.display='block';},1500);}
+
+async function aplicarCupon(){
+  const input=document.getElementById('fcupon');
+  const msgEl=document.getElementById('cuponMsg');
+  const codigo=input.value.trim();
+  if(!codigo){ msgEl.textContent=''; cuponAplicado=null; cuponDescuentoPct=0; return; }
+  msgEl.style.color='#999';
+  msgEl.textContent='Verificando...';
+  const res=await Sheets.validarCupon(codigo);
+  if(res.valido && res.tipo==='porcentaje'){
+    cuponAplicado=codigo.toUpperCase();
+    cuponDescuentoPct=res.valor;
+    cuponPremioTexto=res.premio;
+    msgEl.style.color='#3a7a3a';
+    msgEl.textContent=`✓ Cupón válido: ${res.valor}% de descuento.`;
+  } else if(res.valido && res.tipo==='especial'){
+    cuponAplicado=codigo.toUpperCase();
+    cuponDescuentoPct=0;
+    cuponPremioTexto=res.premio;
+    msgEl.style.color='#3a7a3a';
+    msgEl.textContent=`✓ Cupón válido: ${res.premio}. Se coordinará el detalle contigo.`;
+  } else {
+    cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+    msgEl.style.color='#c0392b';
+    const motivos={ya_canjeado:'Este cupón ya fue utilizado.',codigo_no_encontrado:'Cupón no válido.',codigo_vacio:'Ingresa un código.'};
+    msgEl.textContent=motivos[res.motivo]||'Cupón no válido.';
+  }
+}
+
+let pagoTipo='yappy';
+function selPago(tipo){
+  pagoTipo=tipo;
+  document.getElementById('opt-yappy').classList.toggle('sel',tipo==='yappy');
+  document.getElementById('opt-bank').classList.toggle('sel',tipo==='bank');
+  const btnY=document.getElementById('btnYappy');
+  const btnB=document.getElementById('btnTransfer');
+  if(tipo==='bank'){btnY.classList.add('hidden');btnB.classList.add('visible');}
+  else{btnY.classList.remove('hidden');btnB.classList.remove('visible');}
+}
+
+function copiarCuenta(){
+  navigator.clipboard.writeText('04-19-99-989328-0').then(()=>{
+    const btn=document.getElementById('btnTransfer');
+    btn.textContent='¡Copiado!';
+    setTimeout(()=>{btn.textContent='Copiar número de cuenta';},2000);
+  });
+}
+
+function startTimer(){
+  if(timerInt)clearInterval(timerInt);
+  timerSecs=300;
+  timerInt=setInterval(()=>{
+    timerSecs--;
+    const el=document.getElementById('timerVal');
+    const box=document.getElementById('timerBox');
+    const btnC=document.getElementById('btnConfirmar');
+    if(timerSecs<=0){
+      clearInterval(timerInt);
+      if(el)el.textContent='0:00';
+      if(box)box.classList.add('exp');
+      if(btnC){btnC.disabled=true;btnC.textContent='Tiempo expirado — vuelve a empezar';}
+      return;
+    }
+    const mm=Math.floor(timerSecs/60),ss=timerSecs%60;
+    if(el)el.textContent=mm+':'+String(ss).padStart(2,'0');
+    if(timerSecs<=60&&box)box.classList.add('exp');
+  },1000);
+}
+
+async function confirmar(dayStr){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
+  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
+  const refEl=document.getElementById('fref');
+  const ref=refEl?refEl.value.trim():'Sin abono';
+  const tieneAbono = curSvc.esEval || curSvc.requiereAbono;
+  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'sujeto a política de cancelación';
+  if(!nombre||!tel||!correo){alert('Por favor completa tu nombre, WhatsApp y correo.');return;}
+  if(tieneAbono&&!ref){alert('Por favor ingresa el número de comprobante del pago.');return;}
+  if(timerInt)clearInterval(timerInt);
+  const btnC=document.getElementById('btnConfirmar');
+  if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
+  const precio=curSvc.price>0?curSvc.price:0;
+  const esConsultar = curSvc.price<=0;
+  const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
+  const citaId = 'cita-' + Date.now();
+
+  const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
+  const precioFinal = Math.max(0, precio - descuentoMonto);
+
+  const cita={nombre,telefono:tel,correo,nota:notaFinal,servicio:curSvc.name,categoria:curSvc.cat,
+    precioTotal:precio,precioEsConsultar:esConsultar,fecha:dayStr,hora:selTime,duracionMin:curSvc.durMin,
+    comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaId,
+    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal};
+  try{await Sheets.guardarCita(cita);}catch(e){console.error(e);}
+  if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
+  await new Promise(r=>setTimeout(r,900));
+  const precioStr=esConsultar?'Por confirmar':(curSvc.precioTexto&&curSvc.precioTexto.toLowerCase().includes('desde')?'Desde $'+precio.toFixed(2):'$'+precio.toFixed(2));
+  const restanteTexto = esConsultar
+    ? (tieneAbono ? 'Se aplicará el abono al precio acordado' : 'Por confirmar')
+    : '$'+(tipoAbono==='descontable' ? Math.max(0, precioFinal - montoAbono).toFixed(2) : precioFinal.toFixed(2));
+  const abonoLine=tieneAbono?`<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`:'';
+  const cuponLine = (cuponAplicado && cuponDescuentoPct>0 && !esConsultar)
+    ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
+    : (cuponAplicado ? `<strong>Cupón aplicado:</strong> ${cuponPremioTexto}<br>` : '');
+  const totalLine = esConsultar
+    ? `<strong>Monto a cancelar el día de la cita:</strong> ${restanteTexto}<br>`
+    : `<strong>Total a pagar:</strong> <span style="color:#D95F2B;font-weight:600;">${restanteTexto}</span><br>`;
+  document.getElementById('form-body').innerHTML=`
+    <div class="success-wrap">
+      <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+      <div class="s-title">¡Cita reservada!</div>
+      <div class="s-sub">Pronto nos pondremos en contacto contigo para confirmar los detalles.</div>
+      <div class="s-detail">
+        <strong>Servicio:</strong> ${curSvc.name}<br>
+        <strong>Fecha:</strong> ${dayStr}<br>
+        <strong>Hora:</strong> ${selTime ? (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})() : selTime}<br>
+        <strong>Duración aprox.:</strong> ${curSvc.dur}<br>
+        <strong>Precio total:</strong> <span style="color:#D95F2B;font-weight:600;">${precioStr}</span><br>
+        ${abonoLine}
+        ${cuponLine}
+        ${totalLine}
+      </div>
+      <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>
+      <button class="btn-main" style="background:#2E2B2B;color:#C9A96E;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+    </div>`;
+
+  setTimeout(async () => {
+    try {
+      const check = await Sheets.verificarElegibilidadRuleta(tel);
+      if (check && check.elegible) {
+        closeOv('ov-form');
+        abrirModalRuleta(tel, nombre, citaId);
+      }
+      // si no es elegible (ya participó o ruleta apagada), el modal de confirmación se queda abierto tal cual
+    } catch (err) {
+      console.error('Error verificando elegibilidad de ruleta:', err);
+    }
+  }, 1800);
+}
+
+function openOv(id){document.getElementById(id).classList.add('open');}
+function closeOv(id){
+  document.getElementById(id).classList.remove('open');
+  if(id==='ov-form'&&timerInt)clearInterval(timerInt);
+}
+
+const TEMAS_PROMO={
+  mundial:{emoji:'⚽',bg:'linear-gradient(160deg,#7BA87F 0%,#4E7A53 100%)',lblColor:'#fff',porteria:true,confeti:false,cardBg:'#F0F7F0',cardBorder:'#C8DFC8',vigColor:'#3a7a3f'},
+  regalo:{emoji:'🎁',bg:'#FBF0F3',bgBorder:'#D693AA',lblColor:'#B85478',porteria:false,confeti:true,confetiLight:true,cardBg:'#FBF0F3',cardBorder:'#EDD2DA',vigColor:'#B85478'},
+  corazon:{emoji:'💝',bg:'linear-gradient(160deg,#F0A8B8 0%,#D67D95 100%)',lblColor:'#fff',porteria:false,confeti:true,confetiLight:false,cardBg:'#FBF0F3',cardBorder:'#EDD2DA',vigColor:'#a8455f'},
+  fiesta:{emoji:'🎉',bg:'linear-gradient(160deg,#A89BD9 0%,#7A6AB5 100%)',lblColor:'#fff',porteria:false,confeti:true,confetiLight:false,cardBg:'#F2F0FA',cardBorder:'#DAD3EC',vigColor:'#52468a'}
+};
+
+let PROMO_DATA=null;
+
+async function loadPromo(){
+  let promo;
+  try { promo = await Sheets.getPromo(); }
+  catch(e){ return; }
+  if(!promo || !promo.activa) return;
+  PROMO_DATA=promo;
+
+  const tema=TEMAS_PROMO[promo.tema]||TEMAS_PROMO.mundial;
+  const topEl=document.getElementById('promo-top');
+  topEl.style.background=tema.bg;
+  topEl.style.borderBottom=tema.bgBorder?('3px solid '+tema.bgBorder):'none';
+  document.getElementById('promo-emoji').textContent=tema.emoji;
+  document.getElementById('promo-porteria').style.display=tema.porteria?'block':'none';
+  const lblEl=document.getElementById('promo-lbl');
+  lblEl.textContent=promo.etiqueta||'PROMOCIÓN';
+  lblEl.style.color=tema.lblColor;
+  document.getElementById('promo-fest').textContent=promo.festejo||'¡Oferta especial!';
+  document.getElementById('promo-svc').textContent=promo.servicio||'';
+  const card=document.getElementById('promo-card');
+  card.style.background=tema.cardBg;
+  card.style.border='0.5px solid '+tema.cardBorder;
+  if(promo.precioNormal){
+    document.getElementById('promo-pn').textContent='$'+parseFloat(promo.precioNormal).toFixed(2);
+    document.getElementById('promo-pn').style.display='inline';
+  } else { document.getElementById('promo-pn').style.display='none'; }
+  document.getElementById('promo-pp').textContent=promo.precioPromo?'$'+parseFloat(promo.precioPromo).toFixed(2):'';
+  const vig=document.getElementById('promo-vig');
+  vig.textContent=promo.vigencia||'';
+  vig.style.color=tema.vigColor;
+
+  setTimeout(()=>{
+    document.getElementById('promo-ov').style.display='flex';
+    animarPromo(promo.tema);
+  }, 600);
+}
+
+function animarPromo(tema){
+  const emoji=document.getElementById('promo-emoji');
+  const fest=document.getElementById('promo-fest');
+  const topEl=document.getElementById('promo-top');
+  if(!emoji) return;
+  const conf=TEMAS_PROMO[tema]||TEMAS_PROMO.mundial;
+
+  topEl.querySelectorAll('.promo-confeti').forEach(c=>c.remove());
+
+  fest.style.opacity='0';
+  if(tema==='mundial'){
+    emoji.animate([
+      {transform:'translateX(-50%) translateY(0) scale(1)',offset:0},
+      {transform:'translateX(-50%) translateY(-20px) scale(.7) rotate(360deg)',offset:.6},
+      {transform:'translateX(-50%) translateY(12px) scale(.92) rotate(540deg)',offset:1}
+    ],{duration:1100,easing:'cubic-bezier(.4,1.3,.6,1)',fill:'forwards'});
+  } else {
+    emoji.animate([
+      {transform:'translateX(-50%) scale(0) rotate(-20deg)',offset:0},
+      {transform:'translateX(-50%) scale(1.2) rotate(10deg)',offset:.7},
+      {transform:'translateX(-50%) scale(1) rotate(0)',offset:1}
+    ],{duration:900,easing:'cubic-bezier(.4,1.3,.6,1)',fill:'forwards'});
+  }
+
+  if(conf.confeti){
+    const colors=conf.confetiLight?['#E8A23C','#D26C7A','#7BA87F','#5B9BD5','#C77F3C']:['#F5D76E','#fff','#A6D9F4','#C8F4A6','#FCE8A0'];
+    for(let i=0;i<14;i++){
+      const c=document.createElement('div');
+      c.className='promo-confeti';
+      const size=4+Math.random()*4;
+      c.style.cssText='position:absolute;width:'+size+'px;height:'+(size+2)+'px;background:'+colors[i%colors.length]+';top:-12px;left:'+(Math.random()*100)+'%;border-radius:1px;opacity:.8;z-index:1;pointer-events:none;';
+      topEl.appendChild(c);
+      const dur=2200+Math.random()*1600;
+      const delay=Math.random()*2500;
+      const drift=(Math.random()*36-18);
+      c.animate([
+        {transform:'translateY(0) translateX(0) rotate(0deg)',opacity:.85},
+        {transform:'translateY(105px) translateX('+drift+'px) rotate('+(360+Math.random()*360)+'deg)',opacity:.5}
+      ],{duration:dur,delay:delay,iterations:Infinity,easing:'linear'});
+    }
+  }
+
+  setTimeout(()=>{
+    fest.style.transition='opacity .4s';
+    fest.style.opacity='1';
+    fest.animate([{transform:'scale(.5)'},{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:450,easing:'ease-out'});
+  }, tema==='mundial'?900:700);
+}
+
+function cerrarPromo(){
+  document.getElementById('promo-ov').style.display='none';
+}
+
+function agendarPromo(){
+  cerrarPromo();
+  if(!PROMO_DATA || !PROMO_DATA.servicio){ return; }
+  const norm=s=>s.toLowerCase().trim().replace(/\s+/g,' ');
+  const objetivo=norm(PROMO_DATA.servicio);
+  let svc=SERVICES.find(s=>norm(s.name)===objetivo);
+  if(!svc) svc=SERVICES.find(s=>norm(s.name).includes(objetivo)||objetivo.includes(norm(s.name)));
+  if(svc){
+    openDetail(svc.id, true);
+  } else {
+    document.querySelector('.servicios-wrap, #servicios, .svc-grid')?.scrollIntoView({behavior:'smooth'});
+  }
+}
+
+// El botón de WhatsApp ahora se queda siempre visible (discreto), sin ocultarse cerca del footer
