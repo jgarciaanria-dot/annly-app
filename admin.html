@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Admin — Vicelly Hair & Beauty</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -22,42 +22,64 @@ html{scroll-behavior:smooth;}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
 
 /* ---------- LOGIN ---------- */
-.login-bg{position:fixed;inset:0;z-index:2000;display:grid;grid-template-columns:1fr 1fr;background:var(--charcoal);overflow:hidden;}
+.login-bg{position:fixed;inset:0;z-index:2000;display:grid;grid-template-columns:1fr 1fr;background:#fff;overflow:hidden;font-family:'DM Sans',sans-serif;}
 @media(max-width:860px){.login-bg{grid-template-columns:1fr;}}
 
-.login-photo{position:relative;display:flex;flex-direction:column;padding:3rem 2.6rem;overflow:hidden;
-  background:url('https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80') center/cover;}
-.login-photo::before{content:'';position:absolute;inset:0;
-  background:linear-gradient(100deg,rgba(20,18,16,.95) 0%,rgba(20,18,16,.86) 40%,rgba(20,18,16,.45) 72%,rgba(20,18,16,.2) 100%);}
+.login-photo{
+  position:relative;display:flex;flex-direction:column;padding:2.4rem 2.4rem 1.8rem;overflow:hidden;overflow-y:auto;
+  background:
+    radial-gradient(circle at 88% 6%,rgba(236,72,153,.16),transparent 26%),
+    radial-gradient(circle at 8% 92%,rgba(124,58,237,.14),transparent 30%),
+    linear-gradient(160deg,#FBF5F3 0%,#FFF7FC 55%,#F4EEFF 100%);
+}
 @media(max-width:860px){.login-photo{display:none;}}
+.login-blob{position:absolute;border-radius:50%;filter:blur(42px);opacity:.55;z-index:0;pointer-events:none;}
+.login-blob-1{width:280px;height:280px;background:radial-gradient(circle,rgba(124,58,237,.24),transparent 70%);top:-90px;left:-100px;}
+.login-blob-2{width:260px;height:260px;background:radial-gradient(circle,rgba(236,72,153,.22),transparent 70%);bottom:60px;right:-100px;}
 
-.login-photo-content{position:relative;z-index:1;color:#fff;display:flex;flex-direction:column;height:100%;}
-.login-photo-logo{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:700;}
-.login-photo-logo span{color:var(--gold);}
-.login-photo-sub{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(232,217,188,.65);margin-top:4px;}
+.login-photo-content{position:relative;z-index:1;color:var(--ink,#1A1625);}
+.login-photo-logo{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;letter-spacing:-.03em;color:#1A1625;}
+.login-photo-logo span{color:#EC4899;}
+.login-photo-sub{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#8A8378;margin-top:2px;}
 
-.login-tagline{font-family:'Cormorant Garamond',serif;font-size:2.3rem;line-height:1.16;font-weight:700;margin:2.6rem 0 0;}
-.login-tagline em{font-style:normal;color:var(--gold);}
+/* Collage: la foto femenina (grande) + la de barbería (chica, superpuesta) */
+.login-collage{position:relative;height:168px;margin:1.3rem 0 .2rem;}
+.login-collage img{position:absolute;object-fit:cover;border-radius:18px;box-shadow:0 14px 30px -10px rgba(47,27,73,.22);}
+.login-collage img.femenino{width:70%;height:100%;left:0;top:0;object-position:center 30%;}
+.login-collage img.masculino{width:46%;height:62%;right:0;bottom:-14px;border:5px solid #fff;object-position:78% 42%;}
 
-.login-features{list-style:none;margin-top:2.2rem;display:flex;flex-direction:column;gap:15px;}
-.login-feature{display:flex;align-items:center;gap:12px;}
-.login-feature-ico{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.login-feature-ico i{font-size:17px;color:var(--gold-light);}
-.login-feature b{display:block;font-size:13px;font-weight:600;}
-.login-feature span{display:block;font-size:11.5px;color:rgba(255,255,255,.55);}
+.login-tagline{font-family:'Playfair Display',serif;font-size:1.9rem;line-height:1.14;font-weight:700;margin:1.5rem 0 0;color:#1A1625;}
+.login-tagline em{font-style:italic;background:linear-gradient(100deg,#7C3AED,#EC4899);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.login-tagline-sub{font-size:12.5px;color:#5B5568;margin-top:8px;max-width:300px;line-height:1.5;}
 
-.login-quote{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--gold-light);margin-top:2rem;transform:rotate(-1deg);}
+.login-features{list-style:none;margin-top:1.4rem;display:flex;flex-direction:column;gap:11px;}
+.login-feature{display:flex;align-items:center;gap:11px;}
+.login-feature-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.login-feature-ico i{font-size:15px;}
+.login-feature:nth-child(1) .login-feature-ico{background:#FDE2ED;}
+.login-feature:nth-child(1) .login-feature-ico i{color:#EC4899;}
+.login-feature:nth-child(2) .login-feature-ico{background:#EDE4FB;}
+.login-feature:nth-child(2) .login-feature-ico i{color:#7C3AED;}
+.login-feature:nth-child(3) .login-feature-ico{background:#DDF6E9;}
+.login-feature:nth-child(3) .login-feature-ico i{color:#18a664;}
+.login-feature b{display:block;font-size:12.5px;font-weight:700;color:#1A1625;}
+.login-feature span{display:block;font-size:11px;color:#8A8378;}
 
-.login-photo-foot{font-size:9.5px;letter-spacing:.18em;color:rgba(255,255,255,.42);display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:2rem;border-top:1px solid rgba(255,255,255,.1);}
+.login-quote{font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:#5B21B6;margin-top:1.4rem;transform:rotate(-1.5deg);line-height:1.5;}
+.login-quote i{font-size:12px;color:#EC4899;font-style:normal;}
+
+.login-photo-foot{font-size:9.5px;letter-spacing:.1em;color:#8A8378;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:auto;padding-top:1.4rem;border-top:1px solid rgba(124,58,237,.14);}
+.login-photo-foot span{display:flex;align-items:center;gap:5px;}
+.login-photo-foot i{font-size:12px;color:#7C3AED;}
 
 .login-form-wrap{display:flex;align-items:center;justify-content:center;padding:2rem 1.5rem;overflow-y:auto;background:var(--charcoal);}
-@media(min-width:861px){.login-form-wrap{background:var(--bg);}}
-.login-card{position:relative;background:#fff;border-radius:20px;padding:2.1rem 2rem;width:100%;max-width:380px;box-shadow:0 24px 60px -12px rgba(0,0,0,.4);}
+@media(min-width:861px){.login-form-wrap{background:#FBF8FE;}}
+.login-card{position:relative;background:#fff;border-radius:20px;padding:2.1rem 2rem;width:100%;max-width:380px;box-shadow:0 24px 60px -12px rgba(47,27,73,.28);}
 .login-card-logo{text-align:center;margin-bottom:1.1rem;}
-.login-card-logo b{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;}
-.login-card-logo b span{color:var(--gold);}
+.login-card-logo b{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#1A1625;}
+.login-card-logo b span{color:#EC4899;}
 .login-card-logo small{display:block;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);margin-top:2px;}
-.login-welcome{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;text-align:center;margin-bottom:2px;}
+.login-welcome{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;text-align:center;margin-bottom:2px;color:#1A1625;}
 .login-welcome-sub{font-size:12px;color:var(--ink-soft);text-align:center;margin-bottom:1.3rem;}
 
 .field-ico-wrap{position:relative;}
@@ -67,16 +89,27 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 
 .login-row{display:flex;align-items:center;justify-content:space-between;margin:.4rem 0 1rem;font-size:12px;}
 .login-remember{display:flex;align-items:center;gap:6px;color:var(--ink-soft);cursor:pointer;}
-.login-remember input{accent-color:var(--charcoal);width:14px;height:14px;}
-.login-forgot{color:var(--gold-dark);text-decoration:none;font-weight:600;cursor:pointer;}
+.login-remember input{accent-color:#7C3AED;width:14px;height:14px;}
+.login-forgot{color:#7C3AED;text-decoration:none;font-weight:600;cursor:pointer;}
 .login-forgot:hover{text-decoration:underline;}
 
-.login-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--charcoal);color:#fff;border:none;border-radius:12px;font-size:14.5px;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;}
-.login-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px -8px rgba(46,43,43,.45);}
+.login-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(100deg,#7C3AED,#EC4899);color:#fff;border:none;border-radius:999px;font-size:14.5px;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 12px 24px -8px rgba(124,58,237,.4);}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 16px 30px -8px rgba(124,58,237,.5);}
 .login-btn i{font-size:17px;}
 
-.login-foot-tag{display:flex;align-items:center;gap:10px;margin-top:1.3rem;font-size:11px;color:var(--ink-soft);}
+.login-divider{display:flex;align-items:center;gap:10px;margin:1.1rem 0;font-size:11px;color:var(--ink-soft);}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--line);}
+.login-oauth{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.login-oauth-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s;}
+.login-oauth-btn:hover{border-color:#D8CCEF;background:#FBF8FE;}
+.login-oauth-btn img{width:16px;height:16px;}
+
+.login-foot-tag{display:flex;align-items:center;gap:10px;margin-top:1.2rem;font-size:11px;color:var(--ink-soft);}
 .login-foot-tag::before,.login-foot-tag::after{content:'';flex:1;height:1px;background:var(--line);}
+
+.login-signup{text-align:center;font-size:12.5px;color:var(--ink-soft);margin-top:1rem;}
+.login-signup a{color:#EC4899;font-weight:700;text-decoration:none;}
+.login-signup a:hover{text-decoration:underline;}
 
 /* ---------- HEADER ---------- */
 .adm-hdr{
@@ -197,26 +230,37 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 
 <div id="login-screen" class="login-bg">
   <div class="login-photo">
+    <div class="login-blob login-blob-1"></div>
+    <div class="login-blob login-blob-2"></div>
     <div class="login-photo-content">
       <div>
         <div class="login-photo-logo">Annly<span>.</span></div>
         <div class="login-photo-sub">Panel de administración</div>
       </div>
+      <div class="login-collage">
+        <img class="femenino" src="login-estilista-annly.png" alt="Profesional de belleza revisando su agenda"/>
+        <img class="masculino" src="login-cliente-annly.png" alt="Cliente confirmando su cita desde el celular"/>
+      </div>
       <h1 class="login-tagline">Tu negocio.<br>Tu agenda.<br><em>Así de fácil.</em></h1>
+      <p class="login-tagline-sub">La plataforma todo en uno para gestionar tus citas, clientes y servicios.</p>
       <ul class="login-features">
-        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-calendar-event"></i></span><div><b>Gestiona</b><span>tus citas y servicios</span></div></li>
-        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-users"></i></span><div><b>Administra</b><span>tu equipo y clientes</span></div></li>
-        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-chart-bar"></i></span><div><b>Haz crecer</b><span>tu negocio</span></div></li>
+        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-clock"></i></span><div><b>Más tiempo</b><span>para lo que te importa</span></div></li>
+        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-users"></i></span><div><b>Clientes más felices</b><span>y siempre conectados</span></div></li>
+        <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-chart-bar"></i></span><div><b>Tu negocio</b><span>en constante crecimiento</span></div></li>
       </ul>
-      <p class="login-quote">"Más tiempo para lo importante"</p>
-      <div class="login-photo-foot"><i class="ti ti-sparkles"></i> BELLEZA &nbsp;·&nbsp; BIENESTAR &nbsp;·&nbsp; RESULTADOS</div>
+      <p class="login-quote">Organiza, crea y haz crecer tu negocio <i class="ti ti-heart"></i></p>
+      <div class="login-photo-foot">
+        <span><i class="ti ti-shield-check"></i> Seguro</span>
+        <span><i class="ti ti-device-mobile"></i> Desde cualquier dispositivo</span>
+        <span><i class="ti ti-bolt"></i> Siempre disponible</span>
+      </div>
     </div>
   </div>
   <div class="login-form-wrap">
     <div class="login-card">
       <div class="login-card-logo"><b>Annly<span>.</span></b><small>Panel de administración</small></div>
       <div class="login-welcome">¡Bienvenido de nuevo!</div>
-      <p class="login-welcome-sub">Ingresa a tu cuenta para continuar</p>
+      <p class="login-welcome-sub">Inicia sesión para continuar</p>
       <div class="fg field-ico-wrap">
         <label class="flbl">Correo electrónico</label>
         <i class="ti ti-mail field-ico-left"></i>
@@ -234,7 +278,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       </div>
       <p id="login-error" style="color:#C2695A;font-size:12px;min-height:16px;margin-bottom:.5rem;"></p>
       <button class="login-btn" onclick="hacerLogin()">Entrar <i class="ti ti-arrow-right"></i></button>
-      <div class="login-foot-tag">Tu negocio, siempre contigo</div>
+      <div class="login-divider">o continúa con</div>
+      <div class="login-oauth">
+        <button type="button" class="login-oauth-btn" onclick="oauthProximamente('Google')"><img src="https://www.google.com/favicon.ico" alt=""/> Google</button>
+        <button type="button" class="login-oauth-btn" onclick="oauthProximamente('Microsoft')"><i class="ti ti-brand-windows" style="color:#00A4EF;font-size:16px;"></i> Microsoft</button>
+      </div>
+      <p class="login-signup">¿Aún no tienes una cuenta? <a href="registro.html">Regístrate aquí <i class="ti ti-arrow-right" style="font-size:11px;"></i></a></p>
     </div>
   </div>
 </div>
@@ -543,6 +592,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 <script src="sheets.js"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
+function oauthProximamente(proveedor){
+  const errEl = document.getElementById('login-error');
+  errEl.style.color = 'var(--ink-soft)';
+  errEl.textContent = 'Inicio de sesión con ' + proveedor + ' — muy pronto disponible.';
+}
+
 function toggleLoginPass(){
   const input = document.getElementById('login-pass');
   const icon = document.getElementById('login-pass-toggle');
