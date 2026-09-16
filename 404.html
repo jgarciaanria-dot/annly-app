@@ -23,11 +23,13 @@
   --bg-page:#E8E9EC;--bg-header:#B8B9BC;
   --hdr-text:#1a1816;--hdr-sub-text:rgba(30,26,22,.6);
   --page-label-text:var(--charcoal);
+  --bg-footer:#F4EFE6;--footer-text:#2c2820;--footer-text-soft:rgba(44,40,32,.65);--footer-text-faint:rgba(44,40,32,.4);
 }
 body.modo-oscuro{
   --bg-page:#1C1B1A;--bg-header:#141312;
   --hdr-text:#F5F1E8;--hdr-sub-text:rgba(245,241,232,.65);
   --page-label-text:#E5E0D5;
+  --bg-footer:#171614;--footer-text:#F5F1E8;--footer-text-soft:rgba(245,241,232,.7);--footer-text-faint:rgba(245,241,232,.4);
 }
 body{font-family:'Inter',sans-serif;background-color:var(--bg-page);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.18'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");color:#2c2c2a;min-height:100vh;transition:background-color .25s;}
 @media(min-width:600px){
@@ -367,32 +369,32 @@ body.modo-oscuro .card-icon{
   <div class="marcas-div"></div>
 </div>
 
-<footer style="background:#2E2B2B;margin-top:0;">
-  <div id="footer-ig-wrap" style="padding:1.25rem;text-align:center;border-bottom:0.5px solid rgba(var(--gold-rgb),.12);display:none;">
-    <p style="font-size:10px;font-weight:500;color:rgba(var(--gold-rgb),.8);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.75rem;">Síguenos en Instagram</p>
-    <a id="footer-ig-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:9px;text-decoration:none;background:rgba(var(--gold-rgb),.07);border:0.5px solid rgba(var(--gold-rgb),.3);border-radius:999px;padding:9px 16px;margin-bottom:.75rem;">
+<footer style="background:var(--bg-footer);margin-top:0;transition:background-color .25s;">
+  <div id="footer-ig-wrap" style="padding:1.25rem;text-align:center;border-bottom:0.5px solid rgba(var(--gold-rgb),.18);display:none;">
+    <p style="font-size:10px;font-weight:500;color:var(--gold-dark);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.75rem;">Síguenos en Instagram</p>
+    <a id="footer-ig-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:9px;text-decoration:none;background:rgba(var(--gold-rgb),.1);border:0.5px solid rgba(var(--gold-rgb),.35);border-radius:999px;padding:9px 16px;margin-bottom:.75rem;">
       <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="white" stroke="none"/></svg>
       </div>
-      <span id="footer-ig-handle" style="font-size:12px;font-weight:500;color:rgba(255,255,255,.8);"></span>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--gold-rgb),.5)" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+      <span id="footer-ig-handle" style="font-size:12px;font-weight:500;color:var(--footer-text);"></span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--gold-rgb),.6)" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
     </a>
-    <p id="footer-tagline" style="font-family:var(--font-heading);font-size:17px;font-weight:600;font-style:italic;color:rgba(255,255,255,.5);"></p>
+    <p id="footer-tagline" style="font-family:var(--font-heading);font-size:17px;font-weight:600;font-style:italic;color:var(--footer-text-soft);"></p>
   </div>
   <div style="padding:.875rem 1.25rem 0;text-align:center;">
     <div style="display:flex;justify-content:center;align-items:flex-start;gap:16px;margin-bottom:.875rem;">
       <div style="text-align:center;flex:1;">
-        <p style="font-size:10px;color:rgba(var(--gold-rgb),.8);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Horario</p>
-        <p id="footer-horario" style="font-size:12px;color:rgba(255,255,255,.75);line-height:1.7;"></p>
+        <p style="font-size:10px;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Horario</p>
+        <p id="footer-horario" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
       </div>
-      <div style="width:0.5px;background:rgba(var(--gold-rgb),.15);align-self:stretch;"></div>
+      <div style="width:0.5px;background:rgba(var(--gold-rgb),.2);align-self:stretch;"></div>
       <div style="text-align:center;flex:1;">
-        <p style="font-size:10px;color:rgba(var(--gold-rgb),.8);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Ubicación</p>
-        <p id="footer-direccion" style="font-size:12px;color:rgba(255,255,255,.75);line-height:1.7;"></p>
+        <p style="font-size:10px;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Ubicación</p>
+        <p id="footer-direccion" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
       </div>
     </div>
-    <div style="height:0.5px;background:rgba(var(--gold-rgb),.1);margin-bottom:.75rem;"></div>
-    <p id="footer-copyright" style="font-size:10px;color:rgba(255,255,255,.35);padding-bottom:1rem;"></p>
+    <div style="height:0.5px;background:rgba(var(--gold-rgb),.15);margin-bottom:.75rem;"></div>
+    <p id="footer-copyright" style="font-size:10px;color:var(--footer-text-faint);padding-bottom:1rem;"></p>
   </div>
 </footer>
 
