@@ -617,33 +617,50 @@ function goForm(){
   const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
   const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'no reembolsable';
 
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappy = !!(b.yappy_numero);
+  const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
+  pagoTipo = tieneYappy ? 'yappy' : 'bank';
+
   let pagoSection='';
   if(tieneAbono){
-    pagoSection=`
+    let opcionesHtml = '';
+    if(tieneYappy){
+      opcionesHtml += `
+      <div class="pay-opt sel" id="opt-yappy" onclick="selPago('yappy')">
+        <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
+        <div class="pay-opt-sub">Envía el pago desde tu app Yappy.</div>
+        <div class="pay-detail">Abre tu app Yappy y envía <strong>$${montoAbono.toFixed(2)}</strong> al número <strong>${b.yappy_numero}</strong>. Copia el número de comprobante aquí abajo.</div>
+      </div>`;
+    }
+    if(tieneBanco){
+      opcionesHtml += `
+      <div class="pay-opt${tieneYappy?'':' sel'}" id="opt-bank" onclick="selPago('bank')">
+        <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">${b.banco_nombre}</span></div>
+        <div class="pay-opt-sub">Transferencia bancaria a cuenta ${(b.banco_tipo_cuenta||'').toLowerCase()}.</div>
+        <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}<br><strong>Monto:</strong> $${montoAbono.toFixed(2)}<br><span style="color:#e74c3c;font-size:11px;">Incluye tu nombre en la referencia</span></div>
+      </div>`;
+    }
+    if(!tieneYappy && !tieneBanco){
+      pagoSection=`
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="note-box-warn">
+        <i class="ti ti-whatsapp" aria-hidden="true"></i>
+        <span>Este servicio requiere un abono. Contáctanos por WhatsApp para coordinar el pago antes de confirmar tu cita.</span>
+      </div>
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: coordinado por WhatsApp"/></div>`;
+    } else {
+      pagoSection=`
       <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
       <div class="timer-box" id="timerBox">
         <div class="timer-val" id="timerVal">5:00</div>
         <div class="timer-lbl">Tienes <strong>5 minutos</strong> para completar el pago.<br>Si no se confirma, el cupo se libera.</div>
       </div>
-      <div class="pay-opt sel" id="opt-yappy" onclick="selPago('yappy')">
-        <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
-        <div class="pay-opt-sub">Pago rápido y seguro desde tu app Yappy.</div>
-        <div class="pay-detail">Haz clic en el botón azul, ingresa tu número Yappy y confirma el pago de <strong>$${montoAbono.toFixed(2)}</strong>. Copia el número de comprobante aquí.</div>
-      </div>
-      <div class="pay-opt" id="opt-bank" onclick="selPago('bank')">
-        <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">Banco General</span></div>
-        <div class="pay-opt-sub">Transferencia bancaria a cuenta de ahorros.</div>
-        <div class="pay-detail"><strong>Banco:</strong> Banco General<br><strong>Tipo:</strong> Ahorros<br><strong>Cuenta:</strong> 04-19-99-989328-0<br><strong>Titular:</strong> Vicelly Sanchez Studio<br><strong>Monto:</strong> $${montoAbono.toFixed(2)}<br><span style="color:#e74c3c;font-size:11px;">Incluye tu nombre en la referencia</span></div>
-      </div>
+      ${opcionesHtml}
       <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
-      <a id="btnYappy" href="${YAPPY.link}" target="_blank" class="btn-yappy" onclick="mostrarMensajeRegreso()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5" fill="rgba(255,255,255,0.5)"/></svg>
-        Pagar $${montoAbono.toFixed(2)} con Yappy
-      </a>
-      <div id="msgRegreso" style="display:none;background:#e8f7fd;border:0.5px solid #1AACE3;border-radius:var(--radius);padding:.875rem;margin-bottom:8px;font-size:12px;color:#0f6e8a;line-height:1.6;">
-        ¿Ya pagaste? Yappy no regresa automáticamente. Vuelve aquí, copia el número de comprobante e ingrésalo arriba.
-      </div>
-      <button class="btn-transfer" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>`;
+      ${tieneYappy?`<button class="btn-yappy" id="btnYappy" onclick="copiarYappy()">Copiar número de Yappy</button>`:''}
+      <button class="btn-transfer${tieneYappy?' hidden':' visible'}" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>`;
+    }
   } else {
     pagoSection=`
       <div class="note-box" style="margin-top:.875rem;">
@@ -683,7 +700,6 @@ function goForm(){
   openOv('ov-form');
 }
 
-function mostrarMensajeRegreso(){setTimeout(()=>{const m=document.getElementById('msgRegreso');if(m)m.style.display='block';},1500);}
 
 async function aplicarCupon(){
   const input=document.getElementById('fcupon');
@@ -716,19 +732,31 @@ async function aplicarCupon(){
 let pagoTipo='yappy';
 function selPago(tipo){
   pagoTipo=tipo;
-  document.getElementById('opt-yappy').classList.toggle('sel',tipo==='yappy');
-  document.getElementById('opt-bank').classList.toggle('sel',tipo==='bank');
+  const optY=document.getElementById('opt-yappy');
+  const optB=document.getElementById('opt-bank');
+  if(optY) optY.classList.toggle('sel',tipo==='yappy');
+  if(optB) optB.classList.toggle('sel',tipo==='bank');
   const btnY=document.getElementById('btnYappy');
   const btnB=document.getElementById('btnTransfer');
-  if(tipo==='bank'){btnY.classList.add('hidden');btnB.classList.add('visible');}
-  else{btnY.classList.remove('hidden');btnB.classList.remove('visible');}
+  if(tipo==='bank'){ if(btnY) btnY.classList.add('hidden'); if(btnB) btnB.classList.add('visible'); }
+  else{ if(btnY) btnY.classList.remove('hidden'); if(btnB) btnB.classList.remove('visible'); }
 }
 
 function copiarCuenta(){
-  navigator.clipboard.writeText('04-19-99-989328-0').then(()=>{
+  const b = window.ANNLY_BUSINESS || {};
+  navigator.clipboard.writeText(b.banco_numero_cuenta || '').then(()=>{
     const btn=document.getElementById('btnTransfer');
     btn.textContent='¡Copiado!';
     setTimeout(()=>{btn.textContent='Copiar número de cuenta';},2000);
+  });
+}
+
+function copiarYappy(){
+  const b = window.ANNLY_BUSINESS || {};
+  navigator.clipboard.writeText(b.yappy_numero || '').then(()=>{
+    const btn=document.getElementById('btnYappy');
+    btn.textContent='¡Copiado!';
+    setTimeout(()=>{btn.textContent='Copiar número de Yappy';},2000);
   });
 }
 
