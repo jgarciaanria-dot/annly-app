@@ -524,6 +524,33 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     </div>
 
     <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Pagos</span></div>
+      <div style="padding:1rem;">
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;">Completa lo que uses — si dejas Yappy o transferencia en blanco, esa opción de pago simplemente no aparece en tu sitio. Solo se muestran los métodos que configures.</p>
+
+        <div style="margin-bottom:1.1rem;">
+          <span style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">Yappy</span>
+          <div class="fg"><label class="flbl">Número de Yappy</label><input class="fi" id="pf-yappy-numero" placeholder="6000-0000"/></div>
+        </div>
+
+        <div>
+          <span style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">Transferencia bancaria</span>
+          <div class="frow">
+            <div class="fg"><label class="flbl">Banco</label><input class="fi" id="pf-banco-nombre" placeholder="Banco General"/></div>
+            <div class="fg"><label class="flbl">Tipo de cuenta</label><input class="fi" id="pf-banco-tipo" placeholder="Ahorros"/></div>
+          </div>
+          <div class="frow">
+            <div class="fg"><label class="flbl">Número de cuenta</label><input class="fi" id="pf-banco-numero" placeholder="04-19-99-989328-0"/></div>
+            <div class="fg"><label class="flbl">Titular</label><input class="fi" id="pf-banco-titular" placeholder="Nombre del titular"/></div>
+          </div>
+        </div>
+
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;line-height:1.5;">Los pagos por Yappy o transferencia no se verifican automáticamente — debes confirmar tú mismo que el comprobante corresponde a un pago real antes de atender la cita.</p>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">¿Quieres verificación automática (botón de pago, link de cobro)? Escríbenos a <strong>soporte@annly.app</strong>.</p>
+      </div>
+    </div>
+
+    <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Colores y estilo</span></div>
       <div style="padding:1rem;">
         <div class="cats" id="pf-paleta-grid" style="margin-bottom:1rem;"></div>
@@ -1735,6 +1762,11 @@ function loadPerfil(){
   document.getElementById('pf-nombre').value = b.nombre || '';
   document.getElementById('pf-tagline').value = b.tagline || '';
   document.getElementById('pf-footer-mensaje').value = b.footer_mensaje || '';
+  document.getElementById('pf-yappy-numero').value = b.yappy_numero || '';
+  document.getElementById('pf-banco-nombre').value = b.banco_nombre || '';
+  document.getElementById('pf-banco-tipo').value = b.banco_tipo_cuenta || '';
+  document.getElementById('pf-banco-numero').value = b.banco_numero_cuenta || '';
+  document.getElementById('pf-banco-titular').value = b.banco_titular || '';
   document.getElementById('pf-categoria').value = b.categoria || '';
   document.getElementById('pf-whatsapp').value = b.whatsapp || '';
   document.getElementById('pf-instagram').value = b.instagram || '';
@@ -1842,6 +1874,11 @@ async function guardarPerfil(){
     nombre: document.getElementById('pf-nombre').value.trim(),
     tagline: document.getElementById('pf-tagline').value.trim(),
     footer_mensaje: document.getElementById('pf-footer-mensaje').value.trim(),
+    yappy_numero: document.getElementById('pf-yappy-numero').value.trim(),
+    banco_nombre: document.getElementById('pf-banco-nombre').value.trim(),
+    banco_tipo_cuenta: document.getElementById('pf-banco-tipo').value.trim(),
+    banco_numero_cuenta: document.getElementById('pf-banco-numero').value.trim(),
+    banco_titular: document.getElementById('pf-banco-titular').value.trim(),
     categoria: document.getElementById('pf-categoria').value,
     whatsapp: document.getElementById('pf-whatsapp').value.trim(),
     instagram: document.getElementById('pf-instagram').value.trim().replace(/^@+/, ''),
