@@ -33,4 +33,4 @@ Los módulos pueden estar incluidos en un plan o contratarse de manera independi
 
 Ejemplo:
 
-Finanzas → +$20/mes
+Finanzas → +$20/mes 
