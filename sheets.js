@@ -383,23 +383,22 @@ window.AnnlyAuth = {
   // PASSWORD RESET
   // -------------------------------------------------------
 
-  async resetPassword(email) {
+async resetPassword(email) {
 
-    const {
-      error
-    } = await sbClient.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo:
-          window.location.origin + '/admin.html'
-      }
-    );
-
-
-    if (error) {
-      throw error;
+  const {
+    error
+  } = await sbClient.auth.resetPasswordForEmail(
+    email,
+    {
+      redirectTo:
+        window.location.origin + '/update-password.html'
     }
-  },
+  );
+
+  if (error) {
+    throw error;
+  }
+},
 
 
   // -------------------------------------------------------
