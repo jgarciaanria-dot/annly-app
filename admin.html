@@ -438,6 +438,24 @@ img{max-width:100%;}
 @media(max-width:380px){
   .adm-hdr-actions .adm-hdr-back{width:34px;height:34px;padding:0;}
 }
+
+/* Ajustes solicitados: Equipo + Citas + módulos */
+.equipo-upgrade-link{border:0;background:none;color:var(--charcoal2);font:800 11px/1 inherit;padding:0 0 0 5px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;}
+.equipo-upgrade-link:hover{text-decoration:underline;}
+#panel-citas .btn-ico{max-width:122px!important;}
+.plan-extra{min-height:64px;}
+.plan-extra .plan-extra-action{margin-left:auto;border:1px solid var(--line);background:#fff;color:var(--charcoal2);border-radius:9px;padding:7px 10px;font:800 10.5px/1 inherit;cursor:pointer;white-space:nowrap;}
+.plan-extra .plan-extra-action:hover{background:var(--accent-soft);border-color:#CDB6EE;}
+.plan-modules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:1rem;}
+.plan-module{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:9px;}
+.plan-module-ico{width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.plan-module-title{font-size:12px;font-weight:800;color:var(--ink);}
+.plan-module-desc{font-size:10.5px;color:var(--ink-soft);line-height:1.45;min-height:30px;}
+.plan-module-tag{font-size:9.5px;font-weight:800;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em;}
+.plan-module button{margin-top:auto;border:1px solid var(--line);background:#fff;color:var(--charcoal2);border-radius:9px;padding:7px 9px;font:800 10.5px/1 inherit;cursor:pointer;}
+.plan-module button:hover{background:var(--accent-soft);border-color:#CDB6EE;}
+@media(max-width:1050px){.plan-modules{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:780px){.plan-modules{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -903,6 +921,37 @@ img{max-width:100%;}
         <div class="plan-extra-price">+$14/mes</div>
       </div>
     </div>
+    <div class="plan-modules">
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-gift"></i></div>
+        <div class="plan-module-title">Certificados de regalo</div>
+        <div class="plan-module-desc">Crea y administra certificados para vender experiencias y servicios.</div>
+        <div class="plan-module-tag">Módulo adicional</div>
+        <button type="button" onclick="openUpgrade('ultimate')">Conocer opción</button>
+      </div>
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-sparkles"></i></div>
+        <div class="plan-module-title">Agente AI</div>
+        <div class="plan-module-desc">Asistencia inteligente para atender consultas y apoyar la gestión de citas.</div>
+        <div class="plan-module-tag">Servicio adicional</div>
+        <button type="button" onclick="solicitarModuloAnnly('Agente AI')">Solicitar información</button>
+      </div>
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-chart-bar"></i></div>
+        <div class="plan-module-title">Sistema financiero</div>
+        <div class="plan-module-desc">Herramientas para finanzas, reportes, comisiones, propinas y cierres.</div>
+        <div class="plan-module-tag">Incluido en Ultimate</div>
+        <button type="button" onclick="openUpgrade('ultimate')">Ver Ultimate</button>
+      </div>
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-report-analytics"></i></div>
+        <div class="plan-module-title">Reportes y analítica</div>
+        <div class="plan-module-desc">Consulta información del negocio para dar seguimiento a su operación.</div>
+        <div class="plan-module-tag">Incluido en Ultimate</div>
+        <button type="button" onclick="openUpgrade('ultimate')">Ver Ultimate</button>
+      </div>
+    </div>
+
     <p class="plan-note">Puedes cambiar de plan cuando lo necesites. Tus datos se mantienen aunque cambies a un plan con menos funcionalidades.</p>
   </div>
       </div>
@@ -1678,6 +1727,13 @@ function closeUpgrade(){
   UPGRADE_PLAN_SELECCIONADO=null;
 }
 
+function solicitarModuloAnnly(modulo){
+  const b=window.ANNLY_BUSINESS || {};
+  const subject=encodeURIComponent(`Consulta módulo Annly — ${modulo}`);
+  const body=encodeURIComponent(`Hola equipo Annly,\n\nQuiero información para adquirir el módulo ${modulo}.\n\nNegocio: ${b.nombre || ''}\nCorreo: ${window.ANNLY_USER_EMAIL || ''}\n\nGracias.`);
+  window.location.href=`mailto:soporte@annly.app?subject=${subject}&body=${body}`;
+}
+
 function solicitarUpgrade(){
   const key=UPGRADE_PLAN_SELECCIONADO;
   if(!key || !ANNLY_PLANES_UI[key]) return;
@@ -1935,8 +1991,8 @@ async function loadCitas(){
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;">
-          <button class="btn-ico" style="width:170px;flex:0 0 170px;padding:0 10px;height:34px;font-size:11px;gap:5px;font-weight:600;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60},${c.empleadoId?`'${c.empleadoId}'`:'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
-          <button class="btn-ico del" style="width:170px;flex:0 0 170px;padding:0 10px;height:34px;font-size:11px;gap:5px;font-weight:600;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
+          <button class="btn-ico" style="width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60},${c.empleadoId?`'${c.empleadoId}'`:'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
+          <button class="btn-ico del" style="width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
         </div>
       </div>`;
     });
@@ -2328,7 +2384,7 @@ function renderEquipo(){
   const cont = document.getElementById('lista-equipo');
   const limite = limiteEmpleadosDelPlan();
   const msgEl = document.getElementById('equipo-limite-msg');
-  msgEl.textContent = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.`;
+  msgEl.innerHTML = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.` + (EQUIPO.length >= limite ? ` <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan')"><i class="ti ti-arrow-up-right"></i> Subir de plan</button>` : '');
 
   if (!EQUIPO.length){
     cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay empleados todavía.</p>';
@@ -2458,7 +2514,7 @@ async function guardarEmpleadoModal(){
   if (!editEmpleadoId){
     const limite = limiteEmpleadosDelPlan();
     if (EQUIPO.length >= limite){
-      msgEl.textContent = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. Sube de plan para agregar más.`;
+      msgEl.innerHTML = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan'); closeModalEmpleado();"><i class="ti ti-arrow-up-right"></i> Subir de plan</button>`;
       return;
     }
   }
