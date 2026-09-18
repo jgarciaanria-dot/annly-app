@@ -341,6 +341,8 @@ function getDefaultServices(){
 }
 
 let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=300;
+let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
+let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={};
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
 
 function renderServices(){
@@ -471,14 +473,56 @@ async function openCal(){
   // Refresca bloqueos justo antes de mostrar el calendario
   try { await loadBloqueos(); } catch(e){ console.error(e); }
 
+  // Qué empleados hacen este servicio (si hay 0 o 1, no se pregunta nada)
+  try { empleadosDelServicio = await Sheets.getEmpleadosParaServicio(curSvc.id); } catch(e){ empleadosDelServicio = []; }
+  modoCualquiera = empleadosDelServicio.length > 1;
+  empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
+  empleadoHorarioCache = null;
+  if (empleadosDelServicio.length === 1) {
+    try { empleadoHorarioCache = await Sheets.getEmpleadoHorario(empleadoSeleccionado); } catch(e){ empleadoHorarioCache = null; }
+  }
+  renderSelectorEmpleado();
+
   renderCal();
   openOv('ov-cal');
+}
+
+function renderSelectorEmpleado(){
+  const cont=document.getElementById('cal-empleado-sel');
+  if (!cont) return;
+  if (empleadosDelServicio.length <= 1){ cont.style.display='none'; cont.innerHTML=''; return; }
+  cont.style.display='block';
+  const pills = empleadosDelServicio.map(e => `
+    <div class="emp-pill${(!modoCualquiera && empleadoSeleccionado===e.id)?' sel':''}" onclick="elegirEmpleado('${e.id}')">
+      <div class="emp-pill-av">${e.fotoUrl?`<img src="${e.fotoUrl}"/>`:`<span>${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`}</div>
+      <span>${e.nombre}</span>
+    </div>`).join('');
+  cont.innerHTML = `
+    <p class="emp-sel-lbl">¿Con quién?</p>
+    <div class="emp-pill-row">
+      <div class="emp-pill${modoCualquiera?' sel':''}" onclick="elegirEmpleado(null)">
+        <div class="emp-pill-av"><i class="ti ti-users" aria-hidden="true"></i></div>
+        <span>Cualquiera</span>
+      </div>
+      ${pills}
+    </div>`;
+}
+
+async function elegirEmpleado(id){
+  if (id === null){ modoCualquiera = true; empleadoSeleccionado = null; empleadoHorarioCache = null; }
+  else {
+    modoCualquiera = false; empleadoSeleccionado = id;
+    try { empleadoHorarioCache = await Sheets.getEmpleadoHorario(id); } catch(e){ empleadoHorarioCache = null; }
+  }
+  renderSelectorEmpleado();
+  renderCal();
+  if (selectedDay) selDay2(selectedDay);
 }
 function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
 
 function diaCerrado(dow){
-  const h = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
-  if (!h) return dow===0; // si el negocio no tiene horario configurado todavía, solo domingo cerrado por defecto
+  const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null);
+  if (!h) return dow===0; // si no hay horario configurado todavía, solo domingo cerrado por defecto
   const bloque = h[bloqueDelDia(dow)];
   return !bloque || !!bloque.cerrado;
 }
@@ -515,15 +559,15 @@ function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 function genSlots(){
   const dt=new Date(calY,calM,selectedDay);
   const dow=dt.getDay();
-  const bloqueCfg=(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado
-    && window.ANNLY_BUSINESS.horario_estructurado[bloqueDelDia(dow)]) || null;
+  const horarioBase=(!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+  const bloqueCfg=(horarioBase && horarioBase[bloqueDelDia(dow)]) || null;
 
-  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si el negocio no tiene horario configurado
+  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
   if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
     [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
     [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
   } else if (bloqueCfg && bloqueCfg.cerrado) {
-    return []; // el negocio está cerrado ese día — sin horarios disponibles
+    return []; // cerrado ese día — sin horarios disponibles
   }
 
   const slots=[];
@@ -560,16 +604,21 @@ async function selDay2(d){
   document.getElementById('btnContinue').disabled=true;
   document.getElementById('timeGrid').innerHTML='<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
   const fechaStr=d+' de '+MESES[calM]+' '+calY;
-  let citasOcupadas=[];
   try{
-    citasOcupadas=await Sheets.getHorasOcupadas(fechaStr);
-  }catch(e){citasOcupadas=[];}
-  window._citasOcupadas=citasOcupadas;
+    if (modoCualquiera && empleadosDelServicio.length > 1){
+      const resultados = await Promise.all(empleadosDelServicio.map(e => Sheets.getHorasOcupadas(fechaStr, e.id).catch(()=>[])));
+      ocupadosPorEmpleadoCache = {};
+      empleadosDelServicio.forEach((e,i) => { ocupadosPorEmpleadoCache[e.id] = resultados[i]; });
+      window._citasOcupadas = null;
+    } else {
+      window._citasOcupadas = await Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado);
+      ocupadosPorEmpleadoCache = {};
+    }
+  }catch(e){ window._citasOcupadas=[]; ocupadosPorEmpleadoCache={}; }
   renderTimes();
 }
 
 function renderTimes(){
-  const citas=window._citasOcupadas||[];
   const durSvc=curSvc.durMin||60;
   const slots=genSlots();
   const grid=document.getElementById('timeGrid');
@@ -577,7 +626,13 @@ function renderTimes(){
   const horasBloqueadas=BLOQUEOS.horas[iso]||[];
   grid.innerHTML='';
   slots.forEach(({key,lbl})=>{
-    const ocupada=isBlocked(key,citas,durSvc);
+    let ocupada;
+    if (modoCualquiera && empleadosDelServicio.length > 1){
+      // Solo se ve "ocupado" si TODOS los empleados que hacen el servicio están ocupados a esa hora
+      ocupada = empleadosDelServicio.every(e => isBlocked(key, ocupadosPorEmpleadoCache[e.id]||[], durSvc));
+    } else {
+      ocupada = isBlocked(key, window._citasOcupadas||[], durSvc);
+    }
     const bloqueada=horasBloqueadas.includes(key);
     const blocked=ocupada||bloqueada;
     const isSel=selTime===key;
@@ -593,6 +648,17 @@ function renderTimes(){
     if(!blocked) div.onclick=()=>{selTime=key;renderTimes();document.getElementById('btnContinue').disabled=false;};
     grid.appendChild(div);
   });
+}
+
+// En modo "cualquiera", decide a quién le toca realmente la cita: el primer
+// empleado (de los que hacen el servicio) que esté libre a la hora elegida.
+function empleadoAsignadoFinal(){
+  if (!modoCualquiera) return empleadoSeleccionado;
+  const durSvc=curSvc.durMin||60;
+  for (const e of empleadosDelServicio){
+    if (!isBlocked(selTime, ocupadosPorEmpleadoCache[e.id]||[], durSvc)) return e.id;
+  }
+  return empleadosDelServicio[0] ? empleadosDelServicio[0].id : null;
 }
 
 function chMo(d){
@@ -808,7 +874,7 @@ async function confirmar(dayStr){
   const cita={nombre,telefono:tel,correo,nota:notaFinal,servicio:curSvc.name,categoria:curSvc.cat,
     precioTotal:precio,precioEsConsultar:esConsultar,fecha:dayStr,hora:selTime,duracionMin:curSvc.durMin,
     comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
-    metodoPago:tieneAbono?pagoTipo:'', citaId:citaId,
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
     cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal};
   try{await Sheets.guardarCita(cita);}catch(e){console.error(e);}
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
