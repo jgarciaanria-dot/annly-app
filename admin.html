@@ -359,6 +359,58 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .ts:hover:not(.tkn){border-color:var(--gold);color:var(--gold-dark);}
 .ts.sel{border:1.5px solid var(--gold);color:var(--gold-dark);font-weight:700;background:#FBF6EC;}
 .ts.tkn{opacity:.3;cursor:default;}
+
+/* =========================================================
+   ANNLY ADMIN — REDISEÑO RESPONSIVE 2026
+   Sidebar desktop + drawer mobile
+   ========================================================= */
+:root{
+  --annly-purple:#7C3AED;--annly-purple-dark:#5B21B6;--annly-pink:#EC4899;
+  --annly-lilac:#F3EBFC;--annly-pink-soft:#FCEAF2;--annly-mint:#DDF6E9;
+  --annly-mint-dark:#159A61;--annly-line:#ECE8F2;--annly-text:#17172B;--annly-muted:#77758A;
+  --annly-shadow:0 8px 28px rgba(45,32,75,.07);--annly-shadow-lg:0 20px 55px rgba(45,32,75,.14);
+}
+html,body{background:#fff;min-width:0;overflow-x:hidden;} body{color:var(--annly-text);}
+.adm-tabs{display:none!important;}
+.adm-sidebar{position:fixed;inset:0 auto 0 0;width:238px;z-index:80;background:#fff;border-right:1px solid var(--annly-line);display:flex;flex-direction:column;padding:18px 14px 16px;}
+.adm-brand{display:flex;align-items:center;justify-content:center;height:82px;margin-bottom:8px;}
+.adm-brand img{width:92px;height:92px;object-fit:contain;display:block;}
+.adm-nav{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
+.adm-tab{width:100%;min-width:0;flex:0 0 auto;border:0;background:transparent;color:#56546B;border-radius:12px;padding:11px 13px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:flex-start;gap:11px;cursor:pointer;white-space:nowrap;text-align:left;transition:background .16s,color .16s;}
+.adm-tab i{font-size:18px;width:20px;text-align:center;opacity:.86;}
+.adm-tab:hover{background:#FAF8FC;color:var(--annly-purple-dark);}
+.adm-tab.active{background:var(--annly-pink-soft);color:#C72573;box-shadow:inset 3px 0 0 var(--annly-pink);}
+.adm-tab.active i{color:var(--annly-pink);opacity:1;}
+.adm-sidebar-foot{margin-top:auto;padding:10px 4px 0;border-top:1px solid var(--annly-line);}
+.adm-sidebar-site{display:flex;align-items:center;gap:10px;padding:10px;border-radius:11px;color:var(--annly-muted);font-size:11.5px;font-weight:600;text-decoration:none;}
+.adm-sidebar-site:hover{background:#FAF9FC;color:var(--annly-purple-dark);}.adm-sidebar-site i{font-size:17px;color:var(--annly-purple);}
+.adm-sidebar-tagline{margin:10px 4px 12px;padding:13px 12px;border-radius:15px;background:linear-gradient(145deg,#FBF8FF,#FFF4FA);border:1px solid #EEE5F8;color:var(--annly-purple-dark);font-size:11px;line-height:1.45;font-weight:700;}
+.adm-sidebar-tagline span{color:var(--annly-pink);}
+.adm-main{margin-left:238px;min-height:100vh;min-width:0;background:#fff;}
+.adm-hdr{position:sticky;top:0;z-index:60;height:70px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--annly-line);padding:0 26px;display:flex;align-items:center;gap:16px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+.adm-hdr::after{display:none;}.adm-hdr-left{display:flex;align-items:center;gap:12px;min-width:0;}
+.adm-mobile-menu-btn{display:none;width:38px;height:38px;border:1px solid var(--annly-line);background:#fff;border-radius:11px;align-items:center;justify-content:center;color:var(--annly-purple-dark);font-size:20px;cursor:pointer;}
+.adm-hdr-title{font-family:'DM Sans',sans-serif;font-size:17px;font-weight:800;color:var(--annly-text);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.adm-hdr-sub{font-family:'DM Sans',sans-serif;font-size:9px;color:var(--annly-purple);margin-top:2px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;}
+.adm-hdr-actions{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;}.adm-plan-chip{margin:0!important;}
+.adm-hdr-back{color:var(--annly-muted);font-size:11.5px;text-decoration:none;display:flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid var(--annly-line);border-radius:10px;background:#fff;transition:all .15s;}
+.adm-hdr-back:hover{color:var(--annly-purple-dark);border-color:#D9C9EF;background:#FBF9FE;}.adm-hdr-back i{font-size:15px;}
+.adm-body{width:100%;max-width:1180px;margin:0 auto;padding:28px 30px 50px;}.adm-content-inner{width:100%;min-width:0;}
+.adm-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(20,17,35,.34);backdrop-filter:blur(2px);z-index:90;}.adm-drawer-overlay.open{display:block;}.adm-drawer-close{display:none;}
+.adm-sec{border-color:var(--annly-line);box-shadow:0 2px 12px rgba(45,32,75,.035);border-radius:16px;}.adm-sec-hdr{border-bottom-color:#F0EDF5;}.adm-sec-title{color:var(--annly-text);font-weight:700;}.adm-sec-title::before{background:linear-gradient(var(--annly-purple),var(--annly-pink));}
+.btn-add{color:var(--annly-purple-dark);border-color:#E4DCF0;background:#fff;}.btn-add:hover{border-color:#CDB6EE;background:var(--annly-lilac);}.fi{border-color:#E7E2EE;background:#fff;}.fi:focus{border-color:var(--annly-purple);box-shadow:0 0 0 3px rgba(124,58,237,.11);}.btn-save{background:linear-gradient(135deg,var(--annly-purple),var(--annly-pink));color:#fff;box-shadow:0 8px 20px rgba(124,58,237,.18);}
+@media(max-width:900px){
+  .adm-sidebar{transform:translateX(-105%);width:min(300px,86vw);box-shadow:var(--annly-shadow-lg);transition:transform .24s cubic-bezier(.2,.8,.2,1);z-index:100;}
+  .adm-sidebar.open{transform:translateX(0);}.adm-sidebar .adm-drawer-close{display:flex;position:absolute;right:13px;top:14px;width:34px;height:34px;border:1px solid var(--annly-line);background:#fff;border-radius:10px;align-items:center;justify-content:center;color:var(--annly-muted);font-size:18px;cursor:pointer;}
+  .adm-main{margin-left:0;}.adm-mobile-menu-btn{display:flex;}.adm-hdr{height:64px;padding:0 14px;gap:10px;}.adm-hdr-title{font-size:15px;}.adm-hdr-sub{display:none;}.adm-hdr-actions{gap:5px;}.adm-hdr-actions .hdr-btn-txt{display:none;}.adm-hdr-back{width:36px;height:36px;padding:0;justify-content:center;border-radius:10px;}.adm-plan-chip{display:none!important;}.adm-body{padding:18px 13px 40px;}
+}
+@media(max-width:560px){
+  .adm-hdr-left{min-width:0;flex:1;}.adm-hdr-title{max-width:180px;}#platform-business-switcher{order:10;width:100%;margin:7px 0 0!important;}.adm-hdr{height:auto;min-height:64px;flex-wrap:wrap;padding:10px 13px;}.adm-hdr-actions{margin-left:auto;}.adm-body{padding:14px 10px 35px;}.frow{grid-template-columns:1fr;}.adm-sidebar{padding-top:28px;}
+}
+@media(min-width:901px) and (max-width:1100px){.adm-sidebar{width:220px;}.adm-main{margin-left:220px;}.adm-body{padding-left:22px;padding-right:22px;}}
+/* Final overflow guard */
+img{max-width:100%;}
+@media(max-width:900px){.adm-body [style*="grid-template-columns:repeat(4"]{grid-template-columns:repeat(2,1fr)!important;}}
 </style>
 </head>
 <body>
@@ -369,7 +421,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <div class="login-blob login-blob-2"></div>
     <div class="login-photo-content">
       <div>
-        <div class="login-photo-logo">Annly<span>.</span></div>
+        <div class="login-photo-logo"><img src="logo-annly.png" alt="Annly" style="width:92px;height:92px;object-fit:contain;display:block;"/></div>
         <div class="login-photo-sub">Panel de administración</div>
       </div>
       <div class="login-collage">
@@ -393,7 +445,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
   </div>
   <div class="login-form-wrap">
     <div class="login-card">
-      <div class="login-card-logo"><b>Annly<span>.</span></b><small>Panel de administración</small></div>
+      <div class="login-card-logo"><img src="logo-annly.png" alt="Annly" style="width:76px;height:76px;object-fit:contain;display:block;margin:0 auto 2px;"/><small>Panel de administración</small></div>
       <div class="login-welcome">¡Bienvenido de nuevo!</div>
       <p class="login-welcome-sub">Inicia sesión para continuar</p>
       <div class="fg field-ico-wrap">
@@ -422,40 +474,53 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
   </div>
 </div>
 
-<div class="adm-hdr">
-  <div>
-    <div class="adm-hdr-title" id="adm-hdr-title">Panel de administración</div>
-    <div class="adm-hdr-sub">Panel de administración</div>
-  </div>
-
-  <div id="platform-business-switcher" class="platform-business-switcher" aria-label="Seleccionar negocio">
-    <span class="pbs-label"><i class="ti ti-shield-check"></i> Tu cuenta</span>
-    <select id="platform-business-select" onchange="cambiarNegocioDesdeSelector(this.value)">
-      <option value="">Seleccionar negocio...</option>
-    </select>
-  </div>
-
-  <div id="adm-plan-chip" class="plan-current-badge" style="margin-left:0;margin-right:10px;display:none;"><i class="ti ti-sparkles"></i><span>BASIC</span></div>
-  <div style="display:flex;gap:8px;">
-    <a href="index.html" id="adm-hdr-ver-sitio" target="_blank" class="adm-hdr-back"><i class="ti ti-arrow-left"></i><span class="hdr-btn-txt">Ver sitio</span></a>
-    <button type="button" id="adm-hdr-copiar-link" class="adm-hdr-back" style="cursor:pointer;background:none;font-family:inherit;" onclick="copiarLinkNegocio()"><i class="ti ti-link"></i><span class="hdr-btn-txt">Copiar link</span></button>
-    <button onclick="window.AnnlyAuth.logout()" class="adm-hdr-back" style="background:none;cursor:pointer;font-family:inherit;"><i class="ti ti-logout"></i><span class="hdr-btn-txt">Salir</span></button>
-  </div>
-</div>
-
-<div class="adm-body">
-  <div class="adm-tabs" aria-label="Navegación del panel">
-    <button class="adm-tab active" id="tab-servicios" onclick="switchTab('servicios')"><i class="ti ti-scissors"></i>Servicios</button>
-    <button class="adm-tab" id="tab-citas" onclick="switchTab('citas')"><i class="ti ti-calendar-event"></i>Citas</button>
-    <button class="adm-tab" id="tab-bloqueos" onclick="switchTab('bloqueos')"><i class="ti ti-calendar-off"></i>Bloqueos</button>
-    <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')"><i class="ti ti-speakerphone"></i>Promo</button>
-    <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')"><i class="ti ti-rotate-clockwise"></i>Ruleta</button>
-    <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')"><i class="ti ti-users"></i>Clientes</button>
-    <button class="adm-tab" id="tab-equipo" onclick="switchTab('equipo')"><i class="ti ti-user-star"></i>Equipo</button>
-    <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')"><i class="ti ti-building-store"></i>Perfil</button>
-    <button class="adm-tab" id="tab-plan" onclick="switchTab('plan')"><i class="ti ti-sparkles"></i>Mi plan</button>
-  </div>
-
+<div class="adm-shell">
+  <aside class="adm-sidebar" id="adm-sidebar" aria-label="Navegación principal">
+    <button class="adm-drawer-close" type="button" onclick="closeAdminMenu()" aria-label="Cerrar menú"><i class="ti ti-x"></i></button>
+    <div class="adm-brand"><img src="logo-annly.png" alt="Annly"/></div>
+    <nav class="adm-nav" aria-label="Secciones del panel">
+      <button class="adm-tab active" id="tab-servicios" onclick="switchTab('servicios')"><i class="ti ti-scissors"></i><span>Servicios</span></button>
+      <button class="adm-tab" id="tab-citas" onclick="switchTab('citas')"><i class="ti ti-calendar-event"></i><span>Citas</span></button>
+      <button class="adm-tab" id="tab-bloqueos" onclick="switchTab('bloqueos')"><i class="ti ti-calendar-off"></i><span>Bloqueos</span></button>
+      <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')"><i class="ti ti-speakerphone"></i><span>Promo</span></button>
+      <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')"><i class="ti ti-rotate-clockwise"></i><span>Ruleta</span></button>
+      <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')"><i class="ti ti-users"></i><span>Clientes</span></button>
+      <button class="adm-tab" id="tab-equipo" onclick="switchTab('equipo')"><i class="ti ti-user-star"></i><span>Equipo</span></button>
+      <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')"><i class="ti ti-building-store"></i><span>Perfil</span></button>
+      <button class="adm-tab" id="tab-plan" onclick="switchTab('plan')"><i class="ti ti-sparkles"></i><span>Mi plan</span></button>
+    </nav>
+    <div class="adm-sidebar-foot">
+      <div class="adm-sidebar-tagline">Tu negocio.<br>Tu agenda.<br><span>Así de fácil.</span></div>
+      <a href="index.html" class="adm-sidebar-site" target="_blank"><i class="ti ti-external-link"></i><span>Ver sitio</span></a>
+      <a href="#" class="adm-sidebar-site" onclick="event.preventDefault();window.AnnlyAuth.logout()"><i class="ti ti-logout"></i><span>Cerrar sesión</span></a>
+    </div>
+  </aside>
+  <div class="adm-drawer-overlay" id="adm-drawer-overlay" onclick="closeAdminMenu()"></div>
+  <main class="adm-main">
+    <header class="adm-hdr">
+      <div class="adm-hdr-left">
+        <button class="adm-mobile-menu-btn" type="button" onclick="toggleAdminMenu()" aria-label="Abrir menú"><i class="ti ti-menu-2"></i></button>
+        <div>
+          <div class="adm-hdr-title" id="adm-hdr-title">Panel de administración</div>
+          <div class="adm-hdr-sub">Panel de administración</div>
+        </div>
+      </div>
+      <div id="platform-business-switcher" class="platform-business-switcher" aria-label="Seleccionar negocio">
+        <span class="pbs-label"><i class="ti ti-shield-check"></i> Tu cuenta</span>
+        <select id="platform-business-select" onchange="cambiarNegocioDesdeSelector(this.value)"><option value="">Seleccionar negocio...</option></select>
+      </div>
+      <div id="adm-plan-chip" class="plan-current-badge adm-plan-chip" style="display:none;"><i class="ti ti-sparkles"></i><span>BASIC</span></div>
+      <div class="adm-hdr-actions">
+        <a href="index.html" id="adm-hdr-ver-sitio" target="_blank" class="adm-hdr-back"><i class="ti ti-external-link"></i><span class="hdr-btn-txt">Ver sitio</span></a>
+        <button type="button" id="adm-hdr-copiar-link" class="adm-hdr-back" onclick="copiarLinkNegocio()"><i class="ti ti-link"></i><span class="hdr-btn-txt">Copiar link</span></button>
+      </div>
+    </header>
+    <div class="adm-body">
+      <div class="adm-content-inner">
+        <div class="adm-tabs" aria-hidden="true">
+          <button class="adm-tab active" id="legacy-tab-servicios" onclick="switchTab('servicios')">Servicios</button>
+          <button class="adm-tab" id="legacy-tab-citas" onclick="switchTab('citas')">Citas</button>
+        </div>
   <div id="panel-servicios">
     <div id="seccionesServicios"></div>
     <div style="text-align:center;padding:1rem 0;">
@@ -813,7 +878,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     </div>
     <p class="plan-note">Puedes cambiar de plan cuando lo necesites. Tus datos se mantienen aunque cambies a un plan con menos funcionalidades.</p>
   </div>
-
+      </div>
+    </div>
+  </main>
+</div>
 
 <div class="ov" id="ov-modal-upgrade">
   <div class="modal" style="max-width:470px;">
@@ -960,6 +1028,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       <button class="btn-save" id="btnGuardarReprogramar" disabled onclick="guardarReprogramacion()"><i class="ti ti-check" style="font-size:17px;"></i> Confirmar nuevo horario</button>
     </div>
   </div>
+</div>
+
+      </div>
+    </div>
+  </main>
 </div>
 
 <div class="ov" id="ov-modal">
@@ -1486,6 +1559,24 @@ function saveBloqueos(){
   renderListaBloqueos();
 }
 
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAdminMenu(); });
+
+function toggleAdminMenu(){
+  const sidebar=document.getElementById('adm-sidebar');
+  const overlay=document.getElementById('adm-drawer-overlay');
+  if(!sidebar||!overlay)return;
+  const open=sidebar.classList.toggle('open');
+  overlay.classList.toggle('open',open);
+  document.body.style.overflow=open?'hidden':'';
+}
+function closeAdminMenu(){
+  const sidebar=document.getElementById('adm-sidebar');
+  const overlay=document.getElementById('adm-drawer-overlay');
+  if(sidebar)sidebar.classList.remove('open');
+  if(overlay)overlay.classList.remove('open');
+  document.body.style.overflow='';
+}
+
 function switchTab(tab){
   const tabs = ['servicios','citas','bloqueos','promo','ruleta','clientas','equipo','perfil','plan'];
   tabs.forEach(t => {
@@ -1501,6 +1592,7 @@ function switchTab(tab){
   if(tab==='equipo') loadEquipo();
   if(tab==='perfil') loadPerfil();
   if(tab==='plan') renderPlan();
+  closeAdminMenu();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
