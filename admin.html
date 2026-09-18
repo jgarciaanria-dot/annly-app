@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Admin — Vicelly Hair & Beauty</title>
+<title>Admin — Annly</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <style>
@@ -111,6 +111,86 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .login-signup{text-align:center;font-size:12.5px;color:var(--ink-soft);margin-top:1rem;}
 .login-signup a{color:#EC4899;font-weight:700;text-decoration:none;}
 .login-signup a:hover{text-decoration:underline;}
+
+
+/* ---------- NAVIGATION / UX ---------- */
+.adm-hdr{z-index:40;}
+.adm-body{max-width:980px;padding:1.35rem 1.15rem 4rem;}
+.adm-tabs{
+  position:sticky;top:10px;z-index:35;
+  display:flex;gap:3px;margin-bottom:1.35rem;overflow-x:auto;
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:18px;
+  padding:5px;box-shadow:0 8px 24px -14px rgba(46,43,43,.28);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  scrollbar-width:none;
+}
+.adm-tabs::-webkit-scrollbar{display:none;}
+.adm-tab{
+  flex:1 0 auto;min-width:92px;padding:10px 13px;background:transparent;border:none;border-radius:12px;
+  font-size:12px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:all .18s;white-space:nowrap;
+  letter-spacing:.005em;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.adm-tab i{font-size:15px;opacity:.72;}
+.adm-tab:hover{color:var(--ink);background:#FAF8FC;}
+.adm-tab.active{color:var(--charcoal2);background:var(--accent-soft);box-shadow:inset 0 0 0 1px rgba(124,58,237,.08);}
+.adm-tab.active i{opacity:1;}
+@media(min-width:900px){
+  .adm-tabs{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));overflow:visible;}
+  .adm-tab{min-width:0;}
+}
+@media(max-width:700px){
+  .adm-body{padding:1rem .8rem 3rem;}
+  .adm-tabs{top:6px;border-radius:15px;}
+  .adm-tab{min-width:96px;padding:9px 12px;}
+}
+
+/* ---------- PLAN / UPGRADE ---------- */
+.plan-hero{background:linear-gradient(135deg,#fff 0%,#fbf7ff 58%,#fff6fb 100%);border:1px solid var(--line);border-radius:22px;padding:1.25rem;box-shadow:var(--shadow-md);margin-bottom:1rem;overflow:hidden;position:relative;}
+.plan-hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;right:-80px;top:-90px;background:radial-gradient(circle,rgba(236,72,153,.14),transparent 68%);pointer-events:none;}
+.plan-kicker{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--charcoal);}
+.plan-title{font-family:'Cormorant Garamond',serif;font-size:31px;line-height:1.05;font-weight:700;color:var(--ink);margin-top:4px;}
+.plan-sub{font-size:12px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
+.plan-current{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:1rem;padding:13px 15px;background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:15px;position:relative;z-index:1;}
+.plan-current-label{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+.plan-current-name{font-size:17px;font-weight:800;color:var(--charcoal2);margin-top:2px;}
+.plan-current-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+.plan-current-badge{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:var(--accent-soft);color:var(--charcoal2);font-size:10.5px;font-weight:800;white-space:nowrap;}
+.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch;}
+.plan-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:1.15rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;position:relative;transition:transform .18s,box-shadow .18s,border-color .18s;}
+.plan-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:#DCCFF1;}
+.plan-card.featured{border:1.5px solid #CDB6EE;box-shadow:0 12px 30px -18px rgba(124,58,237,.38);}
+.plan-card.featured::before{content:'MÁS ELEGIDO';position:absolute;right:14px;top:14px;padding:5px 8px;border-radius:999px;background:var(--accent-soft);color:var(--charcoal2);font-size:8.5px;font-weight:800;letter-spacing:.08em;}
+.plan-card.current{border-color:#BBA2E6;background:linear-gradient(180deg,#fff 0%,#fcf9ff 100%);}
+.plan-name{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--ink-soft);text-transform:uppercase;}
+.plan-price{font-size:30px;line-height:1;font-weight:800;color:var(--ink);margin-top:9px;letter-spacing:-.03em;}
+.plan-price span{font-size:11px;font-weight:600;color:var(--ink-soft);letter-spacing:0;}
+.plan-description{font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-top:7px;min-height:34px;}
+.plan-capacity{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0;border-top:1px solid var(--line-soft);padding-top:12px;}
+.plan-capacity span{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;background:var(--bg);border-radius:8px;font-size:10.5px;color:var(--ink);font-weight:700;}
+.plan-list{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:1.1rem;flex:1;}
+.plan-list li{display:flex;align-items:flex-start;gap:7px;font-size:11.5px;color:#5D574F;line-height:1.35;}
+.plan-list i{color:#6E45C5;font-size:14px;margin-top:-1px;flex-shrink:0;}
+.plan-cta{width:100%;border:none;border-radius:11px;padding:10px 12px;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer;transition:all .16s;}
+.plan-cta.primary{background:var(--charcoal);color:#fff;}
+.plan-cta.primary:hover{background:var(--charcoal2);transform:translateY(-1px);}
+.plan-cta.secondary{background:#fff;border:1px solid var(--line);color:var(--charcoal2);}
+.plan-cta.secondary:hover{background:var(--accent-soft);border-color:#CDB6EE;}
+.plan-cta:disabled{opacity:.6;cursor:default;transform:none!important;}
+.plan-extras{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:1rem;}
+.plan-extra{display:flex;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow-sm);}
+.plan-extra-ico{width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+.plan-extra-title{font-size:12px;font-weight:800;color:var(--ink);}
+.plan-extra-desc{font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
+.plan-extra-price{margin-left:auto;font-size:13px;font-weight:800;color:var(--charcoal2);white-space:nowrap;}
+.plan-note{font-size:10.5px;color:var(--ink-soft);line-height:1.5;text-align:center;margin:1rem auto 0;max-width:650px;}
+.plan-modal-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 13px;background:var(--bg);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;}
+.plan-modal-summary strong{font-size:15px;color:var(--ink);}
+.plan-modal-summary span{font-size:11px;color:var(--ink-soft);}
+.plan-modal-price{font-size:20px;font-weight:800;color:var(--charcoal2);white-space:nowrap;}
+.plan-modal-list{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.plan-modal-list li{font-size:12px;color:#5D574F;display:flex;gap:7px;line-height:1.4;}
+.plan-modal-list i{color:#6E45C5;font-size:15px;flex-shrink:0;}
+@media(max-width:780px){.plan-grid{grid-template-columns:1fr;}.plan-card.featured{order:-1;}.plan-extras{grid-template-columns:1fr;}.plan-current{align-items:flex-start;flex-direction:column;}.plan-current-badge{align-self:flex-start;}}
 
 /* ---------- HEADER ---------- */
 .adm-hdr{
@@ -298,6 +378,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <div class="adm-hdr-title" id="adm-hdr-title">Panel de administración</div>
     <div class="adm-hdr-sub">Panel de administración</div>
   </div>
+  <div id="adm-plan-chip" class="plan-current-badge" style="margin-left:auto;margin-right:10px;display:none;"><i class="ti ti-sparkles"></i><span>BASIC</span></div>
   <div style="display:flex;gap:8px;">
     <a href="index.html" id="adm-hdr-ver-sitio" target="_blank" class="adm-hdr-back"><i class="ti ti-arrow-left"></i><span class="hdr-btn-txt">Ver sitio</span></a>
     <button type="button" id="adm-hdr-copiar-link" class="adm-hdr-back" style="cursor:pointer;background:none;font-family:inherit;" onclick="copiarLinkNegocio()"><i class="ti ti-link"></i><span class="hdr-btn-txt">Copiar link</span></button>
@@ -306,15 +387,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 </div>
 
 <div class="adm-body">
-  <div class="adm-tabs">
-    <button class="adm-tab active" id="tab-servicios" onclick="switchTab('servicios')">Servicios</button>
-    <button class="adm-tab" id="tab-citas" onclick="switchTab('citas')">Citas</button>
-    <button class="adm-tab" id="tab-bloqueos" onclick="switchTab('bloqueos')">Bloquear días</button>
-    <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')">Promo</button>
-    <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')">Ruleta</button>
-    <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')">Clientes</button>
-    <button class="adm-tab" id="tab-equipo" onclick="switchTab('equipo')">Equipo</button>
-    <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')">Perfil</button>
+  <div class="adm-tabs" aria-label="Navegación del panel">
+    <button class="adm-tab active" id="tab-servicios" onclick="switchTab('servicios')"><i class="ti ti-scissors"></i>Servicios</button>
+    <button class="adm-tab" id="tab-citas" onclick="switchTab('citas')"><i class="ti ti-calendar-event"></i>Citas</button>
+    <button class="adm-tab" id="tab-bloqueos" onclick="switchTab('bloqueos')"><i class="ti ti-calendar-off"></i>Bloqueos</button>
+    <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')"><i class="ti ti-speakerphone"></i>Promo</button>
+    <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')"><i class="ti ti-rotate-clockwise"></i>Ruleta</button>
+    <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')"><i class="ti ti-users"></i>Clientes</button>
+    <button class="adm-tab" id="tab-equipo" onclick="switchTab('equipo')"><i class="ti ti-user-star"></i>Equipo</button>
+    <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')"><i class="ti ti-building-store"></i>Perfil</button>
+    <button class="adm-tab" id="tab-plan" onclick="switchTab('plan')"><i class="ti ti-sparkles"></i>Mi plan</button>
   </div>
 
   <div id="panel-servicios">
@@ -592,6 +674,108 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
   </div>
 </div>
 
+
+
+  <div id="panel-plan" style="display:none;">
+    <div class="plan-hero">
+      <div class="plan-kicker">Mi plan</div>
+      <div class="plan-title">Tu negocio. A tu ritmo.</div>
+      <div class="plan-sub">Elige las herramientas que necesitas hoy y amplía Annly cuando tu negocio crezca.</div>
+      <div class="plan-current">
+        <div>
+          <div class="plan-current-label">Plan actual</div>
+          <div class="plan-current-name" id="plan-current-name">BASIC</div>
+          <div class="plan-current-meta" id="plan-current-meta">1 profesional · 1 sucursal</div>
+        </div>
+        <div class="plan-current-badge"><i class="ti ti-check"></i><span id="plan-current-status">Activo</span></div>
+      </div>
+    </div>
+
+    <div class="plan-grid">
+      <article class="plan-card" id="plan-card-basic">
+        <div class="plan-name">Basic</div>
+        <div class="plan-price">$14 <span>/ mes</span></div>
+        <div class="plan-description">Lo esencial para comenzar a organizar tu negocio.</div>
+        <div class="plan-capacity"><span><i class="ti ti-user"></i>1 profesional</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
+        <ul class="plan-list">
+          <li><i class="ti ti-check"></i><span>Agenda y citas</span></li>
+          <li><i class="ti ti-check"></i><span>Registro de clientes</span></li>
+          <li><i class="ti ti-check"></i><span>Botón de WhatsApp</span></li>
+          <li><i class="ti ti-check"></i><span>Paleta estándar</span></li>
+          <li><i class="ti ti-check"></i><span>Cotizaciones</span></li>
+        </ul>
+        <button class="plan-cta secondary" id="plan-btn-basic" onclick="openUpgrade('basic')">Plan actual</button>
+      </article>
+
+      <article class="plan-card featured" id="plan-card-medium">
+        <div class="plan-name">Medium</div>
+        <div class="plan-price">$29 <span>/ mes</span></div>
+        <div class="plan-description">Más herramientas para vender, cobrar y promocionar.</div>
+        <div class="plan-capacity"><span><i class="ti ti-user"></i>2 profesionales</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
+        <ul class="plan-list">
+          <li><i class="ti ti-check"></i><span>Todo lo incluido en Basic</span></li>
+          <li><i class="ti ti-check"></i><span>Pagos en línea</span></li>
+          <li><i class="ti ti-check"></i><span>Yappy y transferencia</span></li>
+          <li><i class="ti ti-check"></i><span>Promociones</span></li>
+          <li><i class="ti ti-check"></i><span>Ruleta con múltiples opciones</span></li>
+          <li><i class="ti ti-check"></i><span>Paletas adicionales</span></li>
+          <li><i class="ti ti-check"></i><span>Abonos para citas</span></li>
+        </ul>
+        <button class="plan-cta primary" id="plan-btn-medium" onclick="openUpgrade('medium')">Subir a Medium</button>
+      </article>
+
+      <article class="plan-card" id="plan-card-ultimate">
+        <div class="plan-name">Ultimate</div>
+        <div class="plan-price">$49 <span>/ mes</span></div>
+        <div class="plan-description">Control y visión completa para operar y crecer.</div>
+        <div class="plan-capacity"><span><i class="ti ti-user"></i>3 profesionales</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
+        <ul class="plan-list">
+          <li><i class="ti ti-check"></i><span>Todo lo incluido en Medium</span></li>
+          <li><i class="ti ti-check"></i><span>Finanzas</span></li>
+          <li><i class="ti ti-check"></i><span>Certificados de regalo</span></li>
+          <li><i class="ti ti-check"></i><span>Reportes</span></li>
+          <li><i class="ti ti-check"></i><span>Gestión de comisiones</span></li>
+          <li><i class="ti ti-check"></i><span>Propinas y anticipos</span></li>
+          <li><i class="ti ti-check"></i><span>Cierres quincenales</span></li>
+        </ul>
+        <button class="plan-cta secondary" id="plan-btn-ultimate" onclick="openUpgrade('ultimate')">Subir a Ultimate</button>
+      </article>
+    </div>
+
+    <div class="plan-extras">
+      <div class="plan-extra">
+        <div class="plan-extra-ico"><i class="ti ti-user-plus"></i></div>
+        <div><div class="plan-extra-title">Profesional adicional</div><div class="plan-extra-desc">Agrega capacidad sin cambiar de plan.</div></div>
+        <div class="plan-extra-price">+$7/mes</div>
+      </div>
+      <div class="plan-extra">
+        <div class="plan-extra-ico"><i class="ti ti-building-store"></i></div>
+        <div><div class="plan-extra-title">Sucursal adicional</div><div class="plan-extra-desc">Otra unidad operativa bajo el mismo negocio.</div></div>
+        <div class="plan-extra-price">+$14/mes</div>
+      </div>
+    </div>
+    <p class="plan-note">Puedes cambiar de plan cuando lo necesites. Tus datos se mantienen aunque cambies a un plan con menos funcionalidades.</p>
+  </div>
+
+
+<div class="ov" id="ov-modal-upgrade">
+  <div class="modal" style="max-width:470px;">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-upgrade-title">Cambiar de plan</span>
+      <button class="modal-close" onclick="closeUpgrade()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="plan-modal-summary">
+        <div><strong id="modal-upgrade-plan">MEDIUM</strong><br><span>Nuevo plan mensual</span></div>
+        <div class="plan-modal-price" id="modal-upgrade-price">$29</div>
+      </div>
+      <ul class="plan-modal-list" id="modal-upgrade-list"></ul>
+      <p id="modal-upgrade-msg" style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;text-align:center;min-height:18px;margin-bottom:12px;"></p>
+      <button class="btn-save" id="modal-upgrade-btn" onclick="solicitarUpgrade()"><i class="ti ti-arrow-up-right"></i> Solicitar cambio de plan</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CLIENTA (editar/agregar) -->
 <div class="ov" id="ov-modal-clienta">
   <div class="modal">
@@ -804,6 +988,14 @@ async function arrancarPanelAdmin(){
   if (titleEl && b.nombre) titleEl.textContent = b.nombre;
   document.title = 'Admin — ' + (b.nombre || 'Annly');
   if (b.slug) document.getElementById('adm-hdr-ver-sitio').href = '/' + b.slug;
+  const planChip = document.getElementById('adm-plan-chip');
+  if (planChip) {
+    const rawPlan = String(b.plan || 'basic').toLowerCase();
+    const chipPlan = rawPlan === 'medium' ? 'MEDIUM' : rawPlan === 'ultimate' ? 'ULTIMATE' : rawPlan === 'trial' ? 'TRIAL' : 'BASIC';
+    planChip.querySelector('span').textContent = chipPlan;
+    planChip.style.display = 'inline-flex';
+  }
+  renderPlan();
   loadServices().then(() => { renderAdmin(); });
   loadBloqueos();
 }
@@ -857,11 +1049,7 @@ async function loadServices(){
       return;
     }
   } catch(e) { console.error('Error cargando de Supabase:', e); }
-  if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly') {
-    SERVICES = getDefaultServices(); // solo Vicelly usa este catálogo de respaldo
-  } else {
-    SERVICES = []; // negocio nuevo: catálogo vacío de verdad
-  }
+  SERVICES = []; // negocio nuevo: catálogo vacío de verdad
 }
 
 function getDefaultServices(){
@@ -1128,28 +1316,88 @@ function saveBloqueos(){
 }
 
 function switchTab(tab){
-  document.getElementById('tab-servicios').classList.toggle('active', tab==='servicios');
-  document.getElementById('tab-citas').classList.toggle('active', tab==='citas');
-  document.getElementById('tab-bloqueos').classList.toggle('active', tab==='bloqueos');
-  document.getElementById('tab-promo').classList.toggle('active', tab==='promo');
-  document.getElementById('tab-ruleta').classList.toggle('active', tab==='ruleta');
-  document.getElementById('tab-clientas').classList.toggle('active', tab==='clientas');
-  document.getElementById('tab-equipo').classList.toggle('active', tab==='equipo');
-  document.getElementById('tab-perfil').classList.toggle('active', tab==='perfil');
-  document.getElementById('panel-servicios').style.display = tab==='servicios'?'block':'none';
-  document.getElementById('panel-citas').style.display = tab==='citas'?'block':'none';
-  document.getElementById('panel-bloqueos').style.display = tab==='bloqueos'?'block':'none';
-  document.getElementById('panel-promo').style.display = tab==='promo'?'block':'none';
-  document.getElementById('panel-ruleta').style.display = tab==='ruleta'?'block':'none';
-  document.getElementById('panel-clientas').style.display = tab==='clientas'?'block':'none';
-  document.getElementById('panel-equipo').style.display = tab==='equipo'?'block':'none';
-  document.getElementById('panel-perfil').style.display = tab==='perfil'?'block':'none';
+  const tabs = ['servicios','citas','bloqueos','promo','ruleta','clientas','equipo','perfil','plan'];
+  tabs.forEach(t => {
+    const tabEl = document.getElementById('tab-' + t);
+    const panelEl = document.getElementById('panel-' + t);
+    if(tabEl) tabEl.classList.toggle('active', tab === t);
+    if(panelEl) panelEl.style.display = tab === t ? 'block' : 'none';
+  });
   if(tab==='citas') loadCitas();
   if(tab==='promo') loadPromo();
   if(tab==='ruleta') loadRuleta();
   if(tab==='clientas') loadClientas();
   if(tab==='equipo') loadEquipo();
   if(tab==='perfil') loadPerfil();
+  if(tab==='plan') renderPlan();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+
+// ===== PLAN / UPGRADE =====
+const ANNLY_PLANES_UI = {
+  basic:    {name:'BASIC', price:14, professionals:1, branches:1, features:['Agenda y citas','Registro de clientes','Botón de WhatsApp','Paleta estándar','Cotizaciones']},
+  medium:  {name:'MEDIUM', price:29, professionals:2, branches:1, features:['Todo lo incluido en Basic','Pagos en línea','Yappy y transferencia','Promociones','Ruleta con múltiples opciones','Paletas adicionales','Abonos para citas']},
+  ultimate:{name:'ULTIMATE',price:49, professionals:3, branches:1, features:['Todo lo incluido en Medium','Finanzas','Certificados de regalo','Reportes','Gestión de comisiones','Propinas y anticipos','Cierres quincenales']}
+};
+let UPGRADE_PLAN_SELECCIONADO = null;
+
+function getPlanActualUI(){
+  const raw = String((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.plan) || 'basic').toLowerCase();
+  if(raw === 'medium' || raw === 'ultimate' || raw === 'basic') return raw;
+  // La prueba actual de Annly conserva la capacidad base.
+  return 'basic';
+}
+
+function renderPlan(){
+  const actual = getPlanActualUI();
+  const p = ANNLY_PLANES_UI[actual];
+  const nameEl = document.getElementById('plan-current-name');
+  const metaEl = document.getElementById('plan-current-meta');
+  const statusEl = document.getElementById('plan-current-status');
+  if(nameEl) nameEl.textContent = p.name;
+  if(metaEl) metaEl.textContent = `${p.professionals} profesional${p.professionals===1?'':'es'} · ${p.branches} sucursal${p.branches===1?'':'es'}`;
+  if(statusEl) statusEl.textContent = String((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.plan) || 'basic').toLowerCase()==='trial' ? 'Periodo de prueba' : 'Activo';
+
+  Object.keys(ANNLY_PLANES_UI).forEach(key=>{
+    const card=document.getElementById('plan-card-'+key);
+    const btn=document.getElementById('plan-btn-'+key);
+    if(!card || !btn) return;
+    card.classList.toggle('current', key===actual);
+    if(key===actual){ btn.textContent='Plan actual'; btn.disabled=true; btn.className='plan-cta secondary'; }
+    else { btn.disabled=false; btn.className='plan-cta '+(key==='medium'?'primary':'secondary'); btn.textContent = key==='basic'?'Cambiar a Basic':`Subir a ${ANNLY_PLANES_UI[key].name.charAt(0)+ANNLY_PLANES_UI[key].name.slice(1).toLowerCase()}`; }
+  });
+}
+
+function openUpgrade(planKey){
+  const actual = getPlanActualUI();
+  if(!ANNLY_PLANES_UI[planKey] || planKey===actual) return;
+  const p=ANNLY_PLANES_UI[planKey];
+  UPGRADE_PLAN_SELECCIONADO=planKey;
+  document.getElementById('modal-upgrade-title').textContent = `Cambiar a ${p.name}`;
+  document.getElementById('modal-upgrade-plan').textContent = p.name;
+  document.getElementById('modal-upgrade-price').textContent = `$${p.price} / mes`;
+  document.getElementById('modal-upgrade-list').innerHTML = p.features.slice(0,6).map(f=>`<li><i class="ti ti-check"></i><span>${f}</span></li>`).join('');
+  document.getElementById('modal-upgrade-msg').textContent='';
+  document.getElementById('modal-upgrade-btn').innerHTML='<i class="ti ti-arrow-up-right"></i> Solicitar cambio de plan';
+  document.getElementById('ov-modal-upgrade').classList.add('show');
+}
+
+function closeUpgrade(){
+  document.getElementById('ov-modal-upgrade').classList.remove('show');
+  UPGRADE_PLAN_SELECCIONADO=null;
+}
+
+function solicitarUpgrade(){
+  const key=UPGRADE_PLAN_SELECCIONADO;
+  if(!key || !ANNLY_PLANES_UI[key]) return;
+  const p=ANNLY_PLANES_UI[key];
+  const b=window.ANNLY_BUSINESS || {};
+  const subject=encodeURIComponent(`Solicitud de upgrade Annly — ${p.name}`);
+  const body=encodeURIComponent(`Hola equipo Annly,\n\nQuiero solicitar el cambio al plan ${p.name} ($${p.price}/mes).\n\nNegocio: ${b.nombre || ''}\nCorreo: ${window.ANNLY_USER_EMAIL || ''}\n\nGracias.`);
+  const msg=document.getElementById('modal-upgrade-msg');
+  msg.textContent='Abriendo tu correo para solicitar el cambio. La activación se realizará al completar el proceso de pago.';
+  setTimeout(()=>{ window.location.href=`mailto:soporte@annly.app?subject=${subject}&body=${body}`; },120);
 }
 
 // ===== PROMO =====
