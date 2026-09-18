@@ -2994,6 +2994,94 @@ const Sheets = {
 
 
   // =======================================================
+  // SUSCRIPCIÓN / PLAN / MÓDULOS
+  // =======================================================
+
+  // Trae la suscripción real del negocio, cruzada con su plan.
+  // Devuelve null si el negocio todavía no tiene ninguna fila en subscriptions
+  // (los negocios de prueba viejos, creados antes de esta arquitectura).
+  async getSuscripcionActual() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient
+      .from('subscriptions')
+      .select('*, plans(*)')
+      .eq('business_id', BUSINESS_ID)
+      .neq('status', 'cancelled')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) { console.error('Error leyendo la suscripción:', error); return null; }
+    if (!data) return null;
+    return {
+      subscriptionId: data.id,
+      status: data.status,
+      currentPeriodEnd: data.current_period_end,
+      plan: {
+        id: data.plans.id,
+        code: data.plans.code,
+        name: data.plans.name,
+        price: Number(data.plans.monthly_price),
+        professionals: data.plans.included_professionals,
+        locations: data.plans.included_locations
+      }
+    };
+  },
+
+  // Códigos de feature incluidos en un plan (ej. ['AGENDA','CLIENTES','PAGOS', ...])
+  async getFeaturesDelPlan(planId) {
+    await window.AnnlyReady;
+    const { data } = await sbClient.from('plan_features').select('features(code)').eq('plan_id', planId);
+    return (data || []).map(r => r.features.code);
+  },
+
+  // Todas las features marcadas como módulo adicional (is_addon = true), con su precio.
+  async getCatalogoModulos() {
+    await window.AnnlyReady;
+    const { data } = await sbClient.from('features').select('*').eq('is_addon', true).eq('is_active', true).order('code');
+    return (data || []).map(f => ({ code: f.code, name: f.name, description: f.description, price: Number(f.monthly_price) || 0 }));
+  },
+
+  // Módulos que el negocio ya activó por separado (subscription_items tipo 'addon')
+  async getModulosActivos(subscriptionId) {
+    await window.AnnlyReady;
+    if (!subscriptionId) return [];
+    const { data } = await sbClient.from('subscription_items').select('item_code')
+      .eq('subscription_id', subscriptionId).eq('item_type', 'addon').eq('is_active', true);
+    return (data || []).map(r => r.item_code);
+  },
+
+  // Activa un módulo al toque (sin cobro real todavía — ver nota en admin.html).
+  async activarModulo(subscriptionId, featureCode, nombre, precio) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('subscription_items').insert([{
+      subscription_id: subscriptionId, item_type: 'addon', item_code: featureCode,
+      description: nombre, quantity: 1, unit_price: precio, is_active: true
+    }]);
+    if (error) throw error;
+  },
+
+  // Cambia el plan de la suscripción (sin cobro real todavía, mismo criterio que los
+  // módulos). Si algún módulo comprado suelto ya viene incluido en el plan nuevo,
+  // se desactiva ese cobro aparte para no cobrar dos veces por lo mismo.
+  async cambiarPlan(subscriptionId, nuevoPlanCode) {
+    await window.AnnlyReady;
+    const { data: plan, error: errPlan } = await sbClient.from('plans').select('id').eq('code', nuevoPlanCode.toUpperCase()).maybeSingle();
+    if (errPlan || !plan) throw errPlan || new Error('Plan no encontrado');
+
+    const { error: errUpdate } = await sbClient.from('subscriptions').update({ plan_id: plan.id }).eq('id', subscriptionId);
+    if (errUpdate) throw errUpdate;
+
+    const featuresDelPlanNuevo = await this.getFeaturesDelPlan(plan.id);
+    if (featuresDelPlanNuevo.length) {
+      const { error: errItems } = await sbClient.from('subscription_items')
+        .update({ is_active: false })
+        .eq('subscription_id', subscriptionId).eq('item_type', 'addon').eq('is_active', true)
+        .in('item_code', featuresDelPlanNuevo);
+      if (errItems) console.error('No se pudieron desactivar los módulos ya incluidos:', errItems);
+    }
+  },
+
+  // =======================================================
   // PERFIL DEL NEGOCIO
   // =======================================================
 
