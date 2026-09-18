@@ -380,3 +380,179 @@ body.modo-oscuro .card-icon{
   pointer-events:none; overflow:visible;
   z-index:20;
 }
+
+
+/* ============================================================
+   ANNLY — VISUAL REFRESH
+   Solo presentación. No modifica la lógica JavaScript.
+   ============================================================ */
+
+:root{
+  --radius:14px;
+  --radius-lg:16px;
+  --ui-border:rgba(0,0,0,.08);
+  --ui-shadow:0 6px 20px rgba(20,20,20,.07);
+  --ui-shadow-hover:0 10px 28px rgba(20,20,20,.10);
+}
+
+.card{
+  border:1px solid var(--ui-border);
+  border-radius:16px;
+  box-shadow:0 2px 8px rgba(20,20,20,.035);
+}
+.card:hover{
+  transform:translateY(-2px);
+  border-color:rgba(var(--gold-rgb),.38);
+  box-shadow:var(--ui-shadow-hover);
+}
+
+.eval-card{
+  border:1px solid rgba(var(--gold-dark-rgb),.25);
+  border-radius:16px;
+  box-shadow:var(--ui-shadow);
+}
+
+.panel{
+  border-radius:18px;
+  box-shadow:0 18px 50px rgba(0,0,0,.16);
+}
+@media(min-width:500px){
+  .panel{border-radius:18px;}
+}
+
+.phdr{
+  border-bottom:1px solid rgba(0,0,0,.06);
+}
+.pclose{
+  border:1px solid rgba(0,0,0,.05);
+  border-radius:50%;
+}
+
+.svc-banner,
+.svc-pill{
+  border-radius:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08);
+}
+
+.emp-pill{
+  border-radius:14px;
+  border-color:rgba(var(--gold-rgb),.18);
+}
+.emp-pill.sel{
+  border-color:var(--gold);
+  background:rgba(var(--gold-rgb),.10);
+}
+
+.cal-nb{
+  border:1px solid rgba(0,0,0,.07);
+  border-radius:10px;
+}
+.cd{
+  border-radius:9px;
+}
+.cd:hover:not(.emp):not(.pst):not(.dom){
+  background:rgba(var(--gold-rgb),.09);
+  color:var(--gold-dark);
+}
+.cd.sel{
+  background:var(--gold);
+}
+.time-g{
+  gap:8px;
+}
+.ts{
+  border:1px solid rgba(var(--gold-rgb),.28);
+  border-radius:10px;
+  background:#fff;
+}
+.ts.sel{
+  border:1.5px solid var(--gold);
+  color:var(--gold-dark);
+  background:rgba(var(--gold-rgb),.08);
+}
+.ts.sel::after{
+  background:var(--gold);
+}
+
+.fi{
+  border:1px solid rgba(0,0,0,.09);
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.02);
+}
+.fi:focus{
+  border-color:var(--gold);
+  box-shadow:0 0 0 3px rgba(var(--gold-rgb),.10);
+}
+
+.btn-main,
+.btn-ghost,
+.btn-yappy,
+.btn-transfer{
+  border-radius:12px;
+}
+.btn-main{
+  background:var(--gold);
+  box-shadow:0 4px 12px rgba(var(--gold-rgb),.18);
+}
+.btn-ghost{
+  border:1px solid rgba(0,0,0,.09);
+}
+
+.pay-opt{
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:14px;
+}
+.pay-opt.sel{
+  border-color:var(--gold);
+  background:rgba(var(--gold-rgb),.045);
+  box-shadow:0 3px 12px rgba(var(--gold-rgb),.08);
+}
+
+.note-box,
+.note-box-warn,
+.timer-box,
+.s-detail{
+  border-radius:14px;
+}
+
+.success-wrap{
+  border-radius:16px;
+}
+
+/* La prueba de mechón conserva su significado, pero toma la identidad
+   cromática del negocio en lugar de usar morado fijo. */
+.mechon-box{
+  background:rgba(var(--gold-rgb),.07);
+  border:1px solid rgba(var(--gold-rgb),.24);
+  border-radius:14px;
+}
+.mechon-header i,
+.mechon-title,
+.mechon-text{
+  color:var(--gold-dark);
+}
+
+/* 2 columnas en móvil; 3 en desktop */
+.grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+@media(min-width:900px){
+  .grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  .full{
+    grid-column:span 3;
+  }
+}
+
+/* WhatsApp mantiene su identidad propia */
+.wa-float{
+  background:#25d366;
+}
+
+/* Ruleta conserva su identidad visual propia */
+.ruleta-panel{
+  border-radius:20px;
+}
