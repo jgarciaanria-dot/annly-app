@@ -438,6 +438,24 @@ img{max-width:100%;}
 @media(max-width:380px){
   .adm-hdr-actions .adm-hdr-back{width:34px;height:34px;padding:0;}
 }
+
+/* Ajustes solicitados: Equipo + Citas + módulos */
+.equipo-upgrade-link{border:0;background:none;color:var(--charcoal2);font:800 11px/1 inherit;padding:0 0 0 5px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;}
+.equipo-upgrade-link:hover{text-decoration:underline;}
+#panel-citas .btn-ico{max-width:122px!important;}
+.plan-extra{min-height:64px;}
+.plan-extra .plan-extra-action{margin-left:auto;border:1px solid var(--line);background:#fff;color:var(--charcoal2);border-radius:9px;padding:7px 10px;font:800 10.5px/1 inherit;cursor:pointer;white-space:nowrap;}
+.plan-extra .plan-extra-action:hover{background:var(--accent-soft);border-color:#CDB6EE;}
+.plan-modules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:1rem;}
+.plan-module{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:9px;}
+.plan-module-ico{width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.plan-module-title{font-size:12px;font-weight:800;color:var(--ink);}
+.plan-module-desc{font-size:10.5px;color:var(--ink-soft);line-height:1.45;min-height:30px;}
+.plan-module-tag{font-size:9.5px;font-weight:800;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em;}
+.plan-module button{margin-top:auto;border:1px solid var(--line);background:#fff;color:var(--charcoal2);border-radius:9px;padding:7px 9px;font:800 10.5px/1 inherit;cursor:pointer;}
+.plan-module button:hover{background:var(--accent-soft);border-color:#CDB6EE;}
+@media(max-width:1050px){.plan-modules{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:780px){.plan-modules{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -849,22 +867,25 @@ img{max-width:100%;}
         <ul class="plan-list">
           <li><i class="ti ti-check"></i><span>Agenda y citas</span></li>
           <li><i class="ti ti-check"></i><span>Registro de clientes</span></li>
+          <li><i class="ti ti-check"></i><span>Historial de clientes y citas</span></li>
           <li><i class="ti ti-check"></i><span>Botón de WhatsApp</span></li>
           <li><i class="ti ti-check"></i><span>Paleta estándar</span></li>
-          <li><i class="ti ti-check"></i><span>Cotizaciones</span></li>
+          <li><i class="ti ti-check"></i><span>Servicios ilimitados</span></li>
+          <li><i class="ti ti-check"></i><span>Abonos manuales por Yappy o transferencia</span></li>
+          <li><i class="ti ti-check"></i><span>Validación manual de comprobantes</span></li>
         </ul>
         <button class="plan-cta secondary" id="plan-btn-basic" onclick="openUpgrade('basic')">Plan actual</button>
       </article>
 
       <article class="plan-card featured" id="plan-card-medium">
         <div class="plan-name">Medium</div>
-        <div class="plan-price">$29 <span>/ mes</span></div>
+        <div class="plan-price">$24 <span>/ mes</span></div>
         <div class="plan-description">Más herramientas para vender, cobrar y promocionar.</div>
         <div class="plan-capacity"><span><i class="ti ti-user"></i>2 profesionales</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
         <ul class="plan-list">
           <li><i class="ti ti-check"></i><span>Todo lo incluido en Basic</span></li>
-          <li><i class="ti ti-check"></i><span>Pagos en línea</span></li>
-          <li><i class="ti ti-check"></i><span>Yappy y transferencia</span></li>
+          <li><i class="ti ti-check"></i><span>Servicios ilimitados</span></li>
+          <li><i class="ti ti-check"></i><span>Yappy integrado (requiere Yappy Comercial)</span></li>
           <li><i class="ti ti-check"></i><span>Promociones</span></li>
           <li><i class="ti ti-check"></i><span>Ruleta con múltiples opciones</span></li>
           <li><i class="ti ti-check"></i><span>Paletas adicionales</span></li>
@@ -880,9 +901,10 @@ img{max-width:100%;}
         <div class="plan-capacity"><span><i class="ti ti-user"></i>3 profesionales</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
         <ul class="plan-list">
           <li><i class="ti ti-check"></i><span>Todo lo incluido en Medium</span></li>
-          <li><i class="ti ti-check"></i><span>Finanzas</span></li>
+          <li><i class="ti ti-check"></i><span>Servicios ilimitados</span></li>
+          <li><i class="ti ti-check"></i><span>Yappy integrado (requiere Yappy Comercial)</span></li>
+          <li><i class="ti ti-check"></i><span>Finanzas &amp; Reportes</span></li>
           <li><i class="ti ti-check"></i><span>Certificados de regalo</span></li>
-          <li><i class="ti ti-check"></i><span>Reportes</span></li>
           <li><i class="ti ti-check"></i><span>Gestión de comisiones</span></li>
           <li><i class="ti ti-check"></i><span>Propinas y anticipos</span></li>
           <li><i class="ti ti-check"></i><span>Cierres quincenales</span></li>
@@ -903,6 +925,37 @@ img{max-width:100%;}
         <div class="plan-extra-price">+$14/mes</div>
       </div>
     </div>
+    <div class="plan-modules">
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-gift"></i></div>
+        <div class="plan-module-title">Certificados de regalo</div>
+        <div class="plan-module-desc">Crea y administra certificados para vender experiencias y servicios.</div>
+        <div class="plan-module-tag">Módulo adicional · Incluido en Ultimate</div>
+        <button type="button" onclick="solicitarModuloAnnly('Certificados de regalo')">Solicitar información</button>
+      </div>
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-sparkles"></i></div>
+        <div class="plan-module-title">Agente AI</div>
+        <div class="plan-module-desc">Asistencia inteligente para atender consultas y apoyar la gestión de citas.</div>
+        <div class="plan-module-tag">Servicio adicional</div>
+        <button type="button" onclick="solicitarModuloAnnly('Agente AI')">Solicitar información</button>
+      </div>
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-chart-bar"></i></div>
+        <div class="plan-module-title">Finanzas &amp; Reportes</div>
+        <div class="plan-module-desc">Ingresos, gastos, rentabilidad, cierres, reportes por periodo y profesional, métodos de pago, comisiones, propinas y abonos.</div>
+        <div class="plan-module-tag">Módulo adicional · Incluido en Ultimate</div>
+        <button type="button" onclick="solicitarModuloAnnly('Finanzas & Reportes')">Solicitar información</button>
+      </div>
+      <div class="plan-module">
+        <div class="plan-module-ico"><i class="ti ti-wallet"></i></div>
+        <div class="plan-module-title">Yappy integrado</div>
+        <div class="plan-module-desc">Recibe pagos mediante integración con Yappy. Requiere contar con Yappy Comercial.</div>
+        <div class="plan-module-tag">Módulo adicional · Incluido en Medium y Ultimate</div>
+        <button type="button" onclick="solicitarModuloAnnly('Yappy integrado')">Solicitar información</button>
+      </div>
+    </div>
+
     <p class="plan-note">Puedes cambiar de plan cuando lo necesites. Tus datos se mantienen aunque cambies a un plan con menos funcionalidades.</p>
   </div>
       </div>
@@ -1626,9 +1679,9 @@ function switchTab(tab){
 
 // ===== PLAN / UPGRADE =====
 const ANNLY_PLANES_UI = {
-  basic:    {name:'BASIC', price:14, professionals:1, branches:1, features:['Agenda y citas','Registro de clientes','Botón de WhatsApp','Paleta estándar','Cotizaciones']},
-  medium:  {name:'MEDIUM', price:29, professionals:2, branches:1, features:['Todo lo incluido en Basic','Pagos en línea','Yappy y transferencia','Promociones','Ruleta con múltiples opciones','Paletas adicionales','Abonos para citas']},
-  ultimate:{name:'ULTIMATE',price:49, professionals:3, branches:1, features:['Todo lo incluido en Medium','Finanzas','Certificados de regalo','Reportes','Gestión de comisiones','Propinas y anticipos','Cierres quincenales']}
+  basic:    {name:'BASIC', price:14, professionals:1, branches:1, features:['Agenda y citas','Registro de clientes','Historial de clientes y citas','Botón de WhatsApp','Paleta estándar','Servicios ilimitados','Abonos manuales por Yappy o transferencia']},
+  medium:  {name:'MEDIUM', price:24, professionals:2, branches:1, features:['Todo lo incluido en Basic','Servicios ilimitados','Yappy integrado (requiere Yappy Comercial)','Promociones','Ruleta con múltiples opciones','Paletas adicionales','Abonos para citas']},
+  ultimate:{name:'ULTIMATE',price:49, professionals:3, branches:1, features:['Todo lo incluido en Medium','Servicios ilimitados','Finanzas & Reportes','Certificados de regalo','Gestión de comisiones','Propinas y anticipos','Cierres quincenales']}
 };
 let UPGRADE_PLAN_SELECCIONADO = null;
 
@@ -1676,6 +1729,13 @@ function openUpgrade(planKey){
 function closeUpgrade(){
   document.getElementById('ov-modal-upgrade').classList.remove('show');
   UPGRADE_PLAN_SELECCIONADO=null;
+}
+
+function solicitarModuloAnnly(modulo){
+  const b=window.ANNLY_BUSINESS || {};
+  const subject=encodeURIComponent(`Consulta módulo Annly — ${modulo}`);
+  const body=encodeURIComponent(`Hola equipo Annly,\n\nQuiero información para adquirir el módulo ${modulo}.\n\nNegocio: ${b.nombre || ''}\nCorreo: ${window.ANNLY_USER_EMAIL || ''}\n\nGracias.`);
+  window.location.href=`mailto:soporte@annly.app?subject=${subject}&body=${body}`;
 }
 
 function solicitarUpgrade(){
@@ -1935,8 +1995,8 @@ async function loadCitas(){
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;">
-          <button class="btn-ico" style="width:170px;flex:0 0 170px;padding:0 10px;height:34px;font-size:11px;gap:5px;font-weight:600;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60},${c.empleadoId?`'${c.empleadoId}'`:'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
-          <button class="btn-ico del" style="width:170px;flex:0 0 170px;padding:0 10px;height:34px;font-size:11px;gap:5px;font-weight:600;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
+          <button class="btn-ico" style="width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60},${c.empleadoId?`'${c.empleadoId}'`:'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
+          <button class="btn-ico del" style="width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
         </div>
       </div>`;
     });
@@ -2328,7 +2388,7 @@ function renderEquipo(){
   const cont = document.getElementById('lista-equipo');
   const limite = limiteEmpleadosDelPlan();
   const msgEl = document.getElementById('equipo-limite-msg');
-  msgEl.textContent = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.`;
+  msgEl.innerHTML = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.` + (EQUIPO.length >= limite ? ` <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan')"><i class="ti ti-arrow-up-right"></i> Subir de plan</button>` : '');
 
   if (!EQUIPO.length){
     cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay empleados todavía.</p>';
@@ -2458,7 +2518,7 @@ async function guardarEmpleadoModal(){
   if (!editEmpleadoId){
     const limite = limiteEmpleadosDelPlan();
     if (EQUIPO.length >= limite){
-      msgEl.textContent = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. Sube de plan para agregar más.`;
+      msgEl.innerHTML = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan'); closeModalEmpleado();"><i class="ti ti-arrow-up-right"></i> Subir de plan</button>`;
       return;
     }
   }
