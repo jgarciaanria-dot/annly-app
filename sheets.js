@@ -289,23 +289,28 @@ const Sheets = {
   },
 
   // ---------- CITAS ----------
-  async getHorasOcupadas(fechaStr) {
+  async getHorasOcupadas(fechaStr, empleadoId) {
     await window.AnnlyReady;
     const fechaISO = parseFechaTexto(fechaStr);
     if (!fechaISO) return [];
-    const { data } = await sbClient.from('appointments').select('hora, duracion_min')
+    let query = sbClient.from('appointments').select('hora, duracion_min')
       .eq('business_id', BUSINESS_ID).eq('fecha', fechaISO).neq('estado', 'cancelada');
+    if (empleadoId) query = query.eq('employee_id', empleadoId);
+    const { data } = await query;
     return (data || []).map(c => ({ hora: formatHoraSitio(c.hora), duracion: c.duracion_min || 60 }));
   },
 
   async getCitas() {
     await window.AnnlyReady;
     const { data } = await sbClient.from('appointments').select('*').eq('business_id', BUSINESS_ID).neq('estado', 'cancelada');
+    const empleados = await this.getEmpleados();
+    const mapaEmpleados = Object.fromEntries(empleados.map(e => [e.id, e.nombre]));
     return (data || []).map(c => ({
       id: c.id, nombre: c.cliente_nombre, telefono: c.cliente_telefono, servicio: c.servicio_nombre,
       fecha: isoAFechaTexto(c.fecha), hora: formatHoraSitio(c.hora) + (parseInt(c.hora) >= 12 ? ' PM' : ' AM'),
       duracion: c.duracion_min, fechaISO: c.fecha, horaISO: c.hora, categoria: c.categoria,
-      precioTotal: c.precio_total, precioFinal: c.precio_final, precioEsConsultar: c.precio_es_consultar
+      precioTotal: c.precio_total, precioFinal: c.precio_final, precioEsConsultar: c.precio_es_consultar,
+      empleadoId: c.employee_id, empleadoNombre: mapaEmpleados[c.employee_id] || null
     }));
   },
 
@@ -313,7 +318,8 @@ const Sheets = {
     await window.AnnlyReady;
     const fechaISO = parseFechaTexto(cita.fecha);
     const { error } = await sbClient.from('appointments').insert([{
-      business_id: BUSINESS_ID, cliente_nombre: cita.nombre, cliente_telefono: cita.telefono,
+      business_id: BUSINESS_ID, employee_id: cita.empleadoId || null,
+      cliente_nombre: cita.nombre, cliente_telefono: cita.telefono,
       cliente_correo: cita.correo, nota: cita.nota, servicio_nombre: cita.servicio, categoria: cita.categoria,
       precio_total: cita.precioTotal, precio_es_consultar: cita.precioEsConsultar, fecha: fechaISO,
       hora: cita.hora, duracion_min: cita.duracionMin, comprobante: cita.comprobante,
@@ -448,14 +454,136 @@ const Sheets = {
   // A diferencia de guardarClientas, esto NO borra ni toca al resto de la lista.
   async upsertClienteDesdeReserva(nombre, telefono, correo) {
     await window.AnnlyReady;
-    if (!telefono) return; // sin teléfono no hay con qué identificar al cliente de forma confiable
-    const { data: existente } = await sbClient.from('clients').select('id')
+    if (!telefono) return;
+    const { data: existente, error: errBusqueda } = await sbClient.from('clients').select('id')
       .eq('business_id', BUSINESS_ID).eq('telefono', telefono).maybeSingle();
+    if (errBusqueda) { console.error('Error buscando cliente existente:', errBusqueda); return; }
     if (existente) {
-      await sbClient.from('clients').update({ nombre, email: correo || null }).eq('id', existente.id);
+      const { error } = await sbClient.from('clients').update({ nombre, email: correo || null }).eq('id', existente.id);
+      if (error) console.error('Error actualizando cliente:', error);
     } else {
-      await sbClient.from('clients').insert([{ business_id: BUSINESS_ID, nombre, telefono, email: correo || null }]);
+      const { error } = await sbClient.from('clients').insert([{ business_id: BUSINESS_ID, nombre, telefono, email: correo || null }]);
+      if (error) console.error('Error creando cliente:', error);
     }
+  },
+
+  // ---------- EQUIPO / EMPLEADOS ----------
+
+  // Límite de empleados según el plan del negocio (campo simple, no el motor de suscripciones nuevo)
+  LIMITE_EMPLEADOS_POR_PLAN: { trial: 1, basic: 1, medium: 2, ultimate: 3 },
+
+  async getEmpleados() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('employees').select('*').eq('business_id', BUSINESS_ID).order('creado_en');
+    if (error) { console.error('Error leyendo empleados:', error); return []; }
+    return (data || []).map(e => ({
+      id: e.id, nombre: e.nombre, telefono: e.telefono, correo: e.correo,
+      fotoUrl: e.foto_url, activo: e.activo, esDueno: e.es_dueno || false
+    }));
+  },
+
+  // Si el negocio todavía no tiene ningún empleado, le crea uno por defecto
+  // representando al dueño — así siempre hay al menos uno, sin casos especiales.
+  async asegurarEmpleadoDueno() {
+    await window.AnnlyReady;
+    const { count } = await sbClient.from('employees').select('id', { count: 'exact', head: true }).eq('business_id', BUSINESS_ID);
+    if (count && count > 0) return;
+    const nombreNegocio = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.nombre) || 'Dueño/a';
+    await sbClient.from('employees').insert([{ business_id: BUSINESS_ID, nombre: nombreNegocio, activo: true, es_dueno: true }]);
+  },
+
+  async guardarEmpleado(empleado) {
+    await window.AnnlyReady;
+    const row = { business_id: BUSINESS_ID, nombre: empleado.nombre, telefono: empleado.telefono || null, correo: empleado.correo || null, foto_url: empleado.fotoUrl || null, activo: empleado.activo !== false };
+    if (empleado.id) {
+      const { error } = await sbClient.from('employees').update(row).eq('id', empleado.id);
+      if (error) throw error;
+      return empleado.id;
+    } else {
+      const { data, error } = await sbClient.from('employees').insert([row]).select().single();
+      if (error) throw error;
+      return data.id;
+    }
+  },
+
+  async eliminarEmpleado(id) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('employees').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async subirFotoEmpleado(file) {
+    await window.AnnlyReady;
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${BUSINESS_ID}-emp-${Date.now()}.${ext}`;
+    const { error: upErr } = await sbClient.storage.from('servicios').upload(path, file, { upsert: true });
+    if (upErr) throw upErr;
+    const { data } = sbClient.storage.from('servicios').getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  async getEmpleadoServicios(empleadoId) {
+    await window.AnnlyReady;
+    const { data } = await sbClient.from('employee_services').select('service_id').eq('employee_id', empleadoId);
+    return (data || []).map(r => r.service_id);
+  },
+
+  async guardarEmpleadoServicios(empleadoId, serviceIds) {
+    await window.AnnlyReady;
+    await sbClient.from('employee_services').delete().eq('employee_id', empleadoId);
+    if (!serviceIds.length) return;
+    await sbClient.from('employee_services').insert(serviceIds.map(sid => ({ employee_id: empleadoId, service_id: sid })));
+  },
+
+  // Devuelve { service_id: [employee_id, ...] } para todo el negocio de una vez
+  async getMapaServiciosEmpleados() {
+    await window.AnnlyReady;
+    const { data: empleados } = await sbClient.from('employees').select('id').eq('business_id', BUSINESS_ID).eq('activo', true);
+    const ids = (empleados || []).map(e => e.id);
+    if (!ids.length) return {};
+    const { data } = await sbClient.from('employee_services').select('employee_id, service_id').in('employee_id', ids);
+    const mapa = {};
+    (data || []).forEach(r => { (mapa[r.service_id] = mapa[r.service_id] || []).push(r.employee_id); });
+    return mapa;
+  },
+
+  // Empleados activos que realizan un servicio específico. Un empleado sin
+  // ningún servicio asignado se asume que los hace todos (mismo criterio
+  // que en el modal de admin: "si no marcas ninguno, se asume que hace todos").
+  async getEmpleadosParaServicio(serviceId) {
+    await window.AnnlyReady;
+    const { data: empleados } = await sbClient.from('employees').select('id, nombre, foto_url').eq('business_id', BUSINESS_ID).eq('activo', true);
+    const lista = empleados || [];
+    if (!lista.length) return [];
+    const ids = lista.map(e => e.id);
+    const { data: asignaciones } = await sbClient.from('employee_services').select('employee_id, service_id').in('employee_id', ids);
+    const porEmpleado = {};
+    (asignaciones || []).forEach(a => { (porEmpleado[a.employee_id] = porEmpleado[a.employee_id] || []).push(a.service_id); });
+    return lista.filter(e => {
+      const asign = porEmpleado[e.id];
+      return !asign || !asign.length || asign.includes(serviceId);
+    }).map(e => ({ id: e.id, nombre: e.nombre, fotoUrl: e.foto_url }));
+  },
+
+  async getEmpleadoHorario(empleadoId) {
+    await window.AnnlyReady;
+    const { data } = await sbClient.from('employee_schedules').select('horario_estructurado').eq('employee_id', empleadoId).maybeSingle();
+    return data ? data.horario_estructurado : null; // null = usa el horario general del negocio
+  },
+
+  async guardarEmpleadoHorario(empleadoId, horario) {
+    await window.AnnlyReady;
+    const { data: existente } = await sbClient.from('employee_schedules').select('id').eq('employee_id', empleadoId).maybeSingle();
+    if (existente) {
+      await sbClient.from('employee_schedules').update({ horario_estructurado: horario }).eq('id', existente.id);
+    } else {
+      await sbClient.from('employee_schedules').insert([{ employee_id: empleadoId, horario_estructurado: horario }]);
+    }
+  },
+
+  async eliminarEmpleadoHorario(empleadoId) {
+    await window.AnnlyReady;
+    await sbClient.from('employee_schedules').delete().eq('employee_id', empleadoId);
   },
 
   // ---------- PERFIL DEL NEGOCIO ----------
