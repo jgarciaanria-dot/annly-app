@@ -313,6 +313,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')">Promo</button>
     <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')">Ruleta</button>
     <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')">Clientes</button>
+    <button class="adm-tab" id="tab-equipo" onclick="switchTab('equipo')">Equipo</button>
     <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')">Perfil</button>
   </div>
 
@@ -458,6 +459,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     </div>
   </div>
 
+  <div id="panel-equipo" style="display:none;">
+    <div class="adm-sec">
+      <div class="adm-sec-hdr">
+        <span class="adm-sec-title">Equipo</span>
+        <button class="btn-add" onclick="openModalEmpleado(null)"><i class="ti ti-plus"></i> Agregar</button>
+      </div>
+      <div style="padding:1rem;">
+        <p id="equipo-limite-msg" style="font-size:11px;color:var(--ink-soft);margin-bottom:12px;"></p>
+        <div id="lista-equipo"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="panel-perfil" style="display:none;">
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Logo</span></div>
@@ -591,6 +605,75 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
       <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="mc-correo"/></div>
       <div class="fg"><label class="flbl">Notas (opcional)</label><textarea class="fi" id="mc-notas" rows="2" style="resize:vertical;"></textarea></div>
       <button class="btn-save" onclick="guardarClientaModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-modal-empleado">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-empleado-title">Nuevo empleado</span>
+      <button class="modal-close" onclick="closeModalEmpleado()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="flbl">Foto (opcional)</label>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div id="me-foto-preview" style="width:60px;height:60px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+            <i class="ti ti-user" style="font-size:22px;color:var(--ink-soft);"></i>
+          </div>
+          <div>
+            <input type="file" id="me-foto-file" accept="image/*" style="display:none;" onchange="subirFotoEmpleadoModal()"/>
+            <button type="button" class="btn-add" onclick="document.getElementById('me-foto-file').click()"><i class="ti ti-upload"></i> Subir foto</button>
+            <p id="me-foto-msg" style="font-size:11px;color:var(--ink-soft);margin-top:6px;"></p>
+          </div>
+        </div>
+        <input type="hidden" id="me-foto-url"/>
+      </div>
+      <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="me-nombre"/></div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Teléfono (opcional)</label><input class="fi" id="me-telefono"/></div>
+        <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="me-correo"/></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:1rem;"><input type="checkbox" id="me-activo" checked/> Activo (visible para agendar)</label>
+
+      <div class="fg">
+        <label class="flbl">Servicios que realiza</label>
+        <div id="me-servicios-list" style="display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:180px;overflow-y:auto;"></div>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Si no marcas ninguno, se asume que hace todos.</p>
+      </div>
+
+      <div class="fg">
+        <label class="flbl">Horario propio (opcional)</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;"><input type="checkbox" id="me-horario-propio" onchange="toggleHorarioPropioEmpleado(this)"/> Usa un horario distinto al del negocio</label>
+        <div id="me-horario-bloques" style="display:none;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+          <div class="hor-emp-bloque" data-bloque="lv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Lun-Vie</span>
+            <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <span style="font-size:12px;color:var(--ink-soft);">a</span>
+            <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> Cerrado</label>
+          </div>
+          <div class="hor-emp-bloque" data-bloque="sab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Sábado</span>
+            <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <span style="font-size:12px;color:var(--ink-soft);">a</span>
+            <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> Cerrado</label>
+          </div>
+          <div class="hor-emp-bloque" data-bloque="dom" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Domingo</span>
+            <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <span style="font-size:12px;color:var(--ink-soft);">a</span>
+            <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> Cerrado</label>
+          </div>
+        </div>
+      </div>
+
+      <p id="me-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" id="me-btn-guardar" onclick="guardarEmpleadoModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar empleado</button>
+      <button class="btn-add" id="me-btn-eliminar" style="width:100%;justify-content:center;margin-top:8px;color:#C2695A;border-color:#f0d5d0;display:none;" onclick="eliminarEmpleadoModal()"><i class="ti ti-trash"></i> Eliminar empleado</button>
     </div>
   </div>
 </div>
@@ -1051,6 +1134,7 @@ function switchTab(tab){
   document.getElementById('tab-promo').classList.toggle('active', tab==='promo');
   document.getElementById('tab-ruleta').classList.toggle('active', tab==='ruleta');
   document.getElementById('tab-clientas').classList.toggle('active', tab==='clientas');
+  document.getElementById('tab-equipo').classList.toggle('active', tab==='equipo');
   document.getElementById('tab-perfil').classList.toggle('active', tab==='perfil');
   document.getElementById('panel-servicios').style.display = tab==='servicios'?'block':'none';
   document.getElementById('panel-citas').style.display = tab==='citas'?'block':'none';
@@ -1058,11 +1142,13 @@ function switchTab(tab){
   document.getElementById('panel-promo').style.display = tab==='promo'?'block':'none';
   document.getElementById('panel-ruleta').style.display = tab==='ruleta'?'block':'none';
   document.getElementById('panel-clientas').style.display = tab==='clientas'?'block':'none';
+  document.getElementById('panel-equipo').style.display = tab==='equipo'?'block':'none';
   document.getElementById('panel-perfil').style.display = tab==='perfil'?'block':'none';
   if(tab==='citas') loadCitas();
   if(tab==='promo') loadPromo();
   if(tab==='ruleta') loadRuleta();
   if(tab==='clientas') loadClientas();
+  if(tab==='equipo') loadEquipo();
   if(tab==='perfil') loadPerfil();
 }
 
@@ -1306,11 +1392,12 @@ async function loadCitas(){
                 <span style="width:5px;height:5px;border-radius:50%;background:${cat.fg};"></span>${c.categoria||'Servicio'}
               </span>
               <span style="font-size:12px;font-weight:700;color:var(--ink);">${c.precioEsConsultar?'A consultar':(c.precioFinal!=null?'$'+parseFloat(c.precioFinal).toFixed(2):(c.precioTotal!=null?'$'+parseFloat(c.precioTotal).toFixed(2):''))}</span>
+              ${c.empleadoNombre?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${c.empleadoNombre}</span>`:''}
             </div>
           </div>
         </div>
         <div style="display:flex;gap:7px;margin-top:11px;">
-          <button class="btn-ico" style="width:auto;flex:1;padding:0 10px;height:32px;font-size:11.5px;gap:5px;font-weight:600;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
+          <button class="btn-ico" style="width:auto;flex:1;padding:0 10px;height:32px;font-size:11.5px;gap:5px;font-weight:600;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60},${c.empleadoId?`'${c.empleadoId}'`:'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
           <button class="btn-ico del" style="width:auto;flex:1;padding:0 10px;height:32px;font-size:11.5px;gap:5px;font-weight:600;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
         </div>
       </div>`;
@@ -1334,10 +1421,10 @@ function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
 function genSlots(){
   const dt=new Date(rpCalY,rpCalM,rpSelectedDay);
   const dow=dt.getDay();
-  const bloqueCfg=(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado
-    && window.ANNLY_BUSINESS.horario_estructurado[bloqueDelDia(dow)]) || null;
+  const horarioBase = rpEmpleadoHorarioCache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+  const bloqueCfg = (horarioBase && horarioBase[bloqueDelDia(dow)]) || null;
 
-  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si el negocio no tiene horario configurado
+  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
   if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
     [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
     [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
@@ -1368,12 +1455,15 @@ function isBlocked(slotKey,citas,durSvc){
 
 // ===== REPROGRAMAR / CANCELAR (con calendario real) =====
 let reprogramarCitaId = null;
+let rpEmpleadoId = null;
+let rpEmpleadoHorarioCache = null;
 let rpCalY, rpCalM, rpSelectedDay = null, rpSelTime = null;
 let rpBloqueosCache = { dias: [], horas: {} };
 let rpDurMin = 60;
 
-async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duracionMin){
+async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duracionMin, empleadoId){
   reprogramarCitaId = id;
+  rpEmpleadoId = empleadoId || null;
   rpDurMin = duracionMin || 60;
   document.getElementById('modal-reprogramar-title').textContent = 'Reprogramar — ' + nombre;
   const [y,m] = fechaISOStr.split('-');
@@ -1383,6 +1473,7 @@ async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duraci
   document.getElementById('btnGuardarReprogramar').disabled = true;
 
   try { rpBloqueosCache = await Sheets.getBloqueos(); } catch(e){ rpBloqueosCache = {dias:[],horas:{}}; }
+  rpEmpleadoHorarioCache = rpEmpleadoId ? await Sheets.getEmpleadoHorario(rpEmpleadoId).catch(() => null) : null;
 
   renderCalAdmin();
   document.getElementById('ov-modal-reprogramar').classList.add('open');
@@ -1403,7 +1494,7 @@ function chMoAdmin(d){
 }
 
 function diaCerrado(dow){
-  const h = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  const h = rpEmpleadoHorarioCache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
   if (!h) return dow===0;
   const bloque = h[bloqueDelDia(dow)];
   return !bloque || !!bloque.cerrado;
@@ -1441,7 +1532,7 @@ async function selDayAdmin(d){
   grid.innerHTML = '<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
   const fechaStr = d + ' de ' + MESES[rpCalM] + ' ' + rpCalY;
   let ocupadas = [];
-  try { ocupadas = await Sheets.getHorasOcupadas(fechaStr); } catch(e){ ocupadas = []; }
+  try { ocupadas = await Sheets.getHorasOcupadas(fechaStr, rpEmpleadoId); } catch(e){ ocupadas = []; }
   renderTimesAdmin(ocupadas);
 }
 
@@ -1673,6 +1764,208 @@ function guardarClientaModal(){
   Sheets.guardarClientas(CLIENTAS);
   closeModalClienta();
   renderClientas();
+}
+
+// ===== EQUIPO =====
+let EQUIPO = [];
+let editEmpleadoId = null;
+const HOR_DEFAULT_EMPLEADO = {
+  lv:  { abre:'09:00', cierra:'18:00', cerrado:false },
+  sab: { abre:'09:00', cierra:'14:00', cerrado:false },
+  dom: { abre:'', cierra:'', cerrado:true }
+};
+
+async function loadEquipo(){
+  await Sheets.asegurarEmpleadoDueno();
+  try { EQUIPO = await Sheets.getEmpleados(); } catch(e){ console.error(e); EQUIPO = []; }
+  renderEquipo();
+}
+
+function limiteEmpleadosDelPlan(){
+  const plan = ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.plan) || 'trial').toLowerCase();
+  return Sheets.LIMITE_EMPLEADOS_POR_PLAN[plan] ?? 1;
+}
+
+function renderEquipo(){
+  const cont = document.getElementById('lista-equipo');
+  const limite = limiteEmpleadosDelPlan();
+  const msgEl = document.getElementById('equipo-limite-msg');
+  msgEl.textContent = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.`;
+
+  if (!EQUIPO.length){
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay empleados todavía.</p>';
+    return;
+  }
+  cont.innerHTML = EQUIPO.map((e, i) => {
+    const esRosa = i % 2 === 1;
+    const avBg = esRosa ? 'var(--accent2-soft)' : 'var(--accent-soft)';
+    const avFg = esRosa ? 'var(--accent2)' : 'var(--charcoal)';
+    const avatar = e.fotoUrl
+      ? `<img src="${e.fotoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`
+      : `<span style="font-size:13px;font-weight:700;color:${avFg};">${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`;
+    return `<div class="svc-row" style="padding:.75rem 0;">
+      <div style="width:36px;height:36px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${avatar}</div>
+      <div class="svc-info">
+        <div class="svc-nm">${e.nombre}${e.esDueno?' <span style="font-size:10px;color:var(--ink-soft);font-weight:500;">(dueño/a)</span>':''}</div>
+        <div class="svc-meta">${e.telefono||'Sin teléfono'}${e.activo?'':' · Inactivo'}</div>
+      </div>
+      <div class="svc-actions">
+        <button class="btn-ico" onclick="openModalEmpleado('${e.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openModalEmpleado(id){
+  editEmpleadoId = id;
+  const e = id ? EQUIPO.find(x => x.id === id) : null;
+  document.getElementById('modal-empleado-title').textContent = e ? 'Editar empleado' : 'Nuevo empleado';
+  document.getElementById('me-msg').textContent = '';
+  document.getElementById('me-nombre').value = e ? e.nombre : '';
+  document.getElementById('me-telefono').value = e ? (e.telefono||'') : '';
+  document.getElementById('me-correo').value = e ? (e.correo||'') : '';
+  document.getElementById('me-activo').checked = e ? e.activo : true;
+  document.getElementById('me-foto-url').value = e ? (e.fotoUrl||'') : '';
+  document.getElementById('me-foto-preview').innerHTML = e && e.fotoUrl
+    ? `<img src="${e.fotoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`
+    : `<i class="ti ti-user" style="font-size:22px;color:var(--ink-soft);"></i>`;
+  document.getElementById('me-btn-eliminar').style.display = (e && !e.esDueno) ? 'flex' : 'none';
+
+  // Servicios que hace
+  const serviciosMarcados = e ? await Sheets.getEmpleadoServicios(e.id) : [];
+  const listaServ = document.getElementById('me-servicios-list');
+  if (!SERVICES.length){
+    listaServ.innerHTML = '<p style="font-size:12px;color:var(--ink-soft);">Todavía no tienes servicios creados.</p>';
+  } else {
+    listaServ.innerHTML = SERVICES.map(s => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
+        <input type="checkbox" class="me-servicio-chk" value="${s.id}" ${serviciosMarcados.includes(s.id)?'checked':''}/> ${s.name}
+      </label>`).join('');
+  }
+
+  // Horario propio
+  const horarioPropio = e ? await Sheets.getEmpleadoHorario(e.id) : null;
+  document.getElementById('me-horario-propio').checked = !!horarioPropio;
+  document.getElementById('me-horario-bloques').style.display = horarioPropio ? 'flex' : 'none';
+  cargarHorarioEmpleadoModal(horarioPropio || HOR_DEFAULT_EMPLEADO);
+
+  document.getElementById('ov-modal-empleado').classList.add('open');
+}
+
+function closeModalEmpleado(){
+  document.getElementById('ov-modal-empleado').classList.remove('open');
+}
+
+function toggleHorarioPropioEmpleado(checkbox){
+  document.getElementById('me-horario-bloques').style.display = checkbox.checked ? 'flex' : 'none';
+}
+
+function toggleHorEmpBloque(checkbox){
+  const bloque = checkbox.closest('.hor-emp-bloque');
+  const desactivar = checkbox.checked;
+  bloque.querySelectorAll('input[type="time"]').forEach(inp => inp.disabled = desactivar);
+}
+
+function cargarHorarioEmpleadoModal(horario){
+  ['lv','sab','dom'].forEach(clave => {
+    const bloque = document.querySelector(`#me-horario-bloques .hor-emp-bloque[data-bloque="${clave}"]`);
+    if (!bloque) return;
+    const datos = horario[clave] || HOR_DEFAULT_EMPLEADO[clave];
+    bloque.querySelector('.hor-emp-abre').value = datos.abre || '';
+    bloque.querySelector('.hor-emp-cierra').value = datos.cierra || '';
+    const chk = bloque.querySelector('.hor-emp-cerrado');
+    chk.checked = !!datos.cerrado;
+    toggleHorEmpBloque(chk);
+  });
+}
+
+function leerHorarioEmpleadoModal(){
+  const resultado = {};
+  ['lv','sab','dom'].forEach(clave => {
+    const bloque = document.querySelector(`#me-horario-bloques .hor-emp-bloque[data-bloque="${clave}"]`);
+    const cerrado = bloque.querySelector('.hor-emp-cerrado').checked;
+    resultado[clave] = {
+      abre: cerrado ? '' : bloque.querySelector('.hor-emp-abre').value,
+      cierra: cerrado ? '' : bloque.querySelector('.hor-emp-cierra').value,
+      cerrado
+    };
+  });
+  return resultado;
+}
+
+async function subirFotoEmpleadoModal(){
+  const input = document.getElementById('me-foto-file');
+  const file = input.files[0];
+  if (!file) return;
+  const msgEl = document.getElementById('me-foto-msg');
+  msgEl.textContent = 'Subiendo...';
+  try {
+    const url = await Sheets.subirFotoEmpleado(file);
+    document.getElementById('me-foto-url').value = url;
+    document.getElementById('me-foto-preview').innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;"/>`;
+    msgEl.textContent = 'Foto actualizada.';
+  } catch(e){
+    console.error(e);
+    msgEl.textContent = 'No se pudo subir la foto.';
+  }
+}
+
+async function guardarEmpleadoModal(){
+  const msgEl = document.getElementById('me-msg');
+  msgEl.textContent = '';
+  const nombre = document.getElementById('me-nombre').value.trim();
+  if (!nombre){ msgEl.textContent = 'El nombre es obligatorio.'; return; }
+
+  // Límite del plan, solo aplica al crear uno nuevo
+  if (!editEmpleadoId){
+    const limite = limiteEmpleadosDelPlan();
+    if (EQUIPO.length >= limite){
+      msgEl.textContent = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. Sube de plan para agregar más.`;
+      return;
+    }
+  }
+
+  const empleado = {
+    id: editEmpleadoId,
+    nombre,
+    telefono: document.getElementById('me-telefono').value.trim(),
+    correo: document.getElementById('me-correo').value.trim(),
+    fotoUrl: document.getElementById('me-foto-url').value.trim(),
+    activo: document.getElementById('me-activo').checked
+  };
+
+  try {
+    const empleadoId = await Sheets.guardarEmpleado(empleado);
+
+    const serviciosMarcados = Array.from(document.querySelectorAll('.me-servicio-chk:checked')).map(el => el.value);
+    await Sheets.guardarEmpleadoServicios(empleadoId, serviciosMarcados);
+
+    const usaHorarioPropio = document.getElementById('me-horario-propio').checked;
+    if (usaHorarioPropio){
+      await Sheets.guardarEmpleadoHorario(empleadoId, leerHorarioEmpleadoModal());
+    } else {
+      await Sheets.eliminarEmpleadoHorario(empleadoId);
+    }
+
+    closeModalEmpleado();
+    loadEquipo();
+  } catch(e){
+    console.error(e);
+    msgEl.textContent = 'No se pudo guardar. Intenta de nuevo.';
+  }
+}
+
+async function eliminarEmpleadoModal(){
+  if (!editEmpleadoId) return;
+  if (!confirm('¿Eliminar este empleado? Sus citas pasadas se conservan, pero ya no podrá agendarse con él/ella.')) return;
+  try {
+    await Sheets.eliminarEmpleado(editEmpleadoId);
+    closeModalEmpleado();
+    loadEquipo();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo eliminar el empleado.');
+  }
 }
 
 function abrirModalReservar(idx){
