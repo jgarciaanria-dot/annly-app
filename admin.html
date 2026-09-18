@@ -209,6 +209,55 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
   .adm-hdr-back{padding:8px;}
   .adm-hdr-back span.hdr-btn-txt{display:none;}
 }
+/* ---------- PLATFORM ADMIN / BUSINESS SWITCHER ---------- */
+.platform-business-switcher{
+  display:none;
+  align-items:center;
+  gap:8px;
+  margin-left:auto;
+  margin-right:10px;
+  padding:6px 9px;
+  background:#FBF8FE;
+  border:1px solid #E4D8F5;
+  border-radius:12px;
+}
+.platform-business-switcher.visible{display:flex;}
+.platform-business-switcher .pbs-label{
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#8A8378;
+  white-space:nowrap;
+}
+.platform-business-switcher select{
+  min-width:190px;
+  max-width:260px;
+  border:none;
+  outline:none;
+  background:transparent;
+  color:#5B21B6;
+  font-family:inherit;
+  font-size:11.5px;
+  font-weight:700;
+  cursor:pointer;
+}
+@media(max-width:700px){
+  .platform-business-switcher{
+    order:3;
+    width:100%;
+    margin:8px 0 0;
+  }
+  .platform-business-switcher select{
+    flex:1;
+    min-width:0;
+    max-width:none;
+  }
+  .adm-hdr{
+    flex-wrap:wrap;
+  }
+}
+
 
 .adm-body{padding:1.25rem 1rem 3rem;max-width:640px;margin:0 auto;}
 
@@ -378,7 +427,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
     <div class="adm-hdr-title" id="adm-hdr-title">Panel de administración</div>
     <div class="adm-hdr-sub">Panel de administración</div>
   </div>
-  <div id="adm-plan-chip" class="plan-current-badge" style="margin-left:auto;margin-right:10px;display:none;"><i class="ti ti-sparkles"></i><span>BASIC</span></div>
+
+  <div id="platform-business-switcher" class="platform-business-switcher" aria-label="Seleccionar negocio">
+    <span class="pbs-label"><i class="ti ti-shield-check"></i> Tu cuenta</span>
+    <select id="platform-business-select" onchange="cambiarNegocioDesdeSelector(this.value)">
+      <option value="">Seleccionar negocio...</option>
+    </select>
+  </div>
+
+  <div id="adm-plan-chip" class="plan-current-badge" style="margin-left:0;margin-right:10px;display:none;"><i class="ti ti-sparkles"></i><span>BASIC</span></div>
   <div style="display:flex;gap:8px;">
     <a href="index.html" id="adm-hdr-ver-sitio" target="_blank" class="adm-hdr-back"><i class="ti ti-arrow-left"></i><span class="hdr-btn-txt">Ver sitio</span></a>
     <button type="button" id="adm-hdr-copiar-link" class="adm-hdr-back" style="cursor:pointer;background:none;font-family:inherit;" onclick="copiarLinkNegocio()"><i class="ti ti-link"></i><span class="hdr-btn-txt">Copiar link</span></button>
@@ -982,23 +1039,130 @@ async function hacerLogin(){
   }
 }
 
-async function arrancarPanelAdmin(){
-  const b = window.ANNLY_BUSINESS;
+function actualizarContextoNegocioUI(){
+  const b = window.ANNLY_BUSINESS || {};
+
   const titleEl = document.getElementById('adm-hdr-title');
-  if (titleEl && b.nombre) titleEl.textContent = b.nombre;
+  if (titleEl) {
+    titleEl.textContent = b.nombre || 'Panel de administración';
+  }
+
   document.title = 'Admin — ' + (b.nombre || 'Annly');
-  if (b.slug) document.getElementById('adm-hdr-ver-sitio').href = '/' + b.slug;
+
+  const linkSitio = document.getElementById('adm-hdr-ver-sitio');
+  if (linkSitio) {
+    linkSitio.href = b.slug ? '/' + b.slug : 'index.html';
+  }
+
   const planChip = document.getElementById('adm-plan-chip');
   if (planChip) {
     const rawPlan = String(b.plan || 'basic').toLowerCase();
-    const chipPlan = rawPlan === 'medium' ? 'MEDIUM' : rawPlan === 'ultimate' ? 'ULTIMATE' : rawPlan === 'trial' ? 'TRIAL' : 'BASIC';
-    planChip.querySelector('span').textContent = chipPlan;
+    const chipPlan =
+      rawPlan === 'medium' ? 'MEDIUM' :
+      rawPlan === 'ultimate' ? 'ULTIMATE' :
+      rawPlan === 'trial' ? 'TRIAL' :
+      'BASIC';
+
+    const span = planChip.querySelector('span');
+    if (span) span.textContent = chipPlan;
+
     planChip.style.display = 'inline-flex';
   }
-  renderPlan();
-  loadServices().then(() => { renderAdmin(); });
-  loadBloqueos();
 }
+
+function renderSelectorNegocios(){
+  const wrap = document.getElementById('platform-business-switcher');
+  const select = document.getElementById('platform-business-select');
+
+  if (!wrap || !select) return;
+
+  if (!window.ANNLY_PLATFORM_ADMIN) {
+    wrap.classList.remove('visible');
+    return;
+  }
+
+  const negocios = Array.isArray(window.ANNLY_BUSINESSES)
+    ? window.ANNLY_BUSINESSES
+    : [];
+
+  select.innerHTML = negocios.map(b => {
+    const selected =
+      window.ANNLY_BUSINESS &&
+      String(window.ANNLY_BUSINESS.id) === String(b.id)
+        ? ' selected'
+        : '';
+
+    const nombre = String(b.nombre || 'Sin nombre')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+
+    return `<option value="${b.id}"${selected}>${nombre}</option>`;
+  }).join('');
+
+  wrap.classList.add('visible');
+}
+
+async function cambiarNegocioDesdeSelector(businessId){
+  if (!businessId || !window.ANNLY_PLATFORM_ADMIN) return;
+
+  const select = document.getElementById('platform-business-select');
+  if (select) select.disabled = true;
+
+  try {
+    await window.AnnlyAuth.seleccionarNegocio(businessId);
+  } catch(e) {
+    console.error('[Annly] No se pudo cambiar de negocio:', e);
+    alert('No se pudo cambiar de negocio.');
+    renderSelectorNegocios();
+    return;
+  } finally {
+    if (select) select.disabled = false;
+  }
+
+  await recargarPanelPorNegocio();
+}
+
+async function recargarPanelPorNegocio(){
+  actualizarContextoNegocioUI();
+  renderSelectorNegocios();
+
+  SERVICES = [];
+  BLOQUEOS = {dias:[], horas:{}};
+
+  await loadServices();
+  renderAdmin();
+  await loadBloqueos();
+
+  const activeTab = document.querySelector('.adm-tab.active');
+  const tabActual = activeTab
+    ? activeTab.id.replace('tab-','')
+    : 'servicios';
+
+  if (tabActual === 'citas') await loadCitas();
+  if (tabActual === 'promo') await loadPromo();
+  if (tabActual === 'ruleta') await loadRuleta();
+  if (tabActual === 'clientas') await loadClientas();
+  if (tabActual === 'equipo') await loadEquipo();
+  if (tabActual === 'perfil') await loadPerfil();
+  if (tabActual === 'plan') renderPlan();
+}
+
+async function arrancarPanelAdmin(){
+  actualizarContextoNegocioUI();
+  renderSelectorNegocios();
+
+  renderPlan();
+  await loadServices();
+  renderAdmin();
+  await loadBloqueos();
+}
+
+window.addEventListener('annly:business-changed', () => {
+  actualizarContextoNegocioUI();
+  renderSelectorNegocios();
+});
 
 function copiarLinkNegocio(){
   const b = window.ANNLY_BUSINESS;
@@ -1020,7 +1184,14 @@ function copiarLinkNegocio(){
     document.getElementById('login-remember').checked = true;
   }
   await window.AnnlyReady;
-  console.log('[Annly] Al cargar la página — Autenticado:', window.ANNLY_AUTHENTICATED, '| Negocio:', window.ANNLY_BUSINESS);
+  console.log(
+    '[Annly] Al cargar la página — Autenticado:',
+    window.ANNLY_AUTHENTICATED,
+    '| Platform Admin:',
+    window.ANNLY_PLATFORM_ADMIN,
+    '| Negocio:',
+    window.ANNLY_BUSINESS
+  );
   if(window.ANNLY_AUTHENTICATED && window.ANNLY_BUSINESS){
     document.getElementById('login-screen').style.display = 'none';
     arrancarPanelAdmin();
