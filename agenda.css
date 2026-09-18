@@ -175,6 +175,13 @@ body.modo-oscuro .card-icon{
 .btn-ghost:hover{border-color:var(--gold);}
 
 .svc-pill{background:var(--charcoal);border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;}
+.emp-sel-lbl{font-size:10px;font-weight:500;color:var(--gold);margin-bottom:6px;letter-spacing:.1em;text-transform:uppercase;}
+.emp-pill-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+.emp-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 10px;border-radius:12px;border:1px solid var(--line,rgba(var(--gold-rgb),.2));cursor:pointer;transition:border-color .15s,background .15s;min-width:64px;}
+.emp-pill.sel{border-color:var(--gold);background:rgba(var(--gold-rgb),.1);}
+.emp-pill-av{width:34px;height:34px;border-radius:50%;background:rgba(var(--gold-rgb),.12);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:13px;font-weight:700;color:var(--gold-dark);}
+.emp-pill-av img{width:100%;height:100%;object-fit:cover;}
+.emp-pill span{font-size:10.5px;color:var(--ink,#2c2c2a);white-space:nowrap;text-align:center;max-width:70px;overflow:hidden;text-overflow:ellipsis;}
 .svc-pill-name{font-family:var(--font-heading);font-size:16px;font-weight:700;color:#fff;}
 .svc-pill-meta{display:flex;gap:10px;align-items:center;}
 .svc-pill-price{font-size:13px;color:var(--gold);font-weight:500;}
