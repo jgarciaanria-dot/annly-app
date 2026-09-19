@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base href="/">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<title>Annly — Reservas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="agenda.css?v=1">
+</head>
+<body>
+
+<div id="promo-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:1rem;padding-top:24vh;">
+  <div style="position:relative;max-width:280px;width:100%;background:#fff;border-radius:16px;overflow-y:auto;overflow-x:hidden;max-height:82vh;box-shadow:0 10px 40px rgba(0,0,0,.2);">
+    <div onclick="cerrarPromo()" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;">
+      <i class="ti ti-x" style="font-size:15px;color:#666;"></i>
+    </div>
+    <div id="promo-top" style="padding:18px 20px 38px;text-align:center;position:relative;overflow:hidden;">
+      <p id="promo-lbl" style="font-size:9px;color:#fff;letter-spacing:.18em;margin:0 0 8px;position:relative;font-weight:600;padding:0 32px;"></p>
+      <div style="position:relative;height:54px;">
+        <div id="promo-emoji" style="font-size:38px;position:absolute;left:50%;top:6px;transform:translateX(-50%);filter:drop-shadow(0 4px 6px rgba(0,0,0,.25));"></div>
+      </div>
+      <div id="promo-porteria" style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:80px;height:26px;border:2px solid rgba(255,255,255,.5);border-bottom:none;border-radius:6px 6px 0 0;"></div>
+    </div>
+    <div style="padding:18px 20px 20px;text-align:center;">
+      <p id="promo-fest" style="font-family:var(--font-heading);font-size:22px;color:#D95F2B;margin:0 0 2px;font-weight:700;letter-spacing:.03em;"></p>
+      <p style="font-size:12px;color:#888;margin:0 0 12px;">Aprovecha esta promo</p>
+      <div id="promo-card" style="border-radius:10px;padding:14px;margin-bottom:14px;">
+        <p id="promo-svc" style="font-family:var(--font-heading);font-size:17px;color:#1a1a1a;margin:0 0 4px;"></p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span id="promo-pn" style="font-size:14px;color:#aaa;text-decoration:line-through;"></span>
+          <span id="promo-pp" style="font-size:26px;font-weight:700;color:#D95F2B;font-family:var(--font-heading);"></span>
+        </div>
+        <p id="promo-vig" style="font-size:10px;margin:6px 0 0;font-weight:500;"></p>
+      </div>
+      <button onclick="agendarPromo()" style="width:100%;background:#F7F4ED;color:#3A372F;border:1px solid #E5DCC9;border-radius:9px;padding:11px;font-size:13px;font-weight:500;font-family:var(--font-heading);cursor:pointer;">Agendar ahora</button>
+    </div>
+  </div>
+</div>
+
+<a class="wa-float" id="wa-float-link" href="#" target="_blank" aria-label="WhatsApp">
+  <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+<div class="hdr">
+  <div class="hdr-logo" id="hdr-logo">
+    <span style="color:#C9A96E;font-size:22px;font-family:Georgia,serif;font-weight:600;" id="hdr-logo-fallback">•</span>
+  </div>
+  <div class="hdr-content">
+    <h1 id="hdr-nombre">TU NEGOCIO</h1>
+    <div class="hdr-divider">
+      <div class="hdr-divider-line"></div>
+      <span class="hdr-divider-diamond">✦</span>
+      <div class="hdr-divider-line r"></div>
+    </div>
+    <p>Reserva tu cita en línea</p>
+    <div class="hdr-tagline" id="hdr-tagline"></div>
+    <div class="hdr-strip"></div>
+  </div>
+</div>
+
+<div id="cert-link-wrap" style="display:none;text-align:center;margin:-6px 0 14px;">
+  <button type="button" onclick="abrirModalComprarCertificado()" style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--gold-dark);letter-spacing:.03em;">
+    <i class="ti ti-gift" aria-hidden="true"></i> Regala un certificado
+  </button>
+</div>
+
+<div id="serviceList"></div>
+
+<div class="ov" id="ov-comprar-certificado">
+  <div class="panel">
+    <div class="phdr"><span class="ptitle">Certificado de regalo</span><button class="pclose" onclick="closeOv('ov-comprar-certificado')">×</button></div>
+    <div class="pbody" id="comprar-cert-body"></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-detail">
+  <div class="panel">
+    <div class="phdr"><span class="ptitle" id="detail-title">Servicio</span><button class="pclose" onclick="closeOv('ov-detail')">×</button></div>
+    <div class="pbody" id="detail-body"></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-cal">
+  <div class="panel">
+    <div class="phdr"><span class="ptitle">Elige fecha y hora</span><button class="pclose" onclick="closeOv('ov-cal')">×</button></div>
+    <div class="pbody">
+      <div id="cal-svc-info" class="svc-pill"></div>
+      <div id="cal-empleado-sel" style="display:none;margin-bottom:.875rem;"></div>
+      <div class="cal-nav">
+        <button class="cal-nb" onclick="chMo(-1)">‹</button>
+        <span class="cal-mo" id="calMoLbl"></span>
+        <button class="cal-nb" onclick="chMo(1)">›</button>
+      </div>
+      <div class="cal-g" id="calGrid"></div>
+      <div id="timeSec" style="display:none;">
+        <p style="font-size:10px;font-weight:500;color:var(--gold);margin-top:.875rem;margin-bottom:6px;letter-spacing:.1em;text-transform:uppercase;">Horas disponibles</p>
+        <div class="time-g" id="timeGrid"></div>
+      </div>
+      <button class="btn-main" style="margin-top:1rem;background:#2E2B2B;color:#C9A96E;font-family:var(--font-heading);" id="btnContinue" disabled onclick="goForm()">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-form">
+  <div class="panel">
+    <div class="phdr"><span class="ptitle">Confirmar cita</span><button class="pclose" onclick="closeOv('ov-form')">×</button></div>
+    <div class="pbody" id="form-body"></div>
+  </div>
+</div>
+
+<div class="marcas-strip" id="marcas-strip" style="display:none;">
+  <div class="marcas-div"></div>
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <div class="marquee-item">
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda-dev/main/loreal.png" alt="L'Oréal" style="height:12px;"/>
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda-dev/main/truss.png" alt="Truss" style="height:24px;"/>
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda-dev/main/wella.png" alt="Wella" style="height:22px;"/>
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda-dev/main/ybera.png" alt="Ybera" style="height:36px;"/>
+      </div>
+      <div class="marquee-item">
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda/main/loreal.png" alt="L'Oréal" style="height:12px;"/>
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda/main/truss.png" alt="Truss" style="height:24px;"/>
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda/main/wella.png" alt="Wella" style="height:22px;"/>
+        <img class="marca-logo" src="https://raw.githubusercontent.com/jgarciaanria-dot/agenda/main/ybera.png" alt="Ybera" style="height:36px;"/>
+      </div>
+    </div>
+  </div>
+  <div class="marcas-div"></div>
+</div>
+
+<footer style="background:var(--bg-footer);margin-top:0;transition:background-color .25s;">
+  <div id="footer-ig-wrap" style="padding:1.25rem;text-align:center;border-bottom:0.5px solid rgba(var(--gold-rgb),.18);display:none;">
+    <p style="font-size:10px;font-weight:500;color:var(--footer-label);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.75rem;">Síguenos en Instagram</p>
+    <a id="footer-ig-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:9px;text-decoration:none;background:rgba(var(--gold-rgb),.1);border:0.5px solid rgba(var(--gold-rgb),.35);border-radius:999px;padding:9px 16px;margin-bottom:.75rem;">
+      <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="white" stroke="none"/></svg>
+      </div>
+      <span id="footer-ig-handle" style="font-size:12px;font-weight:500;color:var(--footer-text);"></span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--gold-rgb),.6)" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+    </a>
+    <p id="footer-tagline" style="font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--footer-text-faint);text-transform:uppercase;margin-top:2px;"></p>
+  </div>
+  <div style="padding:.875rem 1.25rem 0;text-align:center;">
+    <div style="display:flex;justify-content:center;align-items:flex-start;gap:16px;margin-bottom:.875rem;">
+      <div style="text-align:center;flex:1;">
+        <p style="font-size:10px;color:var(--footer-label);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Ubicación</p>
+        <p id="footer-direccion" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
+      </div>
+      <div style="width:0.5px;background:rgba(var(--gold-rgb),.2);align-self:stretch;"></div>
+      <div style="text-align:center;flex:1;">
+        <p style="font-size:10px;color:var(--footer-label);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Horario</p>
+        <p id="footer-horario" style="font-size:12px;color:var(--footer-text-soft);line-height:1.7;"></p>
+      </div>
+    </div>
+    <div style="height:0.5px;background:rgba(var(--gold-rgb),.15);margin-bottom:.75rem;"></div>
+    <p id="footer-copyright" style="font-size:10px;color:var(--footer-text-faint);padding-bottom:1rem;"></p>
+  </div>
+</footer>
+
+<!-- ============================================================
+     MODAL RULETA
+     ============================================================ -->
+
+<div class="ruleta-ov" id="ruletaModal">
+  <div class="ruleta-panel">
+    <button class="ruleta-close" id="ruletaCloseBtn" aria-label="Cerrar">&times;</button>
+
+    <p class="ruleta-eyebrow">Cita confirmada</p>
+    <h3 class="ruleta-title">¡Gira y gana!</h3>
+    <p class="ruleta-subtitle-fest">Tu belleza tiene premio</p>
+    <p class="ruleta-subtitle" id="ruletaSubtitle">Una sola oportunidad por cliente</p>
+
+    <div id="confettiLayer"></div>
+
+    <div class="ruleta-wheel-wrap" id="ruletaWheelWrap">
+      <div class="ruleta-vs-logo">
+        <img src="https://raw.githubusercontent.com/jgarciaanria-dot/nails/main/LOGO1.png" alt="VS" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'color:#241B10;font-size:16px;font-family:Georgia,serif;font-weight:700;\'>VS</span>'"/>
+      </div>
+      <div id="wheelSvgContainer"></div>
+      <div class="ruleta-center-btn" id="ruletaSpinBtn"><span>¡Girar!</span></div>
+    </div>
+
+    <div class="ruleta-result-card" id="ruletaResultCard">
+      <i class="ti ti-gift" style="font-size:17px;" aria-hidden="true"></i>
+      <span id="ruletaResultText"></span>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js?v=4"></script>
+<script src="sheets.js?v=5"></script>
+<script src="ruleta-frontend.js?v=1"></script>
+<script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
+<script src="agenda.js?v=2"></script>
+</body>
+</html>
