@@ -3400,6 +3400,35 @@ const Sheets = {
     if (errInsert) console.error('No se pudo registrar el canje del certificado:', errInsert);
   },
 
+  // Historial de canjes de un certificado — para trazabilidad ante reclamos
+  // ("¿cuándo y en qué cita se usó este certificado?").
+  async getCanjesCertificado(certificateId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('gift_certificate_redemptions')
+      .select('*, appointments(servicio_nombre, fecha, hora, cliente_nombre)')
+      .eq('certificate_id', certificateId)
+      .order('fecha', { ascending: false });
+    if (error) { console.error('Error leyendo canjes del certificado:', error); return []; }
+    return (data || []).map(r => ({
+      id: r.id,
+      montoAplicado: Number(r.monto_aplicado),
+      fecha: r.fecha,
+      servicioNombre: r.appointments ? r.appointments.servicio_nombre : null,
+      fechaCita: r.appointments ? r.appointments.fecha : null,
+      horaCita: r.appointments ? r.appointments.hora : null,
+      clienteNombre: r.appointments ? r.appointments.cliente_nombre : null
+    }));
+  },
+
+  // Activar/desactivar un certificado manualmente desde el panel (ej. si
+  // hay un reclamo o se detecta un abuso). "activo" reactiva uno cancelado;
+  // "cancelado" lo bloquea sin importar el saldo o vencimiento que tenga.
+  async cambiarEstadoCertificado(certificateId, nuevoEstado) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('gift_certificates').update({ estado: nuevoEstado }).eq('id', certificateId);
+    if (error) throw error;
+  },
+
   // =======================================================
   // YAPPY COMERCIAL (botón de pago real, por negocio)
   // =======================================================
