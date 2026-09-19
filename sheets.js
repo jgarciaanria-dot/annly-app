@@ -3133,6 +3133,16 @@ const Sheets = {
     }
   },
 
+  // El negocio decide pagar y salir de su prueba gratis antes de que termine
+  // (paga por fuera del sistema — Yappy/transferencia — y el Platform Admin
+  // lo confirma aquí). En cuanto queda "activo", todo lo que ya tenía
+  // seleccionado (plan + addons) se destraba de inmediato.
+  async activarSuscripcion(subscriptionId) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('subscriptions').update({ status: 'activo' }).eq('id', subscriptionId);
+    if (error) throw error;
+  },
+
   // =======================================================
   // CERTIFICADOS Y CUPONES DE REGALO
   // =======================================================
