@@ -1072,6 +1072,17 @@ img{max-width:100%;}
   </div>
 </div>
 
+<!-- MODAL DETALLE CERTIFICADO (trazabilidad + historial de canjes) -->
+<div class="ov" id="ov-modal-detalle-certificado">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Detalle del certificado</span>
+      <button class="modal-close" onclick="document.getElementById('ov-modal-detalle-certificado').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body" id="detalle-cert-body"></div>
+  </div>
+</div>
+
 <!-- MODAL EMITIR CERTIFICADO -->
 <div class="ov" id="ov-modal-certificado">
   <div class="modal">
@@ -2316,22 +2327,84 @@ function renderListaCertificados(){
 
   cont.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
     <thead><tr style="text-align:left;color:#888;border-bottom:1px solid var(--line);">
-      <th style="padding:8px 6px;">Código</th><th style="padding:8px 6px;">Tipo</th><th style="padding:8px 6px;">Para</th>
-      <th style="padding:8px 6px;">Monto</th><th style="padding:8px 6px;">Saldo</th><th style="padding:8px 6px;">Vence</th><th style="padding:8px 6px;">Estado</th>
+      <th style="padding:8px 6px;">Código</th><th style="padding:8px 6px;">Tipo</th><th style="padding:8px 6px;">Comprador</th><th style="padding:8px 6px;">Destinatario</th>
+      <th style="padding:8px 6px;">Monto</th><th style="padding:8px 6px;">Saldo</th><th style="padding:8px 6px;">Vence</th><th style="padding:8px 6px;">Estado</th><th style="padding:8px 6px;"></th>
     </tr></thead><tbody>
     ${emitidos.map(c=>{
       const est = estadoCertificado(c);
       return `<tr style="border-bottom:1px solid var(--line-soft);">
         <td style="padding:8px 6px;font-weight:700;">${c.codigo}</td>
         <td style="padding:8px 6px;">${c.tipo === 'regalo' ? 'Regalo' : 'Venta'}</td>
-        <td style="padding:8px 6px;">${c.destinatarioNombre || c.compradorNombre || '—'}</td>
+        <td style="padding:8px 6px;">${c.compradorNombre || '—'}</td>
+        <td style="padding:8px 6px;">${c.destinatarioNombre || '—'}</td>
         <td style="padding:8px 6px;">$${c.montoInicial.toFixed(2)}</td>
         <td style="padding:8px 6px;">$${c.saldoRestante.toFixed(2)}</td>
         <td style="padding:8px 6px;">${c.fechaVencimiento || '—'}</td>
         <td style="padding:8px 6px;color:${est.color};font-weight:700;">${est.texto}</td>
+        <td style="padding:8px 6px;"><button type="button" style="border:1px solid var(--line);background:#fff;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;" onclick="verDetalleCertificado('${c.id}')">Ver</button></td>
       </tr>`;
     }).join('')}
     </tbody></table></div>`;
+}
+
+async function verDetalleCertificado(certificateId){
+  const c = CERTIFICADOS.find(x => x.id === certificateId);
+  if (!c) return;
+  const est = estadoCertificado(c);
+
+  document.getElementById('detalle-cert-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;font-size:12.5px;">
+      <div><span style="color:#888;">Código</span><br><strong>${c.codigo}</strong></div>
+      <div><span style="color:#888;">Tipo</span><br><strong>${c.tipo === 'regalo' ? 'Regalo' : 'Venta'}</strong></div>
+      <div><span style="color:#888;">Comprador</span><br><strong>${c.compradorNombre || '—'}</strong>${c.compradorTelefono ? ' · ' + c.compradorTelefono : ''}${c.compradorCorreo ? '<br>' + c.compradorCorreo : ''}</div>
+      <div><span style="color:#888;">Destinatario</span><br><strong>${c.destinatarioNombre || '—'}</strong>${c.destinatarioTelefono ? ' · ' + c.destinatarioTelefono : ''}${c.destinatarioCorreo ? '<br>' + c.destinatarioCorreo : ''}</div>
+      <div><span style="color:#888;">Monto inicial</span><br><strong>$${c.montoInicial.toFixed(2)}</strong></div>
+      <div><span style="color:#888;">Saldo actual</span><br><strong>$${c.saldoRestante.toFixed(2)}</strong></div>
+      <div><span style="color:#888;">Emitido</span><br><strong>${c.fechaEmision || '—'}</strong></div>
+      <div><span style="color:#888;">Vence</span><br><strong>${c.fechaVencimiento || '—'}</strong></div>
+    </div>
+    ${c.mensaje ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Mensaje del regalo:</span> "${c.mensaje}"</div>` : ''}
+    ${c.nota ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Nota interna:</span> ${c.nota}</div>` : ''}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">Estado: <span style="color:${est.color};">${est.texto}</span></span>
+      ${c.estado === 'cancelado'
+        ? `<button type="button" class="btn-add" onclick="cambiarEstadoCertificadoUI('${c.id}','activo')">Reactivar</button>`
+        : `<button type="button" style="border:1px solid #E8B4AC;background:#fff;color:#C2695A;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;" onclick="cambiarEstadoCertificadoUI('${c.id}','cancelado')">Desactivar</button>`}
+    </div>
+    <p style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px;">Historial de uso</p>
+    <div id="detalle-cert-canjes"><p style="font-size:12px;color:#aaa;">Cargando...</p></div>`;
+
+  document.getElementById('ov-modal-detalle-certificado').classList.add('open');
+
+  try {
+    const canjes = await Sheets.getCanjesCertificado(certificateId);
+    const cont = document.getElementById('detalle-cert-canjes');
+    if (!canjes.length){
+      cont.innerHTML = '<p style="font-size:12px;color:#aaa;">Todavía no se ha usado.</p>';
+      return;
+    }
+    cont.innerHTML = canjes.map(r => `
+      <div style="border-bottom:1px solid var(--line-soft);padding:8px 0;font-size:12px;">
+        <strong>-$${r.montoAplicado.toFixed(2)}</strong> · ${new Date(r.fecha).toLocaleDateString('es-PA', {day:'numeric', month:'short', year:'numeric'})}
+        ${r.servicioNombre ? `<br><span style="color:#888;">${r.servicioNombre}${r.clienteNombre ? ' — ' + r.clienteNombre : ''}${r.fechaCita ? ' · ' + r.fechaCita : ''}</span>` : ''}
+      </div>`).join('');
+  } catch(e) {
+    console.error('Error cargando historial de canjes:', e);
+    document.getElementById('detalle-cert-canjes').innerHTML = '<p style="font-size:12px;color:#aaa;">No se pudo cargar el historial.</p>';
+  }
+}
+
+async function cambiarEstadoCertificadoUI(certificateId, nuevoEstado){
+  const msg = nuevoEstado === 'cancelado' ? '¿Desactivar este certificado? El cliente ya no podrá usarlo hasta que lo reactives.' : '¿Reactivar este certificado?';
+  if (!confirm(msg)) return;
+  try {
+    await Sheets.cambiarEstadoCertificado(certificateId, nuevoEstado);
+    await loadCertificados();
+    document.getElementById('ov-modal-detalle-certificado').classList.remove('open');
+  } catch(e) {
+    console.error('Error cambiando el estado del certificado:', e);
+    alert('No se pudo actualizar el estado. Intenta de nuevo.');
+  }
 }
 
 function renderPendientesCertificados(){
