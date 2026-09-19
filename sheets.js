@@ -1541,6 +1541,7 @@ const Sheets = {
 
 
     const {
+      data,
       error
     } = await sbClient
       .from('appointments')
@@ -1606,13 +1607,21 @@ const Sheets = {
         precio_final:
           cita.precioFinal,
 
+        certificado_codigo:
+          cita.certificadoCodigo || null,
+
+        certificado_monto:
+          cita.certificadoMonto || null,
+
         cita_id_externo:
           cita.citaId,
 
         estado:
           'confirmada'
 
-      }]);
+      }])
+      .select('id')
+      .single();
 
 
     if (error) {
@@ -1624,6 +1633,8 @@ const Sheets = {
 
       throw error;
     }
+
+    return data.id;
   },
 
 
@@ -3116,6 +3127,23 @@ const Sheets = {
   // CERTIFICADOS Y CUPONES DE REGALO
   // =======================================================
 
+  // Llama a la Edge Function de Supabase que arma y envía el correo
+  // (mantiene la API key de Resend fuera del navegador). No lanza error
+  // si falla — un correo que no sale no debe tumbar la acción principal.
+  async enviarCorreo(tipo, datos) {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_KEY}` },
+        body: JSON.stringify({ tipo, businessId: BUSINESS_ID, datos })
+      });
+      const resultado = await resp.json();
+      if (!resultado.ok) console.error('No se pudo enviar el correo (' + tipo + '):', resultado.error);
+    } catch (e) {
+      console.error('Error de red enviando correo (' + tipo + '):', e);
+    }
+  },
+
   async getCertificados() {
     await window.AnnlyReady;
     const { data, error } = await sbClient
@@ -3128,19 +3156,27 @@ const Sheets = {
       id: c.id,
       codigo: c.codigo,
       tipo: c.tipo,
+      estado: c.estado,
       montoInicial: Number(c.monto_inicial),
       saldoRestante: Number(c.saldo_restante),
       compradorNombre: c.comprador_nombre,
       compradorTelefono: c.comprador_telefono,
+      compradorCorreo: c.comprador_correo,
       destinatarioNombre: c.destinatario_nombre,
       destinatarioTelefono: c.destinatario_telefono,
+      destinatarioCorreo: c.destinatario_correo,
+      mensaje: c.mensaje,
       nota: c.nota,
+      comprobante: c.comprobante,
+      metodoPago: c.metodo_pago,
       fechaEmision: c.fecha_emision,
       fechaVencimiento: c.fecha_vencimiento
     }));
   },
 
-  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, destinatarioNombre, destinatarioTelefono, nota }) {
+  // Emitido por el negocio desde el panel — nace activo de una vez
+  // (ya se sabe que el pago, si lo hubo, se resolvió aparte).
+  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, nota }) {
     await window.AnnlyReady;
 
     let codigo, intentos = 0;
@@ -3156,18 +3192,104 @@ const Sheets = {
       business_id: BUSINESS_ID,
       codigo,
       tipo,
+      estado: 'activo',
       monto_inicial: monto,
       saldo_restante: monto,
       comprador_nombre: compradorNombre || null,
       comprador_telefono: compradorTelefono || null,
+      comprador_correo: compradorCorreo || null,
       destinatario_nombre: destinatarioNombre || null,
       destinatario_telefono: destinatarioTelefono || null,
+      destinatario_correo: destinatarioCorreo || null,
+      mensaje: mensaje || null,
       nota: nota || null,
       fecha_vencimiento: fechaVencimiento
     }]);
     if (error) throw error;
 
+    await this._notificarCertificadoActivo({
+      codigo, monto, fechaVencimiento,
+      compradorNombre, compradorCorreo,
+      destinatarioNombre, destinatarioCorreo, mensaje
+    });
+
     return codigo;
+  },
+
+  // Compra hecha por el cliente en el sitio público — nace pendiente de pago.
+  // Solo notifica al negocio para que revise el comprobante y la confirme.
+  async comprarCertificadoPublico({ monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, comprobante, metodoPago }) {
+    await window.AnnlyReady;
+
+    let codigo, intentos = 0;
+    while (true) {
+      codigo = 'CERT-' + Math.random().toString(16).slice(2, 6).toUpperCase() + Math.random().toString(16).slice(2, 4).toUpperCase();
+      const { data: existe } = await sbClient.from('gift_certificates').select('id').eq('business_id', BUSINESS_ID).eq('codigo', codigo).maybeSingle();
+      if (!existe) break;
+      intentos++;
+      if (intentos > 5) throw new Error('No se pudo generar un código único.');
+    }
+
+    const { error } = await sbClient.from('gift_certificates').insert([{
+      business_id: BUSINESS_ID,
+      codigo,
+      tipo: 'venta',
+      estado: 'pendiente_pago',
+      monto_inicial: monto,
+      saldo_restante: monto,
+      comprador_nombre: compradorNombre || null,
+      comprador_telefono: compradorTelefono || null,
+      comprador_correo: compradorCorreo || null,
+      destinatario_nombre: destinatarioNombre || null,
+      destinatario_telefono: destinatarioTelefono || null,
+      destinatario_correo: destinatarioCorreo || null,
+      mensaje: mensaje || null,
+      comprobante: comprobante || null,
+      metodo_pago: metodoPago || null,
+      fecha_vencimiento: fechaVencimiento
+    }]);
+    if (error) throw error;
+
+    await this.enviarCorreo('certificado_pendiente_pago', {
+      monto, nombreComprador: compradorNombre, metodoPago, comprobante
+    });
+
+    return codigo;
+  },
+
+  // El negocio confirma que el pago de un certificado comprado en el sitio
+  // público sí llegó — lo activa y recién ahí salen los correos al
+  // comprador y al destinatario. Misma función que usará el webhook de la
+  // pasarela de pagos el día que esté conectada, en vez de un click manual.
+  async confirmarPagoCertificado(certificateId) {
+    await window.AnnlyReady;
+
+    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('*').eq('id', certificateId).maybeSingle();
+    if (errRead || !cert) throw errRead || new Error('Certificado no encontrado.');
+
+    const { error: errUpdate } = await sbClient.from('gift_certificates').update({ estado: 'activo' }).eq('id', certificateId);
+    if (errUpdate) throw errUpdate;
+
+    await this._notificarCertificadoActivo({
+      codigo: cert.codigo, monto: Number(cert.monto_inicial), fechaVencimiento: cert.fecha_vencimiento,
+      compradorNombre: cert.comprador_nombre, compradorCorreo: cert.comprador_correo,
+      destinatarioNombre: cert.destinatario_nombre, destinatarioCorreo: cert.destinatario_correo,
+      mensaje: cert.mensaje
+    });
+    await this.enviarCorreo('certificado_activado', { codigo: cert.codigo });
+  },
+
+  // Dispara los correos de comprador + destinatario de un certificado que
+  // acaba de quedar activo (ya sea porque el negocio lo emitió directo, o
+  // porque acaba de confirmar el pago de una compra pública).
+  async _notificarCertificadoActivo({ codigo, monto, fechaVencimiento, compradorNombre, compradorCorreo, destinatarioNombre, destinatarioCorreo, mensaje }) {
+    const linkCertificado = window.location.origin + '/certificado.html?codigo=' + encodeURIComponent(codigo);
+    if (compradorCorreo) {
+      await this.enviarCorreo('certificado_comprador', { codigo, monto, fechaVencimiento, nombreComprador: compradorNombre, correoComprador: compradorCorreo, nombreDestinatario: destinatarioNombre });
+    }
+    if (destinatarioCorreo) {
+      await this.enviarCorreo('certificado_destinatario', { codigo, monto, mensaje, nombreComprador: compradorNombre, correoDestinatario: destinatarioCorreo, linkCertificado });
+    }
   },
 
   // Usado desde el sitio público al reservar: valida el código contra el negocio actual.
@@ -3180,13 +3302,21 @@ const Sheets = {
       .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
     if (!data) return { valido: false, motivo: 'codigo_no_encontrado' };
 
+    if (data.estado === 'pendiente_pago') return { valido: false, motivo: 'pendiente_pago' };
+    if (data.estado === 'cancelado') return { valido: false, motivo: 'cancelado' };
+
     const saldo = Number(data.saldo_restante);
     if (saldo <= 0) return { valido: false, motivo: 'sin_saldo' };
 
     const hoy = new Date().toISOString().split('T')[0];
     if (data.fecha_vencimiento && data.fecha_vencimiento < hoy) return { valido: false, motivo: 'vencido' };
 
-    return { valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo };
+    return {
+      valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo,
+      montoOriginal: Number(data.monto_inicial), montoDisponible: saldo,
+      compradoPorNombre: data.comprador_nombre, destinatarioNombre: data.destinatario_nombre,
+      mensaje: data.mensaje
+    };
   },
 
   // Descuenta el monto usado del saldo del certificado y deja el registro del canje.
