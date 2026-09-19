@@ -3139,7 +3139,7 @@ const Sheets = {
   // seleccionado (plan + addons) se destraba de inmediato.
   async activarSuscripcion(subscriptionId) {
     await window.AnnlyReady;
-    const { error } = await sbClient.from('subscriptions').update({ status: 'activo' }).eq('id', subscriptionId);
+    const { error } = await sbClient.from('subscriptions').update({ status: 'active' }).eq('id', subscriptionId);
     if (error) throw error;
   },
 
