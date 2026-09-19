@@ -3113,6 +3113,103 @@ const Sheets = {
   },
 
   // =======================================================
+  // CERTIFICADOS Y CUPONES DE REGALO
+  // =======================================================
+
+  async getCertificados() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient
+      .from('gift_certificates')
+      .select('*')
+      .eq('business_id', BUSINESS_ID)
+      .order('creado_en', { ascending: false });
+    if (error) { console.error('Error leyendo certificados:', error); return []; }
+    return (data || []).map(c => ({
+      id: c.id,
+      codigo: c.codigo,
+      tipo: c.tipo,
+      montoInicial: Number(c.monto_inicial),
+      saldoRestante: Number(c.saldo_restante),
+      compradorNombre: c.comprador_nombre,
+      compradorTelefono: c.comprador_telefono,
+      destinatarioNombre: c.destinatario_nombre,
+      destinatarioTelefono: c.destinatario_telefono,
+      nota: c.nota,
+      fechaEmision: c.fecha_emision,
+      fechaVencimiento: c.fecha_vencimiento
+    }));
+  },
+
+  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, destinatarioNombre, destinatarioTelefono, nota }) {
+    await window.AnnlyReady;
+
+    let codigo, intentos = 0;
+    while (true) {
+      codigo = 'CERT-' + Math.random().toString(16).slice(2, 6).toUpperCase() + Math.random().toString(16).slice(2, 4).toUpperCase();
+      const { data: existe } = await sbClient.from('gift_certificates').select('id').eq('business_id', BUSINESS_ID).eq('codigo', codigo).maybeSingle();
+      if (!existe) break;
+      intentos++;
+      if (intentos > 5) throw new Error('No se pudo generar un código único.');
+    }
+
+    const { error } = await sbClient.from('gift_certificates').insert([{
+      business_id: BUSINESS_ID,
+      codigo,
+      tipo,
+      monto_inicial: monto,
+      saldo_restante: monto,
+      comprador_nombre: compradorNombre || null,
+      comprador_telefono: compradorTelefono || null,
+      destinatario_nombre: destinatarioNombre || null,
+      destinatario_telefono: destinatarioTelefono || null,
+      nota: nota || null,
+      fecha_vencimiento: fechaVencimiento
+    }]);
+    if (error) throw error;
+
+    return codigo;
+  },
+
+  // Usado desde el sitio público al reservar: valida el código contra el negocio actual.
+  async validarCertificado(codigo) {
+    await window.AnnlyReady;
+    const cod = (codigo || '').toUpperCase().trim();
+    if (!cod) return { valido: false, motivo: 'codigo_vacio' };
+
+    const { data } = await sbClient.from('gift_certificates').select('*')
+      .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
+    if (!data) return { valido: false, motivo: 'codigo_no_encontrado' };
+
+    const saldo = Number(data.saldo_restante);
+    if (saldo <= 0) return { valido: false, motivo: 'sin_saldo' };
+
+    const hoy = new Date().toISOString().split('T')[0];
+    if (data.fecha_vencimiento && data.fecha_vencimiento < hoy) return { valido: false, motivo: 'vencido' };
+
+    return { valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo };
+  },
+
+  // Descuenta el monto usado del saldo del certificado y deja el registro del canje.
+  // Se llama al confirmar la cita en el sitio público, después de guardarCita().
+  async aplicarCertificado(certificateId, montoAplicado, appointmentId) {
+    await window.AnnlyReady;
+
+    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('saldo_restante').eq('id', certificateId).maybeSingle();
+    if (errRead || !cert) throw errRead || new Error('Certificado no encontrado.');
+
+    const nuevoSaldo = Number(cert.saldo_restante) - montoAplicado;
+    if (nuevoSaldo < 0) throw new Error('El monto aplicado supera el saldo disponible.');
+
+    const { error: errUpdate } = await sbClient.from('gift_certificates').update({ saldo_restante: nuevoSaldo }).eq('id', certificateId);
+    if (errUpdate) throw errUpdate;
+
+    const { error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([{
+      certificate_id: certificateId, business_id: BUSINESS_ID, appointment_id: appointmentId || null, monto_aplicado: montoAplicado
+    }]);
+    if (errInsert) console.error('No se pudo registrar el canje del certificado:', errInsert);
+  },
+
+  // =======================================================
   // PERFIL DEL NEGOCIO
   // =======================================================
 
