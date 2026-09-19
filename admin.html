@@ -464,6 +464,7 @@ img{max-width:100%;}
 .plan-module.activo{border-color:#9FDCC0;background:linear-gradient(180deg,#fff 0%,#f4fbf8 100%);}
 .plan-module.activo .plan-module-tag{color:#159A61;}
 .plan-module-active-badge{margin-top:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;color:#159A61;padding:7px 0;}
+.plan-module-pending-badge{margin-top:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;color:#B08900;padding:7px 0;}
 .plan-module-link{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:5px;font-size:10.5px;font-weight:800;color:#7C3AED;text-decoration:none;padding:7px 0;}
 .plan-module-link:hover{text-decoration:underline;}
 .plan-module-link i{font-size:12px;}
@@ -1075,7 +1076,7 @@ img{max-width:100%;}
       <div class="fg"><label class="flbl">Mensaje para el destinatario (opcional, se muestra en su regalo)</label><textarea class="fi" id="cert-mensaje" rows="2" style="resize:vertical;" placeholder="Disfruta este momento, te lo mereces."></textarea></div>
       <div class="fg"><label class="flbl">Nota interna (opcional, no la ve el cliente)</label><textarea class="fi" id="cert-nota" rows="2" style="resize:vertical;"></textarea></div>
       <p id="cert-form-msg" style="font-size:11px;color:#C2695A;min-height:14px;"></p>
-      <button class="btn-save" onclick="guardarCertificado()"><i class="ti ti-check" style="font-size:17px;"></i> Emitir certificado</button>
+      <button class="btn-save" id="btnGuardarCertificado" onclick="guardarCertificado()"><i class="ti ti-check" style="font-size:17px;"></i> Emitir certificado</button>
     </div>
     <div class="modal-body" id="modal-certificado-listo" style="display:none;text-align:center;">
       <div style="width:52px;height:52px;border-radius:50%;background:#EAF7F0;color:#159A61;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 14px;"><i class="ti ti-circle-check-filled"></i></div>
@@ -1309,19 +1310,7 @@ function actualizarContextoNegocioUI(){
   }
 
   const planChip = document.getElementById('adm-plan-chip');
-  if (planChip) {
-    const rawPlan = String(b.plan || 'basic').toLowerCase();
-    const chipPlan =
-      rawPlan === 'medium' ? 'MEDIUM' :
-      rawPlan === 'ultimate' ? 'ULTIMATE' :
-      rawPlan === 'trial' ? 'TRIAL' :
-      'BASIC';
-
-    const span = planChip.querySelector('span');
-    if (span) span.textContent = chipPlan;
-
-    planChip.style.display = 'inline-flex';
-  }
+  if (planChip) planChip.style.display = 'inline-flex';
 }
 
 function renderSelectorNegocios(){
@@ -1792,12 +1781,18 @@ let SUSCRIPCION_ACTUAL = null;
 let CATALOGO_MODULOS = [];
 let FEATURES_DEL_PLAN = [];
 let MODULOS_ACTIVOS = [];
+let FEATURES_FUNCIONALES = [];
+let MODULOS_FUNCIONALES = [];
 
 function getPlanActualUI(){
   // Se mantiene por compatibilidad con otras pantallas (ej. límite de empleados)
   // que todavía consultan el código de plan de forma síncrona.
   if (SUSCRIPCION_ACTUAL) return SUSCRIPCION_ACTUAL.plan.code.toLowerCase();
   return String((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.plan) || 'basic').toLowerCase();
+}
+
+function enPeriodoPrueba(){
+  return !!(SUSCRIPCION_ACTUAL && SUSCRIPCION_ACTUAL.status === 'trial');
 }
 
 const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -1814,6 +1809,10 @@ async function renderPlan(){
 
   const actual = getPlanActualUI();
   const p = ANNLY_PLANES_UI[actual] || ANNLY_PLANES_UI.basic;
+
+  const chipSpan = document.querySelector('#adm-plan-chip span');
+  if (chipSpan) chipSpan.textContent = p.name;
+
   const nameEl = document.getElementById('plan-current-name');
   const metaEl = document.getElementById('plan-current-meta');
   const statusEl = document.getElementById('plan-current-status');
@@ -1841,13 +1840,27 @@ async function renderPlan(){
   });
 
   await renderModulosPlan();
+
+  // Durante el trial, el acceso real queda limitado a lo que trae Basic —
+  // el plan seleccionado y los addons activados quedan "en espera" hasta
+  // que el trial termine y haya una suscripción paga de verdad.
+  if (enPeriodoPrueba()){
+    try { FEATURES_FUNCIONALES = await Sheets.getFeaturesDePlanCode('BASIC'); }
+    catch(e) { console.error('Error leyendo features de Basic:', e); FEATURES_FUNCIONALES = []; }
+    MODULOS_FUNCIONALES = [];
+  } else {
+    FEATURES_FUNCIONALES = FEATURES_DEL_PLAN;
+    MODULOS_FUNCIONALES = MODULOS_ACTIVOS;
+  }
+
   actualizarGatingPestanas();
 }
 
-// Devuelve true si el negocio tiene acceso a esta feature/módulo, ya sea porque
-// viene incluido en su plan o porque lo activó por separado como addon.
+// Devuelve true si el negocio tiene acceso REAL a esta feature/módulo ahora
+// mismo — ya sea porque viene incluida en su plan o porque la activó como
+// addon, y (si está en trial) porque además Basic la trae de por sí.
 function moduloDisponible(code){
-  return FEATURES_DEL_PLAN.includes(code) || MODULOS_ACTIVOS.includes(code);
+  return FEATURES_FUNCIONALES.includes(code) || MODULOS_FUNCIONALES.includes(code);
 }
 
 // Pestañas cuyo contenido real depende del plan/módulos activos — cada una tiene
@@ -1918,11 +1931,14 @@ async function renderModulosPlan(){
   cont.innerHTML = catalogoOrdenado.map(m => {
     const incluido = FEATURES_DEL_PLAN.includes(m.code);
     const activo = MODULOS_ACTIVOS.includes(m.code);
+    const disponibleAhora = moduloDisponible(m.code);
     const icono = ICONOS_MODULO[m.code] || 'ti-puzzle';
     const esAgenteAI = m.code === 'AGENTE_AI';
 
     let estadoHtml;
-    if (incluido) {
+    if ((incluido || activo) && enPeriodoPrueba() && !disponibleAhora) {
+      estadoHtml = `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Se activa cuando termine tu prueba</div>`;
+    } else if (incluido) {
       estadoHtml = `<div class="plan-module-included-badge"><i class="ti ti-check"></i> Incluido en tu plan</div>`;
     } else if (activo) {
       estadoHtml = `<div class="plan-module-active-badge"><i class="ti ti-circle-check-filled"></i> Activo</div>`;
@@ -2273,6 +2289,7 @@ async function confirmarPagoCertificadoUI(certificateId){
 }
 
 function abrirModalCertificado(){
+  GUARDANDO_CERTIFICADO = false;
   document.getElementById('cert-monto').value = '';
   document.getElementById('cert-vencimiento').value = '';
   document.getElementById('cert-comprador-nombre').value = '';
@@ -2285,6 +2302,8 @@ function abrirModalCertificado(){
   document.getElementById('cert-nota').value = '';
   document.getElementById('cert-form-msg').textContent = '';
   document.querySelector('input[name="cert-tipo"][value="venta"]').checked = true;
+  const btn = document.getElementById('btnGuardarCertificado');
+  if (btn){ btn.disabled = false; btn.textContent = 'Emitir certificado'; }
   document.getElementById('modal-certificado-form').style.display = 'block';
   document.getElementById('modal-certificado-listo').style.display = 'none';
   document.getElementById('ov-modal-certificado').classList.add('open');
@@ -2295,7 +2314,11 @@ function closeModalCertificado(){
   loadCertificados();
 }
 
+let GUARDANDO_CERTIFICADO = false;
+
 async function guardarCertificado(){
+  if (GUARDANDO_CERTIFICADO) return;
+
   const msgEl = document.getElementById('cert-form-msg');
   const tipo = document.querySelector('input[name="cert-tipo"]:checked').value;
   const monto = parseFloat(document.getElementById('cert-monto').value);
@@ -2307,6 +2330,9 @@ async function guardarCertificado(){
   if (!compradorNombre){ msgEl.textContent = tipo === 'regalo' ? 'Ingresa el nombre de quien regala.' : 'Ingresa el nombre del comprador.'; return; }
 
   msgEl.textContent = '';
+  GUARDANDO_CERTIFICADO = true;
+  const btn = document.getElementById('btnGuardarCertificado');
+  if (btn){ btn.disabled = true; btn.textContent = 'Emitiendo...'; }
 
   try {
     const codigo = await Sheets.emitirCertificado({
@@ -2326,6 +2352,9 @@ async function guardarCertificado(){
   } catch(e) {
     console.error('Error emitiendo certificado:', e);
     msgEl.textContent = 'No se pudo emitir el certificado. Intenta de nuevo.';
+    if (btn){ btn.disabled = false; btn.textContent = 'Emitir certificado'; }
+  } finally {
+    GUARDANDO_CERTIFICADO = false;
   }
 }
 
@@ -2808,8 +2837,9 @@ async function loadEquipo(){
 }
 
 function limiteEmpleadosDelPlan(){
-  const plan = ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.plan) || 'trial').toLowerCase();
-  return Sheets.LIMITE_EMPLEADOS_POR_PLAN[plan] ?? 1;
+  const planFuncional = enPeriodoPrueba() ? 'basic' : getPlanActualUI();
+  const p = ANNLY_PLANES_UI[planFuncional];
+  return p ? p.professionals : 1;
 }
 
 function renderEquipo(){
