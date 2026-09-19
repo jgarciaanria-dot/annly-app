@@ -1136,7 +1136,13 @@ async function finalizarCita(dayStr, ref){
 
   const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
   const precioTrasCupon = Math.max(0, precio - descuentoMonto);
-  const montoCertAplicado = (!esConsultar && certAplicado) ? Math.min(certAplicado.saldoDisponible, precioTrasCupon) : 0;
+  // El certificado es dinero real ya pagado, así que se descuenta siempre —
+  // incluso en servicios "a consultar" sin precio fijo. Como no hay un precio
+  // conocido para topear el descuento, se aplica el saldo completo disponible
+  // y el negocio lo resta del monto que acuerde con el cliente en persona.
+  const montoCertAplicado = certAplicado
+    ? (esConsultar ? certAplicado.saldoDisponible : Math.min(certAplicado.saldoDisponible, precioTrasCupon))
+    : 0;
   const precioFinal = Math.max(0, precioTrasCupon - montoCertAplicado);
 
   const cita={nombre,telefono:tel,correo,nota:notaFinal,servicio:curSvc.name,categoria:curSvc.cat,
