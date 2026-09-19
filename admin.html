@@ -781,6 +781,12 @@ img{max-width:100%;}
           <p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>
         </div>
       </div>
+
+      <div class="adm-sec" id="cert-pendientes-sec" style="display:none;">
+        <div class="adm-sec-hdr"><span class="adm-sec-title">Pendientes de pago</span></div>
+        <p style="font-size:11.5px;color:var(--ink-soft);padding:0 1rem;margin-top:-4px;margin-bottom:6px;line-height:1.5;">Compras hechas desde el sitio público — revisa el comprobante y confirma para activar el certificado y notificar al comprador y al destinatario.</p>
+        <div id="lista-cert-pendientes" style="padding:0 1rem 1rem;"></div>
+      </div>
     </div>
 
   </div>
@@ -1062,9 +1068,12 @@ img{max-width:100%;}
       <div class="fg"><label class="flbl">Vence el</label><input class="fi" id="cert-vencimiento" type="date"/></div>
       <div class="fg"><label class="flbl">Nombre de quien compra / regala</label><input class="fi" id="cert-comprador-nombre"/></div>
       <div class="fg"><label class="flbl">Teléfono de quien compra / regala (opcional)</label><input class="fi" id="cert-comprador-telefono"/></div>
+      <div class="fg"><label class="flbl">Correo de quien compra / regala (opcional — sin correo no se envía confirmación)</label><input class="fi" id="cert-comprador-correo" type="email"/></div>
       <div class="fg"><label class="flbl">Nombre de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-nombre"/></div>
       <div class="fg"><label class="flbl">Teléfono de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-telefono"/></div>
-      <div class="fg"><label class="flbl">Nota (opcional)</label><textarea class="fi" id="cert-nota" rows="2" style="resize:vertical;"></textarea></div>
+      <div class="fg"><label class="flbl">Correo de quien lo recibe (opcional — sin correo no se le envía el regalo)</label><input class="fi" id="cert-destinatario-correo" type="email"/></div>
+      <div class="fg"><label class="flbl">Mensaje para el destinatario (opcional, se muestra en su regalo)</label><textarea class="fi" id="cert-mensaje" rows="2" style="resize:vertical;" placeholder="Disfruta este momento, te lo mereces."></textarea></div>
+      <div class="fg"><label class="flbl">Nota interna (opcional, no la ve el cliente)</label><textarea class="fi" id="cert-nota" rows="2" style="resize:vertical;"></textarea></div>
       <p id="cert-form-msg" style="font-size:11px;color:#C2695A;min-height:14px;"></p>
       <button class="btn-save" onclick="guardarCertificado()"><i class="ti ti-check" style="font-size:17px;"></i> Emitir certificado</button>
     </div>
@@ -2170,9 +2179,12 @@ async function loadGanadoresRuleta(){
 
 // ===== CERTIFICADOS =====
 let CERTIFICADOS = [];
+let CITAS_CACHE = [];
 
 function estadoCertificado(c){
   const hoy = new Date().toISOString().split('T')[0];
+  if (c.estado === 'pendiente_pago') return {texto:'Pendiente de pago', color:'#B08900'};
+  if (c.estado === 'cancelado') return {texto:'Cancelado', color:'#888'};
   if (c.saldoRestante <= 0) return {texto:'Agotado', color:'#888'};
   if (c.fechaVencimiento && c.fechaVencimiento < hoy) return {texto:'Vencido', color:'#C2695A'};
   return {texto:'Activo', color:'#159A61'};
@@ -2189,22 +2201,24 @@ async function loadCertificados(){
     return;
   }
   renderListaCertificados();
+  renderPendientesCertificados();
 }
 
 function renderListaCertificados(){
   const cont = document.getElementById('lista-certificados');
+  const emitidos = CERTIFICADOS.filter(c => c.estado !== 'pendiente_pago');
 
-  const totalEmitido = CERTIFICADOS.reduce((s,c)=>s+c.montoInicial,0);
-  const totalPendiente = CERTIFICADOS.reduce((s,c)=>s+c.saldoRestante,0);
+  const totalEmitido = emitidos.reduce((s,c)=>s+c.montoInicial,0);
+  const totalPendiente = emitidos.reduce((s,c)=>s+c.saldoRestante,0);
   const totalCanjeado = totalEmitido - totalPendiente;
-  const activos = CERTIFICADOS.filter(c => estadoCertificado(c).texto === 'Activo').length;
+  const activos = emitidos.filter(c => estadoCertificado(c).texto === 'Activo').length;
 
   document.getElementById('cert-stat-emitido').textContent = '$' + totalEmitido.toFixed(0);
   document.getElementById('cert-stat-canjeado').textContent = '$' + totalCanjeado.toFixed(0);
   document.getElementById('cert-stat-pendiente').textContent = '$' + totalPendiente.toFixed(0);
   document.getElementById('cert-stat-activos').textContent = activos;
 
-  if (!CERTIFICADOS.length){
+  if (!emitidos.length){
     cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem 1rem;">Todavía no has emitido ningún certificado.</p>';
     return;
   }
@@ -2214,7 +2228,7 @@ function renderListaCertificados(){
       <th style="padding:8px 6px;">Código</th><th style="padding:8px 6px;">Tipo</th><th style="padding:8px 6px;">Para</th>
       <th style="padding:8px 6px;">Monto</th><th style="padding:8px 6px;">Saldo</th><th style="padding:8px 6px;">Vence</th><th style="padding:8px 6px;">Estado</th>
     </tr></thead><tbody>
-    ${CERTIFICADOS.map(c=>{
+    ${emitidos.map(c=>{
       const est = estadoCertificado(c);
       return `<tr style="border-bottom:1px solid var(--line-soft);">
         <td style="padding:8px 6px;font-weight:700;">${c.codigo}</td>
@@ -2229,13 +2243,45 @@ function renderListaCertificados(){
     </tbody></table></div>`;
 }
 
+function renderPendientesCertificados(){
+  const sec = document.getElementById('cert-pendientes-sec');
+  const cont = document.getElementById('lista-cert-pendientes');
+  const pendientes = CERTIFICADOS.filter(c => c.estado === 'pendiente_pago');
+
+  if (!pendientes.length){ sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+
+  cont.innerHTML = pendientes.map(c => `
+    <div style="border:1px solid #F0DFA0;background:#FFFBEF;border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div style="font-size:12px;">
+        <div style="font-weight:800;color:var(--ink);">${c.codigo} · $${c.montoInicial.toFixed(2)}</div>
+        <div style="color:var(--ink-soft);margin-top:2px;">${c.compradorNombre || '—'} · ${c.metodoPago === 'bank' ? 'Transferencia' : 'Yappy'}${c.comprobante ? ' · Comprobante: ' + c.comprobante : ''}</div>
+      </div>
+      <button class="btn-add" onclick="confirmarPagoCertificadoUI('${c.id}')"><i class="ti ti-check"></i> Confirmar pago</button>
+    </div>
+  `).join('');
+}
+
+async function confirmarPagoCertificadoUI(certificateId){
+  try {
+    await Sheets.confirmarPagoCertificado(certificateId);
+    await loadCertificados();
+  } catch(e) {
+    console.error('Error confirmando pago del certificado:', e);
+    alert('No se pudo confirmar el pago. Intenta de nuevo.');
+  }
+}
+
 function abrirModalCertificado(){
   document.getElementById('cert-monto').value = '';
   document.getElementById('cert-vencimiento').value = '';
   document.getElementById('cert-comprador-nombre').value = '';
   document.getElementById('cert-comprador-telefono').value = '';
+  document.getElementById('cert-comprador-correo').value = '';
   document.getElementById('cert-destinatario-nombre').value = '';
   document.getElementById('cert-destinatario-telefono').value = '';
+  document.getElementById('cert-destinatario-correo').value = '';
+  document.getElementById('cert-mensaje').value = '';
   document.getElementById('cert-nota').value = '';
   document.getElementById('cert-form-msg').textContent = '';
   document.querySelector('input[name="cert-tipo"][value="venta"]').checked = true;
@@ -2267,8 +2313,11 @@ async function guardarCertificado(){
       tipo, monto, fechaVencimiento: vencimiento,
       compradorNombre,
       compradorTelefono: document.getElementById('cert-comprador-telefono').value.trim(),
+      compradorCorreo: document.getElementById('cert-comprador-correo').value.trim(),
       destinatarioNombre: document.getElementById('cert-destinatario-nombre').value.trim(),
       destinatarioTelefono: document.getElementById('cert-destinatario-telefono').value.trim(),
+      destinatarioCorreo: document.getElementById('cert-destinatario-correo').value.trim(),
+      mensaje: document.getElementById('cert-mensaje').value.trim(),
       nota: document.getElementById('cert-nota').value.trim()
     });
     document.getElementById('cert-codigo-generado').textContent = codigo;
@@ -2303,6 +2352,7 @@ async function loadCitas(){
   let citas=[];
   try { citas=await Sheets.getCitas(); }
   catch(e){ cont.innerHTML='<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar citas.</p>'; return; }
+  CITAS_CACHE = citas;
 
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   const limite=new Date(hoy); limite.setDate(limite.getDate()+7);
@@ -2541,7 +2591,12 @@ async function guardarReprogramacion(){
 
 async function cancelarCitaAdmin(id, nombre){
   if(!confirm(`¿Cancelar la cita de ${nombre}?`)) return;
-  try { await Sheets.cancelarCita(id); loadCitas(); }
+  try {
+    await Sheets.cancelarCita(id);
+    const c = (CITAS_CACHE || []).find(x => x.id === id);
+    if (c) Sheets.enviarCorreo('cita_cancelada', {nombreCliente:c.nombre, servicio:c.servicio, fecha:c.fecha, hora:c.hora});
+    loadCitas();
+  }
   catch(e){ alert('No se pudo cancelar la cita.'); }
 }
 
