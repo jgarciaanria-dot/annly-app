@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<title>Certificado de Regalo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --acento:#7C3AED;
+  --acento2:#EC4899;
+  --chocolate:#2B1E1A;
+  --cream:#FAF4EE;
+  --nude:#F3DDD4;
+}
+body{font-family:'Montserrat',sans-serif;background:var(--cream);min-height:100vh;overflow-x:hidden;}
+
+.scr{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.25rem;}
+.wrap{width:100%;max-width:420px;}
+
+.gradient-card{background:linear-gradient(135deg,var(--cream) 0%,var(--nude) 60%,#fff 100%);border-radius:28px;padding:2rem 1.75rem 2rem;text-align:center;position:relative;overflow:hidden;box-shadow:0 18px 44px rgba(43,30,26,0.12);opacity:0;transform:translateY(14px) scale(.9);transition:opacity .5s ease,transform .6s cubic-bezier(.22,1.4,.36,1);}
+.gradient-card.show{opacity:1;transform:translateY(0) scale(1);}
+.deco-line{position:absolute;top:14px;left:12px;width:80px;height:80px;opacity:.4;pointer-events:none;}
+
+.glow-burst{position:absolute;top:50%;left:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.55) 0%,rgba(124,58,237,0) 70%);pointer-events:none;opacity:0;}
+.gradient-card.show .glow-burst{animation:glowBurst .9s ease-out both;}
+@keyframes glowBurst{0%{opacity:.9;transform:scale(1);}100%{opacity:0;transform:scale(22);}}
+
+.spark{position:absolute;top:50%;left:50%;width:6px;height:6px;border-radius:50%;background:var(--acento2);pointer-events:none;opacity:0;}
+.gradient-card.show .spark{animation:sparkOut .85s cubic-bezier(.2,.8,.3,1) both;}
+.spark:nth-child(2){animation-delay:.02s;--rot:0deg;}
+.spark:nth-child(3){animation-delay:.05s;--rot:60deg;}
+.spark:nth-child(4){animation-delay:.03s;--rot:120deg;}
+.spark:nth-child(5){animation-delay:.07s;--rot:180deg;}
+.spark:nth-child(6){animation-delay:.01s;--rot:240deg;}
+.spark:nth-child(7){animation-delay:.06s;--rot:300deg;}
+@keyframes sparkOut{0%{opacity:1;transform:rotate(var(--rot,0deg)) translateY(0) scale(1);}100%{opacity:0;transform:rotate(var(--rot,0deg)) translateY(-130px) scale(.3);}}
+
+.logo-badge{width:52px;height:52px;border-radius:50%;background:var(--chocolate);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;position:relative;overflow:hidden;}
+.logo-badge img{width:100%;height:100%;object-fit:cover;}
+.brand-name{font-family:'Cormorant Garamond',serif;font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--acento);text-transform:uppercase;margin-bottom:16px;}
+
+.badge-sorpresa{font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--acento);text-transform:uppercase;margin-bottom:4px;}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:700;color:var(--chocolate);margin-bottom:16px;}
+.amt{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:700;color:var(--acento2);line-height:1;margin-bottom:6px;}
+.amt-sub{font-size:9px;letter-spacing:.09em;color:#6B534C;text-transform:uppercase;margin-bottom:1.25rem;}
+
+.details{text-align:left;font-size:12.5px;color:#4A3530;line-height:1.85;margin-bottom:1.5rem;}
+.details b{color:var(--acento);font-weight:600;}
+.details i{color:#4A3530;}
+
+.code-box{background:#fff;border-radius:18px;padding:20px 16px;text-align:center;margin-bottom:1.5rem;}
+.code-qr{width:150px;height:150px;margin:0 auto 14px;border-radius:8px;overflow:hidden;}
+.code-qr img,.code-qr canvas{width:150px !important;height:150px !important;}
+.code-lbl{font-size:9px;letter-spacing:.1em;color:var(--acento2);text-transform:uppercase;margin-bottom:6px;}
+.code-row{display:flex;align-items:center;justify-content:center;gap:10px;}
+.code-val{font-family:'Courier New',monospace;font-size:20px;font-weight:700;letter-spacing:.09em;color:var(--chocolate);}
+.copy-btn{width:38px;height:38px;border-radius:10px;background:var(--nude);border:none;display:flex;align-items:center;justify-content:center;color:var(--acento2);flex-shrink:0;cursor:pointer;transition:background .15s;}
+.copy-btn:hover{background:#f0d8ea;}
+.copy-btn.copied{color:#3a7d4f;}
+
+.saldo-parcial{background:#F0F7F0;border:0.5px solid #C8DFC8;border-radius:12px;padding:10px 14px;margin-bottom:1.25rem;font-size:11.5px;color:#3a7a3f;}
+
+.btn-cta{display:inline-flex;align-items:center;gap:8px;background:var(--acento2);color:#fff;border:none;padding:14px 30px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;text-decoration:none;box-shadow:0 8px 20px rgba(236,72,153,.3);transition:transform .25s,box-shadow .25s;}
+.btn-cta:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(236,72,153,.4);}
+
+.disclaimer{font-size:8.5px;line-height:1.65;color:#6B534C;text-align:left;border-top:0.5px solid rgba(124,58,237,.2);padding-top:12px;margin-top:1.5rem;}
+.disclaimer b{color:#4A3530;}
+
+.loader{width:36px;height:36px;border-radius:50%;border:3px solid rgba(124,58,237,.2);border-top-color:var(--acento);animation:spin 1s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.load-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--acento);text-align:center;transition:opacity .35s ease;}
+
+.err-box{background:#fff;border-radius:20px;padding:2rem 1.5rem;text-align:center;box-shadow:0 10px 30px rgba(43,30,26,0.08);}
+.err-box i{font-size:32px;color:var(--acento2);margin-bottom:12px;display:block;}
+.err-box h2{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--chocolate);margin-bottom:8px;}
+.err-box p{font-size:13px;color:#7a685f;line-height:1.6;}
+
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<div class="scr" id="scrLoad">
+  <div>
+    <div class="loader"></div>
+    <p class="load-msg" id="loadMsg">Añadiendo un toque de magia&hellip;</p>
+  </div>
+</div>
+
+<div class="scr hidden" id="scrCard">
+  <div class="wrap">
+    <div class="gradient-card" id="giftCard">
+      <div class="glow-burst"></div>
+      <span class="spark"></span><span class="spark"></span><span class="spark"></span><span class="spark"></span><span class="spark"></span><span class="spark"></span>
+      <svg class="deco-line" viewBox="0 0 90 90"><path d="M5,85 Q10,30 85,8" fill="none" stroke="#EC4899" stroke-width="1"/></svg>
+      <div class="logo-badge" id="gcLogoBadge">
+        <span style="color:#fff;font-family:Cormorant Garamond,serif;font-size:18px;font-weight:700;" id="gcLogoFallback">?</span>
+      </div>
+      <div class="brand-name" id="gcNegocio">Tu negocio</div>
+
+      <div class="badge-sorpresa">¡Sorpresa!</div>
+      <div class="card-title">Certificado de regalo</div>
+
+      <div class="amt" id="gcAmt">$0.00</div>
+      <div class="amt-sub">Para que disfrutes una experiencia única</div>
+
+      <div class="details">
+        <div><b>De:</b> <span id="gcDe"></span></div>
+        <div><b>Para:</b> <span id="gcPara"></span></div>
+        <div id="gcMsgRow" style="display:none;"><b>Mensaje:</b> <i id="gcMsg"></i></div>
+      </div>
+
+      <div id="gcSaldoParcial" class="saldo-parcial hidden">
+        <i class="ti ti-info-circle" aria-hidden="true"></i> Puedes usarlo en varias citas hasta agotar el saldo — no tienes que gastarlo todo de una vez.
+      </div>
+
+      <div class="code-box">
+        <div class="code-lbl">Tu código de regalo</div>
+        <div class="code-qr" id="gcQr"></div>
+        <div class="code-row">
+          <div class="code-val" id="gcCodigo">—</div>
+          <button class="copy-btn" id="copyBtn" onclick="copiarCodigo()"><i class="ti ti-copy" aria-hidden="true"></i></button>
+        </div>
+      </div>
+
+      <a class="btn-cta" id="btnBook" href="#">Agendar mi cita <i class="ti ti-calendar" aria-hidden="true"></i></a>
+
+      <div class="disclaimer" id="gcDisclaimer"><b>Vigencia:</b> este certificado puede usarse hasta la fecha de vencimiento indicada al reservar.</div>
+    </div>
+  </div>
+</div>
+
+<div class="scr hidden" id="scrErr">
+  <div class="wrap">
+    <div class="err-box">
+      <i class="ti ti-alert-circle" aria-hidden="true"></i>
+      <h2 id="errTitle">Código no válido</h2>
+      <p id="errMsg">No pudimos encontrar este certificado. Verifica el enlace o contáctanos.</p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="sheets.js"></script>
+<script>
+function getCodigo(){
+  const params=new URLSearchParams(window.location.search);
+  return (params.get('codigo')||'').trim().toUpperCase();
+}
+
+const codigo=getCodigo();
+
+const MOTIVOS={
+  codigo_vacio:['Falta el código','El enlace que abriste no incluye un código de certificado.'],
+  codigo_no_encontrado:['Código no encontrado','No pudimos encontrar este certificado. Verifica el enlace o contáctanos.'],
+  sin_saldo:['Certificado ya utilizado','Este certificado ya no tiene saldo disponible.'],
+  vencido:['Certificado vencido','La vigencia de este certificado ya expiró. Contáctanos si tienes dudas.'],
+  pendiente_pago:['Certificado pendiente','Este certificado todavía no ha sido activado.'],
+  cancelado:['Certificado cancelado','Este certificado fue cancelado. Contáctanos si crees que es un error.'],
+  error_red:['No pudimos conectar','Revisa tu conexión e intenta de nuevo en unos segundos.']
+};
+
+function mostrarError(motivo){
+  document.getElementById('scrLoad').classList.add('hidden');
+  document.getElementById('scrErr').classList.remove('hidden');
+  const m=MOTIVOS[motivo]||MOTIVOS.codigo_no_encontrado;
+  document.getElementById('errTitle').textContent=m[0];
+  document.getElementById('errMsg').textContent=m[1];
+}
+
+function mostrarCertificado(data){
+  const b = window.ANNLY_BUSINESS || {};
+  const color1 = b.color_primario || '#7C3AED';
+  const color2 = b.color_secundario || '#EC4899';
+  document.documentElement.style.setProperty('--acento', color1);
+  document.documentElement.style.setProperty('--acento2', color2);
+
+  document.getElementById('gcNegocio').textContent = b.nombre || 'Tu negocio';
+  const logoBadge = document.getElementById('gcLogoBadge');
+  if (b.logo_url) {
+    logoBadge.innerHTML = `<img src="${b.logo_url}" alt="${b.nombre||''}">`;
+  } else {
+    document.getElementById('gcLogoFallback').textContent = (b.nombre||'A').trim().charAt(0).toUpperCase();
+  }
+
+  document.getElementById('gcAmt').textContent = '$' + (parseFloat(data.montoDisponible) || 0).toFixed(2);
+  document.getElementById('gcDe').textContent = data.compradoPorNombre || '—';
+  document.getElementById('gcPara').textContent = data.destinatarioNombre || '—';
+  if (data.mensaje) {
+    document.getElementById('gcMsg').textContent = '"' + data.mensaje + '"';
+    document.getElementById('gcMsgRow').style.display = 'block';
+  }
+  if (data.montoDisponible < data.montoOriginal || data.montoDisponible > 0) {
+    document.getElementById('gcSaldoParcial').classList.remove('hidden');
+  }
+  document.getElementById('gcCodigo').textContent = codigo;
+
+  const params = new URLSearchParams(window.location.search);
+  const slug = params.get('n') || (b.slug || '');
+  const destino = (slug ? '/' + slug : '/') + '?certificado=' + encodeURIComponent(codigo);
+  document.getElementById('btnBook').href = destino;
+
+  if (data.fechaVencimiento) {
+    document.getElementById('gcDisclaimer').innerHTML = '<b>Vigencia:</b> este certificado se puede usar hasta el ' + data.fechaVencimiento + '.';
+  }
+
+  document.getElementById('scrLoad').classList.add('hidden');
+  document.getElementById('scrCard').classList.remove('hidden');
+  requestAnimationFrame(()=>{ document.getElementById('giftCard').classList.add('show'); });
+
+  try{
+    new QRCode(document.getElementById('gcQr'), {
+      text: window.location.origin + window.location.pathname + window.location.search,
+      width:150, height:150, colorDark: '#2B1E1A', colorLight:'#ffffff'
+    });
+  }catch(ex){}
+}
+
+function copiarCodigo(){
+  navigator.clipboard.writeText(codigo).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML='<i class="ti ti-check" aria-hidden="true"></i>';
+    setTimeout(()=>{ btn.classList.remove('copied'); btn.innerHTML='<i class="ti ti-copy" aria-hidden="true"></i>'; },1800);
+  });
+}
+
+async function init(){
+  const frases=['Añadiendo un toque de magia…','Tu regalo está casi listo…'];
+  let fi=0;
+  const msgEl=document.getElementById('loadMsg');
+  const loadCycle=setInterval(()=>{
+    fi=(fi+1)%frases.length;
+    msgEl.style.opacity=0;
+    setTimeout(()=>{ msgEl.textContent=frases[fi]; msgEl.style.opacity=1; },350);
+  },1300);
+
+  if(!codigo){ clearInterval(loadCycle); mostrarError('codigo_vacio'); return; }
+
+  await window.AnnlyReady;
+
+  let data;
+  try{ data=await Sheets.validarCertificado(codigo); }
+  catch(e){ clearInterval(loadCycle); mostrarError('error_red'); return; }
+  clearInterval(loadCycle);
+  if(!data || !data.valido){ mostrarError(data?data.motivo:'codigo_no_encontrado'); return; }
+  mostrarCertificado(data);
+}
+
+init();
+</script>
+</body>
+</html>
