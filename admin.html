@@ -1808,7 +1808,7 @@ async function renderPlan(){
     SUSCRIPCION_ACTUAL = await Sheets.getSuscripcionActual();
   } catch(e) { console.error('Error leyendo la suscripción:', e); SUSCRIPCION_ACTUAL = null; }
 
-  const actual = getPlanActualUI();
+  const actual = planActualParaUI();
   const p = ANNLY_PLANES_UI[actual] || ANNLY_PLANES_UI.basic;
 
   const chipSpan = document.querySelector('#adm-plan-chip span');
@@ -1968,7 +1968,7 @@ async function renderModulosPlan(){
 }
 
 function p_nombrePlanActual(){
-  const key = getPlanActualUI();
+  const key = planActualParaUI();
   return (ANNLY_PLANES_UI[key] || ANNLY_PLANES_UI.basic).name;
 }
 
@@ -1988,8 +1988,15 @@ async function activarModuloUI(featureCode){
   }
 }
 
+function planActualParaUI(){
+  // Durante el trial, la UI siempre trata "Plan actual" como Basic — el plan
+  // real seleccionado (guardado en subscriptions.plan_id) solo se refleja
+  // visualmente una vez la suscripción queda activa de verdad.
+  return enPeriodoPrueba() ? 'basic' : getPlanActualUI();
+}
+
 function openUpgrade(planKey){
-  const actual = getPlanActualUI();
+  const actual = planActualParaUI();
   if(!ANNLY_PLANES_UI[planKey] || planKey===actual) return;
   const p=ANNLY_PLANES_UI[planKey];
   UPGRADE_PLAN_SELECCIONADO=planKey;
