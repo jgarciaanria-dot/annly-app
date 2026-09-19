@@ -471,6 +471,7 @@ let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
 let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={};
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
 let certAplicado=null; // {id, codigo, saldoDisponible}
+let currentDayStr='';
 
 function renderServices(){
   if(!SERVICES.length){
@@ -803,6 +804,7 @@ function goForm(){
   cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
   certAplicado=null;
   const dayStr=`${selectedDay} de ${MESES[calM]} ${calY}`;
+  currentDayStr=dayStr;
   timerSecs=300;
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
 
@@ -813,29 +815,31 @@ function goForm(){
 
   const b = window.ANNLY_BUSINESS || {};
   const tieneYappy = !!(b.yappy_numero);
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial);
   const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
-  pagoTipo = tieneYappy ? 'yappy' : 'bank';
+  pagoTipo = (tieneYappy || tieneYappyComercial) ? 'yappy' : 'bank';
+  yappyAbonoListoInicializado=false;
 
   let pagoSection='';
   if(tieneAbono){
     let opcionesHtml = '';
-    if(tieneYappy){
+    if(tieneYappy || tieneYappyComercial){
       opcionesHtml += `
       <div class="pay-opt sel" id="opt-yappy" onclick="selPago('yappy')">
         <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
-        <div class="pay-opt-sub">Envía el pago desde tu app Yappy.</div>
-        <div class="pay-detail">Abre tu app Yappy y envía <strong>$${montoAbono.toFixed(2)}</strong> al número <strong>${b.yappy_numero}</strong>. Copia el número de comprobante aquí abajo.</div>
+        <div class="pay-opt-sub">${tieneYappyComercial?'Pago rápido y seguro desde tu app Yappy. Tu cita se confirma automáticamente al completar el pago.':'Envía el pago desde tu app Yappy.'}</div>
+        ${tieneYappyComercial?'':`<div class="pay-detail">Abre tu app Yappy y envía <strong>$${montoAbono.toFixed(2)}</strong> al número <strong>${b.yappy_numero}</strong>. Copia el número de comprobante aquí abajo.</div>`}
       </div>`;
     }
     if(tieneBanco){
       opcionesHtml += `
-      <div class="pay-opt${tieneYappy?'':' sel'}" id="opt-bank" onclick="selPago('bank')">
+      <div class="pay-opt${(tieneYappy||tieneYappyComercial)?'':' sel'}" id="opt-bank" onclick="selPago('bank')">
         <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">${b.banco_nombre}</span></div>
         <div class="pay-opt-sub">Transferencia bancaria a cuenta ${(b.banco_tipo_cuenta||'').toLowerCase()}.</div>
         <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}<br><strong>Monto:</strong> $${montoAbono.toFixed(2)}<br><span style="color:#e74c3c;font-size:11px;">Incluye tu nombre en la referencia</span></div>
       </div>`;
     }
-    if(!tieneYappy && !tieneBanco){
+    if(!tieneYappy && !tieneYappyComercial && !tieneBanco){
       pagoSection=`
       <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
       <div class="note-box-warn">
@@ -851,9 +855,16 @@ function goForm(){
         <div class="timer-lbl">Tienes <strong>5 minutos</strong> para completar el pago.<br>Si no se confirma, el cupo se libera.</div>
       </div>
       ${opcionesHtml}
-      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
-      ${tieneYappy?`<button class="btn-yappy" id="btnYappy" onclick="copiarYappy()">Copiar número de Yappy</button>`:''}
-      <button class="btn-transfer${tieneYappy?' hidden':' visible'}" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>`;
+      <div id="yappyRealWrap" class="${tieneYappyComercial?'':'hidden'}" style="margin-top:.875rem;">
+        <div class="fg"><label class="flbl">Tu número Yappy (sin +507)</label><input class="fi" id="fAliasYappy" placeholder="6XXXXXXX"></div>
+        <p id="yappyRealMsg" style="font-size:12px;margin:6px 0 10px;min-height:14px;"></p>
+        <btn-yappy id="btnYappyReal" theme="darkBlue" rounded="true"></btn-yappy>
+      </div>
+      <div id="yappyManualWrap" class="${tieneYappyComercial?'hidden':''}">
+        <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
+        ${(tieneYappy&&!tieneYappyComercial)?`<button class="btn-yappy" id="btnYappy" onclick="copiarYappy()">Copiar número de Yappy</button>`:''}
+        <button class="btn-transfer${(tieneYappy||tieneYappyComercial)?' hidden':' visible'}" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>
+      </div>`;
     }
   } else {
     pagoSection=`
@@ -896,8 +907,9 @@ function goForm(){
       <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>
     ${pagoSection}
-    <button class="btn-main" id="btnConfirmar" onclick="confirmar('${dayStr}')">Confirmar mi cita</button>`;
+    <button class="btn-main" id="btnConfirmar" onclick="confirmar('${dayStr}')" style="${(tieneAbono&&tieneYappyComercial)?'display:none;':''}">Confirmar mi cita</button>`;
 
+  if(tieneAbono && tieneYappyComercial) selPago('yappy');
   if(tieneAbono) startTimer();
   openOv('ov-form');
 }
@@ -952,16 +964,92 @@ async function aplicarCupon(){
 }
 
 let pagoTipo='yappy';
+let yappyAbonoListoInicializado=false;
+
+function limpiarNumYappy(tel){
+  let n=(tel||'').replace(/[^0-9]/g,'');
+  if(n.length>8 && n.startsWith('507')) n=n.substring(3);
+  return n;
+}
+
 function selPago(tipo){
   pagoTipo=tipo;
   const optY=document.getElementById('opt-yappy');
   const optB=document.getElementById('opt-bank');
   if(optY) optY.classList.toggle('sel',tipo==='yappy');
   if(optB) optB.classList.toggle('sel',tipo==='bank');
-  const btnY=document.getElementById('btnYappy');
-  const btnB=document.getElementById('btnTransfer');
-  if(tipo==='bank'){ if(btnY) btnY.classList.add('hidden'); if(btnB) btnB.classList.add('visible'); }
-  else{ if(btnY) btnY.classList.remove('hidden'); if(btnB) btnB.classList.remove('visible'); }
+
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial);
+  const yappyRealWrap=document.getElementById('yappyRealWrap');
+  const yappyManualWrap=document.getElementById('yappyManualWrap');
+  const btnC=document.getElementById('btnConfirmar');
+
+  if(tipo==='bank'){
+    if(yappyRealWrap) yappyRealWrap.classList.add('hidden');
+    if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
+    if(btnC) btnC.style.display='';
+  } else if(tieneYappyComercial && yappyRealWrap){
+    yappyRealWrap.classList.remove('hidden');
+    if(yappyManualWrap) yappyManualWrap.classList.add('hidden');
+    if(btnC) btnC.style.display='none';
+    setupYappyButtonAbono();
+  } else {
+    if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
+    if(btnC) btnC.style.display='';
+    const btnY=document.getElementById('btnYappy');
+    const btnB=document.getElementById('btnTransfer');
+    if(btnY) btnY.classList.remove('hidden');
+    if(btnB) btnB.classList.remove('visible');
+  }
+}
+
+// Conecta el <btn-yappy> real (SDK oficial de Yappy) para el abono de la
+// cita: al hacer click crea la orden vía la Edge Function y le pasa el
+// token de vuelta al widget con eventPayment(); al confirmar el pago
+// (eventSuccess) reserva la cita de una vez, usando el orderId como
+// comprobante.
+function setupYappyButtonAbono(){
+  const btn=document.getElementById('btnYappyReal');
+  if(!btn || yappyAbonoListoInicializado) return;
+  yappyAbonoListoInicializado=true;
+
+  const telInput=document.getElementById('fp');
+  const aliasInput=document.getElementById('fAliasYappy');
+  if(telInput && aliasInput && !aliasInput.value){ aliasInput.value=limpiarNumYappy(telInput.value); }
+
+  btn.addEventListener('eventClick', async () => {
+    const msgEl=document.getElementById('yappyRealMsg');
+    const nombre=document.getElementById('fn').value.trim();
+    const tel=document.getElementById('fp').value.trim();
+    const correo=document.getElementById('fe').value.trim();
+    if(!nombre||!tel||!correo){ msgEl.style.color='#c0392b'; msgEl.textContent='Completa tu nombre, WhatsApp y correo antes de pagar.'; return; }
+    const alias=limpiarNumYappy(document.getElementById('fAliasYappy').value);
+    if(!alias || alias.length<7){ msgEl.style.color='#c0392b'; msgEl.textContent='Ingresa tu número Yappy (8 dígitos, sin +507).'; return; }
+
+    msgEl.style.color='#999'; msgEl.textContent='Creando tu orden de pago...';
+    const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+    const orderId='C'+Date.now().toString().slice(-10);
+    window._yappyOrderId=orderId;
+
+    const res=await Sheets.crearOrdenYappy({orderId, total:montoAbono, aliasYappy:alias, tipo:'cita', refId:orderId});
+    if(res && res.ok){
+      msgEl.textContent='';
+      btn.eventPayment({ transactionId: res.transactionId, documentName: res.documentName, token: res.token });
+    } else {
+      msgEl.style.color='#c0392b';
+      msgEl.textContent = (res && res.error) || 'No se pudo crear la orden de pago. Intenta de nuevo.';
+    }
+  });
+
+  btn.addEventListener('eventSuccess', () => {
+    confirmarCitaConfirmada(currentDayStr, window._yappyOrderId);
+  });
+
+  btn.addEventListener('eventError', () => {
+    const msgEl=document.getElementById('yappyRealMsg');
+    if(msgEl){ msgEl.style.color='#c0392b'; msgEl.textContent='El pago no se completó. Puedes intentar de nuevo.'; }
+  });
 }
 
 function copiarCuenta(){
@@ -1007,18 +1095,34 @@ async function confirmar(dayStr){
   const nombre=document.getElementById('fn').value.trim();
   const tel=document.getElementById('fp').value.trim();
   const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
-  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
   const refEl=document.getElementById('fref');
   const ref=refEl?refEl.value.trim():'Sin abono';
   const tieneAbono = curSvc.esEval || curSvc.requiereAbono;
-  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
-  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
-  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'sujeto a política de cancelación';
   if(!nombre||!tel||!correo){alert('Por favor completa tu nombre, WhatsApp y correo.');return;}
   if(tieneAbono&&!ref){alert('Por favor ingresa el número de comprobante del pago.');return;}
   if(timerInt)clearInterval(timerInt);
   const btnC=document.getElementById('btnConfirmar');
   if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
+  await finalizarCita(dayStr, ref);
+}
+
+// Llamado cuando el pago se completó de verdad por el botón real de Yappy
+// (eventSuccess del widget) — el comprobante es el propio orderId de Yappy,
+// no algo que el cliente tipeó a mano.
+async function confirmarCitaConfirmada(dayStr, orderId){
+  if(timerInt)clearInterval(timerInt);
+  await finalizarCita(dayStr, orderId);
+}
+
+async function finalizarCita(dayStr, ref){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
+  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
+  const tieneAbono = curSvc.esEval || curSvc.requiereAbono;
+  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'sujeto a política de cancelación';
   const precio=curSvc.price>0?curSvc.price:0;
   const esConsultar = curSvc.price<=0;
   const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
