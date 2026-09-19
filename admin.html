@@ -911,6 +911,31 @@ img{max-width:100%;}
     </div>
 
     <div class="adm-sec">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Yappy Comercial (botón de pago real)</span></div>
+      <div style="padding:1rem;">
+        <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;">Si ya tienes cuenta de Yappy Comercial (Banco General), configúrala aquí para que tus clientes paguen con el botón oficial de Yappy en vez de mandar comprobante a mano. Sin esto, el sitio sigue usando el número de Yappy de arriba con el flujo manual.</p>
+        <div class="frow">
+          <div class="fg"><label class="flbl">Merchant ID</label><input class="fi" id="pf-yappy-merchant-id" placeholder="78fb770f-055f-43c1-8529-a2bef7cbf5cd"/></div>
+          <div class="fg"><label class="flbl">Dominio registrado en Yappy</label><input class="fi" id="pf-yappy-dominio" placeholder="https://tudominio.com"/></div>
+        </div>
+        <div class="fg"><label class="flbl">Secret (te lo da Yappy al aprobar tu comercio)</label><input class="fi" id="pf-yappy-secret" type="password" placeholder="•••••••••••••"/></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:.5rem;">
+          <span style="font-size:13px;font-weight:600;">Botón real de Yappy activo</span>
+          <label class="svc-toggle">
+            <input type="checkbox" id="pf-yappy-activo" checked/>
+            <div class="svc-toggle-track"></div>
+            <div class="svc-toggle-thumb"></div>
+          </label>
+        </div>
+        <p id="pf-yappy-msg" style="font-size:11px;color:var(--ink-soft);margin-top:8px;min-height:14px;"></p>
+        <div style="display:flex;gap:10px;margin-top:6px;">
+          <button type="button" class="btn-save" style="margin-bottom:0;" onclick="guardarYappyComercial()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar credenciales Yappy</button>
+          <button type="button" id="pf-yappy-eliminar" style="display:none;border:1px solid #E8B4AC;background:#fff;color:#C2695A;border-radius:10px;padding:0 16px;font-size:12.5px;font-weight:700;cursor:pointer;" onclick="eliminarYappyComercialUI()">Quitar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Colores y estilo</span></div>
       <div style="padding:1rem;">
         <div class="cats" id="pf-paleta-grid" style="margin-bottom:1rem;"></div>
@@ -1914,13 +1939,15 @@ async function renderModulosPlan(){
   if (!cont) return;
   cont.innerHTML = '<p style="font-size:11px;color:var(--ink-soft);">Cargando módulos...</p>';
 
+  let modulosDetalle = [];
   try {
-    const [catalogo, features, activos] = await Promise.all([
+    const [catalogo, features, activos, detalle] = await Promise.all([
       Sheets.getCatalogoModulos(),
       SUSCRIPCION_ACTUAL ? Sheets.getFeaturesDelPlan(SUSCRIPCION_ACTUAL.plan.id) : Promise.resolve([]),
-      SUSCRIPCION_ACTUAL ? Sheets.getModulosActivos(SUSCRIPCION_ACTUAL.subscriptionId) : Promise.resolve([])
+      SUSCRIPCION_ACTUAL ? Sheets.getModulosActivos(SUSCRIPCION_ACTUAL.subscriptionId) : Promise.resolve([]),
+      SUSCRIPCION_ACTUAL ? Sheets.getModulosActivosDetalle(SUSCRIPCION_ACTUAL.subscriptionId) : Promise.resolve([])
     ]);
-    CATALOGO_MODULOS = catalogo; FEATURES_DEL_PLAN = features; MODULOS_ACTIVOS = activos;
+    CATALOGO_MODULOS = catalogo; FEATURES_DEL_PLAN = features; MODULOS_ACTIVOS = activos; modulosDetalle = detalle;
   } catch(e) {
     console.error('Error cargando módulos:', e);
     cont.innerHTML = '<p style="font-size:11px;color:var(--ink-soft);">No se pudieron cargar los módulos.</p>';
@@ -1936,6 +1963,8 @@ async function renderModulosPlan(){
     const incluido = FEATURES_DEL_PLAN.includes(m.code);
     const activo = MODULOS_ACTIVOS.includes(m.code);
     const disponibleAhora = moduloDisponible(m.code);
+    const detalleModulo = modulosDetalle.find(d => d.code === m.code);
+    const cancelaEl = detalleModulo ? detalleModulo.canceladoParaEl : null;
     const icono = ICONOS_MODULO[m.code] || 'ti-puzzle';
     const esAgenteAI = m.code === 'AGENTE_AI';
 
@@ -1944,8 +1973,10 @@ async function renderModulosPlan(){
       estadoHtml = `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Se activa cuando termine tu prueba</div>`;
     } else if (incluido) {
       estadoHtml = `<div class="plan-module-included-badge"><i class="ti ti-check"></i> Incluido en tu plan</div>`;
+    } else if (activo && cancelaEl) {
+      estadoHtml = `<div class="plan-module-active-badge" style="color:#B08900;"><i class="ti ti-clock"></i> Activo hasta el ${formatFechaCorta(cancelaEl)}</div>`;
     } else if (activo) {
-      estadoHtml = `<div class="plan-module-active-badge"><i class="ti ti-circle-check-filled"></i> Activo</div>`;
+      estadoHtml = `<div class="plan-module-active-badge"><i class="ti ti-circle-check-filled"></i> Activo</div><button type="button" class="plan-module-link" style="border:none;background:none;cursor:pointer;padding:0;" onclick="cancelarModuloUI('${m.code}','${m.name.replace(/'/g,"\\'")}')">Cancelar</button>`;
     } else if (esAgenteAI) {
       const b=window.ANNLY_BUSINESS || {};
       const subject=encodeURIComponent('Consulta sobre Agente AI — Annly');
@@ -1965,6 +1996,18 @@ async function renderModulosPlan(){
       ${estadoHtml}
     </div>`;
   }).join('');
+}
+
+async function cancelarModuloUI(featureCode, nombre){
+  if (!SUSCRIPCION_ACTUAL) return;
+  if (!confirm(`¿Cancelar ${nombre}? Se mantiene activo hasta que se cumpla el mes que ya pagaste — después se desactiva solo.`)) return;
+  try {
+    await Sheets.cancelarModulo(SUSCRIPCION_ACTUAL.subscriptionId, featureCode);
+    await renderPlan();
+  } catch(e) {
+    console.error('Error cancelando el módulo:', e);
+    alert('No se pudo cancelar el módulo. Intenta de nuevo.');
+  }
 }
 
 function p_nombrePlanActual(){
@@ -3138,7 +3181,7 @@ function renderPaletaPerfil(){
     </div>`).join('');
 }
 
-function loadPerfil(){
+async function loadPerfil(){
   const b = window.ANNLY_BUSINESS || {};
   document.getElementById('pf-nombre').value = b.nombre || '';
   document.getElementById('pf-tagline').value = b.tagline || '';
@@ -3165,6 +3208,64 @@ function loadPerfil(){
     preview.innerHTML = `<img src="${b.logo_url}" style="width:100%;height:100%;object-fit:cover;"/>`;
   } else {
     preview.innerHTML = (b.nombre||'A').trim().charAt(0).toUpperCase();
+  }
+
+  document.getElementById('pf-yappy-msg').textContent = '';
+  try {
+    const cred = await Sheets.getCredencialesYappy();
+    document.getElementById('pf-yappy-merchant-id').value = cred ? cred.merchantId : '';
+    document.getElementById('pf-yappy-dominio').value = cred ? cred.dominioRegistrado : '';
+    document.getElementById('pf-yappy-secret').value = '';
+    document.getElementById('pf-yappy-secret').placeholder = cred ? 'Ya configurado — deja en blanco para no cambiarlo' : '•••••••••••••';
+    document.getElementById('pf-yappy-activo').checked = cred ? cred.activo : true;
+    document.getElementById('pf-yappy-eliminar').style.display = cred ? 'inline-flex' : 'none';
+  } catch(e) {
+    console.error('Error cargando credenciales Yappy:', e);
+  }
+}
+
+async function guardarYappyComercial(){
+  const msgEl = document.getElementById('pf-yappy-msg');
+  const merchantId = document.getElementById('pf-yappy-merchant-id').value.trim();
+  const dominioRegistrado = document.getElementById('pf-yappy-dominio').value.trim();
+  const secretNuevo = document.getElementById('pf-yappy-secret').value.trim();
+  const activo = document.getElementById('pf-yappy-activo').checked;
+
+  if (!merchantId || !dominioRegistrado){ msgEl.style.color='#C2695A'; msgEl.textContent = 'Completa el Merchant ID y el dominio registrado.'; return; }
+
+  let secretB64 = secretNuevo;
+  if (!secretB64) {
+    try {
+      const existente = await Sheets.getCredencialesYappy();
+      secretB64 = existente ? existente.secretB64 : '';
+    } catch(e) {}
+    if (!secretB64) { msgEl.style.color='#C2695A'; msgEl.textContent = 'Ingresa el Secret la primera vez que configures Yappy.'; return; }
+  }
+
+  msgEl.style.color = 'var(--ink-soft)';
+  msgEl.textContent = 'Guardando...';
+  try {
+    await Sheets.guardarCredencialesYappy({ merchantId, secretB64, dominioRegistrado, activo });
+    msgEl.style.color = '#4A9D6E';
+    msgEl.textContent = '¡Credenciales de Yappy guardadas!';
+    document.getElementById('pf-yappy-eliminar').style.display = 'inline-flex';
+    document.getElementById('pf-yappy-secret').value = '';
+    document.getElementById('pf-yappy-secret').placeholder = 'Ya configurado — deja en blanco para no cambiarlo';
+  } catch(e) {
+    console.error('Error guardando credenciales Yappy:', e);
+    msgEl.style.color = '#C2695A';
+    msgEl.textContent = 'No se pudo guardar. Intenta de nuevo.';
+  }
+}
+
+async function eliminarYappyComercialUI(){
+  if (!confirm('¿Quitar la configuración de Yappy Comercial? El sitio volverá al flujo manual de pago.')) return;
+  try {
+    await Sheets.eliminarCredencialesYappy();
+    await loadPerfil();
+  } catch(e) {
+    console.error('Error quitando credenciales Yappy:', e);
+    alert('No se pudo quitar la configuración. Intenta de nuevo.');
   }
 }
 
