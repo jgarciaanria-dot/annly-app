@@ -1811,11 +1811,11 @@ function openUpgrade(planKey){
   }
   document.getElementById('modal-upgrade-btn').disabled = false;
   document.getElementById('modal-upgrade-btn').innerHTML='<i class="ti ti-arrow-up-right"></i> Confirmar cambio de plan';
-  document.getElementById('ov-modal-upgrade').classList.add('show');
+  document.getElementById('ov-modal-upgrade').classList.add('open');
 }
 
 function closeUpgrade(){
-  document.getElementById('ov-modal-upgrade').classList.remove('show');
+  document.getElementById('ov-modal-upgrade').classList.remove('open');
   UPGRADE_PLAN_SELECCIONADO=null;
 }
 
