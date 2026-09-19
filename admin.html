@@ -134,6 +134,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .adm-tab:hover{color:var(--ink);background:#FAF8FC;}
 .adm-tab.active{color:var(--charcoal2);background:var(--accent-soft);box-shadow:inset 0 0 0 1px rgba(124,58,237,.08);}
 .adm-tab.active i{opacity:1;}
+.adm-tab .adm-tab-lock{font-size:11px;opacity:.55;margin-left:-2px;}
+.adm-tab.locked{color:var(--ink-soft);}
+.adm-tab.locked:hover{background:#FAF8FC;}
 @media(min-width:900px){
   .adm-tabs{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));overflow:visible;}
   .adm-tab{min-width:0;}
@@ -540,6 +543,7 @@ img{max-width:100%;}
       <button class="adm-tab" id="tab-bloqueos" onclick="switchTab('bloqueos')"><i class="ti ti-calendar-off"></i><span>Bloqueos</span></button>
       <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')"><i class="ti ti-speakerphone"></i><span>Promo</span></button>
       <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')"><i class="ti ti-rotate-clockwise"></i><span>Ruleta</span></button>
+      <button class="adm-tab" id="tab-certificados" onclick="switchTab('certificados')"><i class="ti ti-gift"></i><span>Certificados</span></button>
       <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')"><i class="ti ti-users"></i><span>Clientes</span></button>
       <button class="adm-tab" id="tab-equipo" onclick="switchTab('equipo')"><i class="ti ti-user-star"></i><span>Equipo</span></button>
       <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')"><i class="ti ti-building-store"></i><span>Perfil</span></button>
@@ -635,6 +639,19 @@ img{max-width:100%;}
   </div>
 
   <div id="panel-promo" style="display:none;">
+
+    <div id="promo-bloqueado" style="display:none;">
+      <div class="adm-sec" style="text-align:center;padding:2rem 1.5rem;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px;"><i class="ti ti-speakerphone"></i></div>
+        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:8px;">Ventana promocional</div>
+        <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:480px;margin:0 auto 18px;">
+          Muestra un pop-up animado (con tema de temporada: Mundial, Navidad, San Valentín, etc.) apenas un cliente entra a tu sitio, destacando un servicio con precio promocional por tiempo limitado.
+        </p>
+        <button class="btn-save" style="width:auto;padding:10px 22px;" onclick="switchTab('plan')"><i class="ti ti-arrow-up-right"></i> Ver planes</button>
+      </div>
+    </div>
+
+    <div id="promo-activo" style="display:none;">
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Ventana promocional</span></div>
       <div style="padding:1rem;">
@@ -671,9 +688,23 @@ img{max-width:100%;}
         <button class="btn-save" onclick="guardarPromo()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar promoción</button>
       </div>
     </div>
+    </div>
   </div>
 
   <div id="panel-ruleta" style="display:none;">
+
+    <div id="ruleta-bloqueado" style="display:none;">
+      <div class="adm-sec" style="text-align:center;padding:2rem 1.5rem;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px;"><i class="ti ti-rotate-clockwise"></i></div>
+        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:8px;">Ruleta de premios</div>
+        <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:480px;margin:0 auto 18px;">
+          Tus clientes giran una ruleta después de confirmar su cita y ganan un premio (descuento, servicio gratis, etc.) al azar, con las probabilidades que tú configures — una forma sencilla de fidelizar e incentivar reservas.
+        </p>
+        <button class="btn-save" style="width:auto;padding:10px 22px;" onclick="switchTab('plan')"><i class="ti ti-arrow-up-right"></i> Ver planes</button>
+      </div>
+    </div>
+
+    <div id="ruleta-activo" style="display:none;">
     <div class="adm-sec">
       <div class="adm-sec-hdr">
         <span class="adm-sec-title">Ruleta de premios</span>
@@ -704,6 +735,54 @@ img{max-width:100%;}
         <p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>
       </div>
     </div>
+    </div>
+  </div>
+
+  <div id="panel-certificados" style="display:none;">
+
+    <div id="certificados-bloqueado" style="display:none;">
+      <div class="adm-sec" style="text-align:center;padding:2rem 1.5rem;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px;"><i class="ti ti-gift"></i></div>
+        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:8px;">Certificados y cupones de regalo</div>
+        <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:480px;margin:0 auto 18px;">
+          Vende o regala certificados por un monto fijo — tus clientes reciben un código que pueden aplicar como abono a su próxima cita.
+          El saldo se descuenta cada vez que lo usan, así que un certificado de $30 puede cubrir dos citas de $15 en lugar de perderse el sobrante.
+          Cada certificado queda con fecha de vencimiento configurable, y ves en todo momento cuáles están activos, agotados o vencidos, y en qué cita se canjeó cada uno.
+        </p>
+        <button class="btn-save" style="width:auto;padding:10px 22px;" onclick="switchTab('plan')"><i class="ti ti-arrow-up-right"></i> Ver planes</button>
+      </div>
+    </div>
+
+    <div id="certificados-activo" style="display:none;">
+      <div class="adm-sec">
+        <div class="adm-sec-hdr">
+          <span class="adm-sec-title">Certificados</span>
+          <button class="btn-add" onclick="abrirModalCertificado()"><i class="ti ti-plus"></i> Emitir certificado</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:1rem;">
+          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Emitido</div>
+            <div id="cert-stat-emitido" style="font-size:17px;font-weight:800;color:var(--ink);margin-top:4px;">$0</div>
+          </div>
+          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Canjeado</div>
+            <div id="cert-stat-canjeado" style="font-size:17px;font-weight:800;color:#159A61;margin-top:4px;">$0</div>
+          </div>
+          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Saldo pendiente</div>
+            <div id="cert-stat-pendiente" style="font-size:17px;font-weight:800;color:#7C3AED;margin-top:4px;">$0</div>
+          </div>
+          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Activos</div>
+            <div id="cert-stat-activos" style="font-size:17px;font-weight:800;color:var(--ink);margin-top:4px;">0</div>
+          </div>
+        </div>
+        <div id="lista-certificados" style="padding:0 1rem 1rem;">
+          <p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <div id="panel-clientas" style="display:none;">
@@ -956,6 +1035,45 @@ img{max-width:100%;}
       <ul class="plan-modal-list" id="modal-upgrade-list"></ul>
       <p id="modal-upgrade-msg" style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;text-align:center;min-height:18px;margin-bottom:12px;"></p>
       <button class="btn-save" id="modal-upgrade-btn" onclick="solicitarUpgrade()"><i class="ti ti-arrow-up-right"></i> Solicitar cambio de plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EMITIR CERTIFICADO -->
+<div class="ov" id="ov-modal-certificado">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Emitir certificado</span>
+      <button class="modal-close" onclick="closeModalCertificado()">×</button>
+    </div>
+    <div class="modal-body" id="modal-certificado-form">
+      <div class="fg">
+        <label class="flbl">Tipo</label>
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
+            <input type="radio" name="cert-tipo" value="venta" checked/> Venta
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
+            <input type="radio" name="cert-tipo" value="regalo"/> Regalo
+          </label>
+        </div>
+      </div>
+      <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" id="cert-monto" type="number" min="1" step="0.01"/></div>
+      <div class="fg"><label class="flbl">Vence el</label><input class="fi" id="cert-vencimiento" type="date"/></div>
+      <div class="fg"><label class="flbl">Nombre de quien compra / regala</label><input class="fi" id="cert-comprador-nombre"/></div>
+      <div class="fg"><label class="flbl">Teléfono de quien compra / regala (opcional)</label><input class="fi" id="cert-comprador-telefono"/></div>
+      <div class="fg"><label class="flbl">Nombre de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-nombre"/></div>
+      <div class="fg"><label class="flbl">Teléfono de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-telefono"/></div>
+      <div class="fg"><label class="flbl">Nota (opcional)</label><textarea class="fi" id="cert-nota" rows="2" style="resize:vertical;"></textarea></div>
+      <p id="cert-form-msg" style="font-size:11px;color:#C2695A;min-height:14px;"></p>
+      <button class="btn-save" onclick="guardarCertificado()"><i class="ti ti-check" style="font-size:17px;"></i> Emitir certificado</button>
+    </div>
+    <div class="modal-body" id="modal-certificado-listo" style="display:none;text-align:center;">
+      <div style="width:52px;height:52px;border-radius:50%;background:#EAF7F0;color:#159A61;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 14px;"><i class="ti ti-circle-check-filled"></i></div>
+      <div style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">Código generado</div>
+      <div id="cert-codigo-generado" style="font-size:24px;font-weight:800;letter-spacing:.04em;color:var(--charcoal2);margin-bottom:16px;"></div>
+      <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-bottom:16px;">Comparte este código con tu cliente — lo puede aplicar al reservar su cita en el sitio público.</p>
+      <button class="btn-save" onclick="closeModalCertificado()"><i class="ti ti-check"></i> Listo</button>
     </div>
   </div>
 </div>
@@ -1270,10 +1388,11 @@ async function recargarPanelPorNegocio(){
   if (tabActual === 'citas') await loadCitas();
   if (tabActual === 'promo') await loadPromo();
   if (tabActual === 'ruleta') await loadRuleta();
+  if (tabActual === 'certificados') await loadCertificados();
   if (tabActual === 'clientas') await loadClientas();
   if (tabActual === 'equipo') await loadEquipo();
   if (tabActual === 'perfil') await loadPerfil();
-  if (tabActual === 'plan') renderPlan();
+  await renderPlan();
 }
 
 async function arrancarPanelAdmin(){
@@ -1632,7 +1751,7 @@ function closeAdminMenu(){
 }
 
 function switchTab(tab){
-  const tabs = ['servicios','citas','bloqueos','promo','ruleta','clientas','equipo','perfil','plan'];
+  const tabs = ['servicios','citas','bloqueos','promo','ruleta','certificados','clientas','equipo','perfil','plan'];
   tabs.forEach(t => {
     const tabEl = document.getElementById('tab-' + t);
     const panelEl = document.getElementById('panel-' + t);
@@ -1640,8 +1759,9 @@ function switchTab(tab){
     if(panelEl) panelEl.style.display = tab === t ? 'block' : 'none';
   });
   if(tab==='citas') loadCitas();
-  if(tab==='promo') loadPromo();
-  if(tab==='ruleta') loadRuleta();
+  if(tab==='promo' && moduloDisponible('PROMOCIONES')) loadPromo();
+  if(tab==='ruleta' && moduloDisponible('RULETA')) loadRuleta();
+  if(tab==='certificados' && moduloDisponible('CERTIFICADOS')) loadCertificados();
   if(tab==='clientas') loadClientas();
   if(tab==='equipo') loadEquipo();
   if(tab==='perfil') loadPerfil();
@@ -1712,6 +1832,55 @@ async function renderPlan(){
   });
 
   await renderModulosPlan();
+  actualizarGatingPestanas();
+}
+
+// Devuelve true si el negocio tiene acceso a esta feature/módulo, ya sea porque
+// viene incluido en su plan o porque lo activó por separado como addon.
+function moduloDisponible(code){
+  return FEATURES_DEL_PLAN.includes(code) || MODULOS_ACTIVOS.includes(code);
+}
+
+// Pestañas cuyo contenido real depende del plan/módulos activos — cada una tiene
+// un div "-bloqueado" (vitrina) y uno "-activo" (panel real) dentro de su panel.
+const TABS_CON_GATING = {
+  promo: 'PROMOCIONES',
+  ruleta: 'RULETA',
+  certificados: 'CERTIFICADOS'
+};
+
+function actualizarGatingPestanas(){
+  Object.keys(TABS_CON_GATING).forEach(tab=>{
+    const disponible = moduloDisponible(TABS_CON_GATING[tab]);
+
+    const tabBtn = document.getElementById('tab-' + tab);
+    if (tabBtn) {
+      tabBtn.classList.toggle('locked', !disponible);
+      let lock = tabBtn.querySelector('.adm-tab-lock');
+      if (!disponible && !lock) {
+        lock = document.createElement('i');
+        lock.className = 'ti ti-lock adm-tab-lock';
+        tabBtn.appendChild(lock);
+      } else if (disponible && lock) {
+        lock.remove();
+      }
+    }
+
+    const bloqueadoEl = document.getElementById(tab + '-bloqueado');
+    const activoEl = document.getElementById(tab + '-activo');
+    if (bloqueadoEl) bloqueadoEl.style.display = disponible ? 'none' : 'block';
+    if (activoEl) activoEl.style.display = disponible ? 'block' : 'none';
+  });
+
+  // Si estamos parados en una pestaña que se acaba de destrabar (ej. tras
+  // activar el módulo desde "Mi plan"), carga sus datos reales de una vez.
+  const activeTab = document.querySelector('.adm-tab.active');
+  const tabActual = activeTab ? activeTab.id.replace('tab-','') : null;
+  if (tabActual && TABS_CON_GATING[tabActual] && moduloDisponible(TABS_CON_GATING[tabActual])) {
+    if (tabActual === 'promo') loadPromo();
+    if (tabActual === 'ruleta') loadRuleta();
+    if (tabActual === 'certificados') loadCertificados();
+  }
 }
 
 async function renderModulosPlan(){
@@ -1997,6 +2166,118 @@ async function guardarRuleta(){
 async function loadGanadoresRuleta(){
   const cont = document.getElementById('lista-ganadores-ruleta');
   cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Función de ganadores pendiente de conectar a Supabase.</p>';
+}
+
+// ===== CERTIFICADOS =====
+let CERTIFICADOS = [];
+
+function estadoCertificado(c){
+  const hoy = new Date().toISOString().split('T')[0];
+  if (c.saldoRestante <= 0) return {texto:'Agotado', color:'#888'};
+  if (c.fechaVencimiento && c.fechaVencimiento < hoy) return {texto:'Vencido', color:'#C2695A'};
+  return {texto:'Activo', color:'#159A61'};
+}
+
+async function loadCertificados(){
+  const cont = document.getElementById('lista-certificados');
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>';
+  try {
+    CERTIFICADOS = await Sheets.getCertificados();
+  } catch(e) {
+    console.error('Error cargando certificados:', e);
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No se pudieron cargar los certificados.</p>';
+    return;
+  }
+  renderListaCertificados();
+}
+
+function renderListaCertificados(){
+  const cont = document.getElementById('lista-certificados');
+
+  const totalEmitido = CERTIFICADOS.reduce((s,c)=>s+c.montoInicial,0);
+  const totalPendiente = CERTIFICADOS.reduce((s,c)=>s+c.saldoRestante,0);
+  const totalCanjeado = totalEmitido - totalPendiente;
+  const activos = CERTIFICADOS.filter(c => estadoCertificado(c).texto === 'Activo').length;
+
+  document.getElementById('cert-stat-emitido').textContent = '$' + totalEmitido.toFixed(0);
+  document.getElementById('cert-stat-canjeado').textContent = '$' + totalCanjeado.toFixed(0);
+  document.getElementById('cert-stat-pendiente').textContent = '$' + totalPendiente.toFixed(0);
+  document.getElementById('cert-stat-activos').textContent = activos;
+
+  if (!CERTIFICADOS.length){
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem 1rem;">Todavía no has emitido ningún certificado.</p>';
+    return;
+  }
+
+  cont.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="text-align:left;color:#888;border-bottom:1px solid var(--line);">
+      <th style="padding:8px 6px;">Código</th><th style="padding:8px 6px;">Tipo</th><th style="padding:8px 6px;">Para</th>
+      <th style="padding:8px 6px;">Monto</th><th style="padding:8px 6px;">Saldo</th><th style="padding:8px 6px;">Vence</th><th style="padding:8px 6px;">Estado</th>
+    </tr></thead><tbody>
+    ${CERTIFICADOS.map(c=>{
+      const est = estadoCertificado(c);
+      return `<tr style="border-bottom:1px solid var(--line-soft);">
+        <td style="padding:8px 6px;font-weight:700;">${c.codigo}</td>
+        <td style="padding:8px 6px;">${c.tipo === 'regalo' ? 'Regalo' : 'Venta'}</td>
+        <td style="padding:8px 6px;">${c.destinatarioNombre || c.compradorNombre || '—'}</td>
+        <td style="padding:8px 6px;">$${c.montoInicial.toFixed(2)}</td>
+        <td style="padding:8px 6px;">$${c.saldoRestante.toFixed(2)}</td>
+        <td style="padding:8px 6px;">${c.fechaVencimiento || '—'}</td>
+        <td style="padding:8px 6px;color:${est.color};font-weight:700;">${est.texto}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+}
+
+function abrirModalCertificado(){
+  document.getElementById('cert-monto').value = '';
+  document.getElementById('cert-vencimiento').value = '';
+  document.getElementById('cert-comprador-nombre').value = '';
+  document.getElementById('cert-comprador-telefono').value = '';
+  document.getElementById('cert-destinatario-nombre').value = '';
+  document.getElementById('cert-destinatario-telefono').value = '';
+  document.getElementById('cert-nota').value = '';
+  document.getElementById('cert-form-msg').textContent = '';
+  document.querySelector('input[name="cert-tipo"][value="venta"]').checked = true;
+  document.getElementById('modal-certificado-form').style.display = 'block';
+  document.getElementById('modal-certificado-listo').style.display = 'none';
+  document.getElementById('ov-modal-certificado').classList.add('open');
+}
+
+function closeModalCertificado(){
+  document.getElementById('ov-modal-certificado').classList.remove('open');
+  loadCertificados();
+}
+
+async function guardarCertificado(){
+  const msgEl = document.getElementById('cert-form-msg');
+  const tipo = document.querySelector('input[name="cert-tipo"]:checked').value;
+  const monto = parseFloat(document.getElementById('cert-monto').value);
+  const vencimiento = document.getElementById('cert-vencimiento').value;
+  const compradorNombre = document.getElementById('cert-comprador-nombre').value.trim();
+
+  if (!monto || monto <= 0){ msgEl.textContent = 'Ingresa un monto válido.'; return; }
+  if (!vencimiento){ msgEl.textContent = 'Selecciona una fecha de vencimiento.'; return; }
+  if (!compradorNombre){ msgEl.textContent = tipo === 'regalo' ? 'Ingresa el nombre de quien regala.' : 'Ingresa el nombre del comprador.'; return; }
+
+  msgEl.textContent = '';
+
+  try {
+    const codigo = await Sheets.emitirCertificado({
+      tipo, monto, fechaVencimiento: vencimiento,
+      compradorNombre,
+      compradorTelefono: document.getElementById('cert-comprador-telefono').value.trim(),
+      destinatarioNombre: document.getElementById('cert-destinatario-nombre').value.trim(),
+      destinatarioTelefono: document.getElementById('cert-destinatario-telefono').value.trim(),
+      nota: document.getElementById('cert-nota').value.trim()
+    });
+    document.getElementById('cert-codigo-generado').textContent = codigo;
+    document.getElementById('modal-certificado-form').style.display = 'none';
+    document.getElementById('modal-certificado-listo').style.display = 'block';
+  } catch(e) {
+    console.error('Error emitiendo certificado:', e);
+    msgEl.textContent = 'No se pudo emitir el certificado. Intenta de nuevo.';
+  }
 }
 
 // ===== CITAS =====
