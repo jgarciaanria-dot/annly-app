@@ -292,9 +292,12 @@ async function loadCertificadosModulo(){
   try {
     const sus = await Sheets.getSuscripcionActual();
     if (!sus) return;
+    // En trial, el acceso real queda limitado a lo que trae Basic —
+    // el plan/addon seleccionado no cuenta hasta que haya suscripción paga.
+    const enTrial = sus.status === 'trial';
     const [features, activos] = await Promise.all([
-      Sheets.getFeaturesDelPlan(sus.plan.id),
-      Sheets.getModulosActivos(sus.subscriptionId)
+      enTrial ? Sheets.getFeaturesDePlanCode('BASIC') : Sheets.getFeaturesDelPlan(sus.plan.id),
+      enTrial ? Promise.resolve([]) : Sheets.getModulosActivos(sus.subscriptionId)
     ]);
     CERT_MODULO_DISPONIBLE = features.includes('CERTIFICADOS') || activos.includes('CERTIFICADOS');
   } catch(e) { CERT_MODULO_DISPONIBLE = false; }
