@@ -472,6 +472,7 @@ let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={};
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
 let certAplicado=null; // {id, codigo, saldoDisponible}
 let currentDayStr='';
+const CERT_DESDE_URL = new URLSearchParams(window.location.search).get('certificado') || '';
 
 function renderServices(){
   if(!SERVICES.length){
@@ -911,6 +912,10 @@ function goForm(){
 
   if(tieneAbono && tieneYappyComercial) selPago('yappy');
   if(tieneAbono) startTimer();
+  if(CERT_DESDE_URL){
+    document.getElementById('fcert').value = CERT_DESDE_URL;
+    aplicarCertificadoCodigo();
+  }
   openOv('ov-form');
 }
 
