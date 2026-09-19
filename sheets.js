@@ -850,6 +850,37 @@ async resetPassword(email) {
       }]);
 
 
+    // Crear la suscripción del negocio (plan Basic por defecto, en periodo de
+    // prueba) — sin esto, "Mi plan" en admin.html no puede cambiar de plan ni
+    // activar módulos, porque getSuscripcionActual() no encuentra nada.
+    const {
+      data: planBasic
+    } = await sbClient
+      .from('plans')
+      .select('id')
+      .eq('code', 'BASIC')
+      .maybeSingle();
+
+    if (planBasic) {
+      const {
+        error: subError
+      } = await sbClient
+        .from('subscriptions')
+        .insert([{
+          business_id: negocio.id,
+          plan_id: planBasic.id,
+          status: 'trial',
+          current_period_end: trialVence.toISOString().split('T')[0]
+        }]);
+
+      if (subError) {
+        console.error('No se pudo crear la suscripción del negocio nuevo:', subError);
+      }
+    } else {
+      console.error('No se encontró el plan BASIC — no se pudo crear la suscripción del negocio nuevo.');
+    }
+
+
     BUSINESS_ID =
       negocio.id;
 
