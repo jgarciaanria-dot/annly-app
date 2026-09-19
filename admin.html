@@ -155,22 +155,22 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .plan-current-name{font-size:17px;font-weight:800;color:var(--charcoal2);margin-top:2px;}
 .plan-current-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
 .plan-current-badge{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:var(--accent-soft);color:var(--charcoal2);font-size:10.5px;font-weight:800;white-space:nowrap;}
-.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch;}
-.plan-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:1.15rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;position:relative;transition:transform .18s,box-shadow .18s,border-color .18s;}
+.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;}
+.plan-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:.9rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;position:relative;transition:transform .18s,box-shadow .18s,border-color .18s;}
 .plan-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:#DCCFF1;}
 .plan-card.featured{border:1.5px solid #CDB6EE;box-shadow:0 12px 30px -18px rgba(124,58,237,.38);}
-.plan-card.featured::before{content:'MÁS ELEGIDO';position:absolute;right:14px;top:14px;padding:5px 8px;border-radius:999px;background:var(--accent-soft);color:var(--charcoal2);font-size:8.5px;font-weight:800;letter-spacing:.08em;}
+.plan-card.featured::before{content:'MÁS ELEGIDO';position:absolute;right:12px;top:12px;padding:4px 7px;border-radius:999px;background:var(--accent-soft);color:var(--charcoal2);font-size:8px;font-weight:800;letter-spacing:.08em;}
 .plan-card.current{border-color:#BBA2E6;background:linear-gradient(180deg,#fff 0%,#fcf9ff 100%);}
-.plan-name{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--ink-soft);text-transform:uppercase;}
-.plan-price{font-size:30px;line-height:1;font-weight:800;color:var(--ink);margin-top:9px;letter-spacing:-.03em;}
-.plan-price span{font-size:11px;font-weight:600;color:var(--ink-soft);letter-spacing:0;}
-.plan-description{font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-top:7px;min-height:34px;}
-.plan-capacity{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0;border-top:1px solid var(--line-soft);padding-top:12px;}
-.plan-capacity span{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;background:var(--bg);border-radius:8px;font-size:10.5px;color:var(--ink);font-weight:700;}
-.plan-list{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:1.1rem;flex:1;}
-.plan-list li{display:flex;align-items:flex-start;gap:7px;font-size:11.5px;color:#5D574F;line-height:1.35;}
-.plan-list i{color:#6E45C5;font-size:14px;margin-top:-1px;flex-shrink:0;}
-.plan-cta{width:100%;border:none;border-radius:11px;padding:10px 12px;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer;transition:all .16s;}
+.plan-name{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--ink-soft);text-transform:uppercase;}
+.plan-price{font-size:25px;line-height:1;font-weight:800;color:var(--ink);margin-top:7px;letter-spacing:-.03em;}
+.plan-price span{font-size:10.5px;font-weight:600;color:var(--ink-soft);letter-spacing:0;}
+.plan-description{font-size:10.5px;color:var(--ink-soft);line-height:1.4;margin-top:5px;min-height:0;}
+.plan-capacity{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;border-top:1px solid var(--line-soft);padding-top:9px;}
+.plan-capacity span{display:inline-flex;align-items:center;gap:4px;padding:5px 7px;background:var(--bg);border-radius:8px;font-size:10px;color:var(--ink);font-weight:700;}
+.plan-list{list-style:none;display:flex;flex-direction:column;gap:5px;margin-bottom:.9rem;flex:1;}
+.plan-list li{display:flex;align-items:flex-start;gap:6px;font-size:10.5px;color:#5D574F;line-height:1.3;}
+.plan-list i{color:#6E45C5;font-size:12.5px;margin-top:-1px;flex-shrink:0;}
+.plan-cta{width:100%;border:none;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;transition:all .16s;}
 .plan-cta.primary{background:var(--charcoal);color:#fff;}
 .plan-cta.primary:hover{background:var(--charcoal2);transform:translateY(-1px);}
 .plan-cta.secondary{background:#fff;border:1px solid var(--line);color:var(--charcoal2);}
@@ -461,6 +461,9 @@ img{max-width:100%;}
 .plan-module.activo{border-color:#9FDCC0;background:linear-gradient(180deg,#fff 0%,#f4fbf8 100%);}
 .plan-module.activo .plan-module-tag{color:#159A61;}
 .plan-module-active-badge{margin-top:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;color:#159A61;padding:7px 0;}
+.plan-module-link{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:5px;font-size:10.5px;font-weight:800;color:#7C3AED;text-decoration:none;padding:7px 0;}
+.plan-module-link:hover{text-decoration:underline;}
+.plan-module-link i{font-size:12px;}
 .plan-card.premium{border:1.5px solid #CDB6EE;box-shadow:0 12px 30px -18px rgba(124,58,237,.28);}
 @media(max-width:1050px){.plan-modules{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:780px){.plan-modules{grid-template-columns:1fr;}}
@@ -870,14 +873,16 @@ img{max-width:100%;}
         <div class="plan-description">Lo esencial para comenzar a organizar tu negocio.</div>
         <div class="plan-capacity"><span><i class="ti ti-user"></i>1 profesional</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
         <ul class="plan-list">
-          <li><i class="ti ti-check"></i><span>Agenda y citas</span></li>
-          <li><i class="ti ti-check"></i><span>Registro de clientes</span></li>
-          <li><i class="ti ti-check"></i><span>Historial de clientes y citas</span></li>
+          <li><i class="ti ti-check"></i><span>Agenda 24/7</span></li>
+          <li><i class="ti ti-check"></i><span>Citas y servicios ilimitados</span></li>
+          <li><i class="ti ti-check"></i><span>Notificaciones personalizadas</span></li>
+          <li><i class="ti ti-check"></i><span>Recordatorios automáticos</span></li>
+          <li><i class="ti ti-check"></i><span>Reagendar y cancelar citas</span></li>
+          <li><i class="ti ti-check"></i><span>Sistema de abono</span></li>
+          <li><i class="ti ti-check"></i><span>Horarios personalizados</span></li>
+          <li><i class="ti ti-check"></i><span>Bloqueo de horas o días por disponibilidad</span></li>
           <li><i class="ti ti-check"></i><span>Botón de WhatsApp</span></li>
-          <li><i class="ti ti-check"></i><span>Paleta estándar</span></li>
-          <li><i class="ti ti-check"></i><span>Servicios ilimitados</span></li>
-          <li><i class="ti ti-check"></i><span>Abonos manuales por Yappy o transferencia</span></li>
-          <li><i class="ti ti-check"></i><span>Validación manual de comprobantes</span></li>
+          <li><i class="ti ti-check"></i><span>Diseño profesional incluido</span></li>
         </ul>
         <button class="plan-cta secondary" id="plan-btn-basic" onclick="openUpgrade('basic')">Plan actual</button>
       </article>
@@ -888,13 +893,11 @@ img{max-width:100%;}
         <div class="plan-description">Más herramientas para vender, cobrar y promocionar.</div>
         <div class="plan-capacity"><span><i class="ti ti-user"></i>2 profesionales</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
         <ul class="plan-list">
-          <li><i class="ti ti-check"></i><span>Todo lo incluido en Basic</span></li>
-          <li><i class="ti ti-check"></i><span>Servicios ilimitados</span></li>
-          <li><i class="ti ti-check"></i><span>Yappy integrado (requiere Yappy Comercial)</span></li>
-          <li><i class="ti ti-check"></i><span>Promociones</span></li>
-          <li><i class="ti ti-check"></i><span>Ruleta con múltiples opciones</span></li>
-          <li><i class="ti ti-check"></i><span>Paletas adicionales</span></li>
-          <li><i class="ti ti-check"></i><span>Abonos para citas</span></li>
+          <li><i class="ti ti-check"></i><span>Todo lo de Basic</span></li>
+          <li><i class="ti ti-check"></i><span>Sistema de promociones</span></li>
+          <li><i class="ti ti-check"></i><span>Ruleta de premios</span></li>
+          <li><i class="ti ti-check"></i><span>Paleta de colores a escoger</span></li>
+          <li><i class="ti ti-check"></i><span>Pagos en línea — Yappy Comercial y pasarela de pago</span></li>
         </ul>
         <button class="plan-cta primary" id="plan-btn-medium" onclick="openUpgrade('medium')">Subir a Medium</button>
       </article>
@@ -905,14 +908,14 @@ img{max-width:100%;}
         <div class="plan-description">Control y visión completa para operar y crecer.</div>
         <div class="plan-capacity"><span><i class="ti ti-user"></i>3 profesionales</span><span><i class="ti ti-map-pin"></i>1 sucursal</span></div>
         <ul class="plan-list">
-          <li><i class="ti ti-check"></i><span>Todo lo incluido en Medium</span></li>
-          <li><i class="ti ti-check"></i><span>Servicios ilimitados</span></li>
-          <li><i class="ti ti-check"></i><span>Yappy integrado (requiere Yappy Comercial)</span></li>
+          <li><i class="ti ti-check"></i><span>Todo lo de Medium</span></li>
           <li><i class="ti ti-check"></i><span>Finanzas &amp; Reportes</span></li>
           <li><i class="ti ti-check"></i><span>Certificados de regalo</span></li>
-          <li><i class="ti ti-check"></i><span>Gestión de comisiones</span></li>
+          <li><i class="ti ti-check"></i><span>Gestión de pagos y comisiones por profesional</span></li>
           <li><i class="ti ti-check"></i><span>Propinas y anticipos</span></li>
           <li><i class="ti ti-check"></i><span>Cierres quincenales</span></li>
+          <li><i class="ti ti-check"></i><span>Comprobante de pago digital</span></li>
+          <li><i class="ti ti-check"></i><span>Dashboard financiero</span></li>
         </ul>
         <button class="plan-cta secondary" id="plan-btn-ultimate" onclick="openUpgrade('ultimate')">Subir a Ultimate</button>
       </article>
@@ -1650,9 +1653,9 @@ function switchTab(tab){
 
 // ===== PLAN / UPGRADE =====
 const ANNLY_PLANES_UI = {
-  basic:    {name:'BASIC', price:14, professionals:1, branches:1, features:['Agenda y citas','Registro de clientes','Historial de clientes y citas','Botón de WhatsApp','Paleta estándar','Servicios ilimitados','Abonos manuales por Yappy o transferencia']},
-  medium:  {name:'MEDIUM', price:24, professionals:2, branches:1, features:['Todo lo incluido en Basic','Servicios ilimitados','Yappy integrado (requiere Yappy Comercial)','Promociones','Ruleta con múltiples opciones','Paletas adicionales','Abonos para citas']},
-  ultimate:{name:'ULTIMATE',price:49, professionals:3, branches:1, features:['Todo lo incluido en Medium','Servicios ilimitados','Finanzas & Reportes','Certificados de regalo','Gestión de comisiones','Propinas y anticipos','Cierres quincenales']}
+  basic:    {name:'BASIC', price:14, professionals:1, branches:1, features:['Agenda 24/7','Citas y servicios ilimitados','Notificaciones personalizadas','Recordatorios automáticos','Reagendar y cancelar citas','Sistema de abono','Horarios personalizados','Bloqueo de horas o días por disponibilidad','Botón de WhatsApp','Diseño profesional incluido']},
+  medium:  {name:'MEDIUM', price:24, professionals:2, branches:1, features:['Todo lo de Basic','Sistema de promociones','Ruleta de premios','Paleta de colores a escoger','Pagos en línea — Yappy Comercial y pasarela de pago']},
+  ultimate:{name:'ULTIMATE',price:49, professionals:3, branches:1, features:['Todo lo de Medium','Finanzas & Reportes','Certificados de regalo','Gestión de pagos y comisiones por profesional','Propinas y anticipos','Cierres quincenales','Comprobante de pago digital','Dashboard financiero']}
 };
 let UPGRADE_PLAN_SELECCIONADO = null;
 
@@ -1731,7 +1734,10 @@ async function renderModulosPlan(){
 
   const ICONOS_MODULO = { CERTIFICADOS:'ti-gift', FINANZAS:'ti-chart-bar', PAGOS:'ti-wallet', AGENTE_AI:'ti-sparkles' };
 
-  cont.innerHTML = CATALOGO_MODULOS.map(m => {
+  // Agente AI siempre al final — su trato es distinto al resto (precio "desde", no un cobro fijo al toque)
+  const catalogoOrdenado = [...CATALOGO_MODULOS].sort((a,b) => (a.code==='AGENTE_AI'?1:0) - (b.code==='AGENTE_AI'?1:0));
+
+  cont.innerHTML = catalogoOrdenado.map(m => {
     const incluido = FEATURES_DEL_PLAN.includes(m.code);
     const activo = MODULOS_ACTIVOS.includes(m.code);
     const icono = ICONOS_MODULO[m.code] || 'ti-puzzle';
@@ -1742,16 +1748,22 @@ async function renderModulosPlan(){
       estadoHtml = `<div class="plan-module-included-badge"><i class="ti ti-check"></i> Incluido en tu plan</div>`;
     } else if (activo) {
       estadoHtml = `<div class="plan-module-active-badge"><i class="ti ti-circle-check-filled"></i> Activo</div>`;
+    } else if (esAgenteAI) {
+      const b=window.ANNLY_BUSINESS || {};
+      const subject=encodeURIComponent('Consulta sobre Agente AI — Annly');
+      const body=encodeURIComponent(`Hola equipo Annly,\n\nQuiero más información sobre el Agente AI para mi negocio.\n\nNegocio: ${b.nombre || ''}\nCorreo: ${window.ANNLY_USER_EMAIL || ''}\n\nGracias.`);
+      estadoHtml = `<a href="mailto:soporte@annly.app?subject=${subject}&body=${body}" class="plan-module-link">Más información <i class="ti ti-arrow-right"></i></a>`;
     } else {
-      estadoHtml = `<button type="button" onclick="activarModuloUI('${m.code}')">Agregar por $${m.price.toFixed(0)}/mes</button>`
-        + (esAgenteAI ? `<div class="plan-module-note">Precio final según alcance — te contactamos para definirlo.</div>` : '');
+      estadoHtml = `<button type="button" onclick="activarModuloUI('${m.code}')">Agregar por $${m.price.toFixed(0)}/mes</button>`;
     }
+
+    const etiqueta = incluido ? 'Incluido en ' + p_nombrePlanActual() : (esAgenteAI ? 'Desde $' + m.price.toFixed(0) + '/mes' : 'Potencia tu negocio · $' + m.price.toFixed(0) + '/mes');
 
     return `<div class="plan-module${incluido?' incluido':''}${activo?' activo':''}">
       <div class="plan-module-ico"><i class="ti ${icono}"></i></div>
       <div class="plan-module-title">${m.name}</div>
       <div class="plan-module-desc">${m.description || ''}</div>
-      <div class="plan-module-tag">${incluido ? 'Incluido en ' + p_nombrePlanActual() : (esAgenteAI ? 'Servicio adicional' : 'Módulo adicional · Desde $' + m.price.toFixed(0) + '/mes')}</div>
+      <div class="plan-module-tag">${etiqueta}</div>
       ${estadoHtml}
     </div>`;
   }).join('');
