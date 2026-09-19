@@ -281,8 +281,131 @@ window.AnnlyReady.then(() => {
   loadBloqueos();
   loadPromo();
   loadRuletaConfig();
+  loadCertificadosModulo();
   try{Sheets.initSheet();}catch(e){}
 });
+
+// ===== CERTIFICADOS DE REGALO (sitio público) =====
+let CERT_MODULO_DISPONIBLE = false;
+
+async function loadCertificadosModulo(){
+  try {
+    const sus = await Sheets.getSuscripcionActual();
+    if (!sus) return;
+    const [features, activos] = await Promise.all([
+      Sheets.getFeaturesDelPlan(sus.plan.id),
+      Sheets.getModulosActivos(sus.subscriptionId)
+    ]);
+    CERT_MODULO_DISPONIBLE = features.includes('CERTIFICADOS') || activos.includes('CERTIFICADOS');
+  } catch(e) { CERT_MODULO_DISPONIBLE = false; }
+  const wrap = document.getElementById('cert-link-wrap');
+  if (wrap) wrap.style.display = CERT_MODULO_DISPONIBLE ? 'block' : 'none';
+}
+
+let certPagoTipo = 'yappy';
+
+function abrirModalComprarCertificado(){
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappy = !!(b.yappy_numero);
+  const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
+  certPagoTipo = tieneYappy ? 'yappy' : 'bank';
+
+  let pagoHtml = '';
+  if (tieneYappy || tieneBanco) {
+    let opciones = '';
+    if (tieneYappy) {
+      opciones += `<div class="pay-opt sel" id="cert-opt-yappy" onclick="selPagoCert('yappy')">
+        <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
+        <div class="pay-opt-sub">Envía el pago desde tu app Yappy.</div>
+        <div class="pay-detail">Envía el monto al número <strong>${b.yappy_numero}</strong> y copia el comprobante aquí abajo.</div>
+      </div>`;
+    }
+    if (tieneBanco) {
+      opciones += `<div class="pay-opt${tieneYappy?'':' sel'}" id="cert-opt-bank" onclick="selPagoCert('bank')">
+        <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">${b.banco_nombre}</span></div>
+        <div class="pay-opt-sub">Transferencia bancaria a cuenta ${(b.banco_tipo_cuenta||'').toLowerCase()}.</div>
+        <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}</div>
+      </div>`;
+    }
+    pagoHtml = `<div class="fg"><label class="flbl">Método de pago</label></div>${opciones}
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="cert-comprobante" placeholder="Ej: YAPPY-001"/></div>`;
+  } else {
+    pagoHtml = `<div class="note-box-warn"><i class="ti ti-whatsapp" aria-hidden="true"></i><span>Contáctanos por WhatsApp para coordinar el pago de tu certificado.</span></div>
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="cert-comprobante" placeholder="Ej: coordinado por WhatsApp"/></div>`;
+  }
+
+  document.getElementById('comprar-cert-body').innerHTML = `
+    <div class="fg"><label class="flbl">Monto del certificado ($)</label><input class="fi" id="cert-pub-monto" type="number" min="1" step="1" placeholder="30"/></div>
+    <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Tu nombre</label><input class="fi" id="cert-pub-comprador-nombre"/></div>
+      <div class="fg"><label class="flbl">Tu WhatsApp</label><input class="fi" id="cert-pub-comprador-telefono"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Tu correo</label><input class="fi" id="cert-pub-comprador-correo" type="email" placeholder="tu@correo.com"/></div>
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">¿Para quién es? (opcional — déjalo vacío si es para ti)</span></div>
+    <div class="fg"><label class="flbl">Nombre de quien lo recibe</label><input class="fi" id="cert-pub-destinatario-nombre"/></div>
+    <div class="fg"><label class="flbl">Correo de quien lo recibe</label><input class="fi" id="cert-pub-destinatario-correo" type="email"/></div>
+    <div class="fg"><label class="flbl">Mensaje (opcional)</label><input class="fi" id="cert-pub-mensaje" placeholder="Disfruta este momento..."/></div>
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">3</span><span class="step-lbl">Pago</span></div>
+    ${pagoHtml}
+    <p id="cert-pub-msg" style="font-size:11px;color:#c0392b;margin-top:8px;min-height:14px;"></p>
+    <button class="btn-main" id="btnComprarCert" onclick="enviarCompraCertificado()">Enviar compra</button>`;
+
+  openOv('ov-comprar-certificado');
+}
+
+function selPagoCert(tipo){
+  certPagoTipo = tipo;
+  const optY = document.getElementById('cert-opt-yappy');
+  const optB = document.getElementById('cert-opt-bank');
+  if (optY) optY.classList.toggle('sel', tipo === 'yappy');
+  if (optB) optB.classList.toggle('sel', tipo === 'bank');
+}
+
+async function enviarCompraCertificado(){
+  const msgEl = document.getElementById('cert-pub-msg');
+  const monto = parseFloat(document.getElementById('cert-pub-monto').value);
+  const compradorNombre = document.getElementById('cert-pub-comprador-nombre').value.trim();
+  const compradorTelefono = document.getElementById('cert-pub-comprador-telefono').value.trim();
+  const compradorCorreo = document.getElementById('cert-pub-comprador-correo').value.trim();
+  const comprobanteEl = document.getElementById('cert-comprobante');
+  const comprobante = comprobanteEl ? comprobanteEl.value.trim() : '';
+
+  if (!monto || monto <= 0){ msgEl.textContent = 'Ingresa un monto válido.'; return; }
+  if (!compradorNombre || !compradorTelefono || !compradorCorreo){ msgEl.textContent = 'Completa tu nombre, WhatsApp y correo.'; return; }
+  if (!comprobante){ msgEl.textContent = 'Ingresa el número de comprobante del pago.'; return; }
+
+  msgEl.textContent = '';
+  const btn = document.getElementById('btnComprarCert');
+  if (btn){ btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  const vencimiento = new Date();
+  vencimiento.setMonth(vencimiento.getMonth() + 12);
+
+  try {
+    const destinatarioNombre = document.getElementById('cert-pub-destinatario-nombre').value.trim();
+    await Sheets.comprarCertificadoPublico({
+      monto, fechaVencimiento: vencimiento.toISOString().split('T')[0],
+      compradorNombre, compradorTelefono, compradorCorreo,
+      destinatarioNombre: destinatarioNombre || null,
+      destinatarioCorreo: document.getElementById('cert-pub-destinatario-correo').value.trim() || null,
+      mensaje: document.getElementById('cert-pub-mensaje').value.trim() || null,
+      comprobante, metodoPago: certPagoTipo
+    });
+    document.getElementById('comprar-cert-body').innerHTML = `
+      <div class="success-wrap">
+        <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+        <div class="s-title">¡Compra recibida!</div>
+        <div class="s-sub">Estamos confirmando tu pago — en cuanto quede validado te llegará el certificado por correo.</div>
+        <button class="btn-main" style="background:#2E2B2B;color:#C9A96E;" onclick="closeOv('ov-comprar-certificado')">Listo</button>
+      </div>`;
+  } catch(e) {
+    console.error('Error comprando certificado:', e);
+    msgEl.textContent = 'No se pudo procesar la compra. Intenta de nuevo.';
+    if (btn){ btn.disabled = false; btn.textContent = 'Enviar compra'; }
+  }
+}
+
 
 function getDefaultServices(){
   return [
@@ -344,6 +467,7 @@ let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=
 let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
 let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={};
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
+let certAplicado=null; // {id, codigo, saldoDisponible}
 
 function renderServices(){
   if(!SERVICES.length){
@@ -674,6 +798,7 @@ function chMo(d){
 function goForm(){
   closeOv('ov-cal');
   cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+  certAplicado=null;
   const dayStr=`${selectedDay} de ${MESES[calM]} ${calY}`;
   timerSecs=300;
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
@@ -759,11 +884,39 @@ function goForm(){
       </div>
       <p id="cuponMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>
+    <div class="fg">
+      <label class="flbl">¿Tienes un certificado de regalo?</label>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" id="fcert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;">
+        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:#2E2B2B;color:#C9A96E;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+      </div>
+      <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
+    </div>
     ${pagoSection}
     <button class="btn-main" id="btnConfirmar" onclick="confirmar('${dayStr}')">Confirmar mi cita</button>`;
 
   if(tieneAbono) startTimer();
   openOv('ov-form');
+}
+
+async function aplicarCertificadoCodigo(){
+  const input=document.getElementById('fcert');
+  const msgEl=document.getElementById('certMsg');
+  const codigo=input.value.trim();
+  if(!codigo){ msgEl.textContent=''; certAplicado=null; return; }
+  msgEl.style.color='#999';
+  msgEl.textContent='Verificando...';
+  const res=await Sheets.validarCertificado(codigo);
+  if(res.valido){
+    certAplicado={id:res.certificateId, codigo:res.codigo, saldoDisponible:res.saldoDisponible};
+    msgEl.style.color='#3a7a3a';
+    msgEl.textContent=`✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles.`;
+  } else {
+    certAplicado=null;
+    msgEl.style.color='#c0392b';
+    const motivos={codigo_no_encontrado:'Código no válido.',codigo_vacio:'Ingresa un código.',sin_saldo:'Este certificado ya no tiene saldo.',vencido:'Este certificado está vencido.',pendiente_pago:'Este certificado aún no ha sido activado.',cancelado:'Este certificado fue cancelado.'};
+    msgEl.textContent=motivos[res.motivo]||'Código no válido.';
+  }
 }
 
 
@@ -869,16 +1022,25 @@ async function confirmar(dayStr){
   const citaId = 'cita-' + Date.now();
 
   const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
-  const precioFinal = Math.max(0, precio - descuentoMonto);
+  const precioTrasCupon = Math.max(0, precio - descuentoMonto);
+  const montoCertAplicado = (!esConsultar && certAplicado) ? Math.min(certAplicado.saldoDisponible, precioTrasCupon) : 0;
+  const precioFinal = Math.max(0, precioTrasCupon - montoCertAplicado);
 
   const cita={nombre,telefono:tel,correo,nota:notaFinal,servicio:curSvc.name,categoria:curSvc.cat,
     precioTotal:precio,precioEsConsultar:esConsultar,fecha:dayStr,hora:selTime,duracionMin:curSvc.durMin,
     comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
     metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
-    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal};
-  try{await Sheets.guardarCita(cita);}catch(e){console.error(e);}
+    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
+    certificadoCodigo: montoCertAplicado>0 ? certAplicado.codigo : null,
+    certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null};
+  let appointmentId=null;
+  try{ appointmentId=await Sheets.guardarCita(cita); }catch(e){console.error(e);}
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
   if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
+  if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e);} }
+  const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre, telefonoCliente:tel, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
   await new Promise(r=>setTimeout(r,900));
   const precioStr=esConsultar?'Por confirmar':(curSvc.precioTexto&&curSvc.precioTexto.toLowerCase().includes('desde')?'Desde $'+precio.toFixed(2):'$'+precio.toFixed(2));
   const restanteTexto = esConsultar
@@ -888,6 +1050,9 @@ async function confirmar(dayStr){
   const cuponLine = (cuponAplicado && cuponDescuentoPct>0 && !esConsultar)
     ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
     : (cuponAplicado ? `<strong>Cupón aplicado:</strong> ${cuponPremioTexto}<br>` : '');
+  const certLine = montoCertAplicado>0
+    ? `<strong>Certificado aplicado (${certAplicado.codigo}):</strong> <span style="color:#4CAF50;font-weight:600;">-$${montoCertAplicado.toFixed(2)}</span><br>`
+    : '';
   const totalLine = esConsultar
     ? `<strong>Monto a cancelar el día de la cita:</strong> ${restanteTexto}<br>`
     : `<strong>Total a pagar:</strong> <span style="color:#D95F2B;font-weight:600;">${restanteTexto}</span><br>`;
@@ -904,6 +1069,7 @@ async function confirmar(dayStr){
         <strong>Precio total:</strong> <span style="color:#D95F2B;font-weight:600;">${precioStr}</span><br>
         ${abonoLine}
         ${cuponLine}
+        ${certLine}
         ${totalLine}
       </div>
       <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>
