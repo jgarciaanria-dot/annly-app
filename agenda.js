@@ -1028,9 +1028,9 @@ function setupYappyButtonAbono(){
     const nombre=document.getElementById('fn').value.trim();
     const tel=document.getElementById('fp').value.trim();
     const correo=document.getElementById('fe').value.trim();
-    if(!nombre||!tel||!correo){ msgEl.style.color='#c0392b'; msgEl.textContent='Completa tu nombre, WhatsApp y correo antes de pagar.'; return; }
+    if(!nombre||!tel||!correo){ msgEl.style.color='#c0392b'; msgEl.textContent='Completa tu nombre, WhatsApp y correo antes de pagar.'; btn.isButtonLoading=false; return; }
     const alias=limpiarNumYappy(document.getElementById('fAliasYappy').value);
-    if(!alias || alias.length<7){ msgEl.style.color='#c0392b'; msgEl.textContent='Ingresa tu número Yappy (8 dígitos, sin +507).'; return; }
+    if(!alias || alias.length<7){ msgEl.style.color='#c0392b'; msgEl.textContent='Ingresa tu número Yappy (8 dígitos, sin +507).'; btn.isButtonLoading=false; return; }
 
     msgEl.style.color='#999'; msgEl.textContent='Creando tu orden de pago...';
     const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
@@ -1044,6 +1044,7 @@ function setupYappyButtonAbono(){
     } else {
       msgEl.style.color='#c0392b';
       msgEl.textContent = (res && res.error) || 'No se pudo crear la orden de pago. Intenta de nuevo.';
+      btn.isButtonLoading=false;
     }
   });
 
