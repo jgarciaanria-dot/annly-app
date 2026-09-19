@@ -64,7 +64,20 @@
   </div>
 </div>
 
+<div id="cert-link-wrap" style="display:none;text-align:center;margin:-6px 0 14px;">
+  <button type="button" onclick="abrirModalComprarCertificado()" style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--gold-dark);letter-spacing:.03em;">
+    <i class="ti ti-gift" aria-hidden="true"></i> Regala un certificado
+  </button>
+</div>
+
 <div id="serviceList"></div>
+
+<div class="ov" id="ov-comprar-certificado">
+  <div class="panel">
+    <div class="phdr"><span class="ptitle">Certificado de regalo</span><button class="pclose" onclick="closeOv('ov-comprar-certificado')">×</button></div>
+    <div class="pbody" id="comprar-cert-body"></div>
+  </div>
+</div>
 
 <div class="ov" id="ov-detail">
   <div class="panel">
