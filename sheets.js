@@ -3344,7 +3344,8 @@ const Sheets = {
   // acaba de quedar activo (ya sea porque el negocio lo emitió directo, o
   // porque acaba de confirmar el pago de una compra pública).
   async _notificarCertificadoActivo({ codigo, monto, fechaVencimiento, compradorNombre, compradorCorreo, destinatarioNombre, destinatarioCorreo, mensaje }) {
-    const linkCertificado = window.location.origin + '/certificado.html?codigo=' + encodeURIComponent(codigo);
+    const slugNegocio = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug) || '';
+    const linkCertificado = window.location.origin + '/certificado.html?codigo=' + encodeURIComponent(codigo) + (slugNegocio ? '&n=' + encodeURIComponent(slugNegocio) : '');
     if (compradorCorreo) {
       await this.enviarCorreo('certificado_comprador', { codigo, monto, fechaVencimiento, nombreComprador: compradorNombre, correoComprador: compradorCorreo, nombreDestinatario: destinatarioNombre });
     }
@@ -3376,7 +3377,7 @@ const Sheets = {
       valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo,
       montoOriginal: Number(data.monto_inicial), montoDisponible: saldo,
       compradoPorNombre: data.comprador_nombre, destinatarioNombre: data.destinatario_nombre,
-      mensaje: data.mensaje
+      mensaje: data.mensaje, fechaVencimiento: data.fecha_vencimiento
     };
   },
 
