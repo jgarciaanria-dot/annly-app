@@ -1,488 +1,85 @@
-// =========================================================
-// Supabase Edge Function: send-confirmation-email (multi-tenant)
-//
-// Tiene DOS formas de dispararse:
-//
-// 1) Database Webhook de Supabase sobre `appointments` (INSERT y UPDATE) —
-//    Postgres llama esta función solo, sin que ningún código JS la invoque.
-//    Manda correo al cliente Y al dueño cuando hay cita nueva, reprogramada
-//    o cancelada. (Esta parte no se tocó — es la que ya tenías funcionando.)
-//
-// 2) Llamada directa desde el navegador (fetch con {tipo, businessId, datos})
-//    para los correos de Certificados, que no tienen una tabla con webhook
-//    propio: comprador, destinatario, negocio (pendiente de pago / activado).
-// =========================================================
-
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-// service_role (no anon) porque necesitamos leer auth.users para el correo del dueño
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-function construirLinkGoogleCalendar(cita, negocio) {
-  const horaCorta = (cita.hora || "00:00").split(":").slice(0, 2).join(":");
-  const fecha = new Date(cita.fecha + "T" + horaCorta + ":00-05:00"); // hora de Panamá
-  const fin = new Date(fecha.getTime() + (cita.duracion_min || 60) * 60000);
-  const fmt = (d) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: `Cita: ${cita.servicio_nombre}`,
-    dates: `${fmt(fecha)}/${fmt(fin)}`,
-    details: `Cita en ${negocio.nombre || "tu negocio"}. Servicio: ${cita.servicio_nombre}`,
-    location: negocio.direccion || ""
-  });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
-function formatearFechaHora(cita) {
-  const fechaLegible = new Date(cita.fecha + "T00:00:00").toLocaleDateString("es-PA", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric"
-  });
-  const fechaCapitalizada = fechaLegible.charAt(0).toUpperCase() + fechaLegible.slice(1);
-  const [h, m] = (cita.hora || "0:0").split(":");
-  const hNum = parseInt(h);
-  const horaLegible = `${hNum > 12 ? hNum - 12 : (hNum === 0 ? 12 : hNum)}:${m} ${hNum >= 12 ? "p.m." : "a.m."}`;
-  return { fechaLegible: fechaCapitalizada, horaLegible };
-}
-
-async function enviarCorreo(destinatario, nombreRemitente, asunto, html) {
-  if (!destinatario) return { skipped: true };
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: `${nombreRemitente} <notificaciones@annly.app>`, to: destinatario, subject: asunto, html })
-  });
-  const result = await res.json();
-  if (!res.ok) console.error("Error de Resend:", result);
-  return { ok: res.ok, result };
-}
-
-// ---------- Molde único de tabla HTML (mismo diseño para todos los correos) ----------
-function armarPlantillaCorreo({ nombreNegocio, tagline, colorAcento, emojiHeader, titulo, saludo, subtitulo, filas, botones, notaTitulo, notaTexto, direccion }) {
-  const filasHtml = filas.map(f => `
-                <tr>
-                  <td style="padding:18px 20px;border-bottom:1px solid #eeeeee;">
-                    <table width="100%"><tr>
-                      <td width="45" valign="middle">
-                        <div style="width:38px;height:38px;background:#f5f0e8;border-radius:50%;text-align:center;line-height:38px;font-size:18px;">${f.emoji}</div>
-                      </td>
-                      <td>
-                        <div style="font-size:12px;color:#737b8b;letter-spacing:.5px;margin-bottom:4px;">${f.etiqueta}</div>
-                        <div style="font-size:17px;color:#151b2d;font-weight:${f.negrita !== false ? 600 : 400};${f.tachado ? "text-decoration:line-through;color:#a3a8b3;" : ""}">${f.valor}</div>
-                      </td>
-                    </tr></table>
-                  </td>
-                </tr>`).join("");
-
-  const botonesHtml = (botones || []).map((b, i) => `
-          <tr>
-            <td align="center" style="padding:0 35px ${i === botones.length - 1 ? "25px" : "12px"};">
-              <a href="${b.url}" target="_blank" style="display:block;background:${b.color};color:#ffffff;text-decoration:none;padding:17px 20px;border-radius:9px;font-size:16px;font-weight:bold;text-align:center;">
-                ${b.emoji} &nbsp; ${b.texto} &nbsp; →
-              </a>
-            </td>
-          </tr>`).join("");
-
-  const notaHtml = notaTitulo ? `
-          <tr>
-            <td style="padding:0 35px 30px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f8f7;border-radius:10px;">
-                <tr>
-                  <td width="55" valign="middle" style="padding:17px 10px 17px 18px;">
-                    <div style="width:32px;height:32px;border-radius:50%;background:#ffffff;text-align:center;line-height:32px;font-size:17px;">ℹ</div>
-                  </td>
-                  <td style="padding:15px 15px 15px 0;">
-                    <div style="font-size:15px;font-weight:bold;color:#151b2d;margin-bottom:4px;">${notaTitulo}</div>
-                    <div style="font-size:14px;color:#6d7483;">${notaTexto}</div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>` : "";
-
-  return `<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${titulo}</title></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial, Helvetica, sans-serif;color:#202536;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;padding:30px 15px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e5e5;">
-
-        <tr><td align="center" style="padding:28px 25px 24px;background:#ffffff;border-bottom:1px solid #e7d7bd;">
-          <div style="font-size:20px;letter-spacing:4px;font-weight:500;color:${colorAcento};">${nombreNegocio.toUpperCase()}</div>
-          ${tagline ? `<div style="margin-top:8px;font-size:11px;letter-spacing:3px;color:#8a8f9d;">${tagline}</div>` : ""}
-        </td></tr>
-
-        <tr><td style="padding:38px 35px 25px;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="80" valign="top">
-              <div style="width:64px;height:64px;background:#f4f0e9;border-radius:50%;text-align:center;line-height:64px;font-size:30px;">${emojiHeader}</div>
-            </td>
-            <td valign="top" style="padding-left:15px;">
-              <div style="font-size:28px;line-height:34px;font-weight:700;color:#151b2d;">${titulo}</div>
-              <div style="margin-top:10px;font-size:16px;line-height:23px;color:#626b7d;"><strong>${saludo}</strong><br>${subtitulo}</div>
-            </td>
-          </tr></table>
-        </td></tr>
-
-        <tr><td style="padding:0 35px 25px;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e5e5e5;border-radius:12px;background:#ffffff;">
-            ${filasHtml}
-          </table>
-        </td></tr>
-
-        ${botonesHtml}
-        ${notaHtml}
-
-        <tr><td style="padding:22px 35px;border-top:1px solid #eeeeee;background:#fafafa;">
-          <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:#4b5261;">${nombreNegocio.toUpperCase()}</div>
-          ${direccion ? `<div style="margin-top:6px;font-size:13px;color:#858b97;">${direccion}</div>` : ""}
-        </td></tr>
-
-      </table>
-    </td></tr>
-  </table>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Annly automatiza las reservas, recordatorios y pagos de tu negocio para que tengas más tiempo para atender.">
+  <title>Annly — Tu negocio reserva, incluso cuando tú no estás</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root { --ink:#201b2b; --muted:#706a7c; --line:#e9e4ed; --paper:#fffdfb; --lilac:#f4eaff; --purple:#7424d4; --pink:#ef3d87; --mint:#ddf8e9; --shadow:0 22px 60px rgba(47,27,73,.12); }
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 'DM Sans',sans-serif} a{text-decoration:none;color:inherit} .wrap{width:min(1160px,calc(100% - 40px));margin:auto}.serif,h1,h2{font-family:'Playfair Display',serif}.eyebrow{color:var(--purple);font-size:.72rem;line-height:1.3;font-weight:700;letter-spacing:.12em}.gradient{font-style:italic;background:linear-gradient(100deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid transparent;border-radius:999px;padding:13px 20px;font-weight:700;transition:.2s}.btn:hover{transform:translateY(-2px)}.btn-dark{background:var(--ink);color:#fff}.btn-grad{color:#fff;background:linear-gradient(100deg,#6c25cf,#e93681);box-shadow:0 12px 24px rgba(123,36,206,.22)}.btn-light{background:#fff;border-color:var(--line)}
+    .site-nav{position:sticky;top:0;z-index:10;background:rgba(255,253,251,.82);backdrop-filter:blur(14px);border-bottom:1px solid transparent}.site-nav.scrolled{border-color:var(--line)}.nav{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{font-size:1.72rem;font-weight:700;letter-spacing:-.07em}.logo span{color:var(--pink)}.nav-links{display:flex;gap:27px;list-style:none;margin:0;padding:0;font-size:.88rem;color:#56505f}.nav-links a:hover{color:var(--purple)}.nav-actions{display:flex;align-items:center;gap:17px;font-size:.88rem}.menu-btn{display:none;background:none;border:0;color:var(--ink);padding:4px}
+    .hero{display:grid;grid-template-columns:1fr 1.02fr;align-items:center;gap:64px;padding:80px 0 94px}.hero h1{font-size:clamp(3rem,5.3vw,5rem);letter-spacing:-.065em;line-height:1.02;margin:13px 0 23px}.hero-copy>p{color:var(--muted);font-size:1.08rem;max-width:540px}.cta-row{display:flex;gap:11px;flex-wrap:wrap;margin:31px 0 20px}.trust{display:flex;gap:17px;flex-wrap:wrap;font-size:.79rem;color:#625b6c}.trust span{display:flex;align-items:center;gap:5px}.trust i{color:#18a664}.hero-stage{position:relative;min-height:515px}.hero-photo{position:absolute;right:0;top:0;width:87%;height:456px;border-radius:34px;overflow:hidden;box-shadow:var(--shadow)}.hero-photo img{width:100%;height:100%;object-fit:cover}.orb{position:absolute;width:320px;height:320px;border-radius:50%;background:linear-gradient(135deg,#efc9ff,#ffcae1);bottom:15px;left:0;filter:blur(1px)}.float{position:absolute;background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.7);box-shadow:0 14px 35px rgba(34,19,54,.14);border-radius:15px;padding:13px 15px}.booking{display:flex;align-items:center;gap:10px;left:0;top:85px}.booking i{background:var(--mint);color:#16975b;border-radius:50%;padding:6px;width:27px;height:27px}.booking strong{display:block;font-size:.82rem}.booking small{display:block;color:var(--muted);font-size:.7rem}.rate{right:-5px;bottom:24px;color:#126d4a;font-size:.84rem;font-weight:700;display:flex;gap:6px;align-items:center}.week{left:52px;bottom:-3px;width:198px;padding:15px}.week-top{display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:12px}.week-top span{color:var(--pink)}.slots{display:flex;gap:5px;align-items:end;height:44px}.slots i{display:block;flex:1;border-radius:4px;background:#e9d5ff}.slots i:nth-child(2),.slots i:nth-child(4){height:80%;background:#9b51e0}.slots i:nth-child(3){height:55%;background:#f49ac1}.slots i:nth-child(1),.slots i:nth-child(5){height:35%}
+    .proof{background:var(--lilac);color:var(--ink);padding:18px 0}.proof .wrap{display:flex;justify-content:space-between;gap:25px;align-items:center}.proof p{margin:0;font-size:.91rem;color:var(--ink)}.proof strong{font-size:1.1rem}.proof-items{display:flex;gap:38px;flex-wrap:wrap}.proof-item{font-size:.75rem;color:#7a7286}.proof-item b{display:block;color:var(--ink);font-size:1rem}
+    .pain{display:grid;grid-template-columns:.82fr 1.18fr;gap:88px;align-items:start}.section h2{font-size:clamp(2.2rem,4vw,3.5rem);line-height:1.08;letter-spacing:-.055em;margin:12px 0 0}.pain p{color:var(--muted);font-size:1.05rem}.pain-list{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:25px}.pain-item{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#9B5DE5,#4A90D9) border-box;border:2px solid transparent;border-radius:20px;padding:25px}.pain-item:nth-child(2){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#4A90D9,#2FB89C) border-box}.pain-item:nth-child(3){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#E8B84A,#E8734A) border-box}.pain-item:nth-child(4){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#E8734A,#EF3D87) border-box}.pain-item i{display:grid;place-items:center;width:43px;height:43px;border-radius:12px;color:#fff}.pain-item:nth-child(1) i{background:linear-gradient(135deg,#9B5DE5,#A24FE0)}.pain-item:nth-child(2) i{background:linear-gradient(135deg,#2F8FCE,#2FB89C)}.pain-item:nth-child(3) i{background:linear-gradient(135deg,#D99A3A,#E8734A)}.pain-item:nth-child(4) i{background:linear-gradient(135deg,#E85A6E,#EF3D87)}.pain-item h3{margin:17px 0 8px;font-size:1.04rem}.pain-item p{font-size:.87rem;margin:0}
+    .how{background:linear-gradient(145deg,#faf5ff,#fff8fb)}.how-head{text-align:center;max-width:680px;margin:0 auto 48px}.how-head p{color:var(--muted)}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}.step{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#9B5DE5,#4A90D9,#2FB89C) border-box;border:2px solid transparent;border-radius:20px;padding:25px}.step:nth-child(2){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#2FB89C,#E8B84A,#E8734A) border-box}.step:nth-child(3){background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#E8734A,#EF3D87,#C43DD9) border-box}.step-number{color:var(--purple);font:700 1.8rem 'Playfair Display',serif}.step h3{margin:17px 0 8px;font-size:1.08rem}.step p{margin:0;color:var(--muted);font-size:.9rem}.step i{display:grid;place-items:center;width:43px;height:43px;border-radius:12px;color:#fff}.step:nth-child(1) i{background:linear-gradient(135deg,#9B5DE5,#A24FE0)}.step:nth-child(2) i{background:linear-gradient(135deg,#1FA57F,#C7B23A)}.step:nth-child(3) i{background:linear-gradient(135deg,#E85A6E,#EF3D87)}
+    .features-head{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:36px}.features-head p{color:var(--muted);max-width:430px}.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.feature{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#9B5DE5,#4A90D9,#2FB89C,#E8B84A,#E8734A,#EF3D87) border-box;border:2px solid transparent;border-radius:20px;padding:25px;min-height:234px}.feature:hover{box-shadow:0 14px 35px rgba(48,28,72,.07)}.icon-box{width:43px;height:43px;display:grid;place-items:center;border-radius:12px;color:#fff}.feature:nth-child(1) .icon-box{background:linear-gradient(135deg,#9B5DE5,#A24FE0)}.feature:nth-child(2) .icon-box{background:linear-gradient(135deg,#2F8FCE,#2FB89C)}.feature:nth-child(3) .icon-box{background:linear-gradient(135deg,#1FA57F,#C7B23A)}.feature:nth-child(4) .icon-box{background:linear-gradient(135deg,#D99A3A,#E8734A)}.feature:nth-child(5) .icon-box{background:linear-gradient(135deg,#E85A6E,#EF3D87)}.feature:nth-child(6) .icon-box{background:linear-gradient(135deg,#C43DD9,#9B5DE5)}.feature h3{margin:17px 0 8px;font-size:1.04rem}.feature p{color:var(--muted);font-size:.87rem;margin:0}.feature small{display:inline-block;margin-top:17px;background:#f6f3f8;color:#675f71;border-radius:30px;padding:4px 9px;font-size:.68rem;font-weight:700}
+    .audience{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center}.audience-photos{position:relative;height:430px}.audience-photos img{position:absolute;object-fit:cover;border-radius:24px;box-shadow:var(--shadow)}.audience-photos img:first-child{width:62%;height:335px;left:0;top:0}.audience-photos img:last-child{width:52%;height:265px;right:0;bottom:0;border:8px solid var(--paper)}.audience-copy p{color:var(--muted);max-width:480px}.checks{padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:26px 0}.checks li{font-size:.86rem;display:flex;gap:7px;align-items:center}.checks i{color:#18a664;width:16px}
+    .pricing{background:#211b2c;color:#fff}.pricing .eyebrow{color:#eca9ff}.pricing-head{text-align:center;max-width:650px;margin:0 auto 42px}.pricing-head h2{margin-top:9px}.pricing-head p{color:#c7c0ce}.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}.price-card{background:#30283d;border:1px solid #473b56;border-radius:20px;padding:27px;position:relative}.price-card.featured{background:linear-gradient(155deg,#fff,#f9edff);color:var(--ink);transform:translateY(-10px);border-color:#fff;box-shadow:0 20px 50px rgba(0,0,0,.2)}.badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;background:linear-gradient(100deg,#6c25cf,#e93681);color:#fff;padding:5px 11px;border-radius:99px;font-size:.67rem;font-weight:700}.price-card h3{font-size:1.25rem;margin:0}.users{font-size:.78rem;color:#c9bfce;margin:2px 0 20px}.featured .users{color:var(--muted)}.price{font-size:2.45rem;line-height:1;font-weight:700;letter-spacing:-.06em}.price span{font-size:.85rem;letter-spacing:0;font-weight:400}.price-note{font-size:.8rem;color:#c9bfce;margin:11px 0 21px;min-height:25px}.featured .price-note{color:var(--muted)}.price-card ul{list-style:none;padding:0;margin:0 0 24px;border-top:1px solid #473b56;padding-top:17px}.featured ul{border-color:#ebdfef}.price-card li{font-size:.82rem;margin:10px 0;display:flex;gap:8px}.price-card li i{color:#67dfa7;width:16px}.featured li i{color:#15a05c}.price-card .btn{width:100%}.pricing-foot{text-align:center;color:#a69cab;font-size:.76rem;margin:25px 0 0}
+    .closing{padding:102px 0}.closing-box{position:relative;overflow:hidden;border-radius:27px;color:#fff;min-height:340px;padding:56px}.closing-box:before{content:'';inset:0;position:absolute;background:linear-gradient(90deg,rgba(31,20,42,.94),rgba(49,20,51,.68))}.closing-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1}.closing-content{position:relative;max-width:600px}.closing h2{font-size:clamp(2.3rem,4vw,3.8rem);margin:9px 0}.closing p{color:#eee8f0;font-size:1.03rem}.contact-link{margin-top:22px;background:#fff;color:var(--ink)}footer{border-top:1px solid var(--line);padding:32px 0 45px}.footer-row{display:flex;justify-content:space-between;gap:25px;align-items:center}.footer-links{display:flex;list-style:none;gap:19px;margin:0;padding:0;color:#655e6e;font-size:.82rem}.copyright{color:#8b8393;font-size:.76rem;margin-top:27px}
+    @media(max-width:800px){.nav-links,.nav-actions>a:first-child{display:none}.menu-btn{display:block}.nav-actions{margin-left:auto}.nav-links.open{display:flex;position:absolute;top:68px;left:20px;right:20px;flex-direction:column;background:#fff;padding:20px;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);gap:16px}.hero,.pain,.audience{grid-template-columns:1fr;gap:45px}.hero{padding-top:55px}.hero-stage{min-height:420px}.hero-photo{width:85%;height:370px}.proof .wrap{display:block}.proof-items{margin-top:17px;gap:20px}.pain-list,.feature-grid,.price-grid{grid-template-columns:1fr 1fr}.features-head{display:block}.steps{grid-template-columns:1fr}.step{padding:18px}.step i{width:34px;height:34px;margin-bottom:2px}.step-number{font-size:1.3rem;margin:8px 0 2px}.step h3{margin:6px 0 5px;font-size:1.02rem}.pain-item{padding:18px}.pain-item i{width:28px;height:28px;border-radius:8px}.pain-item h3{margin:8px 0 3px;font-size:.96rem}.pain-item p{font-size:.82rem}.audience-photos{height:360px}.price-card.featured{transform:none}.closing{padding:70px 0}.closing-box{padding:38px 27px}.footer-row{align-items:flex-start;flex-direction:column}.footer-links{flex-wrap:wrap}}
+    @media(max-width:520px){.wrap{width:min(100% - 30px,1160px)}.nav{min-height:66px}.nav-actions .btn{padding:10px 13px;font-size:.78rem}.hero h1{font-size:3.05rem}.hero-stage{min-height:400px}.hero-photo{height:310px;width:89%}.booking{top:8px;left:8px;padding:6px 8px;gap:5px;max-width:150px}.booking strong{font-size:.62rem;line-height:1.25}.booking small{display:none}.booking i{width:16px;height:16px;padding:3px}.week{left:16px;bottom:14px;width:176px;padding:13px}.rate{left:16px;right:auto;bottom:122px}.pain-list,.feature-grid,.price-grid{grid-template-columns:1fr}.feature{padding:18px;min-height:0}.feature .icon-box{width:34px;height:34px}.feature h3{margin:10px 0 4px;font-size:.98rem}.feature small{margin-top:10px}.checks{grid-template-columns:1fr}.audience{gap:36px}.audience-photos{height:318px}.proof-items{gap:15px}.closing-box{min-height:390px}.footer-links{gap:12px}}
+    @keyframes annly-float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-9px) } }
+    .hero-stage .float { animation: annly-float 4.8s ease-in-out infinite; }
+    .hero-stage .rate { animation-delay: -1.4s; }
+    .hero-stage .week { animation-delay: -2.7s; }
+    @media (prefers-reduced-motion: reduce) { .hero-stage .float { animation: none; } }
+    /* Espaciado más compacto y carrusel de rubros */
+    .audience{grid-template-columns:1.05fr .95fr;gap:56px}.rubro-carousel{min-width:0}.rubro-viewport{overflow:hidden;border-radius:22px}.rubro-track{display:flex;gap:14px;transition:transform .45s cubic-bezier(.2,.7,.2,1)}.rubro-card{position:relative;flex:0 0 calc(50% - 7px);height:370px;overflow:hidden;border-radius:22px;background:#eee}.rubro-card img{width:100%;height:100%;object-fit:cover;transition:transform .45s ease}.rubro-card:hover img{transform:scale(1.04)}.rubro-card:after{content:'';position:absolute;inset:45% 0 0;background:linear-gradient(transparent,rgba(24,17,34,.78))}.rubro-card span{position:absolute;left:17px;bottom:15px;z-index:1;color:#fff;font-weight:700;font-size:.9rem}.carousel-controls{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px}.carousel-btn{display:grid;place-items:center;width:37px;height:37px;border:1px solid var(--line);border-radius:50%;background:#fff;color:var(--ink);cursor:pointer;transition:.2s}.carousel-btn:hover{background:var(--ink);color:#fff}.carousel-status{display:flex;gap:6px}.carousel-dot{border:0;width:7px;height:7px;border-radius:50%;padding:0;background:#d8d0df;cursor:pointer;transition:.2s}.carousel-dot.active{width:22px;border-radius:8px;background:var(--purple)}
+    @media(max-width:800px){.audience{grid-template-columns:1fr;gap:35px}.rubro-card{height:310px}}
+    @media(max-width:520px){.rubro-card{flex-basis:100%;height:340px}}
+    /* ESCALA DE ESPACIADO — única fuente de verdad para .section/.closing y sus excepciones */
+    .section{padding:56px 0}.closing{padding:56px 0}.site-nav .logo{font-size:2.1rem}.site-nav .nav{min-height:86px}#como-funciona{padding-bottom:38px}#funciones{padding-top:38px;padding-bottom:38px}#rubros{padding-top:38px}
+    @media(max-width:800px){.section{padding:50px 0}.closing{padding:50px 0}#como-funciona{padding-bottom:32px}#funciones{padding-top:32px;padding-bottom:32px}#rubros{padding-top:32px}.site-nav .nav{min-height:72px}.site-nav .logo{font-size:1.9rem}}
+    @media(max-width:520px){.section{padding:44px 0}.closing{padding:44px 0}.price-card{padding:20px}.price-card ul{padding-top:12px}.price-card li{margin:7px 0}.price-note{margin:8px 0 16px}}
+    /* Movimiento funcional para los iconos de las capacidades */
+    #funciones .feature{position:relative;overflow:hidden;transition:transform .25s ease,box-shadow .25s ease}#funciones .feature:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(80,35,126,.11)}#funciones .icon-box svg{stroke-width:2.35;will-change:transform}#funciones.is-animated .feature{animation:feature-card-in .62s cubic-bezier(.2,.75,.25,1) both}#funciones.is-animated .feature:nth-child(2){animation-delay:.08s}#funciones.is-animated .feature:nth-child(3){animation-delay:.16s}#funciones.is-animated .feature:nth-child(4){animation-delay:.24s}#funciones.is-animated .feature:nth-child(5){animation-delay:.32s}#funciones.is-animated .feature:nth-child(6){animation-delay:.4s}#funciones.is-animated .feature:nth-child(1) .icon-box svg{animation:agenda-ready 1.1s .36s both}#funciones.is-animated .feature:nth-child(2) .icon-box svg{animation:reminder-ring .85s .52s both}#funciones.is-animated .feature:nth-child(3) .icon-box svg{animation:payment-approved .95s .62s both}#funciones.is-animated .feature:nth-child(4) .icon-box svg{animation:team-arrives .9s .72s both}#funciones.is-animated .feature:nth-child(5) .icon-box svg{animation:message-arrives .85s .82s both}#funciones.is-animated .feature:nth-child(6) .icon-box svg{animation:bot-online .95s .92s both}#funciones .feature:hover .icon-box{transform:scale(1.07)}#funciones .icon-box{transition:transform .25s ease}#como-funciona .step{transition:transform .25s ease,box-shadow .25s ease}#como-funciona .step:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(80,35,126,.1)}#como-funciona.is-animated .step{animation:feature-card-in .6s cubic-bezier(.2,.75,.25,1) both}#como-funciona.is-animated .step:nth-child(2){animation-delay:.1s}#como-funciona.is-animated .step:nth-child(3){animation-delay:.2s}#como-funciona.is-animated .step:nth-child(1) i svg{animation:agenda-ready 1.1s .3s both}#como-funciona.is-animated .step:nth-child(2) i svg{animation:reminder-ring .85s .42s both}#como-funciona.is-animated .step:nth-child(3) i svg{animation:payment-approved .95s .54s both}.pain-item{transition:transform .25s ease,box-shadow .25s ease}.pain-item:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(80,35,126,.09)}.pain.is-animated .pain-item{animation:feature-card-in .55s cubic-bezier(.2,.75,.25,1) both}.pain.is-animated .pain-item:nth-child(2){animation-delay:.07s}.pain.is-animated .pain-item:nth-child(3){animation-delay:.14s}.pain.is-animated .pain-item:nth-child(4){animation-delay:.21s}.pain.is-animated .pain-item:nth-child(1) i svg{animation:team-arrives .9s .28s both}.pain.is-animated .pain-item:nth-child(2) i svg{animation:reminder-ring .85s .38s both}.pain.is-animated .pain-item:nth-child(3) i svg{animation:message-arrives .85s .48s both}.pain.is-animated .pain-item:nth-child(4) i svg{animation:bot-online .95s .58s both}@keyframes feature-card-in{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes agenda-ready{0%{opacity:0;transform:scale(.55) rotate(-12deg)}70%{opacity:1;transform:scale(1.13) rotate(4deg)}100%{transform:scale(1) rotate(0)}}@keyframes reminder-ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(14deg)}60%{transform:rotate(-9deg)}80%{transform:rotate(7deg)}}@keyframes payment-approved{0%{opacity:0;transform:translateX(-13px) scale(.8)}65%{opacity:1;transform:translateX(4px) scale(1.1)}100%{transform:translateX(0) scale(1)}}@keyframes team-arrives{0%{opacity:0;transform:scale(.6)}65%{opacity:1;transform:scale(1.16)}100%{transform:scale(1)}}@keyframes message-arrives{0%{opacity:0;transform:translateY(12px) scale(.72)}65%{opacity:1;transform:translateY(-3px) scale(1.08)}100%{transform:translateY(0) scale(1)}}@keyframes bot-online{0%{opacity:0;transform:translateY(9px)}45%{opacity:1;transform:translateY(-4px)}70%{transform:translateY(0) scale(1.12)}100%{transform:scale(1)}}@media(prefers-reduced-motion:reduce){#funciones.is-animated .feature,#funciones.is-animated .feature .icon-box svg,#como-funciona.is-animated .step,#como-funciona.is-animated .step i svg,.pain.is-animated .pain-item,.pain.is-animated .pain-item i svg{animation:none}}
+  </style>
+</head>
+<body>
+  <header class="site-nav" id="nav"><div class="wrap nav">
+    <a class="logo" href="#inicio" aria-label="Annly inicio">Annly<span>.</span></a>
+    <ul class="nav-links" id="navLinks"><li><a href="#funciones">Funciones</a></li><li><a href="#rubros">Para quién</a></li><li><a href="#precios">Precios</a></li><li><a href="#como-funciona">Cómo funciona</a></li></ul>
+    <div class="nav-actions"><a href="admin.html">Iniciar sesión</a><a class="btn btn-grad" href="registro.html">Prueba gratis <i data-lucide="arrow-right" size="15"></i></a><button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false"><i data-lucide="menu"></i></button></div>
+  </div></header>
+  <main id="inicio">
+    <section class="wrap hero">
+      <div class="hero-copy"><div class="eyebrow">MÁS CITAS · MENOS GESTIÓN MANUAL</div><h1>Tu negocio reserva, incluso cuando <em class="gradient">tú no estás.</em></h1><p>Annly convierte tu agenda en una experiencia de reserva simple: tus clientes reservan 24/7 y tú administras citas, pagos y comunicaciones desde un solo lugar.</p><div class="cta-row"><a class="btn btn-dark" href="registro.html">Empieza 14 días gratis <i data-lucide="arrow-right" size="16"></i></a><a class="btn btn-light" href="#como-funciona">Ver cómo funciona</a></div><div class="trust"><span><i data-lucide="check" size="15"></i>Sin tarjeta</span><span><i data-lucide="check" size="15"></i>Configúralo en minutos</span><span><i data-lucide="check" size="15"></i>Para equipos de cualquier tamaño</span></div></div>
+      <div class="hero-stage" aria-label="Vista previa de las reservas en Annly"><div class="orb"></div><div class="hero-photo"><img src="hero-profesional-annly.png" alt="Profesional de belleza feliz revisando nuevas citas en su celular"></div><div class="float booking"><i data-lucide="check"></i><div><strong>Nueva cita confirmada</strong><small>Andrea M. · Color y corte · 3:00 p. m.</small></div></div><div class="float rate"><i data-lucide="trending-up" size="16"></i>28% más reservas</div><div class="float week"><div class="week-top"><b>Tu semana</b><span>●</span></div><div class="slots"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+    </section>
+    <section class="proof"><div class="wrap"><p><strong>Una agenda mejor no solo organiza tu día.</strong><br>Hace que sea más fácil elegirte y volver a reservar.</p><div class="proof-items"><div class="proof-item"><b>24/7</b>reservas disponibles</div><div class="proof-item"><b>1 enlace</b>para compartir donde quieras</div><div class="proof-item"><b>0 caos</b>en tu agenda y mensajes</div></div></div></section>
+    <section class="wrap section pain"><div><div class="eyebrow">CUANDO TODO PASA POR WHATSAPP</div><h2>Atender no debería significar dejar de <em class="gradient">vender.</em></h2></div><div><p>Entre mensajes, llamadas, cambios de último minuto y recordatorios, tu agenda puede convertirse en otro trabajo. Annly le da a cada cliente un camino claro para reservar y a tu equipo una sola fuente de verdad.</p><div class="pain-list"><article class="pain-item"><i data-lucide="message-square-warning"></i><h3>Menos ida y vuelta</h3><p>Tu disponibilidad está clara antes de que te escriban.</p></article><article class="pain-item"><i data-lucide="bell-ring"></i><h3>Menos ausencias</h3><p>Las confirmaciones y recordatorios salen solos.</p></article><article class="pain-item"><i data-lucide="calendar-x"></i><h3>Menos cruces</h3><p>Horarios, bloqueos y vacaciones siempre actualizados.</p></article><article class="pain-item"><i data-lucide="users-round"></i><h3>Más control</h3><p>Clientes, equipo e historial en la misma plataforma.</p></article></div></div></section>
+    <section class="how section" id="como-funciona"><div class="wrap"><div class="how-head"><div class="eyebrow">ASÍ DE SIMPLE</div><h2>De compartir tu enlace a tener la agenda <em class="gradient">en movimiento.</em></h2><p>La reserva debe sentirse fácil para el cliente y automática para ti.</p></div><div class="steps"><article class="step"><i data-lucide="settings-2"></i><div class="step-number">01</div><h3>Configura tu negocio</h3><p>Agrega servicios, horarios, profesionales y reglas de disponibilidad.</p></article><article class="step"><i data-lucide="link"></i><div class="step-number">02</div><h3>Comparte tu enlace</h3><p>Úsalo en Instagram, Google, WhatsApp o donde tus clientes ya te encuentran.</p></article><article class="step"><i data-lucide="calendar-check-2"></i><div class="step-number">03</div><h3>Recibe y gestiona</h3><p>El cliente reserva; Annly confirma, recuerda y deja todo listo para atender.</p></article></div></div></section>
+    <section class="wrap section" id="funciones"><div class="features-head"><div><div class="eyebrow">TU OPERACIÓN, CONECTADA</div><h2>Más que una agenda.<br><em class="gradient">Menos cosas por perseguir.</em></h2></div><p>Todo lo necesario para que tus citas, clientes y cobros sigan el mismo ritmo que tu negocio.</p></div><div class="feature-grid"><article class="feature"><div class="icon-box"><i data-lucide="calendar-days"></i></div><h3>Agenda inteligente</h3><p>Servicios, horarios, profesionales, bloques, vacaciones y días no disponibles.</p><small>Disponibilidad bajo control</small></article><article class="feature"><div class="icon-box"><i data-lucide="bell-ring"></i></div><h3>Confirmaciones y recordatorios</h3><p>Notificaciones automáticas para el cliente y para el equipo, justo cuando hacen falta.</p><small>Reduce ausencias</small></article><article class="feature"><div class="icon-box"><i data-lucide="wallet-cards"></i></div><h3>Pagos integrados</h3><p>Facilita abonos y pagos online con Yappy y pasarela de pagos.</p><small>Reserva con compromiso</small></article><article class="feature"><div class="icon-box"><i data-lucide="contact-round"></i></div><h3>Clientes y equipo</h3><p>Conoce el historial de cada cliente y coordina múltiples profesionales desde un lugar.</p><small>De uno a muchos usuarios</small></article><article class="feature"><div class="icon-box"><i data-lucide="message-circle"></i></div><h3>WhatsApp directo</h3><p>Deja una vía de contacto rápida para clientes que necesitan resolver una duda.</p><small>Conversaciones a un toque</small></article><article class="feature"><div class="icon-box"><i data-lucide="bot"></i></div><h3>Agente virtual opcional</h3><p>Responde preguntas frecuentes y orienta a tus clientes incluso fuera de horario.</p><small>Atención automatizada</small></article></div></section>
+    <section class="wrap section audience" id="rubros"><div class="rubro-carousel" aria-label="Rubros que usan Annly"><div class="rubro-viewport"><div class="rubro-track" id="rubroTrack"><article class="rubro-card"><img src="https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=800&q=85" alt="Servicio de barbería"><span>Barberías</span></article><article class="rubro-card"><img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=85" alt="Servicio de salón de belleza"><span>Salones de belleza</span></article><article class="rubro-card"><img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=85" alt="Servicio de spa y estética"><span>Spas y estética</span></article><article class="rubro-card"><img src="rubro-tatuajes-annly.png" alt="Profesional tatuando a un cliente"><span>Tatuajes</span></article></div></div><div class="carousel-controls"><button class="carousel-btn" id="rubroPrev" aria-label="Ver rubros anteriores"><i data-lucide="arrow-left" size="17"></i></button><div class="carousel-status"><button class="carousel-dot active" data-slide="0" aria-label="Mostrar primeros dos rubros"></button><button class="carousel-dot" data-slide="1" aria-label="Mostrar últimos dos rubros"></button></div><button class="carousel-btn" id="rubroNext" aria-label="Ver más rubros"><i data-lucide="arrow-right" size="17"></i></button></div></div><div class="audience-copy"><div class="eyebrow">HECHA PARA QUIENES TRABAJAN CON SU TIEMPO</div><h2>Tu forma de atender es única. Tu sistema de reservas también debería serlo.</h2><p>Y no se limita a los rubros que ves aquí. Annly también acompaña a quienes trabajan por cita en terapias y bienestar, clínicas y consultorios, entrenamiento personal, clases y talleres.</p><ul class="checks"><li><i data-lucide="check-circle-2"></i>Terapeutas y bienestar</li><li><i data-lucide="check-circle-2"></i>Clínicas y consultorios</li><li><i data-lucide="check-circle-2"></i>Entrenadores personales</li><li><i data-lucide="check-circle-2"></i>Clases y talleres</li></ul><a class="btn btn-dark" href="registro.html">Cuéntanos sobre tu negocio <i data-lucide="arrow-right" size="16"></i></a></div></section>
+    <section class="pricing section" id="precios"><div class="wrap"><div class="pricing-head"><div class="eyebrow">PRECIOS SIMPLES Y TRANSPARENTES</div><h2>Un plan que acompaña el tamaño de tu <em class="gradient">equipo.</em></h2><p>Empieza con lo que necesitas hoy. Escala cuando tu negocio crezca.</p></div><div class="price-grid"><article class="price-card"><h3>Basic</h3><div class="users">1 usuario</div><div class="price">$30 <span>USD/mes</span></div><div class="price-note">Para profesionales independientes.</div><ul><li><i data-lucide="check"></i>Agenda y reservas online</li><li><i data-lucide="check"></i>Recordatorios automáticos</li><li><i data-lucide="check"></i>Gestión de clientes</li><li><i data-lucide="check"></i>Reportes</li></ul><a href="registro.html" class="btn btn-light">Elegir Basic</a></article><article class="price-card featured"><div class="badge">MÁS POPULAR</div><h3>Medium</h3><div class="users">1–3 usuarios</div><div class="price">$45 <span>USD/mes</span></div><div class="price-note">Para equipos pequeños que están creciendo.</div><ul><li><i data-lucide="check"></i>Todo lo de Basic</li><li><i data-lucide="check"></i>Hasta 3 usuarios</li><li><i data-lucide="check"></i>Equipo y servicios</li><li><i data-lucide="check"></i>Yappy y pagos online</li><li><i data-lucide="check"></i>WhatsApp directo</li></ul><a href="registro.html" class="btn btn-grad">Probar Medium <i data-lucide="arrow-right" size="15"></i></a></article><article class="price-card"><h3>Pro</h3><div class="users">4+ usuarios</div><div class="price">$65 <span>USD/mes</span></div><div class="price-note">Desde $65/mes según tu equipo.</div><ul><li><i data-lucide="check"></i>Todo lo de Medium</li><li><i data-lucide="check"></i>4+ usuarios</li><li><i data-lucide="check"></i>Escala con tu equipo</li><li><i data-lucide="check"></i>Agente virtual opcional</li><li><i data-lucide="check"></i>Configuración a tu medida</li></ul><a href="registro.html" class="btn btn-light">Hablar con Annly</a></article></div><p class="pricing-foot">Todos los precios están expresados en USD.</p></div></section>
+    <section class="wrap closing" id="contacto"><div class="closing-box"><img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1500&q=85" alt="Persona usando una computadora portátil"><div class="closing-content"><div class="eyebrow" style="color:#efc2ff">EL TIEMPO QUE RECUPERAS ES TUYO</div><h2>Tu talento merece una agenda que trabaje contigo.</h2><p>Prueba Annly gratis por 14 días y descubre cuánto más simple puede sentirse gestionar tus citas.</p><a class="btn contact-link" href="registro.html">Quiero probar Annly <i data-lucide="arrow-right" size="16"></i></a></div></div></section>
+  </main>
+  <footer><div class="wrap"><div class="footer-row"><a class="logo" href="#inicio">Annly<span>.</span></a><ul class="footer-links"><li><a href="#funciones">Funciones</a></li><li><a href="#rubros">Para quién</a></li><li><a href="#precios">Precios</a></li><li><a href="#contacto">Contacto</a></li></ul></div><div class="copyright">© 2026 Annly. Más citas, más clientes y más tiempo para ti.</div></div></footer>
+  <script>
+    lucide.createIcons();
+    const nav=document.getElementById('nav'),menu=document.getElementById('menuBtn'),links=document.getElementById('navLinks');
+    addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passive:true});
+    menu.addEventListener('click',()=>{const open=links.classList.toggle('open');menu.setAttribute('aria-expanded',open)});
+    links.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>{links.classList.remove('open');menu.setAttribute('aria-expanded','false')}));
+    const featureSection=document.getElementById('funciones');
+    new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){featureSection.classList.add('is-animated')}}),{threshold:.22}).observe(featureSection);
+    const howSection=document.getElementById('como-funciona');
+    new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){howSection.classList.add('is-animated')}}),{threshold:.22}).observe(howSection);
+    const painSection=document.querySelector('.pain');
+    new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){painSection.classList.add('is-animated')}}),{threshold:.22}).observe(painSection);
+    const rubroTrack=document.getElementById('rubroTrack'),rubroPrev=document.getElementById('rubroPrev'),rubroNext=document.getElementById('rubroNext'),rubroDots=document.querySelector('.carousel-status');
+    let rubroSlide=0;
+    const rubrosPerPage=()=>innerWidth<=520?1:2;
+    function renderRubros(){const cards=[...rubroTrack.children],perPage=rubrosPerPage(),pages=Math.ceil(cards.length/perPage),gap=parseFloat(getComputedStyle(rubroTrack).gap)||0;rubroSlide=Math.max(0,Math.min(rubroSlide,pages-1));rubroTrack.style.transform=`translateX(${-rubroSlide*perPage*(cards[0].offsetWidth+gap)}px)`;rubroDots.innerHTML=Array.from({length:pages},(_,index)=>`<button class="carousel-dot ${index===rubroSlide?'active':''}" data-slide="${index}" aria-label="Mostrar rubros ${index*perPage+1} a ${Math.min((index+1)*perPage,cards.length)}"></button>`).join('');rubroDots.querySelectorAll('button').forEach(dot=>dot.addEventListener('click',()=>{rubroSlide=Number(dot.dataset.slide);renderRubros()}));}
+    rubroPrev.addEventListener('click',()=>{rubroSlide--;renderRubros();restartRubros()});rubroNext.addEventListener('click',()=>{rubroSlide++;renderRubros();restartRubros()});addEventListener('resize',renderRubros);renderRubros();
+    const rubroCarousel=document.querySelector('.rubro-carousel');let rubroTimer;
+    function stopRubros(){clearInterval(rubroTimer)}function startRubros(){if(!matchMedia('(prefers-reduced-motion: reduce)').matches){stopRubros();rubroTimer=setInterval(()=>{const pages=Math.ceil(rubroTrack.children.length/rubrosPerPage());rubroSlide=(rubroSlide+1)%pages;renderRubros()},4500)}}function restartRubros(){stopRubros();startRubros()}
+    ['mouseenter','focusin'].forEach(event=>rubroCarousel.addEventListener(event,stopRubros));['mouseleave','focusout'].forEach(event=>rubroCarousel.addEventListener(event,startRubros));document.addEventListener('visibilitychange',()=>document.hidden?stopRubros():startRubros());startRubros();
+  </script>
 </body>
-</html>`;
-}
-
-// ---------- Arma los datos (filas/botones/texto) según destinatario + tipo de CITA ----------
-function armarCorreoCita(audiencia, tipo, cita, negocio) {
-  const nombreNegocio = negocio.nombre || "Tu negocio";
-  const tagline = negocio.categoria ? negocio.categoria.toUpperCase() : "";
-  const colorAcento = negocio.color_primario || "#a47c48";
-  const { fechaLegible, horaLegible } = formatearFechaHora(cita);
-  const precio = cita.precio_es_consultar ? "Por confirmar" : (cita.precio_final != null ? `$${Number(cita.precio_final).toFixed(2)}` : (cita.precio_total != null ? `$${Number(cita.precio_total).toFixed(2)}` : "Por confirmar"));
-  const linkCalendario = construirLinkGoogleCalendar(cita, negocio);
-  const tachado = tipo === "cancelada";
-  const whatsappNegocio = (negocio.whatsapp || "").replace(/\D/g, "");
-  const telCliente = (cita.cliente_telefono || "").replace(/\D/g, "");
-
-  if (audiencia === "cliente") {
-    const filas = [
-      { emoji: "👤", etiqueta: "CLIENTE", valor: cita.cliente_nombre || "" },
-      { emoji: "🏷️", etiqueta: "SERVICIO", valor: cita.servicio_nombre || "", tachado },
-      { emoji: "📅", etiqueta: "FECHA", valor: fechaLegible, tachado },
-      { emoji: "🕘", etiqueta: "HORA", valor: horaLegible, tachado }
-    ];
-    const abono = Number(cita.abono_monto) || 0;
-    let notaAbono = null;
-    if (abono > 0 && tipo !== "cancelada") {
-      if (cita.precio_es_consultar) {
-        filas.push({ emoji: "✓", etiqueta: "ABONO PAGADO", valor: `$${abono.toFixed(2)}` });
-        notaAbono = "El precio final se confirma el día de tu cita según el servicio acordado — tu abono ya pagado se descuenta del total.";
-      } else {
-        const totalServicio = Number(cita.precio_final != null ? cita.precio_final : cita.precio_total) || 0;
-        const porPagar = Math.max(0, totalServicio - abono);
-        filas.push({ emoji: "$", etiqueta: "PRECIO DEL SERVICIO", valor: `$${totalServicio.toFixed(2)}`, negrita: false });
-        filas.push({ emoji: "✓", etiqueta: "ABONO PAGADO", valor: `-$${abono.toFixed(2)}`, negrita: false });
-        filas.push({ emoji: "$", etiqueta: "TOTAL A PAGAR EL DÍA DE LA CITA", valor: `$${porPagar.toFixed(2)}` });
-      }
-    } else {
-      filas.push({ emoji: "$", etiqueta: "PRECIO TOTAL", valor: precio });
-    }
-    const mensajeWa = encodeURIComponent(`Hola, quisiera hacer un cambio en mi cita del ${fechaLegible} a las ${horaLegible} (${cita.servicio_nombre}).`);
-    const botonWaNegocio = whatsappNegocio ? { emoji: "💬", texto: `Escribir a ${nombreNegocio}`, url: `https://wa.me/${whatsappNegocio}?text=${mensajeWa}`, color: "#20c66a" } : null;
-
-    if (tipo === "nueva") {
-      return {
-        asunto: `Tu cita ha sido confirmada — ${nombreNegocio}`,
-        html: armarPlantillaCorreo({
-          nombreNegocio, tagline, colorAcento, emojiHeader: "📅",
-          titulo: "¡Tu cita está confirmada!", saludo: `Hola, ${cita.cliente_nombre || ""}!`,
-          subtitulo: "Tu cita ha sido agendada con éxito. Aquí tienes toda la información.",
-          filas,
-          botones: [{ emoji: "📆", texto: "Agregar a Google Calendar", url: linkCalendario, color: "#4285F4" }, botonWaNegocio].filter(Boolean),
-          notaTitulo: notaAbono ? "Sobre tu abono" : "¿Necesitas hacer algún cambio?",
-          notaTexto: notaAbono || "Puedes contactarnos por WhatsApp. Estamos para ayudarte.",
-          direccion: negocio.direccion
-        })
-      };
-    }
-    if (tipo === "reprogramada") {
-      return {
-        asunto: `Tu cita cambió de horario — ${nombreNegocio}`,
-        html: armarPlantillaCorreo({
-          nombreNegocio, tagline, colorAcento, emojiHeader: "🔄",
-          titulo: "¡Tu cita cambió de horario!", saludo: `Hola, ${cita.cliente_nombre || ""}!`,
-          subtitulo: "Estos son los datos actualizados de tu cita.",
-          filas,
-          botones: [{ emoji: "📆", texto: "Agregar a Google Calendar", url: linkCalendario, color: "#4285F4" }, botonWaNegocio].filter(Boolean),
-          notaTitulo: notaAbono ? "Sobre tu abono" : "¿Necesitas hacer algún cambio?",
-          notaTexto: notaAbono || "Puedes contactarnos por WhatsApp. Estamos para ayudarte.",
-          direccion: negocio.direccion
-        })
-      };
-    }
-    return {
-      asunto: `Tu cita fue cancelada — ${nombreNegocio}`,
-      html: armarPlantillaCorreo({
-        nombreNegocio, tagline, colorAcento: "#C2695A", emojiHeader: "✕",
-        titulo: "Tu cita fue cancelada", saludo: `Hola, ${cita.cliente_nombre || ""}!`,
-        subtitulo: "Si fue un error o quieres reservar de nuevo, contáctanos.",
-        filas,
-        botones: [botonWaNegocio ? { ...botonWaNegocio, texto: "Reservar otra cita" } : null].filter(Boolean),
-        direccion: negocio.direccion
-      })
-    };
-  }
-
-  // audiencia === "dueno"
-  const abonoDueno = Number(cita.abono_monto) || 0;
-  const filas = [
-    { emoji: "👤", etiqueta: "CLIENTE", valor: cita.cliente_nombre || "" },
-    { emoji: "💬", etiqueta: "WHATSAPP", valor: cita.cliente_telefono || "—", negrita: false },
-    { emoji: "🏷️", etiqueta: "SERVICIO", valor: cita.servicio_nombre || "", tachado },
-    { emoji: "📅", etiqueta: "FECHA", valor: fechaLegible, tachado },
-    { emoji: "🕘", etiqueta: "HORA", valor: horaLegible, tachado }
-  ];
-  let notaAbonoDueno = null;
-  if (abonoDueno > 0 && tipo !== "cancelada") {
-    if (cita.precio_es_consultar) {
-      filas.push({ emoji: "✓", etiqueta: "ABONO YA PAGADO", valor: `$${abonoDueno.toFixed(2)}` });
-      notaAbonoDueno = `El precio es "desde", así que el total se confirma con el cliente el día de la cita. Ya pagó $${abonoDueno.toFixed(2)} de abono — descuéntalo del total acordado.`;
-    } else {
-      const totalServicioDueno = Number(cita.precio_final != null ? cita.precio_final : cita.precio_total) || 0;
-      const porPagarDueno = Math.max(0, totalServicioDueno - abonoDueno);
-      filas.push({ emoji: "$", etiqueta: "PRECIO DEL SERVICIO", valor: `$${totalServicioDueno.toFixed(2)}`, negrita: false });
-      filas.push({ emoji: "✓", etiqueta: "ABONO YA PAGADO", valor: `-$${abonoDueno.toFixed(2)}`, negrita: false });
-      filas.push({ emoji: "$", etiqueta: "LE FALTA PAGAR", valor: `$${porPagarDueno.toFixed(2)}` });
-    }
-  } else {
-    filas.push({ emoji: "$", etiqueta: "PRECIO", valor: precio });
-  }
-  const mensajeWaCliente = encodeURIComponent(`Hola ${cita.cliente_nombre || ""}, te escribo de ${nombreNegocio} sobre tu cita del ${fechaLegible} a las ${horaLegible}.`);
-  const botonContactarCliente = telCliente ? { emoji: "💬", texto: `Contactar a ${cita.cliente_nombre || "cliente"} por WhatsApp`, url: `https://wa.me/${telCliente}?text=${mensajeWaCliente}`, color: "#20c66a" } : null;
-
-  if (tipo === "nueva") {
-    return {
-      asunto: `Nueva cita agendada: ${cita.cliente_nombre || "Cliente"} — ${nombreNegocio}`,
-      html: armarPlantillaCorreo({
-        nombreNegocio, tagline, colorAcento, emojiHeader: "📅",
-        titulo: "¡Nueva cita agendada!", saludo: "", subtitulo: "Tienes una nueva cita en tu agenda.",
-        filas,
-        botones: [{ emoji: "📆", texto: "Agregar a Google Calendar", url: linkCalendario, color: "#4285F4" }, botonContactarCliente].filter(Boolean),
-        notaTitulo: notaAbonoDueno ? "Sobre el abono" : "Recuerda preparar todo para su visita",
-        notaTexto: notaAbonoDueno || "Tu cliente tiene una nueva cita en la agenda.",
-        direccion: negocio.direccion
-      })
-    };
-  }
-  if (tipo === "reprogramada") {
-    return {
-      asunto: `Cita reprogramada: ${cita.cliente_nombre || "Cliente"} — ${nombreNegocio}`,
-      html: armarPlantillaCorreo({
-        nombreNegocio, tagline, colorAcento, emojiHeader: "🔄",
-        titulo: "Cita reprogramada", saludo: "", subtitulo: "Un cliente cambió el horario de su cita.",
-        filas,
-        botones: [{ emoji: "📆", texto: "Agregar a Google Calendar", url: linkCalendario, color: "#4285F4" }, botonContactarCliente].filter(Boolean),
-        notaTitulo: notaAbonoDueno ? "Sobre el abono" : null,
-        notaTexto: notaAbonoDueno || null,
-        direccion: negocio.direccion
-      })
-    };
-  }
-  return {
-    asunto: `Cita cancelada: ${cita.cliente_nombre || "Cliente"} — ${nombreNegocio}`,
-    html: armarPlantillaCorreo({
-      nombreNegocio, tagline, colorAcento: "#C2695A", emojiHeader: "✕",
-      titulo: "Cita cancelada", saludo: "", subtitulo: "Un cliente canceló su cita.",
-      filas,
-      botones: [botonContactarCliente].filter(Boolean),
-      direccion: negocio.direccion
-    })
-  };
-}
-
-// ---------- Arma los correos de CERTIFICADOS (llamada directa vía fetch, no webhook) ----------
-function armarCorreoCertificado(tipo, negocio, datos) {
-  const nombreNegocio = negocio.nombre || "Tu negocio";
-  const tagline = negocio.categoria ? negocio.categoria.toUpperCase() : "";
-  const colorAcento = negocio.color_primario || "#a47c48";
-
-  if (tipo === "certificado_comprador") {
-    const filas = [
-      { emoji: "🎁", etiqueta: "CÓDIGO", valor: datos.codigo || "" },
-      { emoji: "$", etiqueta: "MONTO", valor: `$${Number(datos.monto || 0).toFixed(2)}` },
-      { emoji: "👤", etiqueta: "PARA", valor: datos.nombreDestinatario || "—" },
-      { emoji: "📅", etiqueta: "VENCE", valor: datos.fechaVencimiento || "—" }
-    ];
-    return {
-      asunto: `Tu certificado de regalo está listo — ${nombreNegocio}`,
-      html: armarPlantillaCorreo({
-        nombreNegocio, tagline, colorAcento, emojiHeader: "🎁",
-        titulo: "¡Gracias por tu compra!", saludo: `Hola, ${datos.nombreComprador || ""}!`,
-        subtitulo: `Tu certificado ya está en camino a ${datos.nombreDestinatario || "su destinatario"}.`,
-        filas, botones: [], direccion: negocio.direccion
-      })
-    };
-  }
-
-  if (tipo === "certificado_destinatario") {
-    const filas = [
-      { emoji: "💝", etiqueta: "DE PARTE DE", valor: datos.nombreComprador || "Alguien especial" },
-      { emoji: "$", etiqueta: "MONTO", valor: `$${Number(datos.monto || 0).toFixed(2)}` }
-    ];
-    if (datos.mensaje) filas.push({ emoji: "💬", etiqueta: "MENSAJE", valor: datos.mensaje, negrita: false });
-    return {
-      asunto: `Tienes un regalo de ${nombreNegocio}`,
-      html: armarPlantillaCorreo({
-        nombreNegocio, tagline, colorAcento, emojiHeader: "🎁",
-        titulo: "¡Alguien pensó en ti!", saludo: "",
-        subtitulo: `${datos.nombreComprador || "Alguien"} quiere regalarte una experiencia especial en ${nombreNegocio}.`,
-        filas,
-        botones: datos.linkCertificado ? [{ emoji: "🎁", texto: "Abrir mi regalo", url: datos.linkCertificado, color: colorAcento }] : [],
-        direccion: negocio.direccion
-      })
-    };
-  }
-
-  if (tipo === "certificado_pendiente_pago") {
-    const filas = [
-      { emoji: "$", etiqueta: "MONTO", valor: `$${Number(datos.monto || 0).toFixed(2)}` },
-      { emoji: "👤", etiqueta: "COMPRADOR", valor: datos.nombreComprador || "" },
-      { emoji: "💳", etiqueta: "MÉTODO DE PAGO", valor: datos.metodoPago === "bank" ? "Transferencia" : "Yappy", negrita: false },
-      { emoji: "🧾", etiqueta: "COMPROBANTE", valor: datos.comprobante || "—", negrita: false }
-    ];
-    return {
-      asunto: `Nueva compra de certificado — $${Number(datos.monto || 0).toFixed(2)}`,
-      html: armarPlantillaCorreo({
-        nombreNegocio, tagline, colorAcento, emojiHeader: "🔔",
-        titulo: "Nuevo certificado por confirmar", saludo: "",
-        subtitulo: "Un cliente compró un certificado — revisa el pago para activarlo.",
-        filas, botones: [],
-        notaTitulo: "¿Dónde lo confirmo?",
-        notaTexto: "Panel de administración → Certificados → Pendientes de pago.",
-        direccion: negocio.direccion
-      })
-    };
-  }
-
-  // certificado_activado
-  return {
-    asunto: `Certificado activado — ${datos.codigo || ""}`,
-    html: armarPlantillaCorreo({
-      nombreNegocio, tagline, colorAcento, emojiHeader: "✅",
-      titulo: "Certificado activado", saludo: "",
-      subtitulo: `El certificado ${datos.codigo || ""} quedó activo y se le notificó al comprador y al destinatario.`,
-      filas: [], botones: [], direccion: negocio.direccion
-    })
-  };
-}
-
-async function manejarCertificado(req) {
-  const { tipo, businessId, datos } = await req.json();
-  if (!tipo || !businessId) {
-    return new Response(JSON.stringify({ ok: false, error: "Faltan tipo o businessId" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-
-  const { data: negocio, error: errNegocio } = await sb.from("businesses").select("*").eq("id", businessId).maybeSingle();
-  if (errNegocio || !negocio) {
-    return new Response(JSON.stringify({ ok: false, error: "Negocio no encontrado" }), {
-      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-
-  let correoDueno = null;
-  if (negocio.owner_user_id) {
-    const { data: userData } = await sb.auth.admin.getUserById(negocio.owner_user_id);
-    correoDueno = userData?.user?.email || null;
-  }
-
-  const dirigidoAlNegocio = tipo === "certificado_pendiente_pago" || tipo === "certificado_activado";
-  const destinatario = dirigidoAlNegocio ? correoDueno : (datos?.correoComprador || datos?.correoDestinatario);
-  if (!destinatario) {
-    return new Response(JSON.stringify({ ok: false, error: "Sin destinatario para este correo" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-
-  const { asunto, html } = armarCorreoCertificado(tipo, negocio, datos || {});
-  const resultado = await enviarCorreo(destinatario, negocio.nombre || "Tu negocio", asunto, html);
-
-  return new Response(JSON.stringify({ ok: !!resultado.ok || !!resultado.skipped }), {
-    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
-}
-
-async function manejarWebhookCita(payload) {
-  const cita = payload.record;
-  const anterior = payload.old_record;
-  const tipoEvento = payload.type; // 'INSERT' | 'UPDATE'
-
-  if (!cita) return new Response(JSON.stringify({ skipped: true, reason: "sin registro" }), { status: 200 });
-
-  let tipo = null;
-  if (tipoEvento === "INSERT") {
-    tipo = "nueva";
-  } else if (tipoEvento === "UPDATE") {
-    if (cita.estado === "cancelada" && anterior?.estado !== "cancelada") {
-      tipo = "cancelada";
-    } else if (anterior && (cita.fecha !== anterior.fecha || cita.hora !== anterior.hora)) {
-      tipo = "reprogramada";
-    } else {
-      return new Response(JSON.stringify({ skipped: true, reason: "cambio no relevante para correo" }), { status: 200 });
-    }
-  } else {
-    return new Response(JSON.stringify({ skipped: true, reason: "tipo de evento desconocido" }), { status: 200 });
-  }
-
-  const { data: negocio, error: errNegocio } = await sb.from("businesses").select("*").eq("id", cita.business_id).maybeSingle();
-  if (errNegocio || !negocio) {
-    console.error("No se encontró el negocio para business_id:", cita.business_id, errNegocio);
-    return new Response(JSON.stringify({ skipped: true, reason: "negocio no encontrado" }), { status: 200 });
-  }
-
-  let correoDueno = null;
-  if (negocio.owner_user_id) {
-    const { data: userData, error: errUser } = await sb.auth.admin.getUserById(negocio.owner_user_id);
-    if (errUser) console.error("No se pudo leer el correo del dueño:", errUser);
-    correoDueno = userData?.user?.email || null;
-  }
-
-  const envios = [];
-  if (cita.cliente_correo) {
-    const { asunto, html } = armarCorreoCita("cliente", tipo, cita, negocio);
-    envios.push(enviarCorreo(cita.cliente_correo, negocio.nombre || "Tu negocio", asunto, html));
-  }
-  if (correoDueno) {
-    const { asunto, html } = armarCorreoCita("dueno", tipo, cita, negocio);
-    envios.push(enviarCorreo(correoDueno, "Annly", asunto, html));
-  }
-
-  await Promise.all(envios);
-  return new Response(JSON.stringify({ sent: true, tipo }), { status: 200 });
-}
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  try {
-    const payload = await req.clone().json();
-
-    // Llamada directa (certificados): trae tipo + businessId, no record.
-    if (payload.tipo && payload.businessId) {
-      return await manejarCertificado(req);
-    }
-
-    // Si no, es el Database Webhook de appointments.
-    return await manejarWebhookCita(payload);
-
-  } catch (err) {
-    console.error("Error en la función:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-});
+</html>
