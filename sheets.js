@@ -3076,6 +3076,16 @@ const Sheets = {
     return (data || []).map(r => r.features.code);
   },
 
+  // Features incluidas en un plan buscándolo por su código (BASIC/MEDIUM/ULTIMATE).
+  // Usado para saber qué puede usar un negocio en trial, que siempre queda
+  // limitado a Basic sin importar el plan que tenga seleccionado.
+  async getFeaturesDePlanCode(code) {
+    await window.AnnlyReady;
+    const { data: plan } = await sbClient.from('plans').select('id').eq('code', code.toUpperCase()).maybeSingle();
+    if (!plan) return [];
+    return await this.getFeaturesDelPlan(plan.id);
+  },
+
   // Todas las features marcadas como módulo adicional (is_addon = true), con su precio.
   async getCatalogoModulos() {
     await window.AnnlyReady;
