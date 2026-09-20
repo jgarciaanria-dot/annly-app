@@ -291,17 +291,25 @@ let PAGOS_MODULO_DISPONIBLE = false;
 
 async function loadCertificadosModulo(){
   try {
-    const sus = await Sheets.getSuscripcionActual();
-    if (!sus) return;
-    // En trial, el acceso real queda limitado a lo que trae Basic —
-    // el plan/addon seleccionado no cuenta hasta que haya suscripción paga.
-    const enTrial = sus.status === 'trial';
-    const [features, activos] = await Promise.all([
-      enTrial ? Sheets.getFeaturesDePlanCode('BASIC') : Sheets.getFeaturesDelPlan(sus.plan.id),
-      enTrial ? Promise.resolve([]) : Sheets.getModulosActivos(sus.subscriptionId)
-    ]);
-    CERT_MODULO_DISPONIBLE = features.includes('CERTIFICADOS') || activos.includes('CERTIFICADOS');
-    PAGOS_MODULO_DISPONIBLE = features.includes('PAGOS') || activos.includes('PAGOS');
+    // Camino principal: función pública en Supabase (funciona sin sesión).
+    const codigos = await Sheets.getModulosPublicos();
+    if (codigos) {
+      CERT_MODULO_DISPONIBLE = codigos.includes('CERTIFICADOS');
+      PAGOS_MODULO_DISPONIBLE = codigos.includes('PAGOS');
+    } else {
+      // Respaldo (solo funciona con sesión de dueño/Platform Admin, por RLS).
+      const sus = await Sheets.getSuscripcionActual();
+      if (!sus) return;
+      // En trial, el acceso real queda limitado a lo que trae Basic —
+      // el plan/addon seleccionado no cuenta hasta que haya suscripción paga.
+      const enTrial = sus.status === 'trial';
+      const [features, activos] = await Promise.all([
+        enTrial ? Sheets.getFeaturesDePlanCode('BASIC') : Sheets.getFeaturesDelPlan(sus.plan.id),
+        enTrial ? Promise.resolve([]) : Sheets.getModulosActivos(sus.subscriptionId)
+      ]);
+      CERT_MODULO_DISPONIBLE = features.includes('CERTIFICADOS') || activos.includes('CERTIFICADOS');
+      PAGOS_MODULO_DISPONIBLE = features.includes('PAGOS') || activos.includes('PAGOS');
+    }
   } catch(e) { CERT_MODULO_DISPONIBLE = false; PAGOS_MODULO_DISPONIBLE = false; }
   const wrap = document.getElementById('cert-link-wrap');
   if (wrap) wrap.style.display = CERT_MODULO_DISPONIBLE ? 'block' : 'none';
