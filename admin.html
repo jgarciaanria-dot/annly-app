@@ -2678,7 +2678,7 @@ async function verDetalleCertificado(certificateId){
     }
     cont.innerHTML = canjes.map(r => `
       <div style="border-bottom:1px solid var(--line-soft);padding:8px 0;font-size:12px;">
-        <strong>-$${r.montoAplicado.toFixed(2)}</strong> · ${new Date(r.fecha).toLocaleDateString('es-PA', {day:'numeric', month:'short', year:'numeric'})}
+        <strong>-$${r.montoAplicado.toFixed(2)}</strong> · ${new Date(r.fecha).toLocaleDateString('es-PA', {day:'numeric', month:'short', year:'numeric'})}${r.saldoDespues != null ? ` · <span style="color:#159A61;font-weight:600;">saldo $${r.saldoDespues.toFixed(2)}</span>` : ''}
         ${r.servicioNombre ? `<br><span style="color:#888;">${r.servicioNombre}${r.clienteNombre ? ' — ' + r.clienteNombre : ''}${r.fechaCita ? ' · ' + r.fechaCita : ''}</span>` : ''}
       </div>`).join('');
   } catch(e) {
@@ -4520,7 +4520,10 @@ function fcRecalcular(inicial){
       ? linea('Abono ya pagado (' + METODOS_PAGO[metodoDeAbono(c.metodoPago)] + ')', '−' + fmtDinero(r.abonoDescontado), '#159A61')
       : linea('Abono no reembolsable ya pagado (aparte)', fmtDinero(COMPLETANDO.abono), 'var(--ink-soft)');
   }
-  if (r.certExtraUsado > 0) html += linea('Certificado (' + escCat(COMPLETANDO.certExtra.codigo) + ')', '−' + fmtDinero(r.certExtraUsado), '#159A61');
+  if (r.certExtraUsado > 0){
+    html += linea('Certificado (' + escCat(COMPLETANDO.certExtra.codigo) + ')', '−' + fmtDinero(r.certExtraUsado), '#159A61');
+    html += linea('Saldo restante del certificado', fmtDinero(Math.max(0, COMPLETANDO.certExtra.saldoDisponible - r.certExtraUsado)), 'var(--ink-soft)');
+  }
   const extras = extrasTotal('fc-extras');
   if (extras > 0) html += linea('Ventas adicionales', '+' + fmtDinero(extras));
   const totalHoy = Math.round((r.porCobrar + extras)*100)/100;
@@ -4554,6 +4557,12 @@ async function confirmarCompletarCita(){
     if (r.certExtraUsado > 0 && COMPLETANDO.certExtraAplicado !== r.certExtraUsado){
       await Sheets.aplicarCertificado(COMPLETANDO.certExtra.id, r.certExtraUsado, c.id);
       COMPLETANDO.certExtraAplicado = r.certExtraUsado;
+      try {
+        await Sheets.registrarCertificadoEnCita(c.id, {
+          codigo: COMPLETANDO.certExtra.codigo, monto: r.certExtraUsado,
+          saldo: Math.max(0, COMPLETANDO.certExtra.saldoDisponible - r.certExtraUsado)
+        });
+      } catch(e){ console.error(e); }
     }
     await Sheets.completarCita(c.id, {
       precioCobrado: precio, pagos, fecha: c.fechaISO,
@@ -4682,7 +4691,9 @@ async function abrirDetalleCita(id){
     titulo('Pago');
   html += fila('Precio del servicio', r.precio == null ? 'A consultar' : fmtDinero(r.precio));
   if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc));
-  if (r.cert > 0) html += fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert));
+  if (r.cert > 0) html += fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert)) +
+    (c.certificadoSaldoRestante != null ? fila('Saldo tras esta cita', fmtDinero(c.certificadoSaldoRestante)) : '') +
+    '<div id="cd-cert-saldo"></div>';
   if (r.abono > 0){
     html += fila('Abono pagado (' + (r.descontable ? 'descontable' : 'no reembolsable') + ')' + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), fmtDinero(r.abono));
     if (c.comprobante) html += fila('Comprobante del abono', escCat(c.comprobante));
@@ -4703,6 +4714,19 @@ async function abrirDetalleCita(id){
   if (puedeCompletar) html += `<button class="btn-save" style="margin-top:14px;" onclick="cerrarModalFin('ov-cita-detalle');abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar cita</button>`;
   elFin('cd-body').innerHTML = html;
   elFin('ov-cita-detalle').classList.add('open');
+
+  // Saldo actual del certificado aplicado a esta cita
+  if (c.certificadoCodigo){
+    try {
+      const cert = await Sheets.getCertificadoPorCodigo(c.certificadoCodigo);
+      const contC = elFin('cd-cert-saldo');
+      if (cert && contC){
+        contC.innerHTML = fila('Saldo actual del certificado',
+          `<span style="color:${cert.saldoRestante > 0 ? '#159A61' : 'var(--ink-soft)'};">${fmtDinero(cert.saldoRestante)}</span> <span style="color:var(--ink-soft);font-weight:500;">de ${fmtDinero(cert.montoInicial)}</span>`) +
+          (cert.fechaVencimiento && cert.saldoRestante > 0 ? fila('Vence', escCat(cert.fechaVencimiento)) : '');
+      }
+    } catch(e){}
+  }
 
   // Cobros registrados en Finanzas (solo citas completadas)
   if (c.completadaEn){
@@ -4996,7 +5020,10 @@ function acRecalcularCobro(){
   if (m.cobrar){
     const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color || 'var(--ink)'};">${v}</strong></div>`;
     let h = linea('Precio del servicio', fmtDinero(m.precio));
-    if (m.certUsado > 0) h += linea('Certificado (' + escCat(AC.cert.codigo) + ')', '−' + fmtDinero(m.certUsado), '#159A61');
+    if (m.certUsado > 0){
+      h += linea('Certificado (' + escCat(AC.cert.codigo) + ')', '−' + fmtDinero(m.certUsado), '#159A61');
+      h += linea('Saldo restante del certificado', fmtDinero(Math.max(0, AC.cert.saldoDisponible - m.certUsado)), 'var(--ink-soft)');
+    }
     const extras = extrasTotal('ac-extras');
     if (extras > 0) h += linea('Ventas adicionales', '+' + fmtDinero(extras));
     const totalCobrar = Math.round((m.porCobrar + extras)*100)/100;
@@ -5084,6 +5111,7 @@ async function guardarAgregarCita(){
       precioFinal: Math.max(0, precioConocido - certUsado),
       certificadoCodigo: certUsado > 0 ? AC.cert.codigo : null,
       certificadoMonto: certUsado > 0 ? certUsado : null,
+      certificadoSaldoRestante: certUsado > 0 ? Math.max(0, AC.cert.saldoDisponible - certUsado) : null,
       citaId: 'cita-' + Date.now(), empleadoId
     });
   } catch(e){
