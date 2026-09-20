@@ -906,13 +906,20 @@ img{max-width:100%;}
         </div>
 
         <p style="font-size:11px;color:var(--ink-soft);margin-top:10px;line-height:1.5;">Los pagos por Yappy o transferencia no se verifican automáticamente — debes confirmar tú mismo que el comprobante corresponde a un pago real antes de atender la cita.</p>
-        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">¿Quieres verificación automática (botón de pago, link de cobro)? Escríbenos a <strong>soporte@annly.app</strong>.</p>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">¿Quieres verificación automática (botón de pago, link de cobro)? <a href="javascript:void(0)" onclick="switchTab('plan')" style="color:var(--charcoal2);font-weight:700;">Actualiza tu plan o activa el módulo de Pagos</a>.</p>
       </div>
     </div>
 
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Yappy Comercial (botón de pago real)</span></div>
-      <div style="padding:1rem;">
+
+      <div id="yappy-comercial-bloqueado" style="display:none;padding:1.5rem 1rem;text-align:center;">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;font-size:19px;margin:0 auto 12px;"><i class="ti ti-lock"></i></div>
+        <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:420px;margin:0 auto 14px;">El botón oficial de Yappy (confirmación automática del pago) es parte del módulo <strong>Pagos</strong> — incluido en Medium y Ultimate, o disponible como addon en Basic. Mientras tanto, el sitio sigue funcionando con el flujo manual (número de Yappy + comprobante).</p>
+        <button type="button" class="btn-save" style="width:auto;padding:9px 20px;margin:0;" onclick="switchTab('plan')">Ver planes</button>
+      </div>
+
+      <div id="yappy-comercial-activo" style="display:none;padding:1rem;">
         <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;">Si ya tienes cuenta de Yappy Comercial (Banco General), configúrala aquí para que tus clientes paguen con el botón oficial de Yappy en vez de mandar comprobante a mano. Sin esto, el sitio sigue usando el número de Yappy de arriba con el flujo manual.</p>
         <div class="frow">
           <div class="fg"><label class="flbl">Merchant ID</label><input class="fi" id="pf-yappy-merchant-id" placeholder="78fb770f-055f-43c1-8529-a2bef7cbf5cd"/></div>
@@ -927,6 +934,7 @@ img{max-width:100%;}
             <div class="svc-toggle-thumb"></div>
           </label>
         </div>
+        <p style="font-size:10.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">Apagar esto vuelve al flujo manual de inmediato, pero conserva tus credenciales guardadas para cuando lo quieras reactivar.</p>
         <p id="pf-yappy-msg" style="font-size:11px;color:var(--ink-soft);margin-top:8px;min-height:14px;"></p>
         <div style="display:flex;gap:10px;margin-top:6px;">
           <button type="button" class="btn-save" style="margin-bottom:0;" onclick="guardarYappyComercial()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar credenciales Yappy</button>
@@ -2367,9 +2375,10 @@ async function verDetalleCertificado(certificateId){
     ${c.nota ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Nota interna:</span> ${c.nota}</div>` : ''}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <span style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">Estado: <span style="color:${est.color};">${est.texto}</span></span>
-      ${c.estado === 'cancelado'
-        ? `<button type="button" class="btn-add" onclick="cambiarEstadoCertificadoUI('${c.id}','activo')">Reactivar</button>`
-        : `<button type="button" style="border:1px solid #E8B4AC;background:#fff;color:#C2695A;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;" onclick="cambiarEstadoCertificadoUI('${c.id}','cancelado')">Desactivar</button>`}
+      ${c.saldoRestante <= 0 ? ''
+        : c.estado === 'cancelado'
+          ? `<button type="button" class="btn-add" onclick="cambiarEstadoCertificadoUI('${c.id}','activo')">Reactivar</button>`
+          : `<button type="button" style="border:1px solid #E8B4AC;background:#fff;color:#C2695A;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;" onclick="cambiarEstadoCertificadoUI('${c.id}','cancelado')">Desactivar</button>`}
     </div>
     <p style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px;">Historial de uso</p>
     <div id="detalle-cert-canjes"><p style="font-size:12px;color:#aaa;">Cargando...</p></div>`;
@@ -3295,6 +3304,10 @@ async function loadPerfil(){
   } catch(e) {
     console.error('Error cargando credenciales Yappy:', e);
   }
+
+  const yappyDisponible = moduloDisponible('PAGOS');
+  document.getElementById('yappy-comercial-bloqueado').style.display = yappyDisponible ? 'none' : 'block';
+  document.getElementById('yappy-comercial-activo').style.display = yappyDisponible ? 'block' : 'none';
 }
 
 async function guardarYappyComercial(){
@@ -3304,7 +3317,9 @@ async function guardarYappyComercial(){
   const secretNuevo = document.getElementById('pf-yappy-secret').value.trim();
   const activo = document.getElementById('pf-yappy-activo').checked;
 
-  if (!merchantId || !dominioRegistrado){ msgEl.style.color='#C2695A'; msgEl.textContent = 'Completa el Merchant ID y el dominio registrado.'; return; }
+  // Apagar el botón siempre se puede guardar de una vez — solo se exigen los
+  // datos completos cuando se está encendiendo (hace falta algo real que validar).
+  if (activo && (!merchantId || !dominioRegistrado)){ msgEl.style.color='#C2695A'; msgEl.textContent = 'Completa el Merchant ID y el dominio registrado.'; return; }
 
   let secretB64 = secretNuevo;
   if (!secretB64) {
@@ -3312,7 +3327,7 @@ async function guardarYappyComercial(){
       const existente = await Sheets.getCredencialesYappy();
       secretB64 = existente ? existente.secretB64 : '';
     } catch(e) {}
-    if (!secretB64) { msgEl.style.color='#C2695A'; msgEl.textContent = 'Ingresa el Secret la primera vez que configures Yappy.'; return; }
+    if (activo && !secretB64) { msgEl.style.color='#C2695A'; msgEl.textContent = 'Ingresa el Secret la primera vez que configures Yappy.'; return; }
   }
 
   msgEl.style.color = 'var(--ink-soft)';
@@ -3320,7 +3335,7 @@ async function guardarYappyComercial(){
   try {
     await Sheets.guardarCredencialesYappy({ merchantId, secretB64, dominioRegistrado, activo });
     msgEl.style.color = '#4A9D6E';
-    msgEl.textContent = '¡Credenciales de Yappy guardadas!';
+    msgEl.textContent = activo ? '¡Credenciales de Yappy guardadas!' : 'Botón real desactivado — volviste al flujo manual.';
     document.getElementById('pf-yappy-eliminar').style.display = 'inline-flex';
     document.getElementById('pf-yappy-secret').value = '';
     document.getElementById('pf-yappy-secret').placeholder = 'Ya configurado — deja en blanco para no cambiarlo';
@@ -3332,9 +3347,17 @@ async function guardarYappyComercial(){
 }
 
 async function eliminarYappyComercialUI(){
-  if (!confirm('¿Quitar la configuración de Yappy Comercial? El sitio volverá al flujo manual de pago.')) return;
+  const esAddon = MODULOS_ACTIVOS.includes('PAGOS') && !FEATURES_DEL_PLAN.includes('PAGOS');
+  const msg = esAddon
+    ? '¿Quitar Yappy Comercial y dar de baja el módulo Pagos? Se desactiva de inmediato — no importa que aún resten días pagados de este mes, no se prorratea. El sitio vuelve al flujo manual de pago ahora mismo.'
+    : '¿Quitar la configuración de Yappy Comercial? El sitio volverá al flujo manual de pago.';
+  if (!confirm(msg)) return;
   try {
     await Sheets.eliminarCredencialesYappy();
+    if (esAddon && SUSCRIPCION_ACTUAL) {
+      await Sheets.desactivarModuloInmediato(SUSCRIPCION_ACTUAL.subscriptionId, 'PAGOS');
+    }
+    await renderPlan();
     await loadPerfil();
   } catch(e) {
     console.error('Error quitando credenciales Yappy:', e);
