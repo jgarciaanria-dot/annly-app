@@ -1630,7 +1630,16 @@ const Sheets = {
           c.completada_en || null,
 
         precioCobrado:
-          c.precio_cobrado
+          c.precio_cobrado,
+
+        correo:
+          c.cliente_correo,
+
+        nota:
+          c.nota,
+
+        cuponAplicado:
+          c.cupon_aplicado
 
       }));
   },
@@ -3381,6 +3390,27 @@ const Sheets = {
     if (errMarca) throw errMarca;
     if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
 
+    const revertirMarca = () => sbClient.from('appointments')
+      .update({ completada_en: null, precio_cobrado: null }).eq('id', citaId);
+
+    // Ventas adicionales de la visita (tratamientos, productos, etc.)
+    let extrasIds = [];
+    const extras = (datos.extras || []).filter(x => x.monto > 0 && x.descripcion);
+    if (extras.length) {
+      const { data: insertados, error: errExtras } = await sbClient.from('appointment_extras').insert(
+        extras.map(x => ({
+          business_id: BUSINESS_ID, appointment_id: citaId, descripcion: x.descripcion,
+          monto: x.monto, fecha: datos.fecha, employee_id: datos.empleadoId || null,
+          cliente_nombre: datos.cliente || null
+        }))
+      ).select('id');
+      if (errExtras) {
+        await revertirMarca();
+        throw errExtras;
+      }
+      extrasIds = (insertados || []).map(r => r.id);
+    }
+
     const filas = (datos.pagos || []).filter(p => p.monto > 0).map(p => ({
       business_id: BUSINESS_ID, origen: 'agenda', appointment_id: citaId,
       metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
@@ -3390,11 +3420,46 @@ const Sheets = {
     if (filas.length) {
       const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
       if (errPagos) {
-        // Si fallan los pagos, la cita vuelve a quedar por completar
-        await sbClient.from('appointments').update({ completada_en: null, precio_cobrado: null }).eq('id', citaId);
+        // Si fallan los pagos, se deshace todo y la cita vuelve a quedar por completar
+        if (extrasIds.length) await sbClient.from('appointment_extras').delete().in('id', extrasIds);
+        await revertirMarca();
         throw errPagos;
       }
     }
+  },
+
+  // Cobros registrados de una cita (para su detalle / trazabilidad)
+  async getPagosDeCita(citaId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('finance_payments').select('*')
+      .eq('business_id', BUSINESS_ID).eq('appointment_id', citaId)
+      .order('creado_en', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(p => ({
+      id: p.id, metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha
+    }));
+  },
+
+  // Ventas adicionales (tratamientos, productos...) registradas en las visitas del periodo
+  async getExtrasFinanzas(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('appointment_extras').select('*')
+      .eq('business_id', BUSINESS_ID)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO);
+    if (error) throw error;
+    return (data || []).map(x => ({
+      id: x.id, appointmentId: x.appointment_id, descripcion: x.descripcion,
+      monto: Number(x.monto), fecha: x.fecha, empleadoId: x.employee_id
+    }));
+  },
+
+  async getExtrasDeCita(citaId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('appointment_extras').select('*')
+      .eq('business_id', BUSINESS_ID).eq('appointment_id', citaId)
+      .order('creado_en', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(x => ({ id: x.id, descripcion: x.descripcion, monto: Number(x.monto) }));
   },
 
   // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
