@@ -480,7 +480,7 @@ function getDefaultServices(){
 
 let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=300;
 let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
-let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={};
+let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={},horariosEmpleadosCache={};
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
 let certAplicado=null; // {id, codigo, saldoDisponible}
 let pagoRender=null, abonoMostrado=null;
@@ -634,6 +634,12 @@ async function openCal(){
 
   // Qué empleados hacen este servicio (si hay 0 o 1, no se pregunta nada)
   try { empleadosDelServicio = await Sheets.getEmpleadosParaServicio(curSvc.id); } catch(e){ empleadosDelServicio = []; }
+  // Con varios profesionales ("Cualquiera disponible") se necesita el horario de cada uno
+  horariosEmpleadosCache = {};
+  if (empleadosDelServicio.length > 1) {
+    const hs = await Promise.all(empleadosDelServicio.map(e => Sheets.getEmpleadoHorario(e.id).catch(() => null)));
+    empleadosDelServicio.forEach((e, i) => { horariosEmpleadosCache[e.id] = hs[i]; });
+  }
   modoCualquiera = empleadosDelServicio.length > 1;
   empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
   empleadoHorarioCache = null;
@@ -652,10 +658,14 @@ function escTextoEmp(t){
 
 // Presentación del profesional (la que el negocio escribió en su ficha)
 function bioEmpleadoHtml(e, etiqueta){
-  if (!e || !e.bio) return '';
+  if (!e || (!e.bio && !e.fotoUrl)) return '';
+  const inicial = escTextoEmp((e.nombre || '?').trim().charAt(0).toUpperCase());
+  const foto = e.fotoUrl
+    ? `<img class="emp-bio-foto" src="${escTextoEmp(e.fotoUrl)}" alt=""/>`
+    : `<div class="emp-bio-foto emp-bio-ini">${inicial}</div>`;
   return `<div class="emp-bio">
-    <div class="emp-bio-name">${etiqueta} ${escTextoEmp(e.nombre)}</div>
-    <p>${escTextoEmp(e.bio)}</p>
+    <div class="emp-bio-head">${foto}<div class="emp-bio-name">${etiqueta} ${escTextoEmp(e.nombre)}</div></div>
+    ${e.bio ? `<p>${escTextoEmp(e.bio)}</p>` : ''}
   </div>`;
 }
 
@@ -665,7 +675,7 @@ function renderSelectorEmpleado(){
   if (empleadosDelServicio.length <= 1){
     // Con un solo profesional no se pregunta "¿con quién?", pero si tiene presentación se muestra
     const unico = empleadosDelServicio[0];
-    if (unico && unico.bio){ cont.style.display='block'; cont.innerHTML = bioEmpleadoHtml(unico, 'Tu profesional:'); }
+    if (unico && (unico.bio || unico.fotoUrl)){ cont.style.display='block'; cont.innerHTML = bioEmpleadoHtml(unico, 'Tu profesional:'); }
     else { cont.style.display='none'; cont.innerHTML=''; }
     return;
   }
@@ -698,12 +708,41 @@ async function elegirEmpleado(id){
   renderCal();
   if (selectedDay) selDay2(selectedDay);
 }
-function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
+// El horario del negocio es por bloques (lv / sab / dom); el de un profesional puede ser
+// por día (lun, mar, mie, jue, vie, sab, dom). Se reconoce el formato por sus claves.
+function bloqueDelDia(dow, horario){
+  if (horario && (horario.lun || horario.mar || horario.mie || horario.jue || horario.vie)) {
+    return ['dom','lun','mar','mie','jue','vie','sab'][dow];
+  }
+  return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv');
+}
+
+// Configuración de un día para un horario (o el valor por defecto si aún no hay horario)
+function cfgDia(h, dow){
+  if (!h) return dow===0 ? { cerrado:true } : { abre:'8:00', cierra:'16:00', cerrado:false };
+  return h[bloqueDelDia(dow, h)] || { cerrado:true };
+}
+
+function horarioDeEmpleado(id){
+  return horariosEmpleadosCache[id] || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+}
+
+// ¿Este profesional trabaja a esa hora? (según su propio horario o, si no tiene, el del negocio)
+function empleadoTrabajaEn(id, dow, slotKey){
+  const c = cfgDia(horarioDeEmpleado(id), dow);
+  if (c.cerrado || !c.abre || !c.cierra) return false;
+  const m = timeToMin(slotKey);
+  return m >= timeToMin(c.abre) && m <= timeToMin(c.cierra);
+}
 
 function diaCerrado(dow){
+  // "Cualquiera disponible": el día está cerrado solo si NINGÚN profesional trabaja ese día
+  if (modoCualquiera && empleadosDelServicio.length > 1) {
+    return empleadosDelServicio.every(e => !!cfgDia(horarioDeEmpleado(e.id), dow).cerrado);
+  }
   const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null);
   if (!h) return dow===0; // si no hay horario configurado todavía, solo domingo cerrado por defecto
-  const bloque = h[bloqueDelDia(dow)];
+  const bloque = h[bloqueDelDia(dow, h)];
   return !bloque || !!bloque.cerrado;
 }
 
@@ -739,15 +778,25 @@ function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 function genSlots(){
   const dt=new Date(calY,calM,selectedDay);
   const dow=dt.getDay();
-  const horarioBase=(!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
-  const bloqueCfg=(horarioBase && horarioBase[bloqueDelDia(dow)]) || null;
-
   let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
-  if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
-    [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
-    [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
-  } else if (bloqueCfg && bloqueCfg.cerrado) {
-    return []; // cerrado ese día — sin horarios disponibles
+  if (modoCualquiera && empleadosDelServicio.length > 1) {
+    // Rango que cubre a todos los profesionales que trabajan ese día
+    const abiertos = empleadosDelServicio.map(e => cfgDia(horarioDeEmpleado(e.id), dow))
+      .filter(c => !c.cerrado && c.abre && c.cierra);
+    if (!abiertos.length) return [];
+    const minAbre = Math.min(...abiertos.map(c => timeToMin(c.abre)));
+    const maxCierra = Math.max(...abiertos.map(c => timeToMin(c.cierra)));
+    hIni = Math.floor(minAbre/60); mIni = minAbre % 60;
+    hFin = Math.floor(maxCierra/60); mFin = maxCierra % 60;
+  } else {
+    const horarioBase=(!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+    const bloqueCfg=(horarioBase && horarioBase[bloqueDelDia(dow, horarioBase)]) || null;
+    if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
+      [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
+      [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
+    } else if (bloqueCfg && bloqueCfg.cerrado) {
+      return []; // cerrado ese día — sin horarios disponibles
+    }
   }
 
   const slots=[];
@@ -808,8 +857,10 @@ function renderTimes(){
   slots.forEach(({key,lbl})=>{
     let ocupada;
     if (modoCualquiera && empleadosDelServicio.length > 1){
-      // Solo se ve "ocupado" si TODOS los empleados que hacen el servicio están ocupados a esa hora
-      ocupada = empleadosDelServicio.every(e => isBlocked(key, ocupadosPorEmpleadoCache[e.id]||[], durSvc));
+      // Solo se ve "ocupado" si TODOS los profesionales que hacen el servicio están ocupados
+      // o no trabajan a esa hora
+      const dowSlot = new Date(calY,calM,selectedDay).getDay();
+      ocupada = empleadosDelServicio.every(e => !empleadoTrabajaEn(e.id, dowSlot, key) || isBlocked(key, ocupadosPorEmpleadoCache[e.id]||[], durSvc));
     } else {
       ocupada = isBlocked(key, window._citasOcupadas||[], durSvc);
     }
@@ -835,8 +886,9 @@ function renderTimes(){
 function empleadoAsignadoFinal(){
   if (!modoCualquiera) return empleadoSeleccionado;
   const durSvc=curSvc.durMin||60;
+  const dowSel = new Date(calY,calM,selectedDay).getDay();
   for (const e of empleadosDelServicio){
-    if (!isBlocked(selTime, ocupadosPorEmpleadoCache[e.id]||[], durSvc)) return e.id;
+    if (empleadoTrabajaEn(e.id, dowSel, selTime) && !isBlocked(selTime, ocupadosPorEmpleadoCache[e.id]||[], durSvc)) return e.id;
   }
   return empleadosDelServicio[0] ? empleadosDelServicio[0].id : null;
 }
