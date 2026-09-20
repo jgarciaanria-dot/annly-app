@@ -1247,7 +1247,8 @@ async function finalizarCita(dayStr, ref){
     metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
     cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
     certificadoCodigo: montoCertAplicado>0 ? certAplicado.codigo : null,
-    certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null};
+    certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
+    certificadoSaldoRestante: montoCertAplicado>0 ? Math.max(0, certAplicado.saldoDisponible - montoCertAplicado) : null};
   let appointmentId=null;
   try{ appointmentId=await Sheets.guardarCita(cita); }catch(e){console.error(e);}
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
