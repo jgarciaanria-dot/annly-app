@@ -4755,7 +4755,7 @@ async function abrirDetalleCita(id){
   } else {
     html += fila('Por cobrar en el local', r.porCobrar == null ? 'Por confirmar' : fmtDinero(r.porCobrar));
   }
-  html += '<div id="cd-extras"></div><div id="cd-cobros"></div>';
+  html += '<div id="cd-extras"></div><div id="cd-cobros"></div><div id="cd-cuadre"></div>';
   const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.fechaISO <= isoLocal(new Date());
   if (puedeCompletar) html += `<button class="btn-save" style="margin-top:14px;" onclick="cerrarModalFin('ov-cita-detalle');abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar cita</button>`;
   elFin('cd-body').innerHTML = html;
@@ -4774,21 +4774,43 @@ async function abrirDetalleCita(id){
     } catch(e){}
   }
 
-  // Cobros registrados en Finanzas (solo citas completadas)
+  // Ventas adicionales, cobros registrados y cuadre (solo citas completadas)
   if (c.completadaEn){
-    try {
-      const extras = await Sheets.getExtrasDeCita(c.id);
-      const contE = elFin('cd-extras');
-      if (contE && extras.length){
-        contE.innerHTML = titulo('Ventas adicionales') + extras.map(x => fila(escCat(x.descripcion), fmtDinero(x.monto))).join('');
-      }
-    } catch(e){}
-    let pagos = [];
-    try { pagos = await Sheets.getPagosDeCita(c.id); } catch(e){ pagos = []; }
+    let extras = [], pagos = [], errExtras = false;
+    try { extras = await Sheets.getExtrasDeCita(c.id); } catch(e){ console.error('Error leyendo ventas adicionales de la cita:', e); errExtras = true; }
+    try { pagos = await Sheets.getPagosDeCita(c.id); } catch(e){ console.error('Error leyendo cobros de la cita:', e); pagos = []; }
+
+    const contE = elFin('cd-extras');
+    if (contE){
+      if (extras.length) contE.innerHTML = titulo('Ventas adicionales') + extras.map(x => fila(escCat(x.descripcion), fmtDinero(x.monto))).join('');
+      else if (errExtras) contE.innerHTML = '<p style="font-size:11px;color:var(--ink-soft);margin:10px 0 0;">No se pudieron cargar las ventas adicionales de esta cita.</p>';
+    }
     const cont = elFin('cd-cobros');
     if (cont && pagos.length){
       cont.innerHTML = titulo('Cobros registrados') + pagos.map(p =>
         fila((METODOS_PAGO[p.metodo] || p.metodo) + (p.referencia ? ' · ' + escCat(p.referencia) : ''), fmtDinero(p.monto))).join('');
+    }
+
+    // Cuadre: lo que vale la cita (servicio + adicionales) contra lo que se cobró
+    const contQ = elFin('cd-cuadre');
+    if (contQ && pagos.length){
+      const sumExtras = Math.round(extras.reduce((s,x) => s + x.monto, 0)*100)/100;
+      const sumPagos = Math.round(pagos.reduce((s,p) => s + p.monto, 0)*100)/100;
+      const servicio = Number(c.precioCobrado) || 0;
+      const abonoAparte = (r.abono > 0 && !r.descontable) ? r.abono : 0;
+      const esperado = Math.round((servicio + sumExtras + abonoAparte)*100)/100;
+      const dif = Math.round((sumPagos - esperado)*100)/100;
+      let estado;
+      if (Math.abs(dif) < 0.005) estado = '<span style="color:#159A61;font-weight:700;">✓ Cuadra</span>';
+      else if (dif > 0) estado = `<span style="color:#B08900;font-weight:700;">Se cobró ${fmtDinero(dif)} más de lo registrado</span>`;
+      else estado = `<span style="color:#C2695A;font-weight:700;">Faltan ${fmtDinero(-dif)} por registrar</span>`;
+      contQ.innerHTML = titulo('Cuadre') +
+        fila('Servicio', fmtDinero(servicio)) +
+        (sumExtras > 0 ? fila('Ventas adicionales', fmtDinero(sumExtras)) : '') +
+        (abonoAparte > 0 ? fila('Abono no reembolsable (aparte)', fmtDinero(abonoAparte)) : '') +
+        fila('Total de la cita', fmtDinero(esperado)) +
+        fila('Total cobrado', fmtDinero(sumPagos)) +
+        `<p style="font-size:12px;margin:8px 0 0;line-height:1.5;">${estado}${dif > 0 && !extras.length ? ' <span style="color:var(--ink-soft);">· no hay ninguna venta adicional ligada a esta cita; si el monto extra fue una venta, quedó sin detalle.</span>' : ''}</p>`;
     }
   }
 }
