@@ -986,9 +986,11 @@ async function aplicarCertificadoCodigo(){
   msgEl.textContent='Verificando...';
   const res=await Sheets.validarCertificado(codigo);
   if(res.valido){
-    certAplicado={id:res.certificateId, codigo:res.codigo, saldoDisponible:res.saldoDisponible};
+    certAplicado={id:res.certificateId, codigo:res.codigo, saldoDisponible:res.saldoDisponible, unSoloUso:!!res.unSoloUso};
     msgEl.style.color='#3a7a3a';
-    msgEl.textContent=`✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles.`;
+    msgEl.textContent=res.unSoloUso
+      ? `✓ Certificado de cortesía: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso: se aplica en esta cita y no queda saldo.`
+      : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles.`;
     const _m=calcularMontos();
     if(_m.tieneAbono && !_m.esConsultar && _m.abono<=0) msgEl.textContent+=' Cubre tu servicio: no necesitas pagar abono.';
   } else {
@@ -1248,12 +1250,13 @@ async function finalizarCita(dayStr, ref){
     cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
     certificadoCodigo: montoCertAplicado>0 ? certAplicado.codigo : null,
     certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
-    certificadoSaldoRestante: montoCertAplicado>0 ? Math.max(0, certAplicado.saldoDisponible - montoCertAplicado) : null};
+    certificadoSaldoRestante: montoCertAplicado>0 ? (certAplicado.unSoloUso ? 0 : Math.max(0, certAplicado.saldoDisponible - montoCertAplicado)) : null};
   let appointmentId=null;
   try{ appointmentId=await Sheets.guardarCita(cita); }catch(e){console.error(e);}
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
   if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
-  if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e);} }
+  let certFallo=false;
+  if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e); certFallo=true;} }
   const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
   Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
   Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre, telefonoCliente:tel, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
@@ -1268,7 +1271,9 @@ async function finalizarCita(dayStr, ref){
     ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
     : (cuponAplicado ? `<strong>Cupón aplicado:</strong> ${cuponPremioTexto}<br>` : '');
   const certLine = montoCertAplicado>0
-    ? `<strong>Certificado aplicado (${certAplicado.codigo}):</strong> <span style="color:#4CAF50;font-weight:600;">-$${montoCertAplicado.toFixed(2)}</span><br><strong>Saldo restante del certificado:</strong> <span style="color:#4CAF50;font-weight:600;">$${Math.max(0,certAplicado.saldoDisponible-montoCertAplicado).toFixed(2)}</span><br>`
+    ? `<strong>Certificado aplicado (${certAplicado.codigo}):</strong> <span style="color:#4CAF50;font-weight:600;">-$${montoCertAplicado.toFixed(2)}</span><br>${certFallo
+      ? '<span style="color:#c0392b;font-size:12px;">No pudimos actualizar el saldo de tu certificado; el negocio lo revisará contigo.</span><br>'
+      : `<strong>Saldo restante del certificado:</strong> <span style="color:#4CAF50;font-weight:600;">$${(certAplicado.unSoloUso ? 0 : Math.max(0,certAplicado.saldoDisponible-montoCertAplicado)).toFixed(2)}</span>${certAplicado.unSoloUso ? ' <span style="font-size:11px;color:#888;">(cortesía de un solo uso)</span>' : ''}<br>`}`
     : '';
   const totalLine = esConsultar
     ? `<strong>Monto a cancelar el día de la cita:</strong> ${restanteTexto}<br>`
