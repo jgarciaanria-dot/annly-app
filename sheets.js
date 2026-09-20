@@ -3180,7 +3180,8 @@ const Sheets = {
 
 
     const {
-      data: existente
+      data: existente,
+      error: errLeer
     } = await sbClient
       .from('employee_schedules')
       .select('id')
@@ -3190,10 +3191,17 @@ const Sheets = {
       )
       .maybeSingle();
 
+    if (errLeer) {
+      throw errLeer;
+    }
+
 
     if (existente) {
 
-      await sbClient
+      const {
+        data: filas,
+        error: errUpdate
+      } = await sbClient
         .from('employee_schedules')
         .update({
           horario_estructurado:
@@ -3202,21 +3210,36 @@ const Sheets = {
         .eq(
           'id',
           existente.id
+        )
+        .select('id');
+
+      if (errUpdate) {
+        throw errUpdate;
+      }
+
+      // Si la base no permitió el cambio, no hay error pero tampoco filas actualizadas
+      if (!filas || !filas.length) {
+        throw new Error(
+          'No se pudo actualizar el horario (sin permisos en la base de datos).'
         );
+      }
 
     } else {
 
-      await sbClient
+      const {
+        error: errInsert
+      } = await sbClient
         .from('employee_schedules')
         .insert([{
-
           employee_id:
             empleadoId,
-
           horario_estructurado:
             horario
-
         }]);
+
+      if (errInsert) {
+        throw errInsert;
+      }
     }
   },
 
@@ -3228,13 +3251,19 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    await sbClient
+    const {
+      error
+    } = await sbClient
       .from('employee_schedules')
       .delete()
       .eq(
         'employee_id',
         empleadoId
       );
+
+    if (error) {
+      throw error;
+    }
   },
 
 
