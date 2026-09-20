@@ -1644,7 +1644,10 @@ const Sheets = {
         certificadoSaldoRestante:
           c.certificado_saldo_restante != null
             ? Number(c.certificado_saldo_restante)
-            : null
+            : null,
+
+        ajusteDetalle:
+          c.ajuste_detalle || ''
 
       }));
   },
@@ -3364,7 +3367,8 @@ const Sheets = {
     if (error) throw error;
     return (data || []).map(v => ({
       id: v.id, fecha: v.fecha, cliente: v.cliente_nombre, servicio: v.servicio_nombre,
-      empleadoId: v.employee_id, monto: Number(v.monto), creadoEn: v.creado_en
+      empleadoId: v.employee_id, monto: Number(v.monto), creadoEn: v.creado_en,
+      anulada: !!v.anulada, motivoAnulacion: v.anulada_motivo || '', anuladaEn: v.anulada_en || null
     }));
   },
 
@@ -3394,11 +3398,29 @@ const Sheets = {
     return venta.id;
   },
 
-  async eliminarVentaLocal(id) {
+  // Anula una venta en el local (devolución, error de captura...): no se borra, queda en
+  // el historial con su motivo, y sus pagos dejan de contar en los ingresos.
+  async anularVentaLocal(id, motivo) {
     await window.AnnlyReady;
-    // Los pagos de la venta se eliminan en cascada
-    const { error } = await sbClient.from('local_sales').delete().eq('id', id).eq('business_id', BUSINESS_ID);
-    if (error) throw error;
+    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
+
+    // 1) Los pagos de la venta dejan de contar como ingreso
+    const { error: errPagos } = await sbClient.from('finance_payments')
+      .update({ estado: 'anulado' })
+      .eq('local_sale_id', id).eq('business_id', BUSINESS_ID).eq('estado', 'confirmado');
+    if (errPagos) throw errPagos;
+
+    // 2) La venta queda marcada como anulada, con su motivo
+    const { data: filas, error: errVenta } = await sbClient.from('local_sales')
+      .update({ anulada: true, anulada_motivo: motivo.trim(), anulada_en: new Date().toISOString() })
+      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulada', false)
+      .select('id');
+    if (errVenta || !filas || !filas.length) {
+      // Si no se pudo marcar la venta, los pagos vuelven a contar
+      await sbClient.from('finance_payments').update({ estado: 'confirmado' })
+        .eq('local_sale_id', id).eq('business_id', BUSINESS_ID).eq('estado', 'anulado');
+      throw errVenta || new Error('La venta ya estaba anulada o no existe.');
+    }
   },
 
   // Completa una cita de la Agenda: la cita existente es el origen del cobro
@@ -3406,15 +3428,17 @@ const Sheets = {
   // completada, para que dos clics no registren el cobro dos veces.
   async completarCita(citaId, datos) {
     await window.AnnlyReady;
+    const marca = { completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado };
+    if (datos.ajusteDetalle) marca.ajuste_detalle = datos.ajusteDetalle;
     const { data: marcada, error: errMarca } = await sbClient.from('appointments')
-      .update({ completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado })
+      .update(marca)
       .eq('id', citaId).eq('business_id', BUSINESS_ID).is('completada_en', null)
       .select('id');
     if (errMarca) throw errMarca;
     if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
 
     const revertirMarca = () => sbClient.from('appointments')
-      .update({ completada_en: null, precio_cobrado: null }).eq('id', citaId);
+      .update({ completada_en: null, precio_cobrado: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}) }).eq('id', citaId);
 
     // Ventas adicionales de la visita (tratamientos, productos, etc.)
     let extrasIds = [];
