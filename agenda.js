@@ -858,11 +858,12 @@ function goForm(){
         <div class="timer-lbl">Tienes <strong>5 minutos</strong> para completar el pago.<br>Si no se confirma, el cupo se libera.</div>
       </div>
       ${opcionesHtml}
-      <div id="yappyRealWrap" class="${tieneYappyComercial?'':'hidden'}" style="margin-top:.875rem;">
+      ${tieneYappyComercial ? `
+      <div id="yappyRealWrap" style="margin-top:.875rem;">
         <div class="fg"><label class="flbl">Tu número Yappy (sin +507)</label><input class="fi" id="fAliasYappy" placeholder="6XXXXXXX"></div>
         <p id="yappyRealMsg" style="font-size:12px;margin:6px 0 10px;min-height:14px;"></p>
         <btn-yappy id="btnYappyReal" theme="darkBlue" rounded="true"></btn-yappy>
-      </div>
+      </div>` : ''}
       <div id="yappyManualWrap" class="${tieneYappyComercial?'hidden':''}">
         <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
         ${(tieneYappy&&!tieneYappyComercial)?`<button class="btn-yappy" id="btnYappy" onclick="copiarYappy()">Copiar número de Yappy</button>`:''}
