@@ -4594,7 +4594,9 @@ function resumenPagoCita(c){
   const descontable = c.abonoTipo === 'descontable';
   const neto = precio != null ? Math.max(0, precio - desc) : null;
   const porCobrar = neto != null ? Math.max(0, Math.round((neto - cert - (descontable ? abono : 0))*100)/100) : null;
-  return { precio, pct, desc, cert, abono, descontable, neto, porCobrar };
+  // Cobrado de más: lo pagado por adelantado (certificado + abono descontable) supera el servicio
+  const excedente = neto != null ? Math.max(0, Math.round((cert + (descontable ? abono : 0) - neto)*100)/100) : 0;
+  return { precio, pct, desc, cert, abono, descontable, neto, porCobrar, excedente };
 }
 
 function metodoAbonoTexto(m){ return m === 'yappy' ? 'Yappy' : (m ? 'Transferencia' : ''); }
@@ -4606,6 +4608,7 @@ function chipsPagoCita(c){
   if (r.pct > 0) out.push(chip('Cupón ' + r.pct + '%', '#FBEDEE', '#C2695A'));
   if (r.cert > 0) out.push(chip('Certificado −' + fmtDinero(r.cert), '#E9F6EF', '#159A61'));
   if (r.abono > 0) out.push(chip('Abono ' + fmtDinero(r.abono) + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
+  if (r.excedente > 0) out.push(chip('Saldo a favor ' + fmtDinero(r.excedente), '#FBF6E4', '#B08900'));
   if (c.completadaEn) out.push(chip('Cobrada ' + fmtDinero(c.precioCobrado), '#E9F6EF', '#159A61'));
   else if (r.porCobrar == null) out.push(chip('Precio por confirmar', '#FBF6E4', '#B08900'));
   else if (r.porCobrar > 0) out.push(chip('Por cobrar ' + fmtDinero(r.porCobrar), '#FBF6E4', '#B08900'));
@@ -4685,6 +4688,10 @@ async function abrirDetalleCita(id){
     if (c.comprobante) html += fila('Comprobante del abono', escCat(c.comprobante));
   } else if (c.comprobante && c.comprobante !== 'Sin abono') {
     html += fila('Referencia', escCat(c.comprobante));
+  }
+  if (r.excedente > 0){
+    html += fila('Saldo a favor del cliente (cobrado de más)', `<span style="color:#B08900;">${fmtDinero(r.excedente)}</span>`);
+    html += `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:6px 0 0;">Lo pagado por adelantado (certificado + abono) supera el precio del servicio. Esta reserva se hizo cuando el abono aún se cobraba aunque el certificado cubriera todo.</p>`;
   }
   if (c.completadaEn){
     html += fila('Estado', 'Completada · ' + fmtDinero(c.precioCobrado));
