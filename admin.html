@@ -1158,19 +1158,32 @@ img{max-width:100%;}
         <label class="flbl">Tipo</label>
         <div style="display:flex;gap:8px;">
           <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
-            <input type="radio" name="cert-tipo" value="venta" checked/> Venta
+            <input type="radio" name="cert-tipo" value="venta" checked onchange="certTipoCambio()"/> Venta
           </label>
           <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
-            <input type="radio" name="cert-tipo" value="regalo"/> Regalo
+            <input type="radio" name="cert-tipo" value="regalo" onchange="certTipoCambio()"/> Regalo
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
+            <input type="radio" name="cert-tipo" value="cortesia" onchange="certTipoCambio()"/> Cortesía
           </label>
         </div>
       </div>
-      <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" id="cert-monto" type="number" min="1" step="0.01"/></div>
+      <p id="cert-cortesia-nota" style="display:none;font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:-4px 0 10px;background:var(--bg);border-radius:8px;padding:8px 10px;">Cortesía: el negocio lo regala. No se cobra, no cuenta como ingreso y es de un solo uso: se consume completo en la primera cita, aunque el servicio valga menos. Ese servicio queda sin cobro.</p>
+      <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" id="cert-monto" type="number" min="1" step="0.01" oninput="certMontoCambio()"/></div>
       <div class="fg"><label class="flbl">Vence el</label><input class="fi" id="cert-vencimiento" type="date"/></div>
-      <div class="fg"><label class="flbl">Nombre de quien compra / regala</label><input class="fi" id="cert-comprador-nombre"/></div>
-      <div class="fg"><label class="flbl">Teléfono de quien compra / regala (opcional)</label><input class="fi" id="cert-comprador-telefono"/></div>
-      <div class="fg"><label class="flbl">Correo de quien compra / regala (opcional — sin correo no se envía confirmación)</label><input class="fi" id="cert-comprador-correo" type="email"/></div>
-      <div class="fg"><label class="flbl">Nombre de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-nombre"/></div>
+      <div class="fg" id="cert-cobro-wrap" style="display:none;background:#FAFAF8;border:1px solid var(--line);border-radius:12px;padding:12px 14px;">
+        <div id="cert-cobro-detalle">
+          <label class="flbl">¿Cómo pagó?</label>
+          <div id="cert-pagos"></div>
+          <p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:8px 0 0;">Se registra como dinero recibido: es ingreso del negocio desde que se vende.</p>
+        </div>
+      </div>
+      <div id="cert-comprador-grupo">
+        <div class="fg"><label class="flbl">Nombre de quien compra / regala</label><input class="fi" id="cert-comprador-nombre"/></div>
+        <div class="fg"><label class="flbl">Teléfono de quien compra / regala (opcional)</label><input class="fi" id="cert-comprador-telefono"/></div>
+        <div class="fg"><label class="flbl">Correo de quien compra / regala (opcional — sin correo no se envía confirmación)</label><input class="fi" id="cert-comprador-correo" type="email"/></div>
+      </div>
+      <div class="fg"><label class="flbl" id="cert-destinatario-lbl">Nombre de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-nombre"/></div>
       <div class="fg"><label class="flbl">Teléfono de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-telefono"/></div>
       <div class="fg"><label class="flbl">Correo de quien lo recibe (opcional — sin correo no se le envía el regalo)</label><input class="fi" id="cert-destinatario-correo" type="email"/></div>
       <div class="fg"><label class="flbl">Mensaje para el destinatario (opcional, se muestra en su regalo)</label><textarea class="fi" id="cert-mensaje" rows="2" style="resize:vertical;" placeholder="Disfruta este momento, te lo mereces."></textarea></div>
@@ -1476,7 +1489,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=18"></script>
+<script src="sheets.js?v=20"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -2631,7 +2644,7 @@ function renderListaCertificados(){
       const est = estadoCertificado(c);
       return `<tr style="border-bottom:1px solid var(--line-soft);">
         <td style="padding:8px 6px;font-weight:700;">${c.codigo}</td>
-        <td style="padding:8px 6px;">${c.tipo === 'regalo' ? 'Regalo' : 'Venta'}</td>
+        <td style="padding:8px 6px;">${tipoCertTexto(c.tipo)}</td>
         <td style="padding:8px 6px;">${c.compradorNombre || '—'}</td>
         <td style="padding:8px 6px;">${c.destinatarioNombre || '—'}</td>
         <td style="padding:8px 6px;">$${c.montoInicial.toFixed(2)}</td>
@@ -2652,7 +2665,7 @@ async function verDetalleCertificado(certificateId){
   document.getElementById('detalle-cert-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;font-size:12.5px;">
       <div><span style="color:#888;">Código</span><br><strong>${c.codigo}</strong></div>
-      <div><span style="color:#888;">Tipo</span><br><strong>${c.tipo === 'regalo' ? 'Regalo' : 'Venta'}</strong></div>
+      <div><span style="color:#888;">Tipo</span><br><strong>${tipoCertTexto(c.tipo)}</strong></div>
       <div><span style="color:#888;">Comprador</span><br><strong>${c.compradorNombre || '—'}</strong>${c.compradorTelefono ? ' · ' + c.compradorTelefono : ''}${c.compradorCorreo ? '<br>' + c.compradorCorreo : ''}</div>
       <div><span style="color:#888;">Destinatario</span><br><strong>${c.destinatarioNombre || '—'}</strong>${c.destinatarioTelefono ? ' · ' + c.destinatarioTelefono : ''}${c.destinatarioCorreo ? '<br>' + c.destinatarioCorreo : ''}</div>
       <div><span style="color:#888;">Monto inicial</span><br><strong>$${c.montoInicial.toFixed(2)}</strong></div>
@@ -2760,6 +2773,9 @@ function abrirModalCertificado(){
   document.getElementById('cert-nota').value = '';
   document.getElementById('cert-form-msg').textContent = '';
   document.querySelector('input[name="cert-tipo"][value="venta"]').checked = true;
+  // Cobro de la venta (solo si el negocio tiene Finanzas)
+  pagoIniciar('cert-pagos', 0);
+  certTipoCambio();
   const btn = document.getElementById('btnGuardarCertificado');
   if (btn){ btn.disabled = false; btn.textContent = 'Emitir certificado'; }
   document.getElementById('modal-certificado-form').style.display = 'block';
@@ -2781,11 +2797,24 @@ async function guardarCertificado(){
   const tipo = document.querySelector('input[name="cert-tipo"]:checked').value;
   const monto = parseFloat(document.getElementById('cert-monto').value);
   const vencimiento = document.getElementById('cert-vencimiento').value;
-  const compradorNombre = document.getElementById('cert-comprador-nombre').value.trim();
+  const esCortesia = tipo === 'cortesia';
+  // En una cortesía, quien regala es el propio negocio
+  const compradorNombre = esCortesia
+    ? ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.nombre) || 'El negocio')
+    : document.getElementById('cert-comprador-nombre').value.trim();
 
   if (!monto || monto <= 0){ msgEl.textContent = 'Ingresa un monto válido.'; return; }
   if (!vencimiento){ msgEl.textContent = 'Selecciona una fecha de vencimiento.'; return; }
-  if (!compradorNombre){ msgEl.textContent = tipo === 'regalo' ? 'Ingresa el nombre de quien regala.' : 'Ingresa el nombre del comprador.'; return; }
+  if (esCortesia && !document.getElementById('cert-destinatario-nombre').value.trim()){ msgEl.textContent = 'Ingresa el nombre de quien recibe la cortesía.'; return; }
+  if (!esCortesia && !compradorNombre){ msgEl.textContent = tipo === 'regalo' ? 'Ingresa el nombre de quien regala.' : 'Ingresa el nombre del comprador.'; return; }
+
+  // Cobro de la venta: debe cuadrar con el monto (salvo cortesía)
+  let pagosCert = [];
+  if (moduloDisponible('FINANZAS') && !esCortesia){
+    const vp = pagoValidar('cert-pagos');
+    if (!vp.ok){ msgEl.textContent = vp.msg; return; }
+    pagosCert = vp.lineas;
+  }
 
   msgEl.textContent = '';
   GUARDANDO_CERTIFICADO = true;
@@ -2796,13 +2825,14 @@ async function guardarCertificado(){
     const codigo = await Sheets.emitirCertificado({
       tipo, monto, fechaVencimiento: vencimiento,
       compradorNombre,
-      compradorTelefono: document.getElementById('cert-comprador-telefono').value.trim(),
-      compradorCorreo: document.getElementById('cert-comprador-correo').value.trim(),
+      compradorTelefono: esCortesia ? '' : document.getElementById('cert-comprador-telefono').value.trim(),
+      compradorCorreo: esCortesia ? '' : document.getElementById('cert-comprador-correo').value.trim(),
       destinatarioNombre: document.getElementById('cert-destinatario-nombre').value.trim(),
       destinatarioTelefono: document.getElementById('cert-destinatario-telefono').value.trim(),
       destinatarioCorreo: document.getElementById('cert-destinatario-correo').value.trim(),
       mensaje: document.getElementById('cert-mensaje').value.trim(),
-      nota: document.getElementById('cert-nota').value.trim()
+      nota: document.getElementById('cert-nota').value.trim(),
+      pagos: pagosCert
     });
     document.getElementById('cert-codigo-generado').textContent = codigo;
     document.getElementById('modal-certificado-form').style.display = 'none';
@@ -3876,7 +3906,7 @@ const METODOS_COBRO = ['efectivo','yappy','transferencia','tarjeta'];
 const CATEGORIAS_GASTO = ['Insumos y productos','Alquiler','Servicios básicos','Pagos al personal','Publicidad','Mantenimiento','Otros'];
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-let FIN = { pagos:[], gastos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+let FIN = { pagos:[], pagosCert:[], pagosCanje:[], cortesiasPeriodo:0, gastos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
 let FIN_PERIODO = 'actual';
 let FIN_VISTA = 'resumen';
 let FIN_FILTRO_MOV = 'todos';
@@ -3973,7 +4003,12 @@ async function loadFinanzas(){
       Sheets.getVentasLocales(desde, hasta),
       Sheets.getEmpleados()
     ]);
-    FIN.pagos = pagos; FIN.gastos = gastos; FIN.ventas = ventas;
+    // Ingresos = dinero recibido: servicios y ventas pagados con dinero + certificados vendidos.
+    // Un servicio pagado CON un certificado no es dinero nuevo (ya contó al venderse el certificado).
+    FIN.pagos = pagos.filter(p => p.origen !== 'certificado' && p.metodo !== 'certificado');
+    FIN.pagosCert = pagos.filter(p => p.origen === 'certificado');
+    FIN.pagosCanje = pagos.filter(p => p.origen !== 'certificado' && p.metodo === 'certificado');
+    FIN.gastos = gastos; FIN.ventas = ventas;
     FIN.empleados = empleados.filter(e => e.activo);
     FIN.equipo = Object.fromEntries(empleados.map(e => [e.id, e.nombre]));
   } catch(e){
@@ -3985,6 +4020,9 @@ async function loadFinanzas(){
   try {
     const certs = await Sheets.getCertificados();
     FIN.certPorCanjear = certs.filter(c => estadoCertificado(c).texto === 'Activo').reduce((s,c) => s + c.saldoRestante, 0);
+    FIN.cortesiasPeriodo = certs.filter(c => c.tipo === 'cortesia' && c.estado !== 'cancelado' &&
+      String(c.fechaEmision || '').slice(0,10) >= desde && String(c.fechaEmision || '').slice(0,10) <= hasta)
+      .reduce((s,c) => s + c.montoInicial, 0);
   } catch(e){ FIN.certPorCanjear = 0; }
   renderFinanzas();
 }
@@ -4004,15 +4042,18 @@ function renderFinanzas(){
 
 // ---------- Resumen ----------
 function htmlResumenFin(){
-  const ingresos = sumaFin(FIN.pagos);
+  const cobrosServicios = sumaFin(FIN.pagos);
+  const ventaCert = sumaFin(FIN.pagosCert);
+  const ingresos = cobrosServicios + ventaCert;
   const gastos = sumaFin(FIN.gastos);
   const resultado = ingresos - gastos;
   const agenda = sumaFin(FIN.pagos.filter(p => p.origen === 'agenda'));
-  const local = ingresos - agenda;
+  const local = cobrosServicios - agenda;
   const adicionales = Math.min(agenda, sumaFin(FIN.extras));
   const serviciosAgenda = agenda - adicionales;
+  const canjeados = sumaFin(FIN.pagosCanje);
   const porMetodo = {};
-  FIN.pagos.forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
+  [...FIN.pagos, ...FIN.pagosCert].forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
 
   const kpi = (titulo, valor, color, nota) => `
     <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:12px;padding:14px;">
@@ -4031,25 +4072,36 @@ function htmlResumenFin(){
   };
 
   const metodosHtml = Object.keys(porMetodo).sort((a,b) => porMetodo[b]-porMetodo[a])
-    .map(m => barra(m === 'certificado' ? 'Certificado (canjeado)' : (METODOS_PAGO[m]||m), porMetodo[m], ingresos, '#7C3AED')).join('');
+    .map(m => barra(METODOS_PAGO[m] || m, porMetodo[m], ingresos, '#7C3AED')).join('');
 
-  const vacio = !FIN.pagos.length
-    ? '<p style="font-size:12px;color:var(--ink-soft);text-align:center;padding:.5rem 1rem 1rem;line-height:1.6;">Todavía no hay cobros en este periodo. Completa una cita desde <strong>Citas</strong> o registra una venta en el local.</p>'
+  const vacio = (!FIN.pagos.length && !FIN.pagosCert.length)
+    ? '<p style="font-size:12px;color:var(--ink-soft);text-align:center;padding:.5rem 1rem 1rem;line-height:1.6;">Todavía no hay cobros en este periodo. Completa una cita desde <strong>Citas</strong>, registra una venta en el local o emite un certificado.</p>'
+    : '';
+
+  const detalleServicios = canjeados > 0
+    ? 'Además, ' + fmtDinero(canjeados) + ' de servicios se pagaron con certificados (ya contaron como ingreso al venderse el certificado).'
     : '';
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem;">
-      ${kpi('Ingresos', fmtDinero(ingresos), '#159A61')}
+      ${kpi('Ingresos', fmtDinero(ingresos), '#159A61', 'Dinero recibido: servicios, ventas y certificados vendidos')}
       ${kpi('Gastos', fmtDinero(gastos), '#C2695A')}
       ${kpi('Resultado', fmtDinero(resultado), resultado >= 0 ? '#159A61' : '#C2695A', 'Ingresos menos gastos')}
-      ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#7C3AED', 'No cuenta como ingreso hasta que se canjea')}
+      ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#7C3AED', 'Servicios que aún debes a clientes. El dinero ya contó como ingreso al venderse.')}
     </div>
     ${vacio}
     <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Ingresos por origen</span></div>
-      <div style="padding:1rem;">${barra('Servicios de citas completadas', serviciosAgenda, ingresos, '#EC4899')}${barra('Ventas en el local', local + adicionales, ingresos, '#7C3AED', adicionales > 0 ? fmtDinero(local) + ' sin cita · ' + fmtDinero(adicionales) + ' vendido en citas (productos y tratamientos)' : '')}</div>
+      <div style="padding:1rem;">${barra('Servicios de citas completadas', serviciosAgenda, ingresos, '#EC4899', detalleServicios)}${barra('Ventas en el local', local + adicionales, ingresos, '#7C3AED', adicionales > 0 ? fmtDinero(local) + ' sin cita · ' + fmtDinero(adicionales) + ' vendido en citas (productos y tratamientos)' : '')}${barra('Certificados vendidos', ventaCert, ingresos, '#F59E0B')}</div>
     </div>
     <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Por método de pago</span></div>
       <div style="padding:1rem;">${metodosHtml || '<p style="font-size:12px;color:#aaa;text-align:center;">Sin cobros en este periodo.</p>'}</div>
+    </div>
+    <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Certificados de regalo</span></div>
+      <div style="padding:.4rem 1rem 1rem;">
+        ${[['Vendidos en el periodo (ya son ingreso)', ventaCert, '#159A61'], ['Servicios pagados con certificado en el periodo (no suman otra vez)', canjeados, 'var(--ink)'], ['Cortesías emitidas en el periodo (sin cobro, no son ingreso)', FIN.cortesiasPeriodo, 'var(--ink)'], ['Por canjear (servicios pendientes)', FIN.certPorCanjear, '#7C3AED']]
+          .map(([t, v, c]) => `<div style="display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;"><span style="color:var(--ink-soft);">${t}</span><strong style="color:${c};">${fmtDinero(v)}</strong></div>`).join('')}
+        <p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:10px 0 0;">El certificado se cobra al venderlo y ese dinero es ingreso desde ese momento. Cuando el cliente lo canjea, el servicio se paga con el certificado y no suma otra vez. Las cortesías no generan ingreso.</p>
+      </div>
     </div>`;
 }
 
@@ -4064,6 +4116,18 @@ function htmlMovimientosFin(){
       sub:[METODOS_PAGO[p.metodo]||p.metodo, p.cliente, FIN.equipo[p.empleadoId], p.origen === 'local' ? 'En el local' : 'Agenda'].filter(Boolean).join(' · '),
       monto:p.monto
     })),
+    ...FIN.pagosCert.map(p => ({
+      tipo:'certificado', fecha:p.fecha, creado:p.creadoEn,
+      titulo:'Venta de ' + (p.concepto || 'certificado'),
+      sub:[METODOS_PAGO[p.metodo]||p.metodo, p.cliente].filter(Boolean).join(' · '),
+      monto:p.monto
+    })),
+    ...FIN.pagosCanje.map(p => ({
+      tipo:'canje', fecha:p.fecha, creado:p.creadoEn,
+      titulo:p.concepto || 'Servicio',
+      sub:['Pagado con certificado', p.referencia, p.cliente, FIN.equipo[p.empleadoId]].filter(Boolean).join(' · '),
+      monto:p.monto
+    })),
     ...FIN.gastos.map(g => ({
       tipo:'gasto', fecha:g.fecha, creado:g.creadoEn,
       titulo:g.categoria + (g.descripcion ? ' — ' + g.descripcion : ''),
@@ -4071,24 +4135,30 @@ function htmlMovimientosFin(){
       monto:g.monto
     }))
   ];
-  if (FIN_FILTRO_MOV === 'ingresos') movs = movs.filter(m => m.tipo === 'ingreso');
+  if (FIN_FILTRO_MOV === 'ingresos') movs = movs.filter(m => m.tipo === 'ingreso' || m.tipo === 'certificado');
   if (FIN_FILTRO_MOV === 'gastos') movs = movs.filter(m => m.tipo === 'gasto');
+  if (FIN_FILTRO_MOV === 'certificados') movs = movs.filter(m => m.tipo === 'certificado' || m.tipo === 'canje');
   movs.sort((a,b) => a.fecha < b.fecha ? 1 : (a.fecha > b.fecha ? -1 : String(b.creado||'').localeCompare(String(a.creado||''))));
 
   const chip = (v, txt) => `<div class="cat-pill${FIN_FILTRO_MOV === v ? ' sel' : ''}" onclick="setFiltroMov('${v}')">${txt}</div>`;
   const filas = movs.map(m => {
-    const ing = m.tipo === 'ingreso';
+    const canje = m.tipo === 'canje';
+    const cert = m.tipo === 'certificado';
+    const ing = m.tipo === 'ingreso' || cert;
+    const color = canje ? '#8A8378' : (cert ? '#F59E0B' : (ing ? '#159A61' : '#C2695A'));
+    const fondo = canje ? '#F1EEE7' : (cert ? '#FEF3E0' : (ing ? '#E9F6EF' : '#FBEDEE'));
+    const icono = (cert || canje) ? 'ti-gift' : (ing ? 'ti-arrow-down-left' : 'ti-arrow-up-right');
     return `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);">
-      <div style="width:34px;height:34px;border-radius:50%;background:${ing ? '#E9F6EF' : '#FBEDEE'};color:${ing ? '#159A61' : '#C2695A'};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ${ing ? 'ti-arrow-down-left' : 'ti-arrow-up-right'}"></i></div>
+      <div style="width:34px;height:34px;border-radius:50%;background:${fondo};color:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ${icono}"></i></div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(m.titulo)}</div>
-        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${fechaCortaFin(m.fecha)} · ${escCat(m.sub)}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${fechaCortaFin(m.fecha)} · ${escCat(m.sub)}${canje ? ' · <span style="color:#8A8378;font-weight:600;">no es dinero nuevo</span>' : ''}</div>
       </div>
-      <div style="font-size:14px;font-weight:800;color:${ing ? '#159A61' : '#C2695A'};white-space:nowrap;">${ing ? '+' : '−'}${fmtDinero(m.monto)}</div>
+      <div style="font-size:14px;font-weight:800;color:${color};white-space:nowrap;">${canje ? '' : (ing ? '+' : '−')}${fmtDinero(m.monto)}</div>
     </div>`;
   }).join('');
 
-  return `<div class="cats" style="margin-bottom:.8rem;">${chip('todos','Todos')}${chip('ingresos','Ingresos')}${chip('gastos','Gastos')}</div>
+  return `<div class="cats" style="margin-bottom:.8rem;">${chip('todos','Todos')}${chip('ingresos','Ingresos')}${chip('gastos','Gastos')}${chip('certificados','Certificados')}</div>
     <div class="adm-sec"><div style="padding:.3rem 1rem 0.6rem;">${filas || '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay movimientos en este periodo.</p>'}</div></div>`;
 }
 
@@ -4494,8 +4564,13 @@ async function validarCertificadoLocal(codigo){
   let res;
   try { res = await Sheets.validarCertificado(codigo); }
   catch(e){ return { ok:false, msg:'No se pudo verificar el certificado.' }; }
-  if (res && res.valido) return { ok:true, cert:{ id:res.certificateId, codigo:res.codigo, saldoDisponible:Number(res.saldoDisponible) } };
+  if (res && res.valido) return { ok:true, cert:{ id:res.certificateId, codigo:res.codigo, saldoDisponible:Number(res.saldoDisponible), unSoloUso:!!res.unSoloUso } };
   return { ok:false, msg: MOTIVOS_CERT[res && res.motivo] || 'Código no válido.' };
+}
+
+// Saldo que queda tras usar un certificado: una cortesía es de un solo uso y no deja saldo
+function saldoTrasCert(cert, usado){
+  return cert.unSoloUso ? 0 : Math.max(0, cert.saldoDisponible - usado);
 }
 
 // ctx.certExtra: saldo de un certificado que el cliente presenta hoy en el local
@@ -4564,7 +4639,9 @@ async function fcAplicarCertificado(){
   if (r.ok){
     COMPLETANDO.certExtra = r.cert;
     msg.style.color = '#3a7a3a';
-    msg.textContent = '✓ Certificado válido: ' + fmtDinero(r.cert.saldoDisponible) + ' disponibles.';
+    msg.textContent = r.cert.unSoloUso
+      ? '✓ Certificado de cortesía: ' + fmtDinero(r.cert.saldoDisponible) + '. Es de un solo uso: se aplica en esta cita y no queda saldo.'
+      : '✓ Certificado válido: ' + fmtDinero(r.cert.saldoDisponible) + ' disponibles.';
   } else {
     COMPLETANDO.certExtra = null;
     msg.style.color = '#c0392b'; msg.textContent = r.msg;
@@ -4602,7 +4679,7 @@ function fcRecalcular(inicial){
   }
   if (r.certExtraUsado > 0){
     html += linea('Certificado (' + escCat(COMPLETANDO.certExtra.codigo) + ')', '−' + fmtDinero(r.certExtraUsado), '#159A61');
-    html += linea('Saldo restante del certificado', fmtDinero(Math.max(0, COMPLETANDO.certExtra.saldoDisponible - r.certExtraUsado)), 'var(--ink-soft)');
+    html += linea('Saldo restante del certificado' + (COMPLETANDO.certExtra.unSoloUso ? ' (cortesía de un solo uso)' : ''), fmtDinero(saldoTrasCert(COMPLETANDO.certExtra, r.certExtraUsado)), 'var(--ink-soft)');
   }
   const extras = extrasTotal('fc-extras');
   if (extras > 0) html += linea('Ventas adicionales', '+' + fmtDinero(extras));
@@ -4652,7 +4729,7 @@ async function confirmarCompletarCita(){
       try {
         await Sheets.registrarCertificadoEnCita(c.id, {
           codigo: COMPLETANDO.certExtra.codigo, monto: r.certExtraUsado,
-          saldo: Math.max(0, COMPLETANDO.certExtra.saldoDisponible - r.certExtraUsado)
+          saldo: saldoTrasCert(COMPLETANDO.certExtra, r.certExtraUsado)
         });
       } catch(e){ console.error(e); }
     }
@@ -4884,6 +4961,32 @@ async function abrirDetalleCita(id){
         `<p style="font-size:12px;margin:8px 0 0;line-height:1.5;">${estado}${dif > 0 && !extras.length ? ' <span style="color:var(--ink-soft);">· no hay ninguna venta adicional ligada a esta cita; si el monto extra fue una venta, quedó sin detalle.</span>' : ''}</p>`;
     }
   }
+}
+
+
+// ---------- Emisión de certificado: cómo pagó el comprador / cortesía ----------
+function tipoCertTexto(t){ return t === 'regalo' ? 'Regalo' : (t === 'cortesia' ? 'Cortesía (un solo uso)' : 'Venta'); }
+
+function certTipoActual(){
+  const r = document.querySelector('input[name="cert-tipo"]:checked');
+  return r ? r.value : 'venta';
+}
+
+function certMontoCambio(){
+  const monto = Math.round((parseFloat(elFin('cert-monto').value) || 0)*100)/100;
+  if (certTipoActual() !== 'cortesia') pagoSetEsperado('cert-pagos', monto);
+}
+
+// Cortesía: el negocio lo regala (sin cobro, no es ingreso). Se oculta quien compra y el cobro.
+function certTipoCambio(){
+  const cortesia = certTipoActual() === 'cortesia';
+  elFin('cert-comprador-grupo').style.display = cortesia ? 'none' : 'block';
+  elFin('cert-cobro-wrap').style.display = (!cortesia && moduloDisponible('FINANZAS')) ? 'block' : 'none';
+  elFin('cert-cortesia-nota').style.display = cortesia ? 'block' : 'none';
+  elFin('cert-destinatario-lbl').textContent = cortesia
+    ? 'Nombre de quien recibe la cortesía'
+    : 'Nombre de quien lo recibe (opcional)';
+  if (!cortesia) certMontoCambio();
 }
 
 // ===== AGREGAR CITA DESDE EL PANEL (cliente que llega al local o reserva por teléfono) =====
@@ -5173,7 +5276,7 @@ function acRecalcularCobro(){
     let h = linea('Precio del servicio', fmtDinero(m.precio));
     if (m.certUsado > 0){
       h += linea('Certificado (' + escCat(AC.cert.codigo) + ')', '−' + fmtDinero(m.certUsado), '#159A61');
-      h += linea('Saldo restante del certificado', fmtDinero(Math.max(0, AC.cert.saldoDisponible - m.certUsado)), 'var(--ink-soft)');
+      h += linea('Saldo restante del certificado' + (AC.cert.unSoloUso ? ' (cortesía de un solo uso)' : ''), fmtDinero(saldoTrasCert(AC.cert, m.certUsado)), 'var(--ink-soft)');
     }
     const extras = extrasTotal('ac-extras');
     if (extras > 0) h += linea('Ventas adicionales', '+' + fmtDinero(extras));
@@ -5201,7 +5304,9 @@ async function acAplicarCertificado(){
     AC.cert = r.cert;
     const m = acMontos();
     msg.style.color = '#3a7a3a';
-    msg.textContent = '✓ Certificado válido: ' + fmtDinero(r.cert.saldoDisponible) + ' disponibles.' +
+    msg.textContent = (r.cert.unSoloUso
+        ? '✓ Certificado de cortesía: ' + fmtDinero(r.cert.saldoDisponible) + '. Es de un solo uso: se consume completo en esta cita.'
+        : '✓ Certificado válido: ' + fmtDinero(r.cert.saldoDisponible) + ' disponibles.') +
       (m.certUsado > 0 ? ' Se aplicarán ' + fmtDinero(m.certUsado) + ' a esta cita.' : ' Se aplicará al indicar el precio del servicio.');
   } else {
     AC.cert = null;
@@ -5273,7 +5378,7 @@ async function guardarAgregarCita(){
       precioFinal: Math.max(0, precioConocido - certUsado),
       certificadoCodigo: certUsado > 0 ? AC.cert.codigo : null,
       certificadoMonto: certUsado > 0 ? certUsado : null,
-      certificadoSaldoRestante: certUsado > 0 ? Math.max(0, AC.cert.saldoDisponible - certUsado) : null,
+      certificadoSaldoRestante: certUsado > 0 ? saldoTrasCert(AC.cert, certUsado) : null,
       citaId: 'cita-' + Date.now(), empleadoId
     });
   } catch(e){
