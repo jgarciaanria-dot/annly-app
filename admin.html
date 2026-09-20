@@ -609,6 +609,10 @@ img{max-width:100%;}
     </div>
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Hoy y próximos 7 días</span></div>
+      <div id="citas-filtro-wrap" style="display:none;padding:.85rem 1rem 0;">
+        <label class="flbl">Filtrar por profesional</label>
+        <select class="fi" id="citas-filtro-prof" onchange="filtrarCitasPorProfesional(this.value)"></select>
+      </div>
       <div id="lista-citas" style="padding:0.5rem 1rem 1rem;">
         <p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando citas...</p>
       </div>
@@ -952,7 +956,8 @@ img{max-width:100%;}
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Colores y estilo</span></div>
       <div style="padding:1rem;">
-        <div class="cats" id="pf-paleta-grid" style="margin-bottom:1rem;"></div>
+        <div class="cats" id="pf-paleta-grid" style="margin-bottom:.6rem;"></div>
+        <p id="pf-paleta-nota" style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 1rem;display:none;"></p>
         <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
           <span style="font-size:13px;font-weight:600;">Modo oscuro</span>
           <label class="svc-toggle">
@@ -1181,6 +1186,11 @@ img{max-width:100%;}
       <div class="frow">
         <div class="fg"><label class="flbl">Teléfono (opcional)</label><input class="fi" id="me-telefono"/></div>
         <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="me-correo"/></div>
+      </div>
+      <div class="fg">
+        <label class="flbl">Presentación para tus clientes (opcional)</label>
+        <textarea class="fi" id="me-bio" rows="3" maxlength="300" style="resize:vertical;" placeholder="Ej: Cosmetóloga idónea con 4 años de experiencia en limpiezas faciales y masajes reductores."></textarea>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Tus clientes lo ven al elegir profesional. Cuenta su experiencia, título o especialidad (máx. 300 caracteres).</p>
       </div>
       <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:1rem;"><input type="checkbox" id="me-activo" checked/> Activo (visible para agendar)</label>
 
@@ -1966,6 +1976,7 @@ async function renderPlan(){
   });
 
   await renderModulosPlan();
+  if (pfPaletaSel !== null && document.getElementById('pf-paleta-grid')) renderPaletaPerfil();
 
   // Durante el trial, el acceso real queda limitado a lo que trae Basic —
   // el plan seleccionado y los addons activados quedan "en espera" hasta
@@ -2610,6 +2621,27 @@ function parseFechaCita(fechaStr){
   } catch(e){ return null; }
 }
 
+let FILTRO_CITAS_PROF='';
+
+// El filtro solo aparece si el negocio tiene 2 o más profesionales activos
+async function poblarFiltroProfesionales(){
+  const wrap=document.getElementById('citas-filtro-wrap');
+  const sel=document.getElementById('citas-filtro-prof');
+  if(!wrap||!sel) return;
+  let emps=[];
+  try { emps=(await Sheets.getEmpleados()).filter(e=>e.activo); } catch(e){}
+  if(emps.length<2){ wrap.style.display='none'; FILTRO_CITAS_PROF=''; return; }
+  if(FILTRO_CITAS_PROF && !emps.some(e=>e.id===FILTRO_CITAS_PROF)) FILTRO_CITAS_PROF='';
+  wrap.style.display='block';
+  sel.innerHTML='<option value="">Todos los profesionales</option>'+emps.map(e=>`<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
+  sel.value=FILTRO_CITAS_PROF;
+}
+
+function filtrarCitasPorProfesional(id){
+  FILTRO_CITAS_PROF=id||'';
+  loadCitas();
+}
+
 async function loadCitas(){
   const cont=document.getElementById('lista-citas');
   cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando citas...</p>';
@@ -2617,6 +2649,7 @@ async function loadCitas(){
   try { citas=await Sheets.getCitas(); }
   catch(e){ cont.innerHTML='<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar citas.</p>'; return; }
   CITAS_CACHE = citas;
+  await poblarFiltroProfesionales();
 
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   const limite=new Date(hoy); limite.setDate(limite.getDate()+7);
@@ -2624,13 +2657,14 @@ async function loadCitas(){
   // Filtrar hoy + próximos 7 días
   const filtradas=citas.map(c=>({...c,_fecha:parseFechaCita(c.fecha)}))
     .filter(c=>c._fecha && c._fecha>=hoy && c._fecha<=limite)
+    .filter(c=>!FILTRO_CITAS_PROF || c.empleadoId===FILTRO_CITAS_PROF)
     .sort((a,b)=>{
       if(a._fecha.getTime()!==b._fecha.getTime()) return a._fecha-b._fecha;
       return horaAMin(a.hora)-horaAMin(b.hora);
     });
 
   if(filtradas.length===0){
-    cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay citas en los próximos 7 días.</p>';
+    cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">'+(FILTRO_CITAS_PROF?'No hay citas de este profesional en los próximos 7 días.':'No hay citas en los próximos 7 días.')+'</p>';
     return;
   }
 
@@ -3115,6 +3149,7 @@ async function openModalEmpleado(id){
   document.getElementById('me-nombre').value = e ? e.nombre : '';
   document.getElementById('me-telefono').value = e ? (e.telefono||'') : '';
   document.getElementById('me-correo').value = e ? (e.correo||'') : '';
+  document.getElementById('me-bio').value = e ? (e.bio||'') : '';
   document.getElementById('me-activo').checked = e ? e.activo : true;
   document.getElementById('me-foto-url').value = e ? (e.fotoUrl||'') : '';
   document.getElementById('me-foto-preview').innerHTML = e && e.fotoUrl
@@ -3221,6 +3256,7 @@ async function guardarEmpleadoModal(){
     nombre,
     telefono: document.getElementById('me-telefono').value.trim(),
     correo: document.getElementById('me-correo').value.trim(),
+    bio: document.getElementById('me-bio').value.trim(),
     fotoUrl: document.getElementById('me-foto-url').value.trim(),
     activo: document.getElementById('me-activo').checked
   };
@@ -3242,7 +3278,8 @@ async function guardarEmpleadoModal(){
     loadEquipo();
   } catch(e){
     console.error(e);
-    msgEl.textContent = 'No se pudo guardar. Intenta de nuevo.';
+    const detalle = e && (e.message || e.details || e.hint);
+    msgEl.textContent = 'No se pudo guardar.' + (detalle ? ' (' + detalle + ')' : ' Intenta de nuevo.');
   }
 }
 
@@ -3333,12 +3370,43 @@ function renderFooterTextoPerfil(){
   document.getElementById('pf-footer-texto-claro').classList.toggle('sel', pfFooterTextoSel === 'claro');
 }
 
+// Elegir entre todas las paletas es de Medium en adelante. En Basic (y durante el
+// trial, que siempre se trata como Basic) solo queda activa la paleta con la que el
+// negocio se inscribió; las demás se ven, pero desactivadas.
+function paletasDesbloqueadas(){
+  return ['medium','ultimate'].includes(planActualParaUI());
+}
+
+function avisoPaletaBloqueada(){
+  const nota = document.getElementById('pf-paleta-nota');
+  if(!nota) return;
+  nota.style.color = '#C2695A';
+  setTimeout(() => { nota.style.color = 'var(--ink-soft)'; }, 2500);
+}
+
 function renderPaletaPerfil(){
   const grid = document.getElementById('pf-paleta-grid');
-  grid.innerHTML = PALETAS_PERFIL.map((p,i) => `
-    <div class="cat-pill${pfPaletaSel===i?' sel':''}" style="display:flex;align-items:center;gap:7px;padding:8px 12px;" onclick="pfPaletaSel=${i};renderPaletaPerfil();">
-      <span style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,${p.primario},${p.secundario});flex-shrink:0;"></span>${p.nombre}
-    </div>`).join('');
+  const nota = document.getElementById('pf-paleta-nota');
+  const libre = paletasDesbloqueadas();
+  grid.innerHTML = PALETAS_PERFIL.map((p,i) => {
+    const bloqueada = !libre && pfPaletaSel !== i;
+    const swatch = `<span style="width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,${p.primario},${p.secundario});flex-shrink:0;"></span>`;
+    if (bloqueada){
+      return `<div class="cat-pill" title="Disponible en Medium o Ultimate" style="display:flex;align-items:center;gap:7px;padding:8px 12px;opacity:.5;cursor:not-allowed;" onclick="avisoPaletaBloqueada()">
+        ${swatch}${p.nombre}<i class="ti ti-lock" style="font-size:12px;"></i>
+      </div>`;
+    }
+    return `<div class="cat-pill${pfPaletaSel===i?' sel':''}" style="display:flex;align-items:center;gap:7px;padding:8px 12px;" onclick="pfPaletaSel=${i};renderPaletaPerfil();">
+      ${swatch}${p.nombre}
+    </div>`;
+  }).join('');
+  if (nota){
+    if (libre){ nota.style.display = 'none'; nota.innerHTML = ''; }
+    else {
+      nota.style.display = 'block';
+      nota.innerHTML = 'Tu plan actual incluye la paleta que elegiste al registrarte. Las demás se desbloquean con Medium o Ultimate. <button type="button" class="equipo-upgrade-link" onclick="switchTab(\'plan\')"><i class="ti ti-arrow-up-right"></i> Ver planes</button>';
+    }
+  }
 }
 
 async function loadPerfil(){
@@ -3544,7 +3612,7 @@ async function guardarPerfil(){
     modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro',
     footer_texto: pfFooterTextoSel
   };
-  if(pfPaletaSel !== null && pfPaletaSel >= 0){
+  if(pfPaletaSel !== null && pfPaletaSel >= 0 && paletasDesbloqueadas()){
     datos.color_primario = PALETAS_PERFIL[pfPaletaSel].primario;
     datos.color_secundario = PALETAS_PERFIL[pfPaletaSel].secundario;
   }
