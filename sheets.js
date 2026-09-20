@@ -3153,6 +3153,19 @@ const Sheets = {
     return corte.toISOString().split('T')[0];
   },
 
+  // A diferencia de cancelarModulo() (que mantiene el acceso hasta fin de
+  // mes), esto apaga el addon YA — pensado para Pagos/Yappy: no tiene
+  // sentido seguir "teniendo" el botón de cobro real activo un rato más
+  // después de que el negocio pidió quitarlo. No hace nada si el módulo
+  // viene incluido en el plan (nada que desactivar ahí).
+  async desactivarModuloInmediato(subscriptionId, featureCode) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('subscription_items')
+      .update({ is_active: false }).eq('subscription_id', subscriptionId)
+      .eq('item_code', featureCode).eq('item_type', 'addon').eq('is_active', true);
+    if (error) throw error;
+  },
+
   // Cambia el plan de la suscripción (sin cobro real todavía, mismo criterio que los
   // módulos). Si algún módulo comprado suelto ya viene incluido en el plan nuevo,
   // se desactiva ese cobro aparte para no cobrar dos veces por lo mismo.
