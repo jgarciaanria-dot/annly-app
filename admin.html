@@ -1567,6 +1567,21 @@ function categoriasActuales(){
   return [...new Set(SERVICES.map(sv=>sv.cat).filter(Boolean))];
 }
 
+// Corrige el nombre de una categoría: se actualiza en todos sus servicios
+function renombrarCategoria(i){
+  const actual=categoriasRender[i];
+  if(actual===undefined) return;
+  const nuevo=(prompt('Nuevo nombre de la categoría:',actual)||'').trim();
+  if(!nuevo || nuevo===actual) return;
+  if(categoriasActuales().some(c=>c!==actual && c.toLowerCase()===nuevo.toLowerCase())){
+    alert('Ya tienes una categoría con ese nombre.');
+    return;
+  }
+  SERVICES.forEach(sv=>{ if(sv.cat===actual) sv.cat=nuevo; });
+  saveServices();
+  renderAdmin();
+}
+
 function agregarServicioEnCat(i){
   openModal(null, categoriasRender[i]);
 }
@@ -1586,7 +1601,10 @@ function renderAdmin(){
     html+=`<div class="adm-sec">
       <div class="adm-sec-hdr">
         <span class="adm-sec-title">${escCat(cat)}</span>
-        <button class="btn-add" onclick="agregarServicioEnCat(${ci})"><i class="ti ti-plus"></i> Agregar</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn-add" onclick="agregarServicioEnCat(${ci})"><i class="ti ti-plus"></i> Agregar</button>
+          <button class="btn-ico" onclick="renombrarCategoria(${ci})" title="Editar nombre de la categoría"><i class="ti ti-pencil"></i></button>
+        </div>
       </div>`;
     svcs.forEach(sv=>{
       const precio=sv.precioTexto||(sv.price>0?'$'+sv.price.toFixed(2):'A consultar');
