@@ -1104,6 +1104,8 @@ const Sheets = {
   },
 
 
+  // Guarda el catálogo SIN recrear los servicios: cada uno conserva su id, así las
+  // asignaciones de profesionales (employee_services) no se pierden al editar.
   async guardarServicios(serviciosArr) {
 
     await window.AnnlyReady;
@@ -1115,10 +1117,131 @@ const Sheets = {
         : serviciosArr;
 
 
-    await sbClient
+    const esUuid = v =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        .test(String(v || ''));
+
+    const nuevoUuid = () =>
+      (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+
+    const armarFila = s => ({
+
+      business_id:
+        BUSINESS_ID,
+
+      nombre:
+        s.name,
+
+      categoria:
+        s.cat,
+
+      precio:
+        s.price || 0,
+
+      precio_texto:
+        s.precioTexto || null,
+
+      dur:
+        s.dur,
+
+      dur_min:
+        s.durMin,
+
+      activo:
+        s.active,
+
+      es_eval:
+        s.esEval || false,
+
+      requiere_abono:
+        s.requiereAbono || false,
+
+      abono_monto:
+        s.abonoMonto,
+
+      abono_tipo:
+        s.abonoTipo,
+
+      descripcion:
+        s.desc,
+
+      includes:
+        s.includes || [],
+
+      imagen_url:
+        s.imagenUrl || null
+
+    });
+
+
+    const {
+      data: existentes
+    } = await sbClient
       .from('services')
-      .delete()
+      .select('id')
       .eq('business_id', BUSINESS_ID);
+
+    const idsExistentes = (existentes || []).map(r => r.id);
+
+
+    // Respaldo: si los ids de la base no son uuid, se usa el método anterior
+    // (borrar todo y volver a insertar) para no arriesgar los servicios.
+    if (!idsExistentes.every(esUuid)) {
+
+      await sbClient
+        .from('services')
+        .delete()
+        .eq('business_id', BUSINESS_ID);
+
+      if (!servicios.length) {
+        return;
+      }
+
+      const {
+        error: errLegacy
+      } = await sbClient
+        .from('services')
+        .insert(servicios.map(armarFila));
+
+      if (errLegacy) {
+        console.error('Error guardando servicios:', errLegacy);
+      }
+
+      return;
+    }
+
+
+    // Servicios nuevos o viejos sin uuid: se les da uno (y se refleja en memoria)
+    servicios.forEach(s => {
+      if (!esUuid(s.id)) {
+        s.id = nuevoUuid();
+      }
+    });
+
+
+    // 1) Eliminar los que ya no están en la lista
+    const conservados = new Set(servicios.map(s => s.id));
+
+    const aBorrar = idsExistentes.filter(id => !conservados.has(id));
+
+    if (aBorrar.length) {
+
+      const {
+        error: errDel
+      } = await sbClient
+        .from('services')
+        .delete()
+        .in('id', aBorrar);
+
+      if (errDel) {
+        console.error('Error eliminando servicios:', errDel);
+      }
+    }
 
 
     if (!servicios.length) {
@@ -1126,62 +1249,19 @@ const Sheets = {
     }
 
 
+    // 2) Crear o actualizar el resto conservando su id
     const rows =
-      servicios.map(s => ({
-
-        business_id:
-          BUSINESS_ID,
-
-        nombre:
-          s.name,
-
-        categoria:
-          s.cat,
-
-        precio:
-          s.price || 0,
-
-        precio_texto:
-          s.precioTexto || null,
-
-        dur:
-          s.dur,
-
-        dur_min:
-          s.durMin,
-
-        activo:
-          s.active,
-
-        es_eval:
-          s.esEval || false,
-
-        requiere_abono:
-          s.requiereAbono || false,
-
-        abono_monto:
-          s.abonoMonto,
-
-        abono_tipo:
-          s.abonoTipo,
-
-        descripcion:
-          s.desc,
-
-        includes:
-          s.includes || [],
-
-        imagen_url:
-          s.imagenUrl || null
-
-      }));
+      servicios.map(s => ({ id: s.id, ...armarFila(s) }));
 
 
     const {
       error
     } = await sbClient
       .from('services')
-      .insert(rows);
+      .upsert(
+        rows,
+        { onConflict: 'id' }
+      );
 
 
     if (error) {
@@ -1523,7 +1603,34 @@ const Sheets = {
         empleadoNombre:
           mapaEmpleados[
             c.employee_id
-          ] || null
+          ] || null,
+
+        abonoMonto:
+          c.abono_monto,
+
+        abonoTipo:
+          c.abono_tipo,
+
+        metodoPago:
+          c.metodo_pago,
+
+        descuentoCupon:
+          c.descuento_cupon,
+
+        certificadoMonto:
+          c.certificado_monto,
+
+        certificadoCodigo:
+          c.certificado_codigo,
+
+        comprobante:
+          c.comprobante,
+
+        completadaEn:
+          c.completada_en || null,
+
+        precioCobrado:
+          c.precio_cobrado
 
       }));
   },
@@ -3145,6 +3252,149 @@ const Sheets = {
     const { data: plan } = await sbClient.from('plans').select('id').eq('code', code.toUpperCase()).maybeSingle();
     if (!plan) return [];
     return await this.getFeaturesDelPlan(plan.id);
+  },
+
+  // =======================================================
+  // FINANZAS
+  // =======================================================
+
+  // Periodo de cierre del negocio (semanal o quincenal)
+  async getAjustesFinanzas() {
+    await window.AnnlyReady;
+    const { data } = await sbClient.from('finance_settings').select('*').eq('business_id', BUSINESS_ID).maybeSingle();
+    return {
+      periodo: (data && data.periodo_cierre) || 'quincenal',
+      semanaInicia: (data && data.semana_inicia != null) ? data.semana_inicia : 1
+    };
+  },
+
+  async guardarAjustesFinanzas({ periodo, semanaInicia }) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('finance_settings').upsert({
+      business_id: BUSINESS_ID,
+      periodo_cierre: periodo === 'semanal' ? 'semanal' : 'quincenal',
+      semana_inicia: Number.isInteger(semanaInicia) ? semanaInicia : 1,
+      actualizado_en: new Date().toISOString()
+    }, { onConflict: 'business_id' });
+    if (error) throw error;
+  },
+
+  // Cobros confirmados del periodo (de citas completadas y de ventas en el local)
+  async getPagosFinanzas(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('finance_payments').select('*')
+      .eq('business_id', BUSINESS_ID).eq('estado', 'confirmado')
+      .gte('fecha', desdeISO).lte('fecha', hastaISO)
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(p => ({
+      id: p.id, origen: p.origen, appointmentId: p.appointment_id, localSaleId: p.local_sale_id,
+      metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha,
+      concepto: p.concepto, cliente: p.cliente_nombre, empleadoId: p.employee_id, creadoEn: p.creado_en
+    }));
+  },
+
+  async getGastosFinanzas(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('finance_expenses').select('*')
+      .eq('business_id', BUSINESS_ID)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO)
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(g => ({
+      id: g.id, fecha: g.fecha, categoria: g.categoria, descripcion: g.descripcion,
+      monto: Number(g.monto), metodo: g.metodo, referencia: g.referencia, creadoEn: g.creado_en
+    }));
+  },
+
+  async registrarGasto(g) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('finance_expenses').insert([{
+      business_id: BUSINESS_ID, fecha: g.fecha, categoria: g.categoria,
+      descripcion: g.descripcion || null, monto: g.monto, metodo: g.metodo,
+      referencia: g.referencia || null
+    }]);
+    if (error) throw error;
+  },
+
+  async eliminarGasto(id) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('finance_expenses').delete().eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) throw error;
+  },
+
+  async getVentasLocales(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('local_sales').select('*')
+      .eq('business_id', BUSINESS_ID)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO)
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(v => ({
+      id: v.id, fecha: v.fecha, cliente: v.cliente_nombre, servicio: v.servicio_nombre,
+      empleadoId: v.employee_id, monto: Number(v.monto), creadoEn: v.creado_en
+    }));
+  },
+
+  // Una venta y sus pagos son cosas separadas: una venta puede tener varios pagos.
+  async registrarVentaLocal(v, pagos) {
+    await window.AnnlyReady;
+    const { data: venta, error } = await sbClient.from('local_sales').insert([{
+      business_id: BUSINESS_ID, fecha: v.fecha, cliente_nombre: v.cliente || null,
+      servicio_nombre: v.servicio, employee_id: v.empleadoId || null, monto: v.monto
+    }]).select('id').single();
+    if (error) throw error;
+
+    const filas = (pagos || []).filter(p => p.monto > 0).map(p => ({
+      business_id: BUSINESS_ID, origen: 'local', local_sale_id: venta.id,
+      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
+      fecha: v.fecha, concepto: v.servicio, cliente_nombre: v.cliente || null,
+      employee_id: v.empleadoId || null
+    }));
+    if (filas.length) {
+      const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
+      if (errPagos) {
+        // No dejamos una venta sin sus pagos
+        await sbClient.from('local_sales').delete().eq('id', venta.id);
+        throw errPagos;
+      }
+    }
+    return venta.id;
+  },
+
+  async eliminarVentaLocal(id) {
+    await window.AnnlyReady;
+    // Los pagos de la venta se eliminan en cascada
+    const { error } = await sbClient.from('local_sales').delete().eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) throw error;
+  },
+
+  // Completa una cita de la Agenda: la cita existente es el origen del cobro
+  // (no se crea una venta duplicada). Se marca primero, solo si aún no estaba
+  // completada, para que dos clics no registren el cobro dos veces.
+  async completarCita(citaId, datos) {
+    await window.AnnlyReady;
+    const { data: marcada, error: errMarca } = await sbClient.from('appointments')
+      .update({ completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado })
+      .eq('id', citaId).eq('business_id', BUSINESS_ID).is('completada_en', null)
+      .select('id');
+    if (errMarca) throw errMarca;
+    if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
+
+    const filas = (datos.pagos || []).filter(p => p.monto > 0).map(p => ({
+      business_id: BUSINESS_ID, origen: 'agenda', appointment_id: citaId,
+      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
+      fecha: datos.fecha, concepto: datos.concepto || null,
+      cliente_nombre: datos.cliente || null, employee_id: datos.empleadoId || null
+    }));
+    if (filas.length) {
+      const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
+      if (errPagos) {
+        // Si fallan los pagos, la cita vuelve a quedar por completar
+        await sbClient.from('appointments').update({ completada_en: null, precio_cobrado: null }).eq('id', citaId);
+        throw errPagos;
+      }
+    }
   },
 
   // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
