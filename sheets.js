@@ -1639,7 +1639,12 @@ const Sheets = {
           c.nota,
 
         cuponAplicado:
-          c.cupon_aplicado
+          c.cupon_aplicado,
+
+        certificadoSaldoRestante:
+          c.certificado_saldo_restante != null
+            ? Number(c.certificado_saldo_restante)
+            : null
 
       }));
   },
@@ -1656,12 +1661,10 @@ const Sheets = {
       );
 
 
-    const {
-      data,
-      error
-    } = await sbClient
-      .from('appointments')
-      .insert([{
+    // El saldo que le queda al certificado tras esta cita se guarda en la propia cita
+    // (así aparece en los correos y en el detalle). Si esa columna aún no existe en
+    // la base, se reintenta sin ella para no romper la reserva.
+    const armarFila = (conSaldo) => ({
 
         business_id:
           BUSINESS_ID,
@@ -1729,15 +1732,35 @@ const Sheets = {
         certificado_monto:
           cita.certificadoMonto || null,
 
+        ...(
+          conSaldo && cita.certificadoSaldoRestante != null
+            ? { certificado_saldo_restante: cita.certificadoSaldoRestante }
+            : {}
+        ),
+
         cita_id_externo:
           cita.citaId,
 
         estado:
           'confirmada'
 
-      }])
-      .select('id')
-      .single();
+    });
+
+    const insertar = (fila) =>
+      sbClient
+        .from('appointments')
+        .insert([fila])
+        .select('id')
+        .single();
+
+    let { data, error } = await insertar(armarFila(true));
+
+    if (
+      error &&
+      /certificado_saldo_restante/.test(error.message || '')
+    ) {
+      ({ data, error } = await insertar(armarFila(false)));
+    }
 
 
     if (error) {
@@ -3462,6 +3485,38 @@ const Sheets = {
     return (data || []).map(x => ({ id: x.id, descripcion: x.descripcion, monto: Number(x.monto) }));
   },
 
+  // Datos de un certificado por su código (aunque ya no tenga saldo), para el detalle de una cita
+  async getCertificadoPorCodigo(codigo) {
+    await window.AnnlyReady;
+    const cod = (codigo || '').toUpperCase().trim();
+    if (!cod) return null;
+    const { data, error } = await sbClient.from('gift_certificates').select('*')
+      .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: data.id, codigo: data.codigo, estado: data.estado,
+      saldoRestante: Number(data.saldo_restante), montoInicial: Number(data.monto_inicial),
+      fechaVencimiento: data.fecha_vencimiento
+    };
+  },
+
+  // Deja constancia en la cita de un certificado usado al completarla en el local
+  // (monto usado y saldo que le quedó). Nunca pisa el certificado de otro código.
+  async registrarCertificadoEnCita(citaId, { codigo, monto, saldo }) {
+    await window.AnnlyReady;
+    const { data: cita } = await sbClient.from('appointments')
+      .select('certificado_codigo, certificado_monto')
+      .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
+    if (!cita) return;
+    if (cita.certificado_codigo && cita.certificado_codigo !== codigo) return;
+    const { error } = await sbClient.from('appointments').update({
+      certificado_codigo: codigo,
+      certificado_monto: (Number(cita.certificado_monto) || 0) + monto,
+      certificado_saldo_restante: saldo
+    }).eq('id', citaId);
+    if (error) console.error('No se pudo registrar el certificado en la cita:', error);
+  },
+
   // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
   // público (visitantes SIN sesión, que por RLS no pueden leer subscriptions).
   // Lo resuelve la función SQL modulos_publicos (security definer): en trial
@@ -3796,9 +3851,14 @@ const Sheets = {
     const { error: errUpdate } = await sbClient.from('gift_certificates').update({ saldo_restante: nuevoSaldo }).eq('id', certificateId);
     if (errUpdate) throw errUpdate;
 
-    const { error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([{
+    const filaCanje = {
       certificate_id: certificateId, business_id: BUSINESS_ID, appointment_id: appointmentId || null, monto_aplicado: montoAplicado
-    }]);
+    };
+    let { error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([{ ...filaCanje, saldo_despues: nuevoSaldo }]);
+    // Si la columna saldo_despues aún no existe, se registra el canje sin ella
+    if (errInsert && /saldo_despues/.test(errInsert.message || '')) {
+      ({ error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([filaCanje]));
+    }
     if (errInsert) console.error('No se pudo registrar el canje del certificado:', errInsert);
   },
 
@@ -3814,6 +3874,7 @@ const Sheets = {
     return (data || []).map(r => ({
       id: r.id,
       montoAplicado: Number(r.monto_aplicado),
+      saldoDespues: r.saldo_despues != null ? Number(r.saldo_despues) : null,
       fecha: r.fecha,
       servicioNombre: r.appointments ? r.appointments.servicio_nombre : null,
       fechaCita: r.appointments ? r.appointments.fecha : null,
