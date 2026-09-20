@@ -607,6 +607,7 @@ img{max-width:100%;}
         <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1;">Citas</div>
         <div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">Gestiona y administra todas las citas del estudio</div>
       </div>
+      <button class="btn-add" style="margin-left:auto;flex-shrink:0;" onclick="abrirModalAgregarCita()"><i class="ti ti-plus"></i> Agregar cita</button>
     </div>
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Hoy y próximos 7 días</span></div>
@@ -1199,6 +1200,71 @@ img{max-width:100%;}
       <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="mc-correo"/></div>
       <div class="fg"><label class="flbl">Notas (opcional)</label><textarea class="fi" id="mc-notas" rows="2" style="resize:vertical;"></textarea></div>
       <button class="btn-save" onclick="guardarClientaModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AGREGAR CITA (cliente que llega al local o reserva por teléfono) -->
+<div class="ov" id="ov-agregar-cita">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Agregar cita</span>
+      <button class="modal-close" onclick="cerrarAgregarCita()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;">Para clientes que llegan al local o reservan por teléfono. Ocupa el horario igual que una reserva de la agenda pública.</p>
+      <div class="fg"><label class="flbl">Nombre del cliente</label>
+        <input class="fi" id="ac-nombre" list="ac-clientes-dl" oninput="acClienteCambio()" autocomplete="off"/>
+        <datalist id="ac-clientes-dl"></datalist>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">WhatsApp (opcional)</label><input class="fi" id="ac-tel"/></div>
+        <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="ac-correo"/></div>
+      </div>
+      <div class="fg"><label class="flbl">Servicio</label><select class="fi" id="ac-servicio" onchange="acServicioCambio()"></select></div>
+      <div class="fg" id="ac-prof-wrap" style="display:none;"><label class="flbl">Profesional</label><select class="fi" id="ac-prof" onchange="acProfesionalCambio()"></select></div>
+
+      <div class="fg">
+        <label class="flbl">Fecha y hora</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <button type="button" onclick="acCambiarMes(-1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">‹</button>
+          <span id="acCalMes" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;"></span>
+          <button type="button" onclick="acCambiarMes(1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">›</button>
+        </div>
+        <div id="acCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+        <div id="ac-hora-sec" style="display:none;margin-top:1rem;">
+          <p style="font-size:10px;font-weight:500;color:var(--gold-dark);margin-bottom:6px;letter-spacing:.1em;text-transform:uppercase;">Horas disponibles</p>
+          <div id="acTimeGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;"></div>
+          <p id="ac-slot-hint" style="font-size:11.5px;color:var(--gold-dark);line-height:1.5;margin:8px 0 0;"></p>
+        </div>
+      </div>
+
+      <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="ac-nota"/></div>
+
+      <div class="fg" id="ac-cert-wrap" style="display:none;">
+        <label class="flbl">¿Tiene un certificado de regalo?</label>
+        <div style="display:flex;gap:8px;">
+          <input class="fi" id="ac-cert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;"/>
+          <button type="button" class="btn-add" onclick="acAplicarCertificado()">Aplicar</button>
+        </div>
+        <p id="ac-cert-msg" style="font-size:11.5px;margin-top:6px;min-height:14px;"></p>
+      </div>
+
+      <div id="ac-cobro-wrap" style="display:none;background:#FAFAF8;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;">
+          <input type="checkbox" id="ac-completar" checked onchange="acToggleCompletar()"/> Cobrar y marcar como completada ahora
+        </label>
+        <div id="ac-cobro-detalle" style="margin-top:12px;">
+          <div class="fg"><label class="flbl">Precio final del servicio ($)</label>
+            <input class="fi" id="ac-precio" type="number" step="0.01" min="0" oninput="acPrecioCambio()"/>
+          </div>
+          <div id="ac-desglose" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
+          <div class="fg" style="margin-bottom:0;"><label class="flbl">¿Cómo pagó?</label><div id="ac-pagos"></div></div>
+        </div>
+      </div>
+
+      <p id="ac-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" id="ac-btn" onclick="guardarAgregarCita()"></button>
     </div>
   </div>
 </div>
@@ -4089,8 +4155,9 @@ function pagoSetEsperado(id, nuevo){
   const ed = PAGO_ED[id];
   if (!ed) return pagoIniciar(id, nuevo);
   ed.esperado = nuevo;
-  if (nuevo > 0 && ed.lineas.length === 0) ed.lineas.push({ metodo:'efectivo', monto:nuevo.toFixed(2), ref:'' });
-  else if (ed.lineas.length === 1) ed.lineas[0].monto = nuevo > 0 ? nuevo.toFixed(2) : '';
+  if (nuevo <= 0) ed.lineas = [];
+  else if (ed.lineas.length === 0) ed.lineas.push({ metodo:'efectivo', monto:nuevo.toFixed(2), ref:'' });
+  else if (ed.lineas.length === 1) ed.lineas[0].monto = nuevo.toFixed(2);
   pagoRender(id);
 }
 
@@ -4263,11 +4330,31 @@ let COMPLETANDO = null;
 
 function metodoDeAbono(m){ return m === 'yappy' ? 'yappy' : 'transferencia'; }
 
+// ---------- Canje de certificado de regalo en el local ----------
+const MOTIVOS_CERT = {
+  codigo_no_encontrado:'Código no válido.', codigo_vacio:'Ingresa un código.',
+  sin_saldo:'Este certificado ya no tiene saldo.', vencido:'Este certificado está vencido.',
+  pendiente_pago:'Este certificado aún no ha sido activado.', cancelado:'Este certificado fue cancelado.'
+};
+
+async function validarCertificadoLocal(codigo){
+  codigo = (codigo || '').trim();
+  if (!codigo) return { ok:false, msg:MOTIVOS_CERT.codigo_vacio };
+  let res;
+  try { res = await Sheets.validarCertificado(codigo); }
+  catch(e){ return { ok:false, msg:'No se pudo verificar el certificado.' }; }
+  if (res && res.valido) return { ok:true, cert:{ id:res.certificateId, codigo:res.codigo, saldoDisponible:Number(res.saldoDisponible) } };
+  return { ok:false, msg: MOTIVOS_CERT[res && res.motivo] || 'Código no válido.' };
+}
+
+// ctx.certExtra: saldo de un certificado que el cliente presenta hoy en el local
 function calcularCompletar(precio, ctx){
   const certUsado = Math.min(ctx.cert, precio);
   const abonoDescontado = ctx.descontable ? Math.min(ctx.abono, Math.max(0, precio - certUsado)) : 0;
-  const porCobrar = Math.max(0, Math.round((precio - certUsado - abonoDescontado)*100)/100);
-  return { certUsado, abonoDescontado, porCobrar };
+  const antes = Math.max(0, Math.round((precio - certUsado - abonoDescontado)*100)/100);
+  const certExtraUsado = ctx.certExtra ? Math.min(ctx.certExtra, antes) : 0;
+  const porCobrar = Math.max(0, Math.round((antes - certExtraUsado)*100)/100);
+  return { certUsado, abonoDescontado, certExtraUsado, porCobrar };
 }
 
 function abrirCompletarCita(id){
@@ -4277,7 +4364,7 @@ function abrirCompletarCita(id){
   const base = Number(c.precioTotal) || 0;
   const pct = Number(c.descuentoCupon) || 0;
   const neto = consultar ? 0 : Math.max(0, base - base*pct/100);
-  COMPLETANDO = { c, consultar, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable') };
+  COMPLETANDO = { c, consultar, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable'), certExtra:null, certExtraAplicado:0 };
   const pistaPrecio = consultar
     ? 'Este servicio era "a consultar": ingresa el precio acordado.'
     : (pct > 0 ? 'Incluye el descuento del cupón (' + pct + '%). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
@@ -4290,6 +4377,14 @@ function abrirCompletarCita(id){
       <input class="fi" id="fc-precio" type="number" step="0.01" min="0" value="${neto > 0 ? neto.toFixed(2) : ''}" oninput="fcRecalcular()"/>
       <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${pistaPrecio}</p>
     </div>
+    ${moduloDisponible('CERTIFICADOS') ? `
+    <div class="fg"><label class="flbl">¿Paga con un certificado de regalo?</label>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" id="fc-cert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;"/>
+        <button type="button" class="btn-add" onclick="fcAplicarCertificado()">Aplicar</button>
+      </div>
+      <p id="fc-cert-msg" style="font-size:11.5px;margin-top:6px;min-height:14px;"></p>
+    </div>` : ''}
     <div id="fc-desglose" style="background:#FAFAF8;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
     <div class="fg"><label class="flbl">Cobro de hoy</label><div id="fc-pagos"></div></div>
     <p id="fc-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
@@ -4299,10 +4394,32 @@ function abrirCompletarCita(id){
   elFin('ov-fin-completar').classList.add('open');
 }
 
+async function fcAplicarCertificado(){
+  if (!COMPLETANDO) return;
+  const msg = elFin('fc-cert-msg');
+  const codigo = elFin('fc-cert').value;
+  if (!codigo.trim()){ COMPLETANDO.certExtra = null; msg.textContent = ''; fcRecalcular(); return; }
+  msg.style.color = '#999'; msg.textContent = 'Verificando...';
+  const r = await validarCertificadoLocal(codigo);
+  if (r.ok){
+    COMPLETANDO.certExtra = r.cert;
+    msg.style.color = '#3a7a3a';
+    msg.textContent = '✓ Certificado válido: ' + fmtDinero(r.cert.saldoDisponible) + ' disponibles.';
+  } else {
+    COMPLETANDO.certExtra = null;
+    msg.style.color = '#c0392b'; msg.textContent = r.msg;
+  }
+  fcRecalcular();
+}
+
+function fcContexto(){
+  return Object.assign({}, COMPLETANDO, { certExtra: COMPLETANDO.certExtra ? COMPLETANDO.certExtra.saldoDisponible : 0 });
+}
+
 function fcRecalcular(inicial){
   if (!COMPLETANDO) return;
   const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
-  const r = calcularCompletar(precio, COMPLETANDO);
+  const r = calcularCompletar(precio, fcContexto());
   const c = COMPLETANDO.c;
   const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color||'var(--ink)'};">${v}</strong></div>`;
   let html = linea('Precio del servicio', fmtDinero(precio));
@@ -4312,6 +4429,7 @@ function fcRecalcular(inicial){
       ? linea('Abono ya pagado (' + METODOS_PAGO[metodoDeAbono(c.metodoPago)] + ')', '−' + fmtDinero(r.abonoDescontado), '#159A61')
       : linea('Abono no reembolsable ya pagado (aparte)', fmtDinero(COMPLETANDO.abono), 'var(--ink-soft)');
   }
+  if (r.certExtraUsado > 0) html += linea('Certificado (' + escCat(COMPLETANDO.certExtra.codigo) + ')', '−' + fmtDinero(r.certExtraUsado), '#159A61');
   html += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar hoy', fmtDinero(r.porCobrar), '#7C3AED')}</div>`;
   elFin('fc-desglose').innerHTML = html;
   if (inicial || !PAGO_ED['fc-pagos']) pagoIniciar('fc-pagos', r.porCobrar);
@@ -4327,14 +4445,20 @@ async function confirmarCompletarCita(){
   if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
   const v = pagoValidar('fc-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
-  const r = calcularCompletar(precio, COMPLETANDO);
+  const r = calcularCompletar(precio, fcContexto());
   const pagos = [];
   if (COMPLETANDO.abono > 0) pagos.push({ metodo:metodoDeAbono(c.metodoPago), monto:COMPLETANDO.abono, referencia:c.comprobante || null });
   if (r.certUsado > 0) pagos.push({ metodo:'certificado', monto:r.certUsado, referencia:c.certificadoCodigo || null });
+  if (r.certExtraUsado > 0) pagos.push({ metodo:'certificado', monto:r.certExtraUsado, referencia:COMPLETANDO.certExtra.codigo });
   v.lineas.forEach(l => pagos.push(l));
   const btn = elFin('fc-btn');
   btn.disabled = true;
   try {
+    // El certificado presentado hoy se descuenta primero (una sola vez, aunque se reintente)
+    if (r.certExtraUsado > 0 && COMPLETANDO.certExtraAplicado !== r.certExtraUsado){
+      await Sheets.aplicarCertificado(COMPLETANDO.certExtra.id, r.certExtraUsado, c.id);
+      COMPLETANDO.certExtraAplicado = r.certExtraUsado;
+    }
     await Sheets.completarCita(c.id, {
       precioCobrado: precio, pagos, fecha: c.fechaISO,
       concepto: c.servicio, cliente: c.nombre, empleadoId: c.empleadoId || null
@@ -4403,6 +4527,406 @@ function htmlCardCita(c){
     </div>
     ${acciones}
   </div>`;
+}
+
+// ===== AGREGAR CITA DESDE EL PANEL (cliente que llega al local o reserva por teléfono) =====
+// Mismo flujo que la agenda pública (servicio, profesional, fecha y hora con disponibilidad real),
+// pero aquí además se puede cobrar y dejar la cita completada al momento.
+let AC = null;
+
+function acNuevoEstado(){
+  const hoy = new Date();
+  return { svc:null, emps:[], modoCualquiera:false, empId:null, horarioEmp:null,
+           y:hoy.getFullYear(), m:hoy.getMonth(), dia:null, hora:null,
+           bloqueos:{ dias:[], horas:{} }, ocupadas:{}, empAsignado:null, cert:null };
+}
+
+async function abrirModalAgregarCita(){
+  AC = acNuevoEstado();
+  ['ac-nombre','ac-tel','ac-correo','ac-nota','ac-precio'].forEach(id => { elFin(id).value = ''; });
+  elFin('ac-msg').textContent = '';
+  elFin('ac-prof-wrap').style.display = 'none';
+  elFin('ac-hora-sec').style.display = 'none';
+
+  const activos = SERVICES.filter(s => s.active);
+  const cats = [...new Set(activos.map(s => s.cat).filter(Boolean))];
+  const opcion = s => `<option value="${s.id}">${escCat(s.name)}</option>`;
+  elFin('ac-servicio').innerHTML = '<option value="">Elige un servicio…</option>' +
+    cats.map(c => `<optgroup label="${escCat(c)}">${activos.filter(s => s.cat === c).map(opcion).join('')}</optgroup>`).join('') +
+    activos.filter(s => !s.cat).map(opcion).join('');
+
+  try { if (!CLIENTAS.length) CLIENTAS = await Sheets.getClientas(); } catch(e){}
+  elFin('ac-clientes-dl').innerHTML = CLIENTAS.map(c => `<option value="${escCat(c.nombre)}"></option>`).join('');
+
+  const conFinanzas = moduloDisponible('FINANZAS');
+  elFin('ac-cobro-wrap').style.display = conFinanzas ? 'block' : 'none';
+  elFin('ac-completar').checked = true;
+  elFin('ac-slot-hint').textContent = '';
+  elFin('ac-cert').value = '';
+  elFin('ac-cert-msg').textContent = '';
+  elFin('ac-cert-wrap').style.display = moduloDisponible('CERTIFICADOS') ? 'block' : 'none';
+  pagoIniciar('ac-pagos', 0);
+  acToggleCompletar();
+
+  try { AC.bloqueos = await Sheets.getBloqueos(); } catch(e){ AC.bloqueos = { dias:[], horas:{} }; }
+  acRenderCal();
+  elFin('ov-agregar-cita').classList.add('open');
+}
+
+function cerrarAgregarCita(){ elFin('ov-agregar-cita').classList.remove('open'); }
+
+// Al escribir el nombre de un cliente ya registrado se completan sus datos
+function acClienteCambio(){
+  const nombre = elFin('ac-nombre').value.trim().toLowerCase();
+  const c = CLIENTAS.find(x => (x.nombre||'').toLowerCase() === nombre);
+  if (!c) return;
+  if (!elFin('ac-tel').value) elFin('ac-tel').value = c.telefono || '';
+  if (!elFin('ac-correo').value) elFin('ac-correo').value = c.correo || '';
+}
+
+async function acServicioCambio(){
+  const id = elFin('ac-servicio').value;
+  AC.svc = SERVICES.find(s => s.id === id) || null;
+  AC.dia = null; AC.hora = null; AC.empAsignado = null; AC.ocupadas = {};
+  elFin('ac-hora-sec').style.display = 'none';
+
+  if (!AC.svc){
+    AC.emps = []; AC.empId = null; AC.horarioEmp = null; AC.modoCualquiera = false;
+    elFin('ac-prof-wrap').style.display = 'none';
+    elFin('ac-precio').value = '';
+    AC.cert = null;
+    acRecalcularCobro();
+    acRenderCal();
+    acActualizarBoton();
+    return;
+  }
+
+  elFin('ac-precio').value = AC.svc.price > 0 ? AC.svc.price : '';
+  acPrecioCambio();
+
+  try { AC.emps = await Sheets.getEmpleadosParaServicio(AC.svc.id); } catch(e){ AC.emps = []; }
+  if (AC.emps.length > 1){
+    AC.modoCualquiera = true; AC.empId = null; AC.horarioEmp = null;
+    elFin('ac-prof').innerHTML = '<option value="">Cualquiera disponible</option>' +
+      AC.emps.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
+    elFin('ac-prof-wrap').style.display = 'block';
+  } else {
+    AC.modoCualquiera = false;
+    AC.empId = AC.emps[0] ? AC.emps[0].id : null;
+    AC.horarioEmp = AC.empId ? await Sheets.getEmpleadoHorario(AC.empId).catch(() => null) : null;
+    elFin('ac-prof-wrap').style.display = 'none';
+  }
+  acRenderCal();
+  acActualizarBoton();
+}
+
+async function acProfesionalCambio(){
+  const val = elFin('ac-prof').value;
+  AC.dia = null; AC.hora = null; AC.empAsignado = null; AC.ocupadas = {};
+  elFin('ac-hora-sec').style.display = 'none';
+  if (!val){ AC.modoCualquiera = true; AC.empId = null; AC.horarioEmp = null; }
+  else {
+    AC.modoCualquiera = false; AC.empId = val;
+    AC.horarioEmp = await Sheets.getEmpleadoHorario(val).catch(() => null);
+  }
+  acRenderCal();
+  acActualizarBoton();
+}
+
+function acCambiarMes(d){
+  AC.m += d;
+  if (AC.m < 0){ AC.m = 11; AC.y--; }
+  if (AC.m > 11){ AC.m = 0; AC.y++; }
+  AC.dia = null; AC.hora = null;
+  elFin('ac-hora-sec').style.display = 'none';
+  acRenderCal();
+  acActualizarBoton();
+}
+
+function acDiaCerrado(dow){
+  const h = (!AC.modoCualquiera && AC.horarioEmp) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  if (!h) return dow === 0;
+  const bloque = h[bloqueDelDia(dow)];
+  return !bloque || !!bloque.cerrado;
+}
+
+function acRenderCal(){
+  elFin('acCalMes').textContent = MESES[AC.m] + ' ' + AC.y;
+  const dn = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  let h = dn.map((d,i) => `<div class="cdn${i === 0 ? ' dom' : ''}">${d}</div>`).join('');
+  if (!AC.svc){
+    elFin('acCalGrid').innerHTML = '<p style="grid-column:span 7;text-align:center;font-size:12px;color:#aaa;padding:1rem;">Elige primero el servicio para ver la disponibilidad.</p>';
+    return;
+  }
+  const first = new Date(AC.y, AC.m, 1).getDay();
+  const days = new Date(AC.y, AC.m+1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 0; i < first; i++) h += '<div class="cd emp"></div>';
+  for (let d = 1; d <= days; d++){
+    const dt = new Date(AC.y, AC.m, d);
+    const iso = fechaISO(AC.y, AC.m, d);
+    const bloq = AC.bloqueos.dias.some(b => b.fecha === iso);
+    const pasado = dt < today, cerrado = acDiaCerrado(dt.getDay()), sel = AC.dia === d;
+    let cls = 'cd';
+    if (pasado) cls += ' pst'; else if (cerrado) cls += ' dom'; else if (bloq) cls += ' bloq';
+    if (sel && !pasado && !cerrado && !bloq) cls += ' sel';
+    const ok = !pasado && !cerrado && !bloq;
+    h += `<div class="${cls}" ${ok ? `onclick="acSelDia(${d})"` : ''}>${d}</div>`;
+  }
+  elFin('acCalGrid').innerHTML = h;
+}
+
+function acGenSlots(){
+  const dow = new Date(AC.y, AC.m, AC.dia).getDay();
+  const base = (!AC.modoCualquiera && AC.horarioEmp) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+  const cfg = (base && base[bloqueDelDia(dow)]) || null;
+  let hIni = 8, mIni = 0, hFin = 16, mFin = 0; // respaldo si no hay horario configurado
+  if (cfg && !cfg.cerrado && cfg.abre && cfg.cierra){
+    [hIni, mIni] = cfg.abre.split(':').map(Number);
+    [hFin, mFin] = cfg.cierra.split(':').map(Number);
+  } else if (cfg && cfg.cerrado){
+    return [];
+  }
+  const slots = [];
+  let h = hIni, m = mIni;
+  while (h < hFin || (h === hFin && m === mFin)){
+    const key = h + ':' + (m === 0 ? '00' : '30');
+    const lbl = (h > 12 ? h-12 : h) + ':' + (m === 0 ? '00' : '30') + (h >= 12 ? ' PM' : ' AM');
+    slots.push({ key, lbl });
+    m += 30; if (m >= 60){ m = 0; h++; }
+  }
+  return slots;
+}
+
+async function acSelDia(d){
+  AC.dia = d; AC.hora = null; AC.empAsignado = null;
+  acRenderCal();
+  elFin('ac-hora-sec').style.display = 'block';
+  elFin('acTimeGrid').innerHTML = '<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
+  acActualizarBoton();
+  const fechaStr = d + ' de ' + MESES[AC.m] + ' ' + AC.y;
+  AC.ocupadas = {};
+  try {
+    if (AC.modoCualquiera && AC.emps.length > 1){
+      const res = await Promise.all(AC.emps.map(e => Sheets.getHorasOcupadas(fechaStr, e.id).catch(() => [])));
+      AC.emps.forEach((e,i) => { AC.ocupadas[e.id] = res[i]; });
+    } else {
+      AC.ocupadas['_'] = await Sheets.getHorasOcupadas(fechaStr, AC.empId);
+    }
+  } catch(e){ AC.ocupadas = {}; }
+  acRenderHoras();
+}
+
+function acEmpleadoLibre(key, dur){
+  return AC.emps.find(e => !isBlocked(key, AC.ocupadas[e.id] || [], dur));
+}
+
+function acRenderHoras(){
+  const dur = (AC.svc && AC.svc.durMin) || 60;
+  const iso = fechaISO(AC.y, AC.m, AC.dia);
+  const horasBloq = AC.bloqueos.horas[iso] || [];
+  const grid = elFin('acTimeGrid');
+  grid.innerHTML = '';
+  const slots = acGenSlots();
+  if (!slots.length){
+    grid.innerHTML = '<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">No hay horario ese día.</p>';
+    return;
+  }
+  let libres = 0;
+  slots.forEach(({ key, lbl }) => {
+    const ocupada = (AC.modoCualquiera && AC.emps.length > 1)
+      ? AC.emps.every(e => isBlocked(key, AC.ocupadas[e.id] || [], dur))
+      : isBlocked(key, AC.ocupadas['_'] || [], dur);
+    const bloqueada = ocupada || horasBloq.includes(key);
+    if (!bloqueada) libres++;
+    const div = document.createElement('div');
+    div.className = 'ts' + (bloqueada ? ' tkn' : '') + (AC.hora === key ? ' sel' : '');
+    div.textContent = lbl;
+    if (!bloqueada) div.onclick = () => {
+      AC.hora = key;
+      AC.empAsignado = (AC.modoCualquiera && AC.emps.length > 1)
+        ? (acEmpleadoLibre(key, dur) || AC.emps[0]).id
+        : AC.empId;
+      acRenderHoras();
+      acHoraElegida(key);
+      acActualizarBoton();
+    };
+    grid.appendChild(div);
+  });
+  if (!libres){
+    const aviso = document.createElement('p');
+    aviso.style.cssText = 'color:#C2695A;font-size:11.5px;grid-column:span 4;text-align:center;padding:.5rem;line-height:1.5;';
+    aviso.textContent = 'No hay horas libres este día. Elige otro día del calendario para agendarlo.';
+    grid.appendChild(aviso);
+  }
+}
+
+// Si la hora elegida es más tarde (el cliente no puede ser atendido ahora), se agenda sin cobrar
+function acHoraElegida(key){
+  const hint = elFin('ac-slot-hint');
+  hint.textContent = '';
+  if (!moduloDisponible('FINANZAS')) return;
+  const [h, m] = key.split(':').map(Number);
+  const futuro = new Date(AC.y, AC.m, AC.dia, h, m).getTime() > Date.now() + 15*60000;
+  elFin('ac-completar').checked = !futuro;
+  if (futuro) hint.textContent = 'Es una cita para más tarde: queda agendada y se cobra cuando la completes. Puedes marcar el cobro si prefieres cobrar ahora.';
+  acToggleCompletar();
+}
+
+function acToggleCompletar(){
+  const cobrar = elFin('ac-completar').checked && moduloDisponible('FINANZAS');
+  elFin('ac-cobro-detalle').style.display = cobrar ? 'block' : 'none';
+  acRecalcularCobro();
+  acActualizarBoton();
+}
+
+// Montos de la cita: el certificado se descuenta primero y el resto se cobra
+function acMontos(){
+  const cobrar = !!(elFin('ac-completar').checked && moduloDisponible('FINANZAS'));
+  const precioIngresado = Math.round((parseFloat(elFin('ac-precio').value) || 0)*100)/100;
+  const precio = cobrar ? precioIngresado : ((AC.svc && AC.svc.price > 0) ? AC.svc.price : 0);
+  let certUsado = 0;
+  if (AC.cert){
+    if (precio > 0) certUsado = Math.min(AC.cert.saldoDisponible, precio);
+    else if (!cobrar && AC.svc) certUsado = AC.cert.saldoDisponible; // servicio "a consultar": se aplica el saldo, como en la agenda pública
+  }
+  const porCobrar = Math.max(0, Math.round(((precio > 0 ? precio : 0) - certUsado)*100)/100);
+  return { cobrar, precio, certUsado, porCobrar };
+}
+
+function acRecalcularCobro(){
+  if (!AC) return;
+  const m = acMontos();
+  const d = elFin('ac-desglose');
+  if (m.cobrar){
+    const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color || 'var(--ink)'};">${v}</strong></div>`;
+    let h = linea('Precio del servicio', fmtDinero(m.precio));
+    if (m.certUsado > 0) h += linea('Certificado (' + escCat(AC.cert.codigo) + ')', '−' + fmtDinero(m.certUsado), '#159A61');
+    h += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar', fmtDinero(m.porCobrar), '#7C3AED')}</div>`;
+    d.innerHTML = h;
+    d.style.display = 'block';
+    pagoSetEsperado('ac-pagos', m.porCobrar);
+  } else {
+    d.style.display = 'none';
+  }
+}
+
+function acPrecioCambio(){
+  acRecalcularCobro();
+}
+
+async function acAplicarCertificado(){
+  const msg = elFin('ac-cert-msg');
+  const codigo = elFin('ac-cert').value;
+  if (!codigo.trim()){ AC.cert = null; msg.textContent = ''; acRecalcularCobro(); return; }
+  msg.style.color = '#999'; msg.textContent = 'Verificando...';
+  const r = await validarCertificadoLocal(codigo);
+  if (r.ok){
+    AC.cert = r.cert;
+    const m = acMontos();
+    msg.style.color = '#3a7a3a';
+    msg.textContent = '✓ Certificado válido: ' + fmtDinero(r.cert.saldoDisponible) + ' disponibles.' +
+      (m.certUsado > 0 ? ' Se aplicarán ' + fmtDinero(m.certUsado) + ' a esta cita.' : ' Se aplicará al indicar el precio del servicio.');
+  } else {
+    AC.cert = null;
+    msg.style.color = '#c0392b'; msg.textContent = r.msg;
+  }
+  acRecalcularCobro();
+}
+
+function acActualizarBoton(){
+  const cobrar = elFin('ac-completar').checked && moduloDisponible('FINANZAS');
+  elFin('ac-btn').innerHTML = cobrar
+    ? '<i class="ti ti-circle-check" style="font-size:17px;"></i> Agregar y cobrar'
+    : '<i class="ti ti-check" style="font-size:17px;"></i> Agregar cita';
+}
+
+async function guardarAgregarCita(){
+  const msg = elFin('ac-msg');
+  msg.textContent = '';
+  const nombre = elFin('ac-nombre').value.trim();
+  if (!nombre){ msg.textContent = 'Escribe el nombre del cliente.'; return; }
+  if (!AC.svc){ msg.textContent = 'Elige el servicio.'; return; }
+  if (!AC.dia || !AC.hora){ msg.textContent = 'Elige la fecha y la hora.'; return; }
+
+  const M = acMontos();
+  const cobrar = M.cobrar;
+  const precio = M.precio;
+  let pagos = [];
+  if (cobrar){
+    if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
+    const v = pagoValidar('ac-pagos');
+    if (!v.ok){ msg.textContent = v.msg; return; }
+    pagos = v.lineas;
+  }
+  const certUsado = M.certUsado;
+
+  const tel = elFin('ac-tel').value.trim();
+  const correo = elFin('ac-correo').value.trim();
+  const empleadoId = AC.empAsignado || AC.empId || null;
+  const precioConocido = precio > 0 ? precio : 0;
+  const fechaTexto = AC.dia + ' de ' + MESES[AC.m] + ' ' + AC.y;
+  const fechaIso = fechaISO(AC.y, AC.m, AC.dia);
+
+  const btn = elFin('ac-btn');
+  btn.disabled = true;
+  let citaId = null;
+  try {
+    citaId = await Sheets.guardarCita({
+      nombre, telefono: tel, correo, nota: elFin('ac-nota').value.trim(),
+      servicio: AC.svc.name, categoria: AC.svc.cat,
+      precioTotal: precioConocido, precioEsConsultar: precioConocido <= 0,
+      fecha: fechaTexto, hora: AC.hora, duracionMin: AC.svc.durMin || 60,
+      comprobante: 'Cita en el local', abonoMonto: 0, abonoTipo: '', metodoPago: '',
+      cuponUsado: '', descuentoCupon: 0,
+      precioFinal: Math.max(0, precioConocido - certUsado),
+      certificadoCodigo: certUsado > 0 ? AC.cert.codigo : null,
+      certificadoMonto: certUsado > 0 ? certUsado : null,
+      citaId: 'cita-' + Date.now(), empleadoId
+    });
+  } catch(e){
+    console.error(e);
+    msg.textContent = 'No se pudo crear la cita.' + (e && e.message ? ' (' + e.message + ')' : '');
+    btn.disabled = false;
+    return;
+  }
+
+  try { await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); } catch(e){ console.error(e); }
+
+  // El certificado se descuenta del saldo y queda ligado a la cita
+  if (certUsado > 0){
+    try { await Sheets.aplicarCertificado(AC.cert.id, certUsado, citaId); }
+    catch(e){
+      console.error(e);
+      cerrarAgregarCita();
+      loadCitas();
+      alert('La cita se creó, pero no se pudo descontar el certificado (revisa su saldo). El cobro no se registró: ábrela en Citas y toca "Completar".');
+      btn.disabled = false;
+      return;
+    }
+  }
+
+  if (cobrar){
+    try {
+      const pagosFinales = (certUsado > 0 ? [{ metodo:'certificado', monto:certUsado, referencia:AC.cert.codigo }] : []).concat(pagos);
+      await Sheets.completarCita(citaId, {
+        precioCobrado: precio, pagos: pagosFinales, fecha: fechaIso,
+        concepto: AC.svc.name, cliente: nombre, empleadoId
+      });
+    } catch(e){
+      console.error(e);
+      cerrarAgregarCita();
+      loadCitas();
+      alert('La cita se creó, pero no se pudo registrar el cobro. Ábrela en Citas y toca "Completar".');
+      btn.disabled = false;
+      return;
+    }
+  }
+
+  btn.disabled = false;
+  cerrarAgregarCita();
+  loadCitas();
+  if (cobrar && typeof FIN_VISTA !== 'undefined' && elFin('fin-contenido') && elFin('finanzas-activo').style.display === 'block') loadFinanzas();
 }
 
 // El arranque ahora ocurre en verificarSesionInicial() / hacerLogin(), al inicio del archivo
