@@ -3323,7 +3323,7 @@ const Sheets = {
       .order('fecha', { ascending: false });
     if (error) throw error;
     return (data || []).map(p => ({
-      id: p.id, origen: p.origen, appointmentId: p.appointment_id, localSaleId: p.local_sale_id,
+      id: p.id, origen: p.origen, appointmentId: p.appointment_id, localSaleId: p.local_sale_id, certificateId: p.certificate_id,
       metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha,
       concepto: p.concepto, cliente: p.cliente_nombre, empleadoId: p.employee_id, creadoEn: p.creado_en
     }));
@@ -3518,7 +3518,7 @@ const Sheets = {
       .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
     if (error || !data) return null;
     return {
-      id: data.id, codigo: data.codigo, estado: data.estado,
+      id: data.id, codigo: data.codigo, estado: data.estado, tipo: data.tipo,
       saldoRestante: Number(data.saldo_restante), montoInicial: Number(data.monto_inicial),
       fechaVencimiento: data.fecha_vencimiento
     };
@@ -3539,6 +3539,22 @@ const Sheets = {
       certificado_saldo_restante: saldo
     }).eq('id', citaId);
     if (error) console.error('No se pudo registrar el certificado en la cita:', error);
+  },
+
+  // Cobro de la venta de un certificado (efectivo, Yappy, transferencia o tarjeta).
+  // Es dinero recibido, pero NO ingreso: pasa a ser ingreso cuando el certificado se canjea.
+  async registrarPagosCertificado(certificateId, { codigo, compradorNombre, pagos }) {
+    await window.AnnlyReady;
+    const hoy = new Date();
+    const fecha = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+    const filas = (pagos || []).filter(p => p.monto > 0).map(p => ({
+      business_id: BUSINESS_ID, origen: 'certificado', certificate_id: certificateId,
+      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
+      fecha, concepto: 'Certificado ' + (codigo || ''), cliente_nombre: compradorNombre || null
+    }));
+    if (!filas.length) return;
+    const { error } = await sbClient.from('finance_payments').insert(filas);
+    if (error) throw error;
   },
 
   // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
@@ -3717,7 +3733,7 @@ const Sheets = {
 
   // Emitido por el negocio desde el panel — nace activo de una vez
   // (ya se sabe que el pago, si lo hubo, se resolvió aparte).
-  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, nota }) {
+  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, nota, pagos }) {
     await window.AnnlyReady;
 
     let codigo, intentos = 0;
@@ -3729,7 +3745,7 @@ const Sheets = {
       if (intentos > 5) throw new Error('No se pudo generar un código único.');
     }
 
-    const { error } = await sbClient.from('gift_certificates').insert([{
+    const { data: creado, error } = await sbClient.from('gift_certificates').insert([{
       business_id: BUSINESS_ID,
       codigo,
       tipo,
@@ -3745,8 +3761,18 @@ const Sheets = {
       mensaje: mensaje || null,
       nota: nota || null,
       fecha_vencimiento: fechaVencimiento
-    }]);
+    }]).select('id').single();
     if (error) throw error;
+
+    // El certificado se cobra al venderlo: se deja registrado el dinero recibido
+    // (no es ingreso todavía: cuenta cuando el cliente lo canjea).
+    if (pagos && pagos.length && creado) {
+      try {
+        await this.registrarPagosCertificado(creado.id, { codigo, compradorNombre, pagos });
+      } catch (e) {
+        console.error('El certificado se emitió, pero no se pudo registrar su cobro:', e);
+      }
+    }
 
     await this._notificarCertificadoActivo({
       codigo, monto, fechaVencimiento,
@@ -3811,6 +3837,21 @@ const Sheets = {
     const { error: errUpdate } = await sbClient.from('gift_certificates').update({ estado: 'activo' }).eq('id', certificateId);
     if (errUpdate) throw errUpdate;
 
+    // Compra hecha en el sitio público: al confirmar el pago queda registrado el dinero recibido
+    try {
+      const { data: yaRegistrado } = await sbClient.from('finance_payments').select('id')
+        .eq('business_id', BUSINESS_ID).eq('certificate_id', certificateId).limit(1);
+      if (!yaRegistrado || !yaRegistrado.length) {
+        await this.registrarPagosCertificado(certificateId, {
+          codigo: cert.codigo, compradorNombre: cert.comprador_nombre,
+          pagos: [{
+            metodo: cert.metodo_pago === 'yappy' ? 'yappy' : 'transferencia',
+            monto: Number(cert.monto_inicial), referencia: cert.comprobante || null
+          }]
+        });
+      }
+    } catch (e) { console.error('No se pudo registrar el cobro del certificado:', e); }
+
     await this._notificarCertificadoActivo({
       codigo: cert.codigo, monto: Number(cert.monto_inicial), fechaVencimiento: cert.fecha_vencimiento,
       compradorNombre: cert.comprador_nombre, compradorCorreo: cert.comprador_correo,
@@ -3855,6 +3896,7 @@ const Sheets = {
 
     return {
       valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo,
+      tipo: data.tipo, unSoloUso: data.tipo === 'cortesia',
       montoOriginal: Number(data.monto_inicial), montoDisponible: saldo,
       compradoPorNombre: data.comprador_nombre, destinatarioNombre: data.destinatario_nombre,
       mensaje: data.mensaje, fechaVencimiento: data.fecha_vencimiento
@@ -3882,11 +3924,12 @@ const Sheets = {
 
     // 2) Respaldo (si esa función aún no existe): método anterior, pero verificando
     //    que el saldo realmente se actualizó.
-    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('saldo_restante').eq('id', certificateId).maybeSingle();
+    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('saldo_restante, tipo').eq('id', certificateId).maybeSingle();
     if (errRead || !cert) throw errRead || new Error('Certificado no encontrado.');
 
-    const nuevoSaldo = Number(cert.saldo_restante) - montoAplicado;
-    if (nuevoSaldo < 0) throw new Error('El monto aplicado supera el saldo disponible.');
+    if (Number(cert.saldo_restante) - montoAplicado < 0) throw new Error('El monto aplicado supera el saldo disponible.');
+    // Cortesía: de un solo uso, se consume completo aunque el servicio valga menos
+    const nuevoSaldo = cert.tipo === 'cortesia' ? 0 : Number(cert.saldo_restante) - montoAplicado;
 
     const { data: filas, error: errUpdate } = await sbClient.from('gift_certificates')
       .update({ saldo_restante: nuevoSaldo }).eq('id', certificateId).select('id');
