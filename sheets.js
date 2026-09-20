@@ -3472,7 +3472,7 @@ const Sheets = {
     if (error) throw error;
     return (data || []).map(x => ({
       id: x.id, appointmentId: x.appointment_id, descripcion: x.descripcion,
-      monto: Number(x.monto), fecha: x.fecha, empleadoId: x.employee_id
+      monto: Number(x.monto), fecha: x.fecha, empleadoId: x.employee_id, cliente: x.cliente_nombre, creadoEn: x.creado_en
     }));
   },
 
@@ -3842,14 +3842,32 @@ const Sheets = {
   async aplicarCertificado(certificateId, montoAplicado, appointmentId) {
     await window.AnnlyReady;
 
+    // 1) Función segura en la base (canjear_certificado): revisa el saldo, lo descuenta y
+    //    registra el canje en un solo paso, con los permisos correctos aunque quien reserva
+    //    sea un cliente sin sesión.
+    const { data: saldoNuevo, error: errRpc } = await sbClient.rpc('canjear_certificado', {
+      p_certificate_id: String(certificateId),
+      p_monto: montoAplicado,
+      p_appointment_id: (appointmentId !== null && appointmentId !== undefined) ? String(appointmentId) : null
+    });
+    if (!errRpc) return Number(saldoNuevo);
+
+    const noExiste = /canjear_certificado|could not find the function|schema cache|PGRST202/i
+      .test((errRpc.message || '') + ' ' + (errRpc.code || ''));
+    if (!noExiste) throw errRpc;
+
+    // 2) Respaldo (si esa función aún no existe): método anterior, pero verificando
+    //    que el saldo realmente se actualizó.
     const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('saldo_restante').eq('id', certificateId).maybeSingle();
     if (errRead || !cert) throw errRead || new Error('Certificado no encontrado.');
 
     const nuevoSaldo = Number(cert.saldo_restante) - montoAplicado;
     if (nuevoSaldo < 0) throw new Error('El monto aplicado supera el saldo disponible.');
 
-    const { error: errUpdate } = await sbClient.from('gift_certificates').update({ saldo_restante: nuevoSaldo }).eq('id', certificateId);
+    const { data: filas, error: errUpdate } = await sbClient.from('gift_certificates')
+      .update({ saldo_restante: nuevoSaldo }).eq('id', certificateId).select('id');
     if (errUpdate) throw errUpdate;
+    if (!filas || !filas.length) throw new Error('No se pudo actualizar el saldo del certificado (sin permisos).');
 
     const filaCanje = {
       certificate_id: certificateId, business_id: BUSINESS_ID, appointment_id: appointmentId || null, monto_aplicado: montoAplicado
@@ -3860,6 +3878,7 @@ const Sheets = {
       ({ error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([filaCanje]));
     }
     if (errInsert) console.error('No se pudo registrar el canje del certificado:', errInsert);
+    return nuevoSaldo;
   },
 
   // Historial de canjes de un certificado — para trazabilidad ante reclamos
