@@ -4647,7 +4647,10 @@ function resumenPagoCita(c){
   const cert = Number(c.certificadoMonto) || 0;
   const abono = Number(c.abonoMonto) || 0;
   const descontable = c.abonoTipo === 'descontable';
-  const neto = precio != null ? Math.max(0, precio - desc) : null;
+  // En una cita ya completada, la referencia es el precio final con que se cobró
+  // (puede haberse ajustado al completar); antes de completar, el precio menos el cupón.
+  const completada = !!c.completadaEn && c.precioCobrado != null && c.precioCobrado !== '';
+  const neto = completada ? (Number(c.precioCobrado) || 0) : (precio != null ? Math.max(0, precio - desc) : null);
   const porCobrar = neto != null ? Math.max(0, Math.round((neto - cert - (descontable ? abono : 0))*100)/100) : null;
   // Cobrado de más: lo pagado por adelantado (certificado + abono descontable) supera el servicio
   const excedente = neto != null ? Math.max(0, Math.round((cert + (descontable ? abono : 0) - neto)*100)/100) : 0;
@@ -4736,6 +4739,9 @@ async function abrirDetalleCita(id){
     (c.nota ? fila('Nota', escCat(c.nota)) : '') +
     titulo('Pago');
   html += fila('Precio del servicio', r.precio == null ? 'A consultar' : fmtDinero(r.precio));
+  if (c.completadaEn && c.precioCobrado != null && (r.precio == null || Math.abs(Number(c.precioCobrado) - r.precio) >= 0.005)){
+    html += fila('Precio final al completar', fmtDinero(c.precioCobrado));
+  }
   if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc));
   if (r.cert > 0) html += fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert)) +
     (c.certificadoSaldoRestante != null ? fila('Saldo tras esta cita', fmtDinero(c.certificadoSaldoRestante)) : '') +
@@ -4748,7 +4754,8 @@ async function abrirDetalleCita(id){
   }
   if (r.excedente > 0){
     html += fila('Saldo a favor del cliente (cobrado de más)', `<span style="color:#B08900;">${fmtDinero(r.excedente)}</span>`);
-    html += `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:6px 0 0;">Lo pagado por adelantado (certificado + abono) supera el precio del servicio. Esta reserva se hizo cuando el abono aún se cobraba aunque el certificado cubriera todo.</p>`;
+    const abonoInnecesario = r.abono > 0 && r.descontable && r.cert >= (r.neto || 0);
+    html += `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:6px 0 0;">Lo pagado por adelantado (certificado + abono) supera el precio del servicio.${abonoInnecesario ? ' El abono no era necesario: el certificado ya cubría todo el servicio.' : ''}</p>`;
   }
   if (c.completadaEn){
     html += fila('Estado', 'Completada · ' + fmtDinero(c.precioCobrado));
