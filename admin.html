@@ -1404,26 +1404,55 @@ img{max-width:100%;}
         <label class="flbl">Horario propio (opcional)</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;"><input type="checkbox" id="me-horario-propio" onchange="toggleHorarioPropioEmpleado(this)"/> Usa un horario distinto al del negocio</label>
         <div id="me-horario-bloques" style="display:none;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
-          <div class="hor-emp-bloque" data-bloque="lv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Lun-Vie</span>
+          <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 2px;">Define las horas de cada día. Marca <strong>No trabaja</strong> en los días libres (por ejemplo, si solo atiende martes, jueves y viernes).</p>
+          <div class="hor-emp-bloque" data-bloque="lun" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:78px;flex-shrink:0;">Lunes</span>
             <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
             <span style="font-size:12px;color:var(--ink-soft);">a</span>
             <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
-            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> Cerrado</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> No trabaja</label>
+          </div>
+          <div class="hor-emp-bloque" data-bloque="mar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:78px;flex-shrink:0;">Martes</span>
+            <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <span style="font-size:12px;color:var(--ink-soft);">a</span>
+            <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> No trabaja</label>
+          </div>
+          <div class="hor-emp-bloque" data-bloque="mie" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:78px;flex-shrink:0;">Miércoles</span>
+            <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <span style="font-size:12px;color:var(--ink-soft);">a</span>
+            <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> No trabaja</label>
+          </div>
+          <div class="hor-emp-bloque" data-bloque="jue" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:78px;flex-shrink:0;">Jueves</span>
+            <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <span style="font-size:12px;color:var(--ink-soft);">a</span>
+            <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> No trabaja</label>
+          </div>
+          <div class="hor-emp-bloque" data-bloque="vie" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12.5px;font-weight:600;width:78px;flex-shrink:0;">Viernes</span>
+            <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <span style="font-size:12px;color:var(--ink-soft);">a</span>
+            <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> No trabaja</label>
           </div>
           <div class="hor-emp-bloque" data-bloque="sab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Sábado</span>
+            <span style="font-size:12.5px;font-weight:600;width:78px;flex-shrink:0;">Sábado</span>
             <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
             <span style="font-size:12px;color:var(--ink-soft);">a</span>
             <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
-            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> Cerrado</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> No trabaja</label>
           </div>
           <div class="hor-emp-bloque" data-bloque="dom" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">Domingo</span>
+            <span style="font-size:12.5px;font-weight:600;width:78px;flex-shrink:0;">Domingo</span>
             <input type="time" class="fi hor-emp-abre" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
             <span style="font-size:12px;color:var(--ink-soft);">a</span>
             <input type="time" class="fi hor-emp-cierra" style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
-            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> Cerrado</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="hor-emp-cerrado" onchange="toggleHorEmpBloque(this)"/> No trabaja</label>
           </div>
         </div>
       </div>
@@ -1489,7 +1518,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=20"></script>
+<script src="sheets.js?v=21"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -2974,13 +3003,20 @@ function fechaISO(y,m,d){
 
 function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 
-function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
+// El horario del negocio es por bloques (lv / sab / dom); el de un profesional puede ser
+// por día (lun, mar, mie, jue, vie, sab, dom). Se reconoce el formato por sus claves.
+function bloqueDelDia(dow, horario){
+  if (horario && (horario.lun || horario.mar || horario.mie || horario.jue || horario.vie)) {
+    return ['dom','lun','mar','mie','jue','vie','sab'][dow];
+  }
+  return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv');
+}
 
 function genSlots(){
   const dt=new Date(rpCalY,rpCalM,rpSelectedDay);
   const dow=dt.getDay();
   const horarioBase = rpEmpleadoHorarioCache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
-  const bloqueCfg = (horarioBase && horarioBase[bloqueDelDia(dow)]) || null;
+  const bloqueCfg = (horarioBase && horarioBase[bloqueDelDia(dow, horarioBase)]) || null;
 
   let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
   if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
@@ -3054,7 +3090,7 @@ function chMoAdmin(d){
 function diaCerrado(dow){
   const h = rpEmpleadoHorarioCache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
   if (!h) return dow===0;
-  const bloque = h[bloqueDelDia(dow)];
+  const bloque = h[bloqueDelDia(dow, h)];
   return !bloque || !!bloque.cerrado;
 }
 
@@ -3332,11 +3368,35 @@ function guardarClientaModal(){
 // ===== EQUIPO =====
 let EQUIPO = [];
 let editEmpleadoId = null;
+const DIAS_HOR = ['lun','mar','mie','jue','vie','sab','dom'];
+const NOMBRES_DIA_HOR = { lun:'Lunes', mar:'Martes', mie:'Miércoles', jue:'Jueves', vie:'Viernes', sab:'Sábado', dom:'Domingo' };
 const HOR_DEFAULT_EMPLEADO = {
-  lv:  { abre:'09:00', cierra:'18:00', cerrado:false },
+  lun: { abre:'09:00', cierra:'18:00', cerrado:false },
+  mar: { abre:'09:00', cierra:'18:00', cerrado:false },
+  mie: { abre:'09:00', cierra:'18:00', cerrado:false },
+  jue: { abre:'09:00', cierra:'18:00', cerrado:false },
+  vie: { abre:'09:00', cierra:'18:00', cerrado:false },
   sab: { abre:'09:00', cierra:'14:00', cerrado:false },
   dom: { abre:'', cierra:'', cerrado:true }
 };
+
+// Acepta el formato antiguo por bloques (lv / sab / dom) o el nuevo por día y devuelve siempre por día
+function horarioPorDia(horario){
+  const r = {};
+  DIAS_HOR.forEach(d => {
+    let x = horario ? horario[d] : null;
+    if (!x && horario && ['lun','mar','mie','jue','vie'].includes(d)) x = horario.lv;
+    r[d] = x ? { abre:x.abre || '', cierra:x.cierra || '', cerrado:!!x.cerrado } : HOR_DEFAULT_EMPLEADO[d];
+  });
+  return r;
+}
+
+function textoHorarioPropio(h){
+  if (!h) return 'Horario del negocio';
+  const d = horarioPorDia(h);
+  const dias = DIAS_HOR.filter(k => !d[k].cerrado).map(k => NOMBRES_DIA_HOR[k].slice(0,3));
+  return dias.length ? 'Horario propio: ' + dias.join(', ') : 'Horario propio: sin días de trabajo';
+}
 
 async function loadEquipo(){
   await Sheets.asegurarEmpleadoDueno();
@@ -3372,12 +3432,38 @@ function renderEquipo(){
       <div class="svc-info">
         <div class="svc-nm">${e.nombre}${e.esDueno?' <span style="font-size:10px;color:var(--ink-soft);font-weight:500;">(dueño/a)</span>':''}</div>
         <div class="svc-meta">${e.telefono||'Sin teléfono'}${e.activo?'':' · Inactivo'}</div>
+        <div class="svc-meta" id="eq-atiende-${e.id}" style="margin-top:2px;">Cargando servicios…</div>
       </div>
       <div class="svc-actions">
         <button class="btn-ico" onclick="openModalEmpleado('${e.id}')" title="Editar"><i class="ti ti-edit"></i></button>
       </div>
     </div>`;
   }).join('');
+  resumenAtiendeEquipo();
+}
+
+// Qué servicios atiende cada profesional (un profesional sin servicios asignados aparece para TODOS)
+function textoAtiende(ids){
+  if (!ids.length) return '<span style="color:#B08900;font-weight:600;">Atiende todos los servicios (no tiene servicios asignados)</span>';
+  const grupos = categoriasActuales().map(c => {
+    const svcs = SERVICES.filter(s => s.cat === c);
+    return { c, total: svcs.length, n: svcs.filter(s => ids.includes(s.id)).length };
+  }).filter(g => g.n > 0);
+  const partes = grupos.map(g => escCat(g.c) + (g.n === g.total ? '' : ' (' + g.n + ' de ' + g.total + ')'));
+  const sueltos = SERVICES.filter(s => !s.cat && ids.includes(s.id)).map(s => escCat(s.name));
+  const lista = [...partes, ...sueltos];
+  return 'Atiende: ' + (lista.length ? lista.join(' · ') : 'servicios que ya no existen (vuelve a asignarlos)');
+}
+
+async function resumenAtiendeEquipo(){
+  for (const e of EQUIPO){
+    const el = document.getElementById('eq-atiende-' + e.id);
+    if (!el) continue;
+    let ids = [], horario = null;
+    try { ids = await Sheets.getEmpleadoServicios(e.id); } catch(err){ ids = []; }
+    try { horario = await Sheets.getEmpleadoHorario(e.id); } catch(err){ horario = null; }
+    el.innerHTML = textoAtiende(ids) + '<br>' + textoHorarioPropio(horario);
+  }
 }
 
 async function openModalEmpleado(id){
@@ -3463,10 +3549,11 @@ function toggleHorEmpBloque(checkbox){
 }
 
 function cargarHorarioEmpleadoModal(horario){
-  ['lv','sab','dom'].forEach(clave => {
+  const porDia = horarioPorDia(horario);
+  DIAS_HOR.forEach(clave => {
     const bloque = document.querySelector(`#me-horario-bloques .hor-emp-bloque[data-bloque="${clave}"]`);
     if (!bloque) return;
-    const datos = horario[clave] || HOR_DEFAULT_EMPLEADO[clave];
+    const datos = porDia[clave];
     bloque.querySelector('.hor-emp-abre').value = datos.abre || '';
     bloque.querySelector('.hor-emp-cierra').value = datos.cierra || '';
     const chk = bloque.querySelector('.hor-emp-cerrado');
@@ -3475,9 +3562,22 @@ function cargarHorarioEmpleadoModal(horario){
   });
 }
 
+// Revisa que cada día que trabaja tenga hora de inicio y de cierre válidas
+function validarHorarioEmpleadoModal(){
+  for (const clave of DIAS_HOR){
+    const bloque = document.querySelector(`#me-horario-bloques .hor-emp-bloque[data-bloque="${clave}"]`);
+    if (!bloque || bloque.querySelector('.hor-emp-cerrado').checked) continue;
+    const abre = bloque.querySelector('.hor-emp-abre').value;
+    const cierra = bloque.querySelector('.hor-emp-cierra').value;
+    if (!abre || !cierra) return 'Falta la hora de inicio o de cierre del ' + NOMBRES_DIA_HOR[clave].toLowerCase() + '.';
+    if (abre >= cierra) return 'En el ' + NOMBRES_DIA_HOR[clave].toLowerCase() + ', la hora de cierre debe ser después de la de inicio.';
+  }
+  return '';
+}
+
 function leerHorarioEmpleadoModal(){
   const resultado = {};
-  ['lv','sab','dom'].forEach(clave => {
+  DIAS_HOR.forEach(clave => {
     const bloque = document.querySelector(`#me-horario-bloques .hor-emp-bloque[data-bloque="${clave}"]`);
     const cerrado = bloque.querySelector('.hor-emp-cerrado').checked;
     resultado[clave] = {
@@ -3531,6 +3631,11 @@ async function guardarEmpleadoModal(){
     activo: document.getElementById('me-activo').checked
   };
 
+  if (document.getElementById('me-horario-propio').checked){
+    const errHorario0 = validarHorarioEmpleadoModal();
+    if (errHorario0){ msgEl.textContent = errHorario0; return; }
+  }
+
   try {
     const empleadoId = await Sheets.guardarEmpleado(empleado);
 
@@ -3539,6 +3644,8 @@ async function guardarEmpleadoModal(){
 
     const usaHorarioPropio = document.getElementById('me-horario-propio').checked;
     if (usaHorarioPropio){
+      const errHorario = validarHorarioEmpleadoModal();
+      if (errHorario){ msgEl.textContent = errHorario; return; }
       await Sheets.guardarEmpleadoHorario(empleadoId, leerHorarioEmpleadoModal());
     } else {
       await Sheets.eliminarEmpleadoHorario(empleadoId);
@@ -4998,7 +5105,7 @@ function acNuevoEstado(){
   const hoy = new Date();
   return { svc:null, emps:[], modoCualquiera:false, empId:null, horarioEmp:null,
            y:hoy.getFullYear(), m:hoy.getMonth(), dia:null, hora:null,
-           bloqueos:{ dias:[], horas:{} }, ocupadas:{}, empAsignado:null, cert:null };
+           bloqueos:{ dias:[], horas:{} }, ocupadas:{}, empAsignado:null, cert:null, horariosEmp:{} };
 }
 
 async function abrirModalAgregarCita(){
@@ -5066,7 +5173,10 @@ async function acServicioCambio(){
   acPrecioCambio();
 
   try { AC.emps = await Sheets.getEmpleadosParaServicio(AC.svc.id); } catch(e){ AC.emps = []; }
+  AC.horariosEmp = {};
   if (AC.emps.length > 1){
+    const hs = await Promise.all(AC.emps.map(e => Sheets.getEmpleadoHorario(e.id).catch(() => null)));
+    AC.emps.forEach((e, i) => { AC.horariosEmp[e.id] = hs[i]; });
     AC.modoCualquiera = true; AC.empId = null; AC.horarioEmp = null;
     elFin('ac-prof').innerHTML = '<option value="">Cualquiera disponible</option>' +
       AC.emps.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
@@ -5104,10 +5214,27 @@ function acCambiarMes(d){
   acActualizarBoton();
 }
 
+// Horario de un profesional (el suyo o, si no tiene, el del negocio) y si trabaja a esa hora
+function acHorarioDe(id){
+  return AC.horariosEmp[id] || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+}
+function acCfgDia(h, dow){
+  if (!h) return dow === 0 ? { cerrado:true } : { abre:'8:00', cierra:'16:00', cerrado:false };
+  return h[bloqueDelDia(dow, h)] || { cerrado:true };
+}
+function acTrabajaEn(id, dow, key){
+  const c = acCfgDia(acHorarioDe(id), dow);
+  if (c.cerrado || !c.abre || !c.cierra) return false;
+  const mm = timeToMin(key);
+  return mm >= timeToMin(c.abre) && mm <= timeToMin(c.cierra);
+}
+
 function acDiaCerrado(dow){
+  // "Cualquiera disponible": cerrado solo si ningún profesional trabaja ese día
+  if (AC.modoCualquiera && AC.emps.length > 1) return AC.emps.every(e => !!acCfgDia(acHorarioDe(e.id), dow).cerrado);
   const h = (!AC.modoCualquiera && AC.horarioEmp) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
   if (!h) return dow === 0;
-  const bloque = h[bloqueDelDia(dow)];
+  const bloque = h[bloqueDelDia(dow, h)];
   return !bloque || !!bloque.cerrado;
 }
 
@@ -5139,14 +5266,23 @@ function acRenderCal(){
 
 function acGenSlots(){
   const dow = new Date(AC.y, AC.m, AC.dia).getDay();
-  const base = (!AC.modoCualquiera && AC.horarioEmp) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
-  const cfg = (base && base[bloqueDelDia(dow)]) || null;
   let hIni = 8, mIni = 0, hFin = 16, mFin = 0; // respaldo si no hay horario configurado
-  if (cfg && !cfg.cerrado && cfg.abre && cfg.cierra){
-    [hIni, mIni] = cfg.abre.split(':').map(Number);
-    [hFin, mFin] = cfg.cierra.split(':').map(Number);
-  } else if (cfg && cfg.cerrado){
-    return [];
+  if (AC.modoCualquiera && AC.emps.length > 1){
+    const abiertos = AC.emps.map(e => acCfgDia(acHorarioDe(e.id), dow)).filter(c => !c.cerrado && c.abre && c.cierra);
+    if (!abiertos.length) return [];
+    const minAbre = Math.min(...abiertos.map(c => timeToMin(c.abre)));
+    const maxCierra = Math.max(...abiertos.map(c => timeToMin(c.cierra)));
+    hIni = Math.floor(minAbre/60); mIni = minAbre % 60;
+    hFin = Math.floor(maxCierra/60); mFin = maxCierra % 60;
+  } else {
+    const base = (!AC.modoCualquiera && AC.horarioEmp) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+    const cfg = (base && base[bloqueDelDia(dow, base)]) || null;
+    if (cfg && !cfg.cerrado && cfg.abre && cfg.cierra){
+      [hIni, mIni] = cfg.abre.split(':').map(Number);
+      [hFin, mFin] = cfg.cierra.split(':').map(Number);
+    } else if (cfg && cfg.cerrado){
+      return [];
+    }
   }
   const slots = [];
   let h = hIni, m = mIni;
@@ -5179,7 +5315,8 @@ async function acSelDia(d){
 }
 
 function acEmpleadoLibre(key, dur){
-  return AC.emps.find(e => !isBlocked(key, AC.ocupadas[e.id] || [], dur));
+  const dow = new Date(AC.y, AC.m, AC.dia).getDay();
+  return AC.emps.find(e => acTrabajaEn(e.id, dow, key) && !isBlocked(key, AC.ocupadas[e.id] || [], dur));
 }
 
 function acRenderHoras(){
@@ -5195,8 +5332,9 @@ function acRenderHoras(){
   }
   let libres = 0;
   slots.forEach(({ key, lbl }) => {
+    const dowH = new Date(AC.y, AC.m, AC.dia).getDay();
     const ocupada = (AC.modoCualquiera && AC.emps.length > 1)
-      ? AC.emps.every(e => isBlocked(key, AC.ocupadas[e.id] || [], dur))
+      ? AC.emps.every(e => !acTrabajaEn(e.id, dowH, key) || isBlocked(key, AC.ocupadas[e.id] || [], dur))
       : isBlocked(key, AC.ocupadas['_'] || [], dur);
     const bloqueada = ocupada || horasBloq.includes(key);
     if (!bloqueada) libres++;
