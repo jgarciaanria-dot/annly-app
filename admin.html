@@ -1258,6 +1258,10 @@ img{max-width:100%;}
           <div class="fg"><label class="flbl">Precio final del servicio ($)</label>
             <input class="fi" id="ac-precio" type="number" step="0.01" min="0" oninput="acPrecioCambio()"/>
           </div>
+          <div class="fg"><label class="flbl">Ventas adicionales (opcional)</label>
+            <p style="font-size:11px;color:var(--ink-soft);margin:0 0 6px;line-height:1.5;">Tratamientos, productos u otros que compra en la visita. Se suman al cobro.</p>
+            <div id="ac-extras"></div>
+          </div>
           <div id="ac-desglose" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
           <div class="fg" style="margin-bottom:0;"><label class="flbl">¿Cómo pagó?</label><div id="ac-pagos"></div></div>
         </div>
@@ -1266,6 +1270,17 @@ img{max-width:100%;}
       <p id="ac-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" id="ac-btn" onclick="guardarAgregarCita()"></button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE DE CITA (trazabilidad) -->
+<div class="ov" id="ov-cita-detalle">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Detalle de la cita</span>
+      <button class="modal-close" onclick="cerrarModalFin('ov-cita-detalle')">×</button>
+    </div>
+    <div class="modal-body" id="cd-body"></div>
   </div>
 </div>
 
@@ -3837,7 +3852,7 @@ const METODOS_COBRO = ['efectivo','yappy','transferencia','tarjeta'];
 const CATEGORIAS_GASTO = ['Insumos y productos','Alquiler','Servicios básicos','Pagos al personal','Publicidad','Mantenimiento','Otros'];
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-let FIN = { pagos:[], gastos:[], ventas:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+let FIN = { pagos:[], gastos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
 let FIN_PERIODO = 'actual';
 let FIN_VISTA = 'resumen';
 let FIN_FILTRO_MOV = 'todos';
@@ -3942,6 +3957,7 @@ async function loadFinanzas(){
     cont.innerHTML = '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;line-height:1.6;">No se pudieron cargar las finanzas.<br>Revisa que ya corriste el SQL de Finanzas en Supabase.</p>';
     return;
   }
+  try { FIN.extras = await Sheets.getExtrasFinanzas(desde, hasta); } catch(e){ FIN.extras = []; }
   try {
     const certs = await Sheets.getCertificados();
     FIN.certPorCanjear = certs.filter(c => estadoCertificado(c).texto === 'Activo').reduce((s,c) => s + c.saldoRestante, 0);
@@ -3969,6 +3985,8 @@ function htmlResumenFin(){
   const resultado = ingresos - gastos;
   const agenda = sumaFin(FIN.pagos.filter(p => p.origen === 'agenda'));
   const local = ingresos - agenda;
+  const adicionales = Math.min(agenda, sumaFin(FIN.extras));
+  const serviciosAgenda = agenda - adicionales;
   const porMetodo = {};
   FIN.pagos.forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
 
@@ -4003,7 +4021,7 @@ function htmlResumenFin(){
     </div>
     ${vacio}
     <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Ingresos por origen</span></div>
-      <div style="padding:1rem;">${barra('Agenda (citas completadas)', agenda, ingresos, '#EC4899')}${barra('Ventas en el local', local, ingresos, '#7C3AED')}</div>
+      <div style="padding:1rem;">${barra('Agenda (servicios de citas completadas)', serviciosAgenda, ingresos, '#EC4899')}${adicionales > 0 ? barra('Ventas adicionales en cita (tratamientos, productos)', adicionales, ingresos, '#F59E0B') : ''}${barra('Ventas en el local', local, ingresos, '#7C3AED')}</div>
     </div>
     <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Por método de pago</span></div>
       <div style="padding:1rem;">${metodosHtml || '<p style="font-size:12px;color:#aaa;text-align:center;">Sin cobros en este periodo.</p>'}</div>
@@ -4230,6 +4248,74 @@ function pagoValidar(id){
   return { ok:true, lineas };
 }
 
+// ---------- Ventas adicionales de una visita (tratamientos, productos, etc.) ----------
+const EXTRAS_ED = {};
+
+function extrasIniciar(id, callback){
+  EXTRAS_ED[id] = { lineas:[], onCambio:callback };
+  extrasRender(id);
+}
+
+function extrasRender(id){
+  const ed = EXTRAS_ED[id], cont = elFin(id);
+  if (!ed || !cont) return;
+  cont.innerHTML = ed.lineas.map((l,i) => `
+    <div style="display:grid;grid-template-columns:1fr 92px auto;gap:6px;margin-bottom:6px;">
+      <input class="fi" placeholder="Ej: Tratamiento capilar, crema hidratante…" value="${escCat(l.desc||'')}" oninput="extraCambiar('${id}',${i},'desc',this.value)"/>
+      <input class="fi" type="number" step="0.01" min="0" placeholder="$" value="${l.monto}" oninput="extraCambiar('${id}',${i},'monto',this.value)"/>
+      <button type="button" class="btn-ico del" onclick="extraQuitar('${id}',${i})" title="Quitar"><i class="ti ti-x"></i></button>
+    </div>`).join('') +
+    `<button type="button" class="btn-add-incl" onclick="extraAgregar('${id}')"><i class="ti ti-plus" style="font-size:12px;"></i> Agregar venta adicional</button>`;
+}
+
+function extrasAvisar(id){
+  const ed = EXTRAS_ED[id];
+  if (ed && ed.onCambio && typeof window[ed.onCambio] === 'function') window[ed.onCambio]();
+}
+
+function extraAgregar(id){
+  const ed = EXTRAS_ED[id];
+  if (!ed) return;
+  ed.lineas.push({ desc:'', monto:'' });
+  extrasRender(id);
+}
+
+function extraQuitar(id, i){
+  const ed = EXTRAS_ED[id];
+  if (!ed) return;
+  ed.lineas.splice(i, 1);
+  extrasRender(id);
+  extrasAvisar(id);
+}
+
+function extraCambiar(id, i, campo, valor){
+  const ed = EXTRAS_ED[id];
+  if (!ed || !ed.lineas[i]) return;
+  ed.lineas[i][campo] = valor;
+  if (campo === 'monto') extrasAvisar(id);
+}
+
+function extrasTotal(id){
+  const ed = EXTRAS_ED[id];
+  if (!ed) return 0;
+  return Math.round(ed.lineas.reduce((s,l) => s + Math.max(0, Math.round((parseFloat(l.monto)||0)*100)/100), 0)*100)/100;
+}
+
+function extrasValidar(id){
+  const ed = EXTRAS_ED[id];
+  if (!ed) return { ok:true, items:[] };
+  const items = [];
+  for (const l of ed.lineas){
+    const desc = (l.desc||'').trim();
+    const monto = Math.round((parseFloat(l.monto)||0)*100)/100;
+    if (!desc && !(monto > 0)) continue;
+    if (!desc) return { ok:false, items, msg:'Describe cada venta adicional (por ejemplo, el tratamiento o producto).' };
+    if (!(monto > 0)) return { ok:false, items, msg:'Falta el monto de "' + desc + '".' };
+    items.push({ descripcion:desc, monto });
+  }
+  return { ok:true, items };
+}
+
 function cerrarModalFin(id){ elFin(id).classList.remove('open'); }
 
 // ---------- Registrar venta en el local ----------
@@ -4385,11 +4471,16 @@ function abrirCompletarCita(id){
       </div>
       <p id="fc-cert-msg" style="font-size:11.5px;margin-top:6px;min-height:14px;"></p>
     </div>` : ''}
+    <div class="fg"><label class="flbl">Ventas adicionales (opcional)</label>
+      <p style="font-size:11px;color:var(--ink-soft);margin:0 0 6px;line-height:1.5;">Tratamientos, productos u otros que el cliente compró en la visita. Se suman al cobro y quedan registrados con su detalle.</p>
+      <div id="fc-extras"></div>
+    </div>
     <div id="fc-desglose" style="background:#FAFAF8;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
     <div class="fg"><label class="flbl">Cobro de hoy</label><div id="fc-pagos"></div></div>
     <p id="fc-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
     <button class="btn-save" id="fc-btn" onclick="confirmarCompletarCita()"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar y registrar cobro</button>`;
   PAGO_ED['fc-pagos'] = null;
+  extrasIniciar('fc-extras', 'fcRecalcular');
   fcRecalcular(true);
   elFin('ov-fin-completar').classList.add('open');
 }
@@ -4430,10 +4521,13 @@ function fcRecalcular(inicial){
       : linea('Abono no reembolsable ya pagado (aparte)', fmtDinero(COMPLETANDO.abono), 'var(--ink-soft)');
   }
   if (r.certExtraUsado > 0) html += linea('Certificado (' + escCat(COMPLETANDO.certExtra.codigo) + ')', '−' + fmtDinero(r.certExtraUsado), '#159A61');
-  html += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar hoy', fmtDinero(r.porCobrar), '#7C3AED')}</div>`;
+  const extras = extrasTotal('fc-extras');
+  if (extras > 0) html += linea('Ventas adicionales', '+' + fmtDinero(extras));
+  const totalHoy = Math.round((r.porCobrar + extras)*100)/100;
+  html += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar hoy', fmtDinero(totalHoy), '#7C3AED')}</div>`;
   elFin('fc-desglose').innerHTML = html;
-  if (inicial || !PAGO_ED['fc-pagos']) pagoIniciar('fc-pagos', r.porCobrar);
-  else pagoSetEsperado('fc-pagos', r.porCobrar);
+  if (inicial || !PAGO_ED['fc-pagos']) pagoIniciar('fc-pagos', totalHoy);
+  else pagoSetEsperado('fc-pagos', totalHoy);
 }
 
 async function confirmarCompletarCita(){
@@ -4443,6 +4537,8 @@ async function confirmarCompletarCita(){
   const c = COMPLETANDO.c;
   const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
   if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
+  const ex = extrasValidar('fc-extras');
+  if (!ex.ok){ msg.textContent = ex.msg; return; }
   const v = pagoValidar('fc-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
   const r = calcularCompletar(precio, fcContexto());
@@ -4461,7 +4557,8 @@ async function confirmarCompletarCita(){
     }
     await Sheets.completarCita(c.id, {
       precioCobrado: precio, pagos, fecha: c.fechaISO,
-      concepto: c.servicio, cliente: c.nombre, empleadoId: c.empleadoId || null
+      concepto: c.servicio, cliente: c.nombre, empleadoId: c.empleadoId || null,
+      extras: ex.items
     });
     cerrarModalFin('ov-fin-completar');
     COMPLETANDO = null;
@@ -4487,19 +4584,48 @@ function inicialesCita(n){
   return (n||'').trim().split(/\s+/).slice(0,2).map(p => p[0]).join('').toUpperCase();
 }
 
+// Desglose de pago de una cita: cuánto vale, qué se pagó por adelantado y cuánto falta
+function resumenPagoCita(c){
+  const precio = c.precioEsConsultar ? null : (Number(c.precioTotal) || 0);
+  const pct = Number(c.descuentoCupon) || 0;
+  const desc = (precio != null && pct > 0) ? Math.round(precio*pct)/100 : 0;
+  const cert = Number(c.certificadoMonto) || 0;
+  const abono = Number(c.abonoMonto) || 0;
+  const descontable = c.abonoTipo === 'descontable';
+  const neto = precio != null ? Math.max(0, precio - desc) : null;
+  const porCobrar = neto != null ? Math.max(0, Math.round((neto - cert - (descontable ? abono : 0))*100)/100) : null;
+  return { precio, pct, desc, cert, abono, descontable, neto, porCobrar };
+}
+
+function metodoAbonoTexto(m){ return m === 'yappy' ? 'Yappy' : (m ? 'Transferencia' : ''); }
+
+function chipsPagoCita(c){
+  const r = resumenPagoCita(c);
+  const chip = (txt, bg, fg) => `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:${bg};color:${fg};">${txt}</span>`;
+  const out = [];
+  if (r.pct > 0) out.push(chip('Cupón ' + r.pct + '%', '#FBEDEE', '#C2695A'));
+  if (r.cert > 0) out.push(chip('Certificado −' + fmtDinero(r.cert), '#E9F6EF', '#159A61'));
+  if (r.abono > 0) out.push(chip('Abono ' + fmtDinero(r.abono) + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
+  if (c.completadaEn) out.push(chip('Cobrada ' + fmtDinero(c.precioCobrado), '#E9F6EF', '#159A61'));
+  else if (r.porCobrar == null) out.push(chip('Precio por confirmar', '#FBF6E4', '#B08900'));
+  else if (r.porCobrar > 0) out.push(chip('Por cobrar ' + fmtDinero(r.porCobrar), '#FBF6E4', '#B08900'));
+  else out.push(chip('Pagada por anticipado', '#E9F6EF', '#159A61'));
+  return out.join('');
+}
+
 function htmlCardCita(c){
   const cat = PALETA_CAT_CITAS[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
   const [horaNum, ampm] = c.hora.split(' ');
   const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.fechaISO <= isoLocal(new Date());
   const nombreEsc = (c.nombre || '').replace(/'/g, "\\'");
   const btnStyle = 'width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;';
-  const precio = c.precioEsConsultar ? 'A consultar' : (c.precioFinal != null ? '$' + parseFloat(c.precioFinal).toFixed(2) : (c.precioTotal != null ? '$' + parseFloat(c.precioTotal).toFixed(2) : ''));
-  const acciones = c.completadaEn
-    ? ''
-    : `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">
+  const precio = c.precioEsConsultar ? 'A consultar' : (c.precioTotal != null ? '$' + parseFloat(c.precioTotal).toFixed(2) : '');
+  const acciones = `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">
+        <button class="btn-ico" style="${btnStyle}" onclick="abrirDetalleCita('${c.id}')"><i class="ti ti-file-description"></i> Detalle</button>
+        ${c.completadaEn ? '' : `
         ${puedeCompletar ? `<button class="btn-ico" style="${btnStyle}color:#159A61;border-color:#BFE3D0;" onclick="abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check"></i> Completar</button>` : ''}
         <button class="btn-ico" style="${btnStyle}" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${nombreEsc}',${c.duracion || 60},${c.empleadoId ? `'${c.empleadoId}'` : 'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
-        <button class="btn-ico del" style="${btnStyle}" onclick="cancelarCitaAdmin('${c.id}','${nombreEsc}')"><i class="ti ti-x"></i> Cancelar</button>
+        <button class="btn-ico del" style="${btnStyle}" onclick="cancelarCitaAdmin('${c.id}','${nombreEsc}')"><i class="ti ti-x"></i> Cancelar</button>`}
       </div>`;
   const insignia = c.completadaEn
     ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#E9F6EF;color:#159A61;"><i class="ti ti-circle-check" style="font-size:11px;"></i> Completada</span>'
@@ -4523,10 +4649,71 @@ function htmlCardCita(c){
           ${c.empleadoNombre ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${c.empleadoNombre}</span>` : ''}
           ${insignia}
         </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;">${chipsPagoCita(c)}</div>
       </div>
     </div>
     ${acciones}
   </div>`;
+}
+
+// ---------- Detalle y trazabilidad de una cita ----------
+async function abrirDetalleCita(id){
+  const c = (typeof CITAS_CACHE !== 'undefined' ? CITAS_CACHE : []).find(x => String(x.id) === String(id));
+  if (!c) return;
+  const r = resumenPagoCita(c);
+  const fila = (t, v) => `<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;"><span style="color:var(--ink-soft);">${t}</span><strong style="text-align:right;">${v}</strong></div>`;
+  const titulo = t => `<p style="font-size:10px;font-weight:700;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin:14px 0 2px;">${t}</p>`;
+  const digitos = String(c.telefono || '').replace(/\D/g, '');
+  const wa = digitos ? 'https://wa.me/' + (digitos.length === 8 ? '507' + digitos : digitos) : '';
+
+  let html = titulo('Cliente') +
+    fila('Nombre', escCat(c.nombre || '—')) +
+    fila('WhatsApp', c.telefono ? (wa ? `<a href="${wa}" target="_blank" style="color:#159A61;">${escCat(c.telefono)}</a>` : escCat(c.telefono)) : '—') +
+    fila('Correo', escCat(c.correo || '—')) +
+    titulo('Cita') +
+    fila('Servicio', escCat(c.servicio || '—') + (c.categoria ? ' · ' + escCat(c.categoria) : '')) +
+    fila('Fecha y hora', escCat(c.fecha) + ' · ' + escCat(c.hora)) +
+    fila('Duración', '~' + (c.duracion || 60) + ' min') +
+    fila('Profesional', escCat(c.empleadoNombre || 'Sin asignar')) +
+    (c.nota ? fila('Nota', escCat(c.nota)) : '') +
+    titulo('Pago');
+  html += fila('Precio del servicio', r.precio == null ? 'A consultar' : fmtDinero(r.precio));
+  if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc));
+  if (r.cert > 0) html += fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert));
+  if (r.abono > 0){
+    html += fila('Abono pagado (' + (r.descontable ? 'descontable' : 'no reembolsable') + ')' + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), fmtDinero(r.abono));
+    if (c.comprobante) html += fila('Comprobante del abono', escCat(c.comprobante));
+  } else if (c.comprobante && c.comprobante !== 'Sin abono') {
+    html += fila('Referencia', escCat(c.comprobante));
+  }
+  if (c.completadaEn){
+    html += fila('Estado', 'Completada · ' + fmtDinero(c.precioCobrado));
+  } else {
+    html += fila('Por cobrar en el local', r.porCobrar == null ? 'Por confirmar' : fmtDinero(r.porCobrar));
+  }
+  html += '<div id="cd-extras"></div><div id="cd-cobros"></div>';
+  const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.fechaISO <= isoLocal(new Date());
+  if (puedeCompletar) html += `<button class="btn-save" style="margin-top:14px;" onclick="cerrarModalFin('ov-cita-detalle');abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar cita</button>`;
+  elFin('cd-body').innerHTML = html;
+  elFin('ov-cita-detalle').classList.add('open');
+
+  // Cobros registrados en Finanzas (solo citas completadas)
+  if (c.completadaEn){
+    try {
+      const extras = await Sheets.getExtrasDeCita(c.id);
+      const contE = elFin('cd-extras');
+      if (contE && extras.length){
+        contE.innerHTML = titulo('Ventas adicionales') + extras.map(x => fila(escCat(x.descripcion), fmtDinero(x.monto))).join('');
+      }
+    } catch(e){}
+    let pagos = [];
+    try { pagos = await Sheets.getPagosDeCita(c.id); } catch(e){ pagos = []; }
+    const cont = elFin('cd-cobros');
+    if (cont && pagos.length){
+      cont.innerHTML = titulo('Cobros registrados') + pagos.map(p =>
+        fila((METODOS_PAGO[p.metodo] || p.metodo) + (p.referencia ? ' · ' + escCat(p.referencia) : ''), fmtDinero(p.monto))).join('');
+    }
+  }
 }
 
 // ===== AGREGAR CITA DESDE EL PANEL (cliente que llega al local o reserva por teléfono) =====
@@ -4566,6 +4753,7 @@ async function abrirModalAgregarCita(){
   elFin('ac-cert-msg').textContent = '';
   elFin('ac-cert-wrap').style.display = moduloDisponible('CERTIFICADOS') ? 'block' : 'none';
   pagoIniciar('ac-pagos', 0);
+  extrasIniciar('ac-extras', 'acRecalcularCobro');
   acToggleCompletar();
 
   try { AC.bloqueos = await Sheets.getBloqueos(); } catch(e){ AC.bloqueos = { dias:[], horas:{} }; }
@@ -4802,10 +4990,13 @@ function acRecalcularCobro(){
     const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color || 'var(--ink)'};">${v}</strong></div>`;
     let h = linea('Precio del servicio', fmtDinero(m.precio));
     if (m.certUsado > 0) h += linea('Certificado (' + escCat(AC.cert.codigo) + ')', '−' + fmtDinero(m.certUsado), '#159A61');
-    h += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar', fmtDinero(m.porCobrar), '#7C3AED')}</div>`;
+    const extras = extrasTotal('ac-extras');
+    if (extras > 0) h += linea('Ventas adicionales', '+' + fmtDinero(extras));
+    const totalCobrar = Math.round((m.porCobrar + extras)*100)/100;
+    h += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar', fmtDinero(totalCobrar), '#7C3AED')}</div>`;
     d.innerHTML = h;
     d.style.display = 'block';
-    pagoSetEsperado('ac-pagos', m.porCobrar);
+    pagoSetEsperado('ac-pagos', totalCobrar);
   } else {
     d.style.display = 'none';
   }
@@ -4853,8 +5044,12 @@ async function guardarAgregarCita(){
   const cobrar = M.cobrar;
   const precio = M.precio;
   let pagos = [];
+  let extrasItems = [];
   if (cobrar){
     if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
+    const ex = extrasValidar('ac-extras');
+    if (!ex.ok){ msg.textContent = ex.msg; return; }
+    extrasItems = ex.items;
     const v = pagoValidar('ac-pagos');
     if (!v.ok){ msg.textContent = v.msg; return; }
     pagos = v.lineas;
@@ -4911,7 +5106,8 @@ async function guardarAgregarCita(){
       const pagosFinales = (certUsado > 0 ? [{ metodo:'certificado', monto:certUsado, referencia:AC.cert.codigo }] : []).concat(pagos);
       await Sheets.completarCita(citaId, {
         precioCobrado: precio, pagos: pagosFinales, fecha: fechaIso,
-        concepto: AC.svc.name, cliente: nombre, empleadoId
+        concepto: AC.svc.name, cliente: nombre, empleadoId,
+        extras: extrasItems
       });
     } catch(e){
       console.error(e);
