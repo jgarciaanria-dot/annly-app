@@ -646,11 +646,31 @@ async function openCal(){
   openOv('ov-cal');
 }
 
+function escTextoEmp(t){
+  return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+// Presentación del profesional (la que el negocio escribió en su ficha)
+function bioEmpleadoHtml(e, etiqueta){
+  if (!e || !e.bio) return '';
+  return `<div class="emp-bio">
+    <div class="emp-bio-name">${etiqueta} ${escTextoEmp(e.nombre)}</div>
+    <p>${escTextoEmp(e.bio)}</p>
+  </div>`;
+}
+
 function renderSelectorEmpleado(){
   const cont=document.getElementById('cal-empleado-sel');
   if (!cont) return;
-  if (empleadosDelServicio.length <= 1){ cont.style.display='none'; cont.innerHTML=''; return; }
+  if (empleadosDelServicio.length <= 1){
+    // Con un solo profesional no se pregunta "¿con quién?", pero si tiene presentación se muestra
+    const unico = empleadosDelServicio[0];
+    if (unico && unico.bio){ cont.style.display='block'; cont.innerHTML = bioEmpleadoHtml(unico, 'Tu profesional:'); }
+    else { cont.style.display='none'; cont.innerHTML=''; }
+    return;
+  }
   cont.style.display='block';
+  const elegido = (!modoCualquiera && empleadoSeleccionado) ? empleadosDelServicio.find(e => e.id===empleadoSeleccionado) : null;
   const pills = empleadosDelServicio.map(e => `
     <div class="emp-pill${(!modoCualquiera && empleadoSeleccionado===e.id)?' sel':''}" onclick="elegirEmpleado('${e.id}')">
       <div class="emp-pill-av">${e.fotoUrl?`<img src="${e.fotoUrl}"/>`:`<span>${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`}</div>
@@ -664,7 +684,8 @@ function renderSelectorEmpleado(){
         <span>Cualquiera</span>
       </div>
       ${pills}
-    </div>`;
+    </div>
+    ${bioEmpleadoHtml(elegido, 'Sobre')}`;
 }
 
 async function elegirEmpleado(id){
