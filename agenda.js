@@ -287,6 +287,7 @@ window.AnnlyReady.then(() => {
 
 // ===== CERTIFICADOS DE REGALO (sitio público) =====
 let CERT_MODULO_DISPONIBLE = false;
+let PAGOS_MODULO_DISPONIBLE = false;
 
 async function loadCertificadosModulo(){
   try {
@@ -300,7 +301,8 @@ async function loadCertificadosModulo(){
       enTrial ? Promise.resolve([]) : Sheets.getModulosActivos(sus.subscriptionId)
     ]);
     CERT_MODULO_DISPONIBLE = features.includes('CERTIFICADOS') || activos.includes('CERTIFICADOS');
-  } catch(e) { CERT_MODULO_DISPONIBLE = false; }
+    PAGOS_MODULO_DISPONIBLE = features.includes('PAGOS') || activos.includes('PAGOS');
+  } catch(e) { CERT_MODULO_DISPONIBLE = false; PAGOS_MODULO_DISPONIBLE = false; }
   const wrap = document.getElementById('cert-link-wrap');
   if (wrap) wrap.style.display = CERT_MODULO_DISPONIBLE ? 'block' : 'none';
 }
@@ -816,7 +818,7 @@ function goForm(){
 
   const b = window.ANNLY_BUSINESS || {};
   const tieneYappy = !!(b.yappy_numero);
-  const tieneYappyComercial = !!(b.tiene_yappy_comercial);
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial) && PAGOS_MODULO_DISPONIBLE;
   const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
   pagoTipo = (tieneYappy || tieneYappyComercial) ? 'yappy' : 'bank';
   yappyAbonoListoInicializado=false;
@@ -985,7 +987,7 @@ function selPago(tipo){
   if(optB) optB.classList.toggle('sel',tipo==='bank');
 
   const b = window.ANNLY_BUSINESS || {};
-  const tieneYappyComercial = !!(b.tiene_yappy_comercial);
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial) && PAGOS_MODULO_DISPONIBLE;
   const yappyRealWrap=document.getElementById('yappyRealWrap');
   const yappyManualWrap=document.getElementById('yappyManualWrap');
   const btnC=document.getElementById('btnConfirmar');
