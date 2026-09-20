@@ -551,6 +551,7 @@ img{max-width:100%;}
       <button class="adm-tab" id="tab-promo" onclick="switchTab('promo')"><i class="ti ti-speakerphone"></i><span>Promo</span></button>
       <button class="adm-tab" id="tab-ruleta" onclick="switchTab('ruleta')"><i class="ti ti-rotate-clockwise"></i><span>Ruleta</span></button>
       <button class="adm-tab" id="tab-certificados" onclick="switchTab('certificados')"><i class="ti ti-gift"></i><span>Certificados</span></button>
+      <button class="adm-tab" id="tab-finanzas" onclick="switchTab('finanzas')"><i class="ti ti-chart-bar"></i><span>Finanzas</span></button>
       <button class="adm-tab" id="tab-clientas" onclick="switchTab('clientas')"><i class="ti ti-users"></i><span>Clientes</span></button>
       <button class="adm-tab" id="tab-equipo" onclick="switchTab('equipo')"><i class="ti ti-user-star"></i><span>Equipo</span></button>
       <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')"><i class="ti ti-building-store"></i><span>Perfil</span></button>
@@ -798,6 +799,47 @@ img{max-width:100%;}
         <p style="font-size:11.5px;color:var(--ink-soft);padding:0 1rem;margin-top:-4px;margin-bottom:6px;line-height:1.5;">Compras hechas desde el sitio público — revisa el comprobante y confirma para activar el certificado y notificar al comprador y al destinatario.</p>
         <div id="lista-cert-pendientes" style="padding:0 1rem 1rem;"></div>
       </div>
+    </div>
+
+  </div>
+
+  <div id="panel-finanzas" style="display:none;">
+
+    <div id="finanzas-bloqueado" style="display:none;">
+      <div class="adm-sec" style="text-align:center;padding:2rem 1.5rem;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--accent-soft);color:var(--charcoal2);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px;"><i class="ti ti-chart-bar"></i></div>
+        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:8px;">Finanzas</div>
+        <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:480px;margin:0 auto 18px;">
+          Sabe cuánto vendes, cómo te pagan y en qué gastas. Cada cita completada y cada venta en el local quedan registradas con su forma de pago,
+          y ves el resultado de tu semana o quincena en un solo lugar: ingresos, gastos, movimientos y certificados por canjear.
+        </p>
+        <button class="btn-save" style="width:auto;padding:10px 22px;" onclick="switchTab('plan')"><i class="ti ti-arrow-up-right"></i> Ver planes</button>
+      </div>
+    </div>
+
+    <div id="finanzas-activo" style="display:none;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.1rem;">
+        <div style="width:50px;height:50px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-chart-bar" style="font-size:24px;color:var(--charcoal);"></i></div>
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1;">Finanzas</div>
+          <div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">Ingresos, gastos y movimientos de tu negocio</div>
+        </div>
+      </div>
+      <div class="cats" style="margin-bottom:1rem;">
+        <div class="cat-pill fin-sub sel" data-v="resumen" onclick="finSub('resumen')">Resumen</div>
+        <div class="cat-pill fin-sub" data-v="movimientos" onclick="finSub('movimientos')">Movimientos</div>
+        <div class="cat-pill fin-sub" data-v="ventas" onclick="finSub('ventas')">Ventas en el local</div>
+        <div class="cat-pill fin-sub" data-v="gastos" onclick="finSub('gastos')">Gastos</div>
+        <div class="cat-pill fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Periodo de cierre</div>
+      </div>
+      <div id="fin-barra-periodo" style="margin-bottom:1rem;">
+        <select class="fi" id="fin-periodo" onchange="cambiarPeriodoFinanzas(this.value)"></select>
+        <div id="fin-rango" style="display:none;gap:8px;margin-top:8px;">
+          <input type="date" class="fi" id="fin-desde" onchange="loadFinanzas()"/>
+          <input type="date" class="fi" id="fin-hasta" onchange="loadFinanzas()"/>
+        </div>
+      </div>
+      <div id="fin-contenido"></div>
     </div>
 
   </div>
@@ -1161,6 +1203,65 @@ img{max-width:100%;}
   </div>
 </div>
 
+<div class="ov" id="ov-fin-venta">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Registrar venta en el local</span>
+      <button class="modal-close" onclick="cerrarModalFin('ov-fin-venta')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="frow">
+        <div class="fg"><label class="flbl">Fecha</label><input class="fi" type="date" id="fv-fecha"/></div>
+        <div class="fg"><label class="flbl">Cliente (opcional)</label><input class="fi" id="fv-cliente"/></div>
+      </div>
+      <div class="fg"><label class="flbl">Servicio o producto</label>
+        <input class="fi" id="fv-servicio" list="fv-servicios-dl" oninput="fvServicioCambio()" placeholder="Ej: Limpieza facial"/>
+        <datalist id="fv-servicios-dl"></datalist>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Profesional</label><select class="fi" id="fv-prof"></select></div>
+        <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" type="number" step="0.01" min="0" id="fv-monto" oninput="fvMontoCambio()"/></div>
+      </div>
+      <div class="fg"><label class="flbl">¿Cómo pagó?</label><div id="fv-pagos"></div></div>
+      <p id="fv-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" id="fv-btn" onclick="guardarVentaLocal()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar venta</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-fin-gasto">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Registrar gasto</span>
+      <button class="modal-close" onclick="cerrarModalFin('ov-fin-gasto')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="frow">
+        <div class="fg"><label class="flbl">Fecha</label><input class="fi" type="date" id="fg-fecha"/></div>
+        <div class="fg"><label class="flbl">Categoría</label><select class="fi" id="fg-categoria"></select></div>
+      </div>
+      <div class="fg"><label class="flbl">Descripción (opcional)</label><input class="fi" id="fg-descripcion" placeholder="Ej: Aceites y toallas"/></div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" type="number" step="0.01" min="0" id="fg-monto"/></div>
+        <div class="fg"><label class="flbl">Pagado con</label><select class="fi" id="fg-metodo"></select></div>
+      </div>
+      <div class="fg"><label class="flbl">Referencia / comprobante (opcional)</label><input class="fi" id="fg-ref"/></div>
+      <p id="fg-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" id="fg-btn" onclick="guardarGasto()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar gasto</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-fin-completar">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Completar cita</span>
+      <button class="modal-close" onclick="cerrarModalFin('ov-fin-completar')">×</button>
+    </div>
+    <div class="modal-body" id="fc-body"></div>
+  </div>
+</div>
+
 <div class="ov" id="ov-modal-empleado">
   <div class="modal">
     <div class="modal-hdr">
@@ -1196,8 +1297,8 @@ img{max-width:100%;}
 
       <div class="fg">
         <label class="flbl">Servicios que realiza</label>
-        <div id="me-servicios-list" style="display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:180px;overflow-y:auto;"></div>
-        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Si no marcas ninguno, se asume que hace todos.</p>
+        <div id="me-servicios-list" style="display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:240px;overflow-y:auto;"></div>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Marca una categoría para asignar todos sus servicios, o elige uno por uno. Si no marcas ninguno, se asume que hace todos.</p>
       </div>
 
       <div class="fg">
@@ -1837,13 +1938,23 @@ function guardar(){
     const idx=SERVICES.findIndex(s=>s.id===editId);
     if(idx>-1) SERVICES[idx]={...SERVICES[idx],name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,esEval,requiereAbono,abonoMonto,abonoTipo,imagenUrl};
   } else {
-    const newId=nombre.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').substring(0,16)+'_'+Date.now();
+    const newId=uuidNuevo();
     SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,requiereAbono,abonoMonto,abonoTipo,desc,includes,imagenUrl});
   }
   saveServices(); closeModal(); renderAdmin();
 }
 
 function closeModal(){document.getElementById('ov-modal').classList.remove('open');}
+
+// Los servicios nuevos nacen con un id definitivo (uuid) para que las asignaciones
+// de profesionales no se pierdan al guardar.
+function uuidNuevo(){
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0;
+    return (c === 'x' ? r : (r&0x3|0x8)).toString(16);
+  });
+}
 
 // ===== BLOQUEOS =====
 let BLOQUEOS = {dias:[], horas:{}};
@@ -1882,7 +1993,7 @@ function closeAdminMenu(){
 }
 
 function switchTab(tab){
-  const tabs = ['servicios','citas','bloqueos','promo','ruleta','certificados','clientas','equipo','perfil','plan'];
+  const tabs = ['servicios','citas','bloqueos','promo','ruleta','certificados','finanzas','clientas','equipo','perfil','plan'];
   tabs.forEach(t => {
     const tabEl = document.getElementById('tab-' + t);
     const panelEl = document.getElementById('panel-' + t);
@@ -1893,6 +2004,7 @@ function switchTab(tab){
   if(tab==='promo' && moduloDisponible('PROMOCIONES')) loadPromo();
   if(tab==='ruleta' && moduloDisponible('RULETA')) loadRuleta();
   if(tab==='certificados' && moduloDisponible('CERTIFICADOS')) loadCertificados();
+  if(tab==='finanzas' && moduloDisponible('FINANZAS')) loadFinanzas();
   if(tab==='clientas') loadClientas();
   if(tab==='equipo') loadEquipo();
   if(tab==='perfil') loadPerfil();
@@ -2005,7 +2117,8 @@ function moduloDisponible(code){
 const TABS_CON_GATING = {
   promo: 'PROMOCIONES',
   ruleta: 'RULETA',
-  certificados: 'CERTIFICADOS'
+  certificados: 'CERTIFICADOS',
+  finanzas: 'FINANZAS'
 };
 
 function actualizarGatingPestanas(){
@@ -2039,6 +2152,7 @@ function actualizarGatingPestanas(){
     if (tabActual === 'promo') loadPromo();
     if (tabActual === 'ruleta') loadRuleta();
     if (tabActual === 'certificados') loadCertificados();
+    if (tabActual === 'finanzas') loadFinanzas();
   }
 }
 
@@ -2663,8 +2777,18 @@ async function loadCitas(){
       return horaAMin(a.hora)-horaAMin(b.hora);
     });
 
-  if(filtradas.length===0){
-    cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">'+(FILTRO_CITAS_PROF?'No hay citas de este profesional en los próximos 7 días.':'No hay citas en los próximos 7 días.')+'</p>';
+  // Citas pasadas sin completar (solo con Finanzas): se completan para registrar el cobro
+  const haceUnMes=new Date(hoy); haceUnMes.setDate(haceUnMes.getDate()-30);
+  const porCompletar=moduloDisponible('FINANZAS')
+    ? citas.map(c=>({...c,_fecha:parseFechaCita(c.fecha)}))
+        .filter(c=>c._fecha && c._fecha<hoy && c._fecha>=haceUnMes && !c.completadaEn)
+        .filter(c=>!FILTRO_CITAS_PROF || c.empleadoId===FILTRO_CITAS_PROF)
+        .sort((a,b)=>(b._fecha-a._fecha) || (horaAMin(b.hora)-horaAMin(a.hora)))
+    : [];
+  const msgSinProximas='<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">'+(FILTRO_CITAS_PROF?'No hay citas de este profesional en los próximos 7 días.':'No hay citas en los próximos 7 días.')+'</p>';
+
+  if(filtradas.length===0 && porCompletar.length===0){
+    cont.innerHTML=msgSinProximas;
     return;
   }
 
@@ -2677,6 +2801,14 @@ async function loadCitas(){
   });
 
   let html='';
+  if(porCompletar.length){
+    html+=`<div style="margin-bottom:18px;">
+      <p style="font-size:12px;font-weight:700;color:#B08900;margin:0 0 4px;letter-spacing:.02em;display:flex;align-items:center;gap:6px;"><i class="ti ti-alert-circle" style="font-size:14px;"></i>POR COMPLETAR · ${porCompletar.length}</p>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 8px;line-height:1.5;">Citas pasadas: complétalas para registrar el cobro en Finanzas.</p>
+      ${porCompletar.map(c=>`<p style="font-size:11px;font-weight:700;color:var(--gold-dark);margin:0 0 4px;">${c.fecha}</p>`+htmlCardCita(c)).join('')}
+    </div>`;
+  }
+  if(filtradas.length===0) html+=msgSinProximas;
   const PALETA_CAT = {
     'VIP': {bg:'#F3EDFB', fg:'#7C4DA0'},
     'Básicos': {bg:'#FBF0E4', fg:'#B8935A'},
@@ -2692,35 +2824,7 @@ async function loadCitas(){
     const esHoy=grupos[fecha][0]._fecha.getTime()===hoy.getTime();
     html+=`<div style="margin-bottom:14px;">
       <p style="font-size:12px;font-weight:700;color:var(--charcoal);margin:0 0 8px;letter-spacing:.02em;display:flex;align-items:center;gap:6px;"><i class="ti ti-calendar" style="font-size:14px;color:var(--gold-dark);"></i>${esHoy?'HOY · ':''}${fecha}</p>`;
-    grupos[fecha].forEach(c=>{
-      const cat = PALETA_CAT[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
-      const [horaNum, ampm] = c.hora.split(' ');
-      html+=`<div style="background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow-sm);">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="text-align:center;min-width:52px;">
-            <div style="font-size:16px;font-weight:700;color:var(--gold-dark);line-height:1.1;">${horaNum}</div>
-            <div style="font-size:10px;color:var(--ink-soft);font-weight:600;">${ampm||''}</div>
-            <div style="font-size:9.5px;color:#C7C0B3;margin-top:2px;"><i class="ti ti-clock" style="font-size:9px;"></i> ~${c.duracion}m</div>
-          </div>
-          <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--charcoal2);">${inicialesNombre(c.nombre)}</div>
-          <div style="flex:1;min-width:0;">
-            <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}</p>
-            <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
-              <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
-                <span style="width:5px;height:5px;border-radius:50%;background:${cat.fg};"></span>${c.categoria||'Servicio'}
-              </span>
-              <span style="font-size:12px;font-weight:700;color:var(--ink);">${c.precioEsConsultar?'A consultar':(c.precioFinal!=null?'$'+parseFloat(c.precioFinal).toFixed(2):(c.precioTotal!=null?'$'+parseFloat(c.precioTotal).toFixed(2):''))}</span>
-              ${c.empleadoNombre?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${c.empleadoNombre}</span>`:''}
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;">
-          <button class="btn-ico" style="width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${c.nombre.replace(/'/g,"\\'")}',${c.duracion || 60},${c.empleadoId?`'${c.empleadoId}'`:'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
-          <button class="btn-ico del" style="width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;" onclick="cancelarCitaAdmin('${c.id}','${c.nombre.replace(/'/g,"\\'")}')"><i class="ti ti-x"></i> Cancelar</button>
-        </div>
-      </div>`;
-    });
+    grupos[fecha].forEach(c=>{ html+=htmlCardCita(c); });
     html+=`</div>`;
   });
   cont.innerHTML=html;
@@ -3163,10 +3267,24 @@ async function openModalEmpleado(id){
   if (!SERVICES.length){
     listaServ.innerHTML = '<p style="font-size:12px;color:var(--ink-soft);">Todavía no tienes servicios creados.</p>';
   } else {
-    listaServ.innerHTML = SERVICES.map(s => `
-      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
-        <input type="checkbox" class="me-servicio-chk" value="${s.id}" ${serviciosMarcados.includes(s.id)?'checked':''}/> ${s.name}
-      </label>`).join('');
+    // Servicios agrupados por categoría: se puede marcar la categoría completa o servicio por servicio
+    const grupos = categoriasActuales().map(c => ({ nombre:c, svcs:SERVICES.filter(s => s.cat === c) }));
+    const sinCat = SERVICES.filter(s => !s.cat);
+    if (sinCat.length) grupos.push({ nombre:'Sin categoría', svcs:sinCat });
+    listaServ.innerHTML = grupos.map((g, gi) => `
+      <div style="margin-bottom:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink);">
+          <input type="checkbox" class="me-cat-chk" data-g="${gi}" onchange="toggleCategoriaEmpleado(${gi}, this.checked)"/>
+          ${escCat(g.nombre)} <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(${g.svcs.length})</span>
+        </label>
+        <div style="display:flex;flex-direction:column;gap:5px;margin:5px 0 0 24px;">
+          ${g.svcs.map(s => `
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
+              <input type="checkbox" class="me-servicio-chk" data-g="${gi}" value="${s.id}" ${serviciosMarcados.includes(s.id)?'checked':''} onchange="actualizarEstadoCategoriaEmpleado(${gi})"/> ${escCat(s.name)}
+            </label>`).join('')}
+        </div>
+      </div>`).join('');
+    grupos.forEach((g, gi) => actualizarEstadoCategoriaEmpleado(gi));
   }
 
   // Horario propio
@@ -3176,6 +3294,23 @@ async function openModalEmpleado(id){
   cargarHorarioEmpleadoModal(horarioPropio || HOR_DEFAULT_EMPLEADO);
 
   document.getElementById('ov-modal-empleado').classList.add('open');
+}
+
+// Marcar/desmarcar una categoría completa en la ficha del empleado
+function toggleCategoriaEmpleado(gi, marcado){
+  document.querySelectorAll('.me-servicio-chk[data-g="' + gi + '"]').forEach(c => { c.checked = marcado; });
+  const cab = document.querySelector('.me-cat-chk[data-g="' + gi + '"]');
+  if (cab) cab.indeterminate = false;
+}
+
+// La casilla de la categoría refleja sus servicios: todos, algunos o ninguno
+function actualizarEstadoCategoriaEmpleado(gi){
+  const hijos = Array.from(document.querySelectorAll('.me-servicio-chk[data-g="' + gi + '"]'));
+  const cab = document.querySelector('.me-cat-chk[data-g="' + gi + '"]');
+  if (!cab) return;
+  const marcados = hijos.filter(c => c.checked).length;
+  cab.checked = hijos.length > 0 && marcados === hijos.length;
+  cab.indeterminate = marcados > 0 && marcados < hijos.length;
 }
 
 function closeModalEmpleado(){
@@ -3628,6 +3763,646 @@ async function guardarPerfil(){
     msgEl.style.color = '#C2695A';
     msgEl.textContent = 'No se pudo guardar. Intenta de nuevo.';
   }
+}
+
+// ===== FINANZAS (fase 1: cobros, ventas en el local, gastos, resumen y movimientos) =====
+const METODOS_PAGO = { efectivo:'Efectivo', yappy:'Yappy', transferencia:'Transferencia', tarjeta:'Tarjeta', certificado:'Certificado' };
+const METODOS_COBRO = ['efectivo','yappy','transferencia','tarjeta'];
+const CATEGORIAS_GASTO = ['Insumos y productos','Alquiler','Servicios básicos','Pagos al personal','Publicidad','Mantenimiento','Otros'];
+const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+let FIN = { pagos:[], gastos:[], ventas:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+let FIN_PERIODO = 'actual';
+let FIN_VISTA = 'resumen';
+let FIN_FILTRO_MOV = 'todos';
+
+function fmtDinero(n){ return '$' + (Number(n)||0).toFixed(2); }
+function isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fechaCortaFin(iso){
+  if(!iso) return '';
+  const [y,m,d] = String(iso).split('-').map(Number);
+  return d + ' ' + MESES_CORTOS[m-1];
+}
+function sumaFin(arr){ return arr.reduce((s,x)=>s+(Number(x.monto)||0),0); }
+function elFin(id){ return document.getElementById(id); }
+
+// ---------- Periodos de cierre (semanal o quincenal) ----------
+function rangoPeriodoCierre(cfg, offset, ref){
+  const hoy = ref ? new Date(ref) : new Date();
+  hoy.setHours(0,0,0,0);
+  if (cfg.periodo === 'semanal'){
+    const diff = (hoy.getDay() - cfg.semanaInicia + 7) % 7;
+    const desde = new Date(hoy); desde.setDate(hoy.getDate() - diff + offset*7);
+    const hasta = new Date(desde); hasta.setDate(desde.getDate() + 6);
+    return { desde, hasta };
+  }
+  // Quincenal: días 1–15 y 16–fin de mes
+  const total = hoy.getFullYear()*24 + hoy.getMonth()*2 + (hoy.getDate() <= 15 ? 0 : 1) + offset;
+  const y = Math.floor(total/24), rem = total - y*24, m = Math.floor(rem/2), mitad = rem % 2;
+  return mitad === 0
+    ? { desde:new Date(y,m,1), hasta:new Date(y,m,15) }
+    : { desde:new Date(y,m,16), hasta:new Date(y,m+1,0) };
+}
+
+function rangoFinanzas(){
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  let r;
+  if (FIN_PERIODO === 'rango'){
+    const d = elFin('fin-desde').value, h = elFin('fin-hasta').value;
+    if (d && h) return { desde:d, hasta:(h < d ? d : h) };
+    r = { desde:hoy, hasta:hoy };
+  }
+  else if (FIN_PERIODO === 'anterior') r = rangoPeriodoCierre(FIN.ajustes, -1);
+  else if (FIN_PERIODO === 'hoy') r = { desde:hoy, hasta:hoy };
+  else if (FIN_PERIODO === 'mes') r = { desde:new Date(hoy.getFullYear(),hoy.getMonth(),1), hasta:new Date(hoy.getFullYear(),hoy.getMonth()+1,0) };
+  else if (FIN_PERIODO === 'mes_ant') r = { desde:new Date(hoy.getFullYear(),hoy.getMonth()-1,1), hasta:new Date(hoy.getFullYear(),hoy.getMonth(),0) };
+  else r = rangoPeriodoCierre(FIN.ajustes, 0);
+  return { desde:isoLocal(r.desde), hasta:isoLocal(r.hasta) };
+}
+
+function etiquetaPeriodoCierre(offset){
+  const r = rangoPeriodoCierre(FIN.ajustes, offset);
+  return fechaCortaFin(isoLocal(r.desde)) + ' – ' + fechaCortaFin(isoLocal(r.hasta));
+}
+
+function actualizarSelectorPeriodo(){
+  const sel = elFin('fin-periodo');
+  if (!sel) return;
+  const nombre = FIN.ajustes.periodo === 'semanal' ? 'Semana' : 'Quincena';
+  sel.innerHTML =
+    `<option value="actual">${nombre} actual (${etiquetaPeriodoCierre(0)})</option>` +
+    `<option value="anterior">${nombre} anterior (${etiquetaPeriodoCierre(-1)})</option>` +
+    `<option value="hoy">Hoy</option><option value="mes">Este mes</option>` +
+    `<option value="mes_ant">Mes anterior</option><option value="rango">Rango de fechas…</option>`;
+  sel.value = FIN_PERIODO;
+  elFin('fin-rango').style.display = FIN_PERIODO === 'rango' ? 'flex' : 'none';
+}
+
+function cambiarPeriodoFinanzas(v){
+  FIN_PERIODO = v;
+  if (v === 'rango'){
+    const hoy = isoLocal(new Date());
+    if (!elFin('fin-desde').value) elFin('fin-desde').value = hoy;
+    if (!elFin('fin-hasta').value) elFin('fin-hasta').value = hoy;
+  }
+  loadFinanzas();
+}
+
+function finSub(v){
+  FIN_VISTA = v;
+  renderFinanzas();
+}
+
+// ---------- Carga ----------
+async function loadFinanzas(){
+  const cont = elFin('fin-contenido');
+  if (!cont) return;
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>';
+  try { FIN.ajustes = await Sheets.getAjustesFinanzas(); } catch(e){ console.error(e); }
+  actualizarSelectorPeriodo();
+  const { desde, hasta } = rangoFinanzas();
+  try {
+    const [pagos, gastos, ventas, empleados] = await Promise.all([
+      Sheets.getPagosFinanzas(desde, hasta),
+      Sheets.getGastosFinanzas(desde, hasta),
+      Sheets.getVentasLocales(desde, hasta),
+      Sheets.getEmpleados()
+    ]);
+    FIN.pagos = pagos; FIN.gastos = gastos; FIN.ventas = ventas;
+    FIN.empleados = empleados.filter(e => e.activo);
+    FIN.equipo = Object.fromEntries(empleados.map(e => [e.id, e.nombre]));
+  } catch(e){
+    console.error('Error cargando Finanzas:', e);
+    cont.innerHTML = '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;line-height:1.6;">No se pudieron cargar las finanzas.<br>Revisa que ya corriste el SQL de Finanzas en Supabase.</p>';
+    return;
+  }
+  try {
+    const certs = await Sheets.getCertificados();
+    FIN.certPorCanjear = certs.filter(c => estadoCertificado(c).texto === 'Activo').reduce((s,c) => s + c.saldoRestante, 0);
+  } catch(e){ FIN.certPorCanjear = 0; }
+  renderFinanzas();
+}
+
+function renderFinanzas(){
+  const cont = elFin('fin-contenido');
+  if (!cont) return;
+  document.querySelectorAll('.fin-sub').forEach(b => b.classList.toggle('sel', b.dataset.v === FIN_VISTA));
+  const barra = elFin('fin-barra-periodo');
+  if (barra) barra.style.display = FIN_VISTA === 'ajustes' ? 'none' : 'block';
+  if (FIN_VISTA === 'resumen') cont.innerHTML = htmlResumenFin();
+  else if (FIN_VISTA === 'movimientos') cont.innerHTML = htmlMovimientosFin();
+  else if (FIN_VISTA === 'ventas') cont.innerHTML = htmlVentasFin();
+  else if (FIN_VISTA === 'gastos') cont.innerHTML = htmlGastosFin();
+  else if (FIN_VISTA === 'ajustes') { cont.innerHTML = htmlAjustesFin(); faCambio(); }
+}
+
+// ---------- Resumen ----------
+function htmlResumenFin(){
+  const ingresos = sumaFin(FIN.pagos);
+  const gastos = sumaFin(FIN.gastos);
+  const resultado = ingresos - gastos;
+  const agenda = sumaFin(FIN.pagos.filter(p => p.origen === 'agenda'));
+  const local = ingresos - agenda;
+  const porMetodo = {};
+  FIN.pagos.forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
+
+  const kpi = (titulo, valor, color, nota) => `
+    <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:12px;padding:14px;">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">${titulo}</div>
+      <div style="font-size:21px;font-weight:800;color:${color};margin-top:5px;">${valor}</div>
+      ${nota ? `<div style="font-size:10.5px;color:var(--ink-soft);margin-top:4px;line-height:1.4;">${nota}</div>` : ''}
+    </div>`;
+
+  const barra = (etiqueta, monto, total, color) => {
+    const pct = total > 0 ? Math.round(monto/total*100) : 0;
+    return `<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="font-weight:600;">${etiqueta}</span><span>${fmtDinero(monto)} <span style="color:var(--ink-soft);">· ${pct}%</span></span></div>
+      <div style="height:6px;background:#EEEAF3;border-radius:999px;"><div style="width:${pct}%;height:100%;background:${color};border-radius:999px;"></div></div>
+    </div>`;
+  };
+
+  const metodosHtml = Object.keys(porMetodo).sort((a,b) => porMetodo[b]-porMetodo[a])
+    .map(m => barra(m === 'certificado' ? 'Certificado (canjeado)' : (METODOS_PAGO[m]||m), porMetodo[m], ingresos, '#7C3AED')).join('');
+
+  const vacio = !FIN.pagos.length
+    ? '<p style="font-size:12px;color:var(--ink-soft);text-align:center;padding:.5rem 1rem 1rem;line-height:1.6;">Todavía no hay cobros en este periodo. Completa una cita desde <strong>Citas</strong> o registra una venta en el local.</p>'
+    : '';
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem;">
+      ${kpi('Ingresos', fmtDinero(ingresos), '#159A61')}
+      ${kpi('Gastos', fmtDinero(gastos), '#C2695A')}
+      ${kpi('Resultado', fmtDinero(resultado), resultado >= 0 ? '#159A61' : '#C2695A', 'Ingresos menos gastos')}
+      ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#7C3AED', 'No cuenta como ingreso hasta que se canjea')}
+    </div>
+    ${vacio}
+    <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Ingresos por origen</span></div>
+      <div style="padding:1rem;">${barra('Agenda (citas completadas)', agenda, ingresos, '#EC4899')}${barra('Ventas en el local', local, ingresos, '#7C3AED')}</div>
+    </div>
+    <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Por método de pago</span></div>
+      <div style="padding:1rem;">${metodosHtml || '<p style="font-size:12px;color:#aaa;text-align:center;">Sin cobros en este periodo.</p>'}</div>
+    </div>`;
+}
+
+// ---------- Movimientos ----------
+function setFiltroMov(v){ FIN_FILTRO_MOV = v; renderFinanzas(); }
+
+function htmlMovimientosFin(){
+  let movs = [
+    ...FIN.pagos.map(p => ({
+      tipo:'ingreso', fecha:p.fecha, creado:p.creadoEn,
+      titulo:p.concepto || 'Cobro',
+      sub:[METODOS_PAGO[p.metodo]||p.metodo, p.cliente, FIN.equipo[p.empleadoId], p.origen === 'local' ? 'En el local' : 'Agenda'].filter(Boolean).join(' · '),
+      monto:p.monto
+    })),
+    ...FIN.gastos.map(g => ({
+      tipo:'gasto', fecha:g.fecha, creado:g.creadoEn,
+      titulo:g.categoria + (g.descripcion ? ' — ' + g.descripcion : ''),
+      sub:[METODOS_PAGO[g.metodo]||g.metodo, g.referencia].filter(Boolean).join(' · '),
+      monto:g.monto
+    }))
+  ];
+  if (FIN_FILTRO_MOV === 'ingresos') movs = movs.filter(m => m.tipo === 'ingreso');
+  if (FIN_FILTRO_MOV === 'gastos') movs = movs.filter(m => m.tipo === 'gasto');
+  movs.sort((a,b) => a.fecha < b.fecha ? 1 : (a.fecha > b.fecha ? -1 : String(b.creado||'').localeCompare(String(a.creado||''))));
+
+  const chip = (v, txt) => `<div class="cat-pill${FIN_FILTRO_MOV === v ? ' sel' : ''}" onclick="setFiltroMov('${v}')">${txt}</div>`;
+  const filas = movs.map(m => {
+    const ing = m.tipo === 'ingreso';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);">
+      <div style="width:34px;height:34px;border-radius:50%;background:${ing ? '#E9F6EF' : '#FBEDEE'};color:${ing ? '#159A61' : '#C2695A'};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ${ing ? 'ti-arrow-down-left' : 'ti-arrow-up-right'}"></i></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(m.titulo)}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${fechaCortaFin(m.fecha)} · ${escCat(m.sub)}</div>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:${ing ? '#159A61' : '#C2695A'};white-space:nowrap;">${ing ? '+' : '−'}${fmtDinero(m.monto)}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="cats" style="margin-bottom:.8rem;">${chip('todos','Todos')}${chip('ingresos','Ingresos')}${chip('gastos','Gastos')}</div>
+    <div class="adm-sec"><div style="padding:.3rem 1rem 0.6rem;">${filas || '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay movimientos en este periodo.</p>'}</div></div>`;
+}
+
+// ---------- Ventas en el local ----------
+function htmlVentasFin(){
+  const filas = FIN.ventas.map(v => {
+    const pagos = FIN.pagos.filter(p => p.localSaleId === v.id);
+    const chips = pagos.map(p => `<span style="display:inline-block;background:#F3EDFB;color:#7C4DA0;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;margin-right:4px;">${METODOS_PAGO[p.metodo]||p.metodo} ${fmtDinero(p.monto)}</span>`).join('');
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(v.servicio)}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin:2px 0 6px;">${fechaCortaFin(v.fecha)}${v.cliente ? ' · ' + escCat(v.cliente) : ''}${FIN.equipo[v.empleadoId] ? ' · ' + escCat(FIN.equipo[v.empleadoId]) : ''}</div>
+        <div>${chips}</div>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:#159A61;">${fmtDinero(v.monto)}</div>
+      <button class="btn-ico del" onclick="eliminarVentaFin('${v.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join('');
+  return `<div class="adm-sec">
+    <div class="adm-sec-hdr"><span class="adm-sec-title">Ventas en el local</span><button class="btn-add" onclick="abrirModalVenta()"><i class="ti ti-plus"></i> Registrar venta</button></div>
+    <p style="font-size:11.5px;color:var(--ink-soft);padding:0 1rem;margin:0 0 4px;line-height:1.5;">Servicios o productos cobrados directamente en el negocio, sin cita previa. Las citas de la agenda se registran desde <strong>Citas → Completar</strong>.</p>
+    <div style="padding:0 1rem 1rem;">${filas || '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay ventas en el local en este periodo.</p>'}</div>
+  </div>`;
+}
+
+async function eliminarVentaFin(id){
+  if (!confirm('¿Eliminar esta venta y sus pagos registrados?')) return;
+  try { await Sheets.eliminarVentaLocal(id); await loadFinanzas(); }
+  catch(e){ console.error(e); alert('No se pudo eliminar la venta.'); }
+}
+
+// ---------- Gastos ----------
+function htmlGastosFin(){
+  const total = sumaFin(FIN.gastos);
+  const filas = FIN.gastos.map(g => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${fechaCortaFin(g.fecha)} · ${METODOS_PAGO[g.metodo]||g.metodo}${g.referencia ? ' · ' + escCat(g.referencia) : ''}</div>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:#C2695A;">−${fmtDinero(g.monto)}</div>
+      <button class="btn-ico del" onclick="eliminarGastoFin('${g.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </div>`).join('');
+  return `<div class="adm-sec">
+    <div class="adm-sec-hdr"><span class="adm-sec-title">Gastos${FIN.gastos.length ? ' · ' + fmtDinero(total) : ''}</span><button class="btn-add" onclick="abrirModalGasto()"><i class="ti ti-plus"></i> Registrar gasto</button></div>
+    <div style="padding:0 1rem 1rem;">${filas || '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay gastos en este periodo.</p>'}</div>
+  </div>`;
+}
+
+async function eliminarGastoFin(id){
+  if (!confirm('¿Eliminar este gasto?')) return;
+  try { await Sheets.eliminarGasto(id); await loadFinanzas(); }
+  catch(e){ console.error(e); alert('No se pudo eliminar el gasto.'); }
+}
+
+// ---------- Ajustes (periodo de cierre) ----------
+function htmlAjustesFin(){
+  const a = FIN.ajustes;
+  return `<div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Periodo de cierre</span></div>
+    <div style="padding:1rem;">
+      <p style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Define cada cuánto liquidas a tu equipo. El Resumen usa este periodo y, más adelante, también el cierre de comisiones.</p>
+      <div class="fg"><label class="flbl">Cierre</label>
+        <select class="fi" id="fa-periodo" onchange="faCambio()">
+          <option value="quincenal"${a.periodo === 'quincenal' ? ' selected' : ''}>Quincenal</option>
+          <option value="semanal"${a.periodo === 'semanal' ? ' selected' : ''}>Semanal</option>
+        </select>
+      </div>
+      <p id="fa-nota-quincenal" style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 12px;">Primera quincena: del 1 al 15 · Segunda quincena: del 16 al último día del mes.</p>
+      <div class="fg" id="fa-semana-wrap"><label class="flbl">La semana comienza el</label>
+        <select class="fi" id="fa-dia">${DIAS_SEMANA.map((d,i) => `<option value="${i}"${a.semanaInicia === i ? ' selected' : ''}>${d}</option>`).join('')}</select>
+      </div>
+      <p id="fa-msg" style="font-size:12px;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" onclick="guardarAjustesFin()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar periodo</button>
+    </div></div>`;
+}
+
+function faCambio(){
+  const sel = elFin('fa-periodo');
+  if (!sel) return;
+  const semanal = sel.value === 'semanal';
+  elFin('fa-semana-wrap').style.display = semanal ? 'block' : 'none';
+  elFin('fa-nota-quincenal').style.display = semanal ? 'none' : 'block';
+}
+
+async function guardarAjustesFin(){
+  const msg = elFin('fa-msg');
+  msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Guardando...';
+  try {
+    await Sheets.guardarAjustesFinanzas({ periodo: elFin('fa-periodo').value, semanaInicia: parseInt(elFin('fa-dia').value) });
+    msg.style.color = '#4A9D6E'; msg.textContent = '¡Periodo guardado!';
+    await loadFinanzas();
+  } catch(e){
+    console.error(e);
+    msg.style.color = '#C2695A'; msg.textContent = 'No se pudo guardar.';
+  }
+}
+
+// ---------- Editor de pagos (varias líneas: método + monto) ----------
+const PAGO_ED = {};
+
+function pagoIniciar(id, esperado){
+  PAGO_ED[id] = { lineas: esperado > 0 ? [{ metodo:'efectivo', monto:esperado.toFixed(2), ref:'' }] : [], esperado: esperado };
+  pagoRender(id);
+}
+
+function pagoSetEsperado(id, nuevo){
+  const ed = PAGO_ED[id];
+  if (!ed) return pagoIniciar(id, nuevo);
+  ed.esperado = nuevo;
+  if (nuevo > 0 && ed.lineas.length === 0) ed.lineas.push({ metodo:'efectivo', monto:nuevo.toFixed(2), ref:'' });
+  else if (ed.lineas.length === 1) ed.lineas[0].monto = nuevo > 0 ? nuevo.toFixed(2) : '';
+  pagoRender(id);
+}
+
+function pagoRender(id){
+  const ed = PAGO_ED[id], cont = elFin(id);
+  if (!ed || !cont) return;
+  if (ed.esperado <= 0 && ed.lineas.length === 0){
+    cont.innerHTML = '<p style="font-size:12px;color:var(--ink-soft);margin:0;">No hay nada por cobrar ahora.</p>';
+    return;
+  }
+  const filas = ed.lineas.map((l,i) => `
+    <div style="margin-bottom:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;">
+        <select class="fi" onchange="pagoCambiar('${id}',${i},'metodo',this.value,true)">${METODOS_COBRO.map(m => `<option value="${m}"${l.metodo === m ? ' selected' : ''}>${METODOS_PAGO[m]}</option>`).join('')}</select>
+        <input class="fi" type="number" step="0.01" min="0" value="${l.monto}" oninput="pagoCambiar('${id}',${i},'monto',this.value,false)"/>
+        <button type="button" class="btn-ico del" onclick="pagoQuitar('${id}',${i})" title="Quitar"><i class="ti ti-x"></i></button>
+      </div>
+      ${l.metodo !== 'efectivo' ? `<input class="fi" style="margin-top:6px;" placeholder="Referencia / comprobante (opcional)" value="${escCat(l.ref||'')}" oninput="pagoCambiar('${id}',${i},'ref',this.value,false)"/>` : ''}
+    </div>`).join('');
+  cont.innerHTML = filas +
+    `<button type="button" class="btn-add-incl" onclick="pagoAgregar('${id}')"><i class="ti ti-plus" style="font-size:12px;"></i> Agregar otro pago</button>` +
+    `<p id="${id}-resumen" style="font-size:12px;margin:8px 0 0;min-height:16px;"></p>`;
+  pagoResumen(id);
+}
+
+function pagoCambiar(id, i, campo, valor, rerender){
+  const ed = PAGO_ED[id];
+  if (!ed || !ed.lineas[i]) return;
+  ed.lineas[i][campo] = valor;
+  if (rerender) pagoRender(id); else pagoResumen(id);
+}
+
+function pagoAgregar(id){
+  const ed = PAGO_ED[id];
+  if (!ed) return;
+  const suma = ed.lineas.reduce((s,l) => s + (parseFloat(l.monto)||0), 0);
+  const resta = Math.max(0, Math.round((ed.esperado - suma)*100)/100);
+  ed.lineas.push({ metodo:'efectivo', monto: resta > 0 ? resta.toFixed(2) : '', ref:'' });
+  pagoRender(id);
+}
+
+function pagoQuitar(id, i){
+  const ed = PAGO_ED[id];
+  if (!ed) return;
+  ed.lineas.splice(i, 1);
+  pagoRender(id);
+}
+
+function pagoResumen(id){
+  const ed = PAGO_ED[id], el = elFin(id + '-resumen');
+  if (!ed || !el) return;
+  const suma = ed.lineas.reduce((s,l) => s + (parseFloat(l.monto)||0), 0);
+  const dif = Math.round((ed.esperado - suma)*100)/100;
+  if (Math.abs(dif) < 0.005){ el.style.color = '#159A61'; el.textContent = '✓ Cuadra: ' + fmtDinero(suma); }
+  else if (dif > 0){ el.style.color = '#B08900'; el.textContent = 'Faltan ' + fmtDinero(dif) + ' por registrar.'; }
+  else { el.style.color = '#C2695A'; el.textContent = 'Los pagos superan el monto por ' + fmtDinero(-dif) + '.'; }
+}
+
+function pagoValidar(id){
+  const ed = PAGO_ED[id];
+  if (!ed) return { ok:false, msg:'Falta registrar el pago.', lineas:[] };
+  const lineas = ed.lineas
+    .map(l => ({ metodo:l.metodo, monto:Math.round((parseFloat(l.monto)||0)*100)/100, referencia:(l.ref||'').trim() || null }))
+    .filter(l => l.monto > 0);
+  const suma = lineas.reduce((s,l) => s + l.monto, 0);
+  const dif = Math.round((ed.esperado - suma)*100)/100;
+  if (Math.abs(dif) >= 0.005){
+    return { ok:false, lineas, msg: dif > 0 ? 'Faltan ' + fmtDinero(dif) + ' por registrar en los pagos.' : 'Los pagos superan el monto por ' + fmtDinero(-dif) + '.' };
+  }
+  return { ok:true, lineas };
+}
+
+function cerrarModalFin(id){ elFin(id).classList.remove('open'); }
+
+// ---------- Registrar venta en el local ----------
+function abrirModalVenta(){
+  elFin('fv-fecha').value = isoLocal(new Date());
+  elFin('fv-cliente').value = '';
+  elFin('fv-servicio').value = '';
+  elFin('fv-monto').value = '';
+  elFin('fv-msg').textContent = '';
+  elFin('fv-servicios-dl').innerHTML = (typeof SERVICES !== 'undefined' ? SERVICES : []).filter(s => s.active).map(s => `<option value="${escCat(s.name)}"></option>`).join('');
+  elFin('fv-prof').innerHTML = '<option value="">Sin asignar</option>' + FIN.empleados.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
+  pagoIniciar('fv-pagos', 0);
+  elFin('ov-fin-venta').classList.add('open');
+}
+
+function fvServicioCambio(){
+  const nombre = elFin('fv-servicio').value.trim().toLowerCase();
+  const svc = (typeof SERVICES !== 'undefined' ? SERVICES : []).find(s => (s.name||'').toLowerCase() === nombre);
+  if (svc && svc.price > 0 && !elFin('fv-monto').value){
+    elFin('fv-monto').value = svc.price;
+    fvMontoCambio();
+  }
+}
+
+function fvMontoCambio(){
+  const monto = parseFloat(elFin('fv-monto').value) || 0;
+  pagoSetEsperado('fv-pagos', Math.round(monto*100)/100);
+}
+
+async function guardarVentaLocal(){
+  const msg = elFin('fv-msg');
+  msg.textContent = '';
+  const servicio = elFin('fv-servicio').value.trim();
+  const monto = Math.round((parseFloat(elFin('fv-monto').value) || 0)*100)/100;
+  const fecha = elFin('fv-fecha').value;
+  if (!servicio){ msg.textContent = 'Escribe el servicio o producto.'; return; }
+  if (!(monto > 0)){ msg.textContent = 'Ingresa el monto de la venta.'; return; }
+  if (!fecha){ msg.textContent = 'Elige la fecha.'; return; }
+  const v = pagoValidar('fv-pagos');
+  if (!v.ok){ msg.textContent = v.msg; return; }
+  const btn = elFin('fv-btn');
+  btn.disabled = true;
+  try {
+    await Sheets.registrarVentaLocal({
+      fecha, servicio, monto,
+      cliente: elFin('fv-cliente').value.trim(),
+      empleadoId: elFin('fv-prof').value || null
+    }, v.lineas);
+    cerrarModalFin('ov-fin-venta');
+    await loadFinanzas();
+  } catch(e){
+    console.error(e);
+    msg.textContent = 'No se pudo guardar.' + (e && e.message ? ' (' + e.message + ')' : '');
+  }
+  btn.disabled = false;
+}
+
+// ---------- Registrar gasto ----------
+function abrirModalGasto(){
+  elFin('fg-fecha').value = isoLocal(new Date());
+  elFin('fg-categoria').innerHTML = CATEGORIAS_GASTO.map(c => `<option>${c}</option>`).join('');
+  elFin('fg-descripcion').value = '';
+  elFin('fg-monto').value = '';
+  elFin('fg-metodo').innerHTML = METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('');
+  elFin('fg-ref').value = '';
+  elFin('fg-msg').textContent = '';
+  elFin('ov-fin-gasto').classList.add('open');
+}
+
+async function guardarGasto(){
+  const msg = elFin('fg-msg');
+  msg.textContent = '';
+  const monto = Math.round((parseFloat(elFin('fg-monto').value) || 0)*100)/100;
+  const fecha = elFin('fg-fecha').value;
+  if (!fecha){ msg.textContent = 'Elige la fecha.'; return; }
+  if (!(monto > 0)){ msg.textContent = 'Ingresa el monto del gasto.'; return; }
+  const btn = elFin('fg-btn');
+  btn.disabled = true;
+  try {
+    await Sheets.registrarGasto({
+      fecha, monto,
+      categoria: elFin('fg-categoria').value,
+      descripcion: elFin('fg-descripcion').value.trim(),
+      metodo: elFin('fg-metodo').value,
+      referencia: elFin('fg-ref').value.trim()
+    });
+    cerrarModalFin('ov-fin-gasto');
+    await loadFinanzas();
+  } catch(e){
+    console.error(e);
+    msg.textContent = 'No se pudo guardar.' + (e && e.message ? ' (' + e.message + ')' : '');
+  }
+  btn.disabled = false;
+}
+
+// ---------- Completar cita (Agenda -> Finanzas, sin duplicar la venta) ----------
+let COMPLETANDO = null;
+
+function metodoDeAbono(m){ return m === 'yappy' ? 'yappy' : 'transferencia'; }
+
+function calcularCompletar(precio, ctx){
+  const certUsado = Math.min(ctx.cert, precio);
+  const abonoDescontado = ctx.descontable ? Math.min(ctx.abono, Math.max(0, precio - certUsado)) : 0;
+  const porCobrar = Math.max(0, Math.round((precio - certUsado - abonoDescontado)*100)/100);
+  return { certUsado, abonoDescontado, porCobrar };
+}
+
+function abrirCompletarCita(id){
+  const c = (typeof CITAS_CACHE !== 'undefined' ? CITAS_CACHE : []).find(x => String(x.id) === String(id));
+  if (!c) return;
+  const consultar = !!c.precioEsConsultar;
+  const base = Number(c.precioTotal) || 0;
+  const pct = Number(c.descuentoCupon) || 0;
+  const neto = consultar ? 0 : Math.max(0, base - base*pct/100);
+  COMPLETANDO = { c, consultar, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable') };
+  const pistaPrecio = consultar
+    ? 'Este servicio era "a consultar": ingresa el precio acordado.'
+    : (pct > 0 ? 'Incluye el descuento del cupón (' + pct + '%). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
+  elFin('fc-body').innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.7;">
+      <strong>${escCat(c.servicio)}</strong><br>
+      ${escCat(c.nombre)}${c.empleadoNombre ? ' · ' + escCat(c.empleadoNombre) : ''} · ${escCat(c.fecha)}
+    </div>
+    <div class="fg"><label class="flbl">Precio final del servicio ($)</label>
+      <input class="fi" id="fc-precio" type="number" step="0.01" min="0" value="${neto > 0 ? neto.toFixed(2) : ''}" oninput="fcRecalcular()"/>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${pistaPrecio}</p>
+    </div>
+    <div id="fc-desglose" style="background:#FAFAF8;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
+    <div class="fg"><label class="flbl">Cobro de hoy</label><div id="fc-pagos"></div></div>
+    <p id="fc-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+    <button class="btn-save" id="fc-btn" onclick="confirmarCompletarCita()"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar y registrar cobro</button>`;
+  PAGO_ED['fc-pagos'] = null;
+  fcRecalcular(true);
+  elFin('ov-fin-completar').classList.add('open');
+}
+
+function fcRecalcular(inicial){
+  if (!COMPLETANDO) return;
+  const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
+  const r = calcularCompletar(precio, COMPLETANDO);
+  const c = COMPLETANDO.c;
+  const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color||'var(--ink)'};">${v}</strong></div>`;
+  let html = linea('Precio del servicio', fmtDinero(precio));
+  if (COMPLETANDO.cert > 0) html += linea('Certificado aplicado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.certUsado), '#159A61');
+  if (COMPLETANDO.abono > 0){
+    html += COMPLETANDO.descontable
+      ? linea('Abono ya pagado (' + METODOS_PAGO[metodoDeAbono(c.metodoPago)] + ')', '−' + fmtDinero(r.abonoDescontado), '#159A61')
+      : linea('Abono no reembolsable ya pagado (aparte)', fmtDinero(COMPLETANDO.abono), 'var(--ink-soft)');
+  }
+  html += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar hoy', fmtDinero(r.porCobrar), '#7C3AED')}</div>`;
+  elFin('fc-desglose').innerHTML = html;
+  if (inicial || !PAGO_ED['fc-pagos']) pagoIniciar('fc-pagos', r.porCobrar);
+  else pagoSetEsperado('fc-pagos', r.porCobrar);
+}
+
+async function confirmarCompletarCita(){
+  if (!COMPLETANDO) return;
+  const msg = elFin('fc-msg');
+  msg.textContent = '';
+  const c = COMPLETANDO.c;
+  const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
+  if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
+  const v = pagoValidar('fc-pagos');
+  if (!v.ok){ msg.textContent = v.msg; return; }
+  const r = calcularCompletar(precio, COMPLETANDO);
+  const pagos = [];
+  if (COMPLETANDO.abono > 0) pagos.push({ metodo:metodoDeAbono(c.metodoPago), monto:COMPLETANDO.abono, referencia:c.comprobante || null });
+  if (r.certUsado > 0) pagos.push({ metodo:'certificado', monto:r.certUsado, referencia:c.certificadoCodigo || null });
+  v.lineas.forEach(l => pagos.push(l));
+  const btn = elFin('fc-btn');
+  btn.disabled = true;
+  try {
+    await Sheets.completarCita(c.id, {
+      precioCobrado: precio, pagos, fecha: c.fechaISO,
+      concepto: c.servicio, cliente: c.nombre, empleadoId: c.empleadoId || null
+    });
+    cerrarModalFin('ov-fin-completar');
+    COMPLETANDO = null;
+    loadCitas();
+  } catch(e){
+    console.error(e);
+    msg.textContent = 'No se pudo completar la cita.' + (e && e.message ? ' (' + e.message + ')' : '');
+    btn.disabled = false;
+  }
+}
+
+// ---------- Tarjeta de cita (con Completar / Completada) ----------
+const PALETA_CAT_CITAS = {
+  'VIP': {bg:'#F3EDFB', fg:'#7C4DA0'},
+  'Básicos': {bg:'#FBF0E4', fg:'#B8935A'},
+  'Tratamientos': {bg:'#E9F3ED', fg:'#4A9D6E'},
+  'Alisados': {bg:'#EEF1FB', fg:'#5C6FBE'},
+  'Color': {bg:'#FBEDEE', fg:'#C2695A'},
+  'Extensiones': {bg:'#FBF6E4', fg:'#B8935A'}
+};
+
+function inicialesCita(n){
+  return (n||'').trim().split(/\s+/).slice(0,2).map(p => p[0]).join('').toUpperCase();
+}
+
+function htmlCardCita(c){
+  const cat = PALETA_CAT_CITAS[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
+  const [horaNum, ampm] = c.hora.split(' ');
+  const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.fechaISO <= isoLocal(new Date());
+  const nombreEsc = (c.nombre || '').replace(/'/g, "\\'");
+  const btnStyle = 'width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;';
+  const precio = c.precioEsConsultar ? 'A consultar' : (c.precioFinal != null ? '$' + parseFloat(c.precioFinal).toFixed(2) : (c.precioTotal != null ? '$' + parseFloat(c.precioTotal).toFixed(2) : ''));
+  const acciones = c.completadaEn
+    ? ''
+    : `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">
+        ${puedeCompletar ? `<button class="btn-ico" style="${btnStyle}color:#159A61;border-color:#BFE3D0;" onclick="abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check"></i> Completar</button>` : ''}
+        <button class="btn-ico" style="${btnStyle}" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${nombreEsc}',${c.duracion || 60},${c.empleadoId ? `'${c.empleadoId}'` : 'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
+        <button class="btn-ico del" style="${btnStyle}" onclick="cancelarCitaAdmin('${c.id}','${nombreEsc}')"><i class="ti ti-x"></i> Cancelar</button>
+      </div>`;
+  const insignia = c.completadaEn
+    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#E9F6EF;color:#159A61;"><i class="ti ti-circle-check" style="font-size:11px;"></i> Completada</span>'
+    : '';
+  return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow-sm);">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="text-align:center;min-width:52px;">
+        <div style="font-size:16px;font-weight:700;color:var(--gold-dark);line-height:1.1;">${horaNum}</div>
+        <div style="font-size:10px;color:var(--ink-soft);font-weight:600;">${ampm||''}</div>
+        <div style="font-size:9.5px;color:#C7C0B3;margin-top:2px;"><i class="ti ti-clock" style="font-size:9px;"></i> ~${c.duracion}m</div>
+      </div>
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--charcoal2);">${inicialesCita(c.nombre)}</div>
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}</p>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
+            <span style="width:5px;height:5px;border-radius:50%;background:${cat.fg};"></span>${c.categoria||'Servicio'}
+          </span>
+          <span style="font-size:12px;font-weight:700;color:var(--ink);">${precio}</span>
+          ${c.empleadoNombre ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${c.empleadoNombre}</span>` : ''}
+          ${insignia}
+        </div>
+      </div>
+    </div>
+    ${acciones}
+  </div>`;
 }
 
 // El arranque ahora ocurre en verificarSesionInicial() / hacerLogin(), al inicio del archivo
