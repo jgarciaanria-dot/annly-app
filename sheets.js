@@ -2510,6 +2510,9 @@ const Sheets = {
         activo:
           e.activo,
 
+        bio:
+          e.bio || '',
+
         esDueno:
           e.es_dueno || false
 
@@ -2517,56 +2520,76 @@ const Sheets = {
   },
 
 
+  // Garantiza que el dueño exista como empleado y que su ficha traiga los datos
+  // con los que se inscribió (correo de su cuenta y WhatsApp del negocio). Solo
+  // completa campos vacíos: nunca pisa lo que el dueño ya editó.
   async asegurarEmpleadoDueno() {
 
     await window.AnnlyReady;
 
+    const biz = window.ANNLY_BUSINESS || {};
 
-    const {
-      count
-    } = await sbClient
+    // Teléfono: el WhatsApp del registro (guardado como 507 + número)
+    let telefonoDueno = (biz.whatsapp || '').replace(/\D/g, '');
+    if (telefonoDueno.startsWith('507') && telefonoDueno.length > 8) {
+      telefonoDueno = telefonoDueno.substring(3);
+    }
+
+    // Correo y nombre de la cuenta: solo si quien está en el panel ES el dueño
+    // (un Platform Admin viendo otro negocio no debe cargar su propio correo).
+    let correoDueno = null;
+    let nombreCuenta = null;
+
+    if (!window.ANNLY_PLATFORM_ADMIN) {
+      try {
+        const { data } = await sbClient.auth.getUser();
+        const u = data && data.user;
+        correoDueno = (u && u.email) || null;
+        nombreCuenta = (u && u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || null;
+      } catch (e) {}
+    }
+
+    const { data: duenos } = await sbClient
       .from('employees')
-      .select(
-        'id',
-        {
-          count: 'exact',
-          head: true
-        }
-      )
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
+      .select('id, telefono, correo')
+      .eq('business_id', BUSINESS_ID)
+      .eq('es_dueno', true)
+      .limit(1);
 
+    if (duenos && duenos.length) {
+
+      const d = duenos[0];
+      const cambios = {};
+
+      if (!d.telefono && telefonoDueno) cambios.telefono = telefonoDueno;
+      if (!d.correo && correoDueno) cambios.correo = correoDueno;
+
+      if (Object.keys(cambios).length) {
+        await sbClient.from('employees').update(cambios).eq('id', d.id);
+      }
+
+      return;
+    }
+
+    // Sin fila de dueño: si ya hay empleados (negocios viejos) no se toca nada.
+    const { count } = await sbClient
+      .from('employees')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', BUSINESS_ID);
 
     if (count && count > 0) {
       return;
     }
 
-
-    const nombreNegocio =
-      (
-        window.ANNLY_BUSINESS &&
-        window.ANNLY_BUSINESS.nombre
-      ) || 'Dueño/a';
-
-
     await sbClient
       .from('employees')
       .insert([{
-
-        business_id:
-          BUSINESS_ID,
-
-        nombre:
-          nombreNegocio,
-
-        activo:
-          true,
-
-        es_dueno:
-          true
-
+        business_id: BUSINESS_ID,
+        nombre: nombreCuenta || biz.nombre || 'Dueño/a',
+        telefono: telefonoDueno || null,
+        correo: correoDueno,
+        activo: true,
+        es_dueno: true
       }]);
   },
 
@@ -2592,6 +2615,9 @@ const Sheets = {
 
       foto_url:
         empleado.fotoUrl || null,
+
+      bio:
+        (empleado.bio || '').trim() || null,
 
       activo:
         empleado.activo !== false
@@ -2745,7 +2771,9 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    await sbClient
+    const {
+      error: errDel
+    } = await sbClient
       .from('employee_services')
       .delete()
       .eq(
@@ -2753,13 +2781,19 @@ const Sheets = {
         empleadoId
       );
 
+    if (errDel) {
+      throw errDel;
+    }
+
 
     if (!serviceIds.length) {
       return;
     }
 
 
-    await sbClient
+    const {
+      error: errIns
+    } = await sbClient
       .from('employee_services')
       .insert(
 
@@ -2776,6 +2810,10 @@ const Sheets = {
         )
 
       );
+
+    if (errIns) {
+      throw errIns;
+    }
   },
 
 
@@ -2850,12 +2888,15 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    const {
-      data: empleados
+    // Se pide también la presentación (bio); si esa columna aún no existe en la
+    // base, se reintenta sin ella para no romper el selector de profesional.
+    let {
+      data: empleados,
+      error: errEmp
     } = await sbClient
       .from('employees')
       .select(
-        'id, nombre, foto_url'
+        'id, nombre, foto_url, bio'
       )
       .eq(
         'business_id',
@@ -2865,6 +2906,23 @@ const Sheets = {
         'activo',
         true
       );
+
+    if (errEmp) {
+      const reintento = await sbClient
+        .from('employees')
+        .select(
+          'id, nombre, foto_url'
+        )
+        .eq(
+          'business_id',
+          BUSINESS_ID
+        )
+        .eq(
+          'activo',
+          true
+        );
+      empleados = reintento.data;
+    }
 
 
     const lista =
@@ -2935,7 +2993,10 @@ const Sheets = {
           e.nombre,
 
         fotoUrl:
-          e.foto_url
+          e.foto_url,
+
+        bio:
+          e.bio || ''
 
       }));
   },
