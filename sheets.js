@@ -3086,6 +3086,18 @@ const Sheets = {
     return await this.getFeaturesDelPlan(plan.id);
   },
 
+  // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
+  // público (visitantes SIN sesión, que por RLS no pueden leer subscriptions).
+  // Lo resuelve la función SQL modulos_publicos (security definer): en trial
+  // cuenta solo lo de Basic; si no, plan + addons vigentes. Devuelve null si falla.
+  async getModulosPublicos() {
+    await window.AnnlyReady;
+    if (!BUSINESS_ID) return null;
+    const { data, error } = await sbClient.rpc('modulos_publicos', { p_business_id: String(BUSINESS_ID) });
+    if (error) { console.error('Error leyendo módulos públicos:', error); return null; }
+    return Array.isArray(data) ? data : [];
+  },
+
   // Todas las features marcadas como módulo adicional (is_addon = true), con su precio.
   async getCatalogoModulos() {
     await window.AnnlyReady;
