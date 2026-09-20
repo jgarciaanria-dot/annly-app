@@ -590,13 +590,10 @@ img{max-width:100%;}
         </div>
   <div id="panel-servicios">
     <div id="seccionesServicios"></div>
-    <div style="padding:.5rem 0 1rem;">
-      <div id="nueva-cat-row" style="display:none;align-items:center;gap:8px;margin-bottom:8px;">
-        <input class="fi" id="nueva-cat-input" placeholder="Nombre de la categoría (ej: Masajes reductores)" style="flex:1;" onkeydown="if(event.key==='Enter'){crearCategoria();}else if(event.key==='Escape'){cancelarNuevaCategoria();}"/>
-        <button class="btn-add" onclick="crearCategoria()"><i class="ti ti-check"></i> Crear</button>
-        <button class="btn-ico" onclick="cancelarNuevaCategoria()" title="Cancelar"><i class="ti ti-x"></i></button>
-      </div>
-      <button class="btn-add-incl" id="btn-nueva-cat" onclick="mostrarNuevaCategoria()"><i class="ti ti-plus" style="font-size:12px;"></i> Agregar categoría</button>
+    <div style="text-align:center;padding:1rem 0;">
+      <button class="btn-add" onclick="openModal(null)" style="margin:auto;padding:10px 20px;font-size:13px;">
+        <i class="ti ti-plus"></i> Agregar nuevo servicio
+      </button>
     </div>
   </div>
 
@@ -1507,14 +1504,12 @@ function copiarLinkNegocio(){
 
 const CATS=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
 let SERVICES=[];
-let CATEGORIAS=[];
 let categoriasRender=[];
+let catsModal=[];
 let editId=null;
 
 // ===== FIX: ahora lee de Supabase vía Sheets.getServicios() =====
 async function loadServices(){
-  const catsGuardadas = window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.categorias_servicios;
-  CATEGORIAS = Array.isArray(catsGuardadas) ? catsGuardadas.filter(c => typeof c === 'string' && c.trim()) : [];
   try {
     const servicios = await Sheets.getServicios();
     if(servicios && servicios.length > 0){
@@ -1567,86 +1562,9 @@ function escCat(t){
   return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// Categorías guardadas (en su orden) + cualquiera que aún esté en uso por algún servicio
+// Las categorías salen de los servicios (en orden de aparición)
 function categoriasActuales(){
-  const lista=[...CATEGORIAS];
-  SERVICES.forEach(sv=>{ if(sv.cat && !lista.includes(sv.cat)) lista.push(sv.cat); });
-  return lista;
-}
-
-async function guardarCategorias(){
-  try {
-    await Sheets.actualizarPerfil({categorias_servicios: CATEGORIAS});
-  } catch(e){
-    console.error('Error guardando categorías:', e);
-    alert('No se pudo guardar la lista de categorías. Revisa la consola.');
-  }
-}
-
-// Si había categorías solo "derivadas" de los servicios, las fijamos para que no desaparezcan al quedar vacías
-function sincronizarCategorias(antes){
-  if(CATEGORIAS.length !== antes.length){
-    CATEGORIAS = antes;
-    guardarCategorias();
-  }
-}
-
-function mostrarNuevaCategoria(){
-  document.getElementById('nueva-cat-row').style.display='flex';
-  document.getElementById('btn-nueva-cat').style.display='none';
-  document.getElementById('nueva-cat-input').focus();
-}
-
-function cancelarNuevaCategoria(){
-  document.getElementById('nueva-cat-input').value='';
-  document.getElementById('nueva-cat-row').style.display='none';
-  document.getElementById('btn-nueva-cat').style.display='flex';
-}
-
-function crearCategoria(){
-  const input=document.getElementById('nueva-cat-input');
-  const nombre=input.value.trim();
-  if(!nombre){ input.focus(); return; }
-  const actuales=categoriasActuales();
-  if(actuales.some(c=>c.toLowerCase()===nombre.toLowerCase())){
-    alert('Ya tienes una categoría con ese nombre.');
-    return;
-  }
-  CATEGORIAS=[...actuales,nombre];
-  guardarCategorias();
-  cancelarNuevaCategoria();
-  renderAdmin();
-}
-
-function renombrarCategoria(i){
-  const actual=categoriasRender[i];
-  if(actual===undefined) return;
-  const nuevo=(prompt('Nuevo nombre de la categoría:',actual)||'').trim();
-  if(!nuevo || nuevo===actual) return;
-  if(categoriasActuales().some(c=>c!==actual && c.toLowerCase()===nuevo.toLowerCase())){
-    alert('Ya tienes una categoría con ese nombre.');
-    return;
-  }
-  CATEGORIAS=categoriasActuales().map(c=>c===actual?nuevo:c);
-  let huboServicios=false;
-  SERVICES.forEach(sv=>{ if(sv.cat===actual){ sv.cat=nuevo; huboServicios=true; } });
-  if(huboServicios) saveServices();
-  guardarCategorias();
-  renderAdmin();
-}
-
-function eliminarCategoria(i){
-  const cat=categoriasRender[i];
-  if(cat===undefined) return;
-  const n=SERVICES.filter(sv=>sv.cat===cat).length;
-  if(n){
-    alert('"'+cat+'" tiene '+n+' servicio'+(n===1?'':'s')+'. Elimínalos o muévelos a otra categoría antes de borrarla.');
-    return;
-  }
-  if(!confirm('¿Eliminar la categoría "'+cat+'"?')) return;
-  CATEGORIAS=categoriasActuales().filter(c=>c!==cat);
-  guardarCategorias();
-  renderAdmin();
+  return [...new Set(SERVICES.map(sv=>sv.cat).filter(Boolean))];
 }
 
 function agregarServicioEnCat(i){
@@ -1658,7 +1576,7 @@ function renderAdmin(){
   categoriasRender=categorias;
   if(!categorias.length){
     document.getElementById('seccionesServicios').innerHTML=
-      '<div class="adm-sec" style="padding:2rem 1rem;text-align:center;color:var(--ink-soft);font-size:13px;">Todavía no tienes categorías. Crea la primera con el botón de abajo y, dentro de ella, agrega tus servicios.</div>';
+      '<div class="adm-sec" style="padding:2rem 1rem;text-align:center;color:var(--ink-soft);font-size:13px;">Todavía no tienes servicios. Agrega el primero con el botón de abajo.</div>';
     return;
   }
   let html='';
@@ -1666,17 +1584,10 @@ function renderAdmin(){
   categorias.forEach((cat,ci)=>{
     const svcs=SERVICES.filter(sv=>sv.cat===cat);
     html+=`<div class="adm-sec">
-      <div class="adm-sec-hdr" style="flex-wrap:wrap;gap:8px;">
+      <div class="adm-sec-hdr">
         <span class="adm-sec-title">${escCat(cat)}</span>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn-add" onclick="agregarServicioEnCat(${ci})"><i class="ti ti-plus"></i> Agregar servicio</button>
-          <button class="btn-ico" onclick="renombrarCategoria(${ci})" title="Renombrar categoría"><i class="ti ti-pencil"></i></button>
-          <button class="btn-ico del" onclick="eliminarCategoria(${ci})" title="Eliminar categoría"><i class="ti ti-trash"></i></button>
-        </div>
+        <button class="btn-add" onclick="agregarServicioEnCat(${ci})"><i class="ti ti-plus"></i> Agregar</button>
       </div>`;
-    if(!svcs.length){
-      html+='<div style="padding:1.1rem;text-align:center;color:var(--ink-soft);font-size:12.5px;">Esta categoría aún no tiene servicios.</div>';
-    }
     svcs.forEach(sv=>{
       const precio=sv.precioTexto||(sv.price>0?'$'+sv.price.toFixed(2):'A consultar');
       const esRosa=idxColor%2===1; idxColor++;
@@ -1716,9 +1627,7 @@ function toggleActive(id,val){
 
 function eliminar(id){
   if(!confirm('¿Eliminar este servicio?')) return;
-  const antes=categoriasActuales();
   SERVICES=SERVICES.filter(s=>s.id!==id);
-  sincronizarCategorias(antes);
   saveServices(); renderAdmin();
 }
 
@@ -1728,9 +1637,10 @@ function openModal(id,catDefault='Básicos'){
   // La categoría se elige de las que el negocio ya creó (se crean con el botón
   // "Agregar categoría"), ya no se escribe libremente.
   const listaCats=categoriasActuales();
-  const valorInicial=s?s.cat:(listaCats.includes(catDefault)?catDefault:(listaCats[0]||catDefault));
-  const opcionesCats=(listaCats.includes(valorInicial)?listaCats:[...listaCats,valorInicial])
-    .map(c=>`<option value="${escCat(c)}"${c===valorInicial?' selected':''}>${escCat(c)}</option>`).join('');
+  const valorInicial=s?s.cat:(listaCats.includes(catDefault)?catDefault:(listaCats[0]||''));
+  catsModal=(valorInicial && !listaCats.includes(valorInicial))?[...listaCats,valorInicial]:[...listaCats];
+  const pillsCats=catsModal.map((c,i)=>`<div class="cat-pill${c===valorInicial?' sel':''}" onclick="selCatModal(${i})">${escCat(c)}</div>`).join('');
+  const sinCats=catsModal.length===0;
   const incls=s?s.includes:[''];
   const inclHtml=incls.map((inc,i)=>`<div class="incl-inp" id="incl-${i}">
     <input class="fi incl-val" value="${inc}" placeholder="Ej: Producto o material incluido"/>
@@ -1755,7 +1665,13 @@ function openModal(id,catDefault='Básicos'){
       <input type="hidden" id="m-img-url" value="${s && s.imagenUrl ? s.imagenUrl : ''}"/>
     </div>
     <div class="fg"><label class="flbl">Categoría</label>
-      <select class="fi" id="m-cat">${opcionesCats}</select>
+      <input type="hidden" id="m-cat" value="${escCat(valorInicial)}"/>
+      <div class="cats" id="cats-wrap">${pillsCats}</div>
+      <div id="nueva-cat-modal-row" style="display:${sinCats?'flex':'none'};align-items:center;gap:8px;margin-top:8px;">
+        <input class="fi" id="nueva-cat-modal-input" placeholder="Nombre de la categoría (ej: Masajes reductores)" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarCatModal();}"/>
+        <button type="button" class="btn-add" onclick="agregarCatModal()"><i class="ti ti-check"></i> Agregar</button>
+      </div>
+      <button type="button" class="btn-add-incl" id="btn-nueva-cat-modal" onclick="mostrarNuevaCatModal()" style="margin-top:8px;display:${sinCats?'none':'flex'};"><i class="ti ti-plus" style="font-size:12px;"></i> Agregar categoría</button>
     </div>
     <div class="frow">
       <div class="fg"><label class="flbl">Precio ($)</label><input class="fi" id="m-price" type="number" min="0" step="0.01" value="${s?s.price:0}" placeholder="0 = consultar"/></div>
@@ -1798,6 +1714,39 @@ function toggleAbono(val){
   document.getElementById('abono-fields').style.display=val?'block':'none';
 }
 
+function selCatModal(i){
+  const c=catsModal[i];
+  if(c===undefined) return;
+  document.getElementById('m-cat').value=c;
+  document.querySelectorAll('#cats-wrap .cat-pill').forEach((p,idx)=>p.classList.toggle('sel',idx===i));
+}
+
+function mostrarNuevaCatModal(){
+  document.getElementById('nueva-cat-modal-row').style.display='flex';
+  document.getElementById('btn-nueva-cat-modal').style.display='none';
+  document.getElementById('nueva-cat-modal-input').focus();
+}
+
+function agregarCatModal(){
+  const input=document.getElementById('nueva-cat-modal-input');
+  const nombre=input.value.trim();
+  if(!nombre){ input.focus(); return; }
+  let idx=catsModal.findIndex(c=>c.toLowerCase()===nombre.toLowerCase());
+  if(idx===-1){
+    catsModal.push(nombre);
+    idx=catsModal.length-1;
+    const pill=document.createElement('div');
+    pill.className='cat-pill';
+    pill.textContent=nombre;
+    pill.onclick=()=>selCatModal(idx);
+    document.getElementById('cats-wrap').appendChild(pill);
+  }
+  selCatModal(idx);
+  input.value='';
+  document.getElementById('nueva-cat-modal-row').style.display='none';
+  document.getElementById('btn-nueva-cat-modal').style.display='flex';
+}
+
 function selCat(el,cat){
   document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('sel'));
   el.classList.add('sel');
@@ -1819,7 +1768,7 @@ function remIncl(i){
 
 function getCatSel(){
   const campo=document.getElementById('m-cat');
-  return (campo && campo.value.trim()) ? campo.value.trim() : 'Básicos';
+  return (campo && campo.value.trim()) ? campo.value.trim() : '';
 }
 
 async function subirImagenServicioModal(){
@@ -1852,9 +1801,9 @@ function guardar(){
   const abonoMonto=requiereAbono?parseFloat(document.getElementById('m-abono-monto').value)||10:null;
   const abonoTipo=requiereAbono?document.getElementById('m-abono-tipo').value:'noreembolsable';
   const cat=getCatSel();
+  if(!cat){alert('Elige una categoría o crea una nueva con "Agregar categoría".');return;}
   const includes=Array.from(document.querySelectorAll('.incl-val')).map(el=>el.value.trim()).filter(Boolean);
   const imagenUrl=document.getElementById('m-img-url').value.trim()||null;
-  const catsAntes=categoriasActuales();
 
   if(editId){
     const idx=SERVICES.findIndex(s=>s.id===editId);
@@ -1863,7 +1812,6 @@ function guardar(){
     const newId=nombre.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').substring(0,16)+'_'+Date.now();
     SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,requiereAbono,abonoMonto,abonoTipo,desc,includes,imagenUrl});
   }
-  sincronizarCategorias(catsAntes);
   saveServices(); closeModal(); renderAdmin();
 }
 
