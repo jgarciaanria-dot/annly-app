@@ -1259,6 +1259,10 @@ img{max-width:100%;}
           <div class="fg"><label class="flbl">Precio final del servicio ($)</label>
             <input class="fi" id="ac-precio" type="number" step="0.01" min="0" oninput="acPrecioCambio()"/>
           </div>
+          <div class="fg" id="ac-ajuste-wrap" style="display:none;">
+            <label class="flbl" id="ac-ajuste-lbl"></label>
+            <input class="fi" id="ac-ajuste" placeholder="Ej: Tratamiento adicional de espalda"/>
+          </div>
           <div class="fg"><label class="flbl">Ventas adicionales (opcional)</label>
             <p style="font-size:11px;color:var(--ink-soft);margin:0 0 6px;line-height:1.5;">Tratamientos, productos u otros que compra en la visita. Se suman al cobro.</p>
             <div id="ac-extras"></div>
@@ -1472,7 +1476,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=17"></script>
+<script src="sheets.js?v=18"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -4109,6 +4113,16 @@ function htmlVentasFin(){
       </div>`;
     }
     const v = it.v;
+    if (v.anulada){
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);opacity:.7;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--ink);text-decoration:line-through;">${escCat(v.servicio)}</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin:2px 0 6px;">${fechaCortaFin(v.fecha)}${v.cliente ? ' · ' + escCat(v.cliente) : ''}${FIN.equipo[v.empleadoId] ? ' · ' + escCat(FIN.equipo[v.empleadoId]) : ''}</div>
+          <span style="display:inline-block;background:#FBEDEE;color:#C2695A;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;">Anulada${v.motivoAnulacion ? ' · ' + escCat(v.motivoAnulacion) : ''}</span>
+        </div>
+        <div style="font-size:14px;font-weight:800;color:var(--ink-soft);text-decoration:line-through;">${fmtDinero(v.monto)}</div>
+      </div>`;
+    }
     const pagos = FIN.pagos.filter(p => p.localSaleId === v.id);
     const chips = pagos.map(p => `<span style="display:inline-block;background:#F3EDFB;color:#7C4DA0;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;margin-right:4px;">${METODOS_PAGO[p.metodo]||p.metodo} ${fmtDinero(p.monto)}</span>`).join('');
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
@@ -4118,11 +4132,11 @@ function htmlVentasFin(){
         <div>${chips}</div>
       </div>
       <div style="font-size:14px;font-weight:800;color:#159A61;">${fmtDinero(v.monto)}</div>
-      <button class="btn-ico del" onclick="eliminarVentaFin('${v.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+      <button class="btn-ico del" style="width:auto;padding:0 10px;gap:5px;font-size:11px;font-weight:700;color:#C2695A;" onclick="anularVentaFin('${v.id}')" title="Anular venta"><i class="ti ti-ban"></i> Anular</button>
     </div>`;
   }).join('');
 
-  const total = sumaFin(FIN.ventas) + sumaFin(FIN.extras);
+  const total = sumaFin(FIN.ventas.filter(v => !v.anulada)) + sumaFin(FIN.extras);
   return `<div class="adm-sec">
     <div class="adm-sec-hdr"><span class="adm-sec-title">Ventas en el local${items.length ? ' · ' + fmtDinero(total) : ''}</span><button class="btn-add" onclick="abrirModalVenta()"><i class="ti ti-plus"></i> Registrar venta</button></div>
     <p style="font-size:11.5px;color:var(--ink-soft);padding:0 1rem;margin:0 0 4px;line-height:1.5;">Productos y servicios vendidos en el negocio: los que registras aquí sin cita y los que agregas al completar una cita (con la etiqueta "Vendido en una cita"). Los servicios de las citas se registran desde <strong>Citas → Completar</strong>.</p>
@@ -4130,10 +4144,20 @@ function htmlVentasFin(){
   </div>`;
 }
 
-async function eliminarVentaFin(id){
-  if (!confirm('¿Eliminar esta venta y sus pagos registrados?')) return;
-  try { await Sheets.eliminarVentaLocal(id); await loadFinanzas(); }
-  catch(e){ console.error(e); alert('No se pudo eliminar la venta.'); }
+// Anular una venta (devolución, error de captura...): queda en el historial con su motivo
+// y deja de contar en los totales.
+async function anularVentaFin(id){
+  const v = FIN.ventas.find(x => x.id === id);
+  if (!v) return;
+  const motivo = (prompt('Anular la venta "' + v.servicio + '" por ' + fmtDinero(v.monto) + '.\n\n¿Cuál es el motivo? (por ejemplo: devolución del cliente, error de captura)') || '').trim();
+  if (!motivo) return;
+  try {
+    await Sheets.anularVentaLocal(id, motivo);
+    await loadFinanzas();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo anular la venta.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
 }
 
 // ---------- Gastos ----------
@@ -4491,7 +4515,7 @@ function abrirCompletarCita(id){
   const base = Number(c.precioTotal) || 0;
   const pct = Number(c.descuentoCupon) || 0;
   const neto = consultar ? 0 : Math.max(0, base - base*pct/100);
-  COMPLETANDO = { c, consultar, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable'), certExtra:null, certExtraAplicado:0 };
+  COMPLETANDO = { c, consultar, neto, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable'), certExtra:null, certExtraAplicado:0 };
   const pistaPrecio = consultar
     ? 'Este servicio era "a consultar": ingresa el precio acordado.'
     : (pct > 0 ? 'Incluye el descuento del cupón (' + pct + '%). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
@@ -4503,6 +4527,10 @@ function abrirCompletarCita(id){
     <div class="fg"><label class="flbl">Precio final del servicio ($)</label>
       <input class="fi" id="fc-precio" type="number" step="0.01" min="0" value="${neto > 0 ? neto.toFixed(2) : ''}" oninput="fcRecalcular()"/>
       <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${pistaPrecio}</p>
+    </div>
+    <div class="fg" id="fc-ajuste-wrap" style="display:none;">
+      <label class="flbl" id="fc-ajuste-lbl"></label>
+      <input class="fi" id="fc-ajuste" placeholder="Ej: Tratamiento adicional de espalda"/>
     </div>
     ${moduloDisponible('CERTIFICADOS') ? `
     <div class="fg"><label class="flbl">¿Paga con un certificado de regalo?</label>
@@ -4551,6 +4579,17 @@ function fcContexto(){
 function fcRecalcular(inicial){
   if (!COMPLETANDO) return;
   const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
+  // Si el costo cambió respecto a lo reservado, se pide el detalle de qué se hizo
+  const difPrecio = Math.round((precio - COMPLETANDO.neto)*100)/100;
+  const wrapAj = elFin('fc-ajuste-wrap');
+  if (wrapAj){
+    if (!COMPLETANDO.consultar && Math.abs(difPrecio) >= 0.005 && precio > 0){
+      wrapAj.style.display = 'block';
+      elFin('fc-ajuste-lbl').textContent = difPrecio > 0
+        ? 'Costo adicional durante el servicio: +' + fmtDinero(difPrecio) + ' — ¿Qué se hizo? (obligatorio)'
+        : 'Descuento: −' + fmtDinero(-difPrecio) + ' — Motivo (opcional)';
+    } else wrapAj.style.display = 'none';
+  }
   const r = calcularCompletar(precio, fcContexto());
   const c = COMPLETANDO.c;
   const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color||'var(--ink)'};">${v}</strong></div>`;
@@ -4581,6 +4620,13 @@ async function confirmarCompletarCita(){
   const c = COMPLETANDO.c;
   const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
   if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
+  const difPrecio = Math.round((precio - COMPLETANDO.neto)*100)/100;
+  const hayAjuste = !COMPLETANDO.consultar && Math.abs(difPrecio) >= 0.005;
+  const ajusteDetalle = (hayAjuste && elFin('fc-ajuste')) ? elFin('fc-ajuste').value.trim() : '';
+  if (hayAjuste && difPrecio > 0 && !ajusteDetalle){
+    msg.textContent = 'Describe qué se hizo por el costo adicional de ' + fmtDinero(difPrecio) + '.';
+    return;
+  }
   const ex = extrasValidar('fc-extras');
   if (!ex.ok){ msg.textContent = ex.msg; return; }
   // Si el navegador tiene un sheets.js viejo, no se guarda la venta adicional: mejor avisar que perderla en silencio
@@ -4594,7 +4640,7 @@ async function confirmarCompletarCita(){
   const pagos = [];
   if (COMPLETANDO.abono > 0) pagos.push({ metodo:metodoDeAbono(c.metodoPago), monto:COMPLETANDO.abono, referencia:c.comprobante || null });
   if (r.certUsado > 0) pagos.push({ metodo:'certificado', monto:r.certUsado, referencia:c.certificadoCodigo || null });
-  if (r.certExtraUsado > 0) pagos.push({ metodo:'certificado', monto:r.certExtraUsado, referencia:COMPLETANDO.certExtra.codigo });
+  if (r.certExtraUsado > 0) pagos.push({ metodo:'certificado', monto:r.certExtraUsado, referencia:COMPLETANDO.certExtra.codigo + ' (durante la atención)' });
   v.lineas.forEach(l => pagos.push(l));
   const btn = elFin('fc-btn');
   btn.disabled = true;
@@ -4613,7 +4659,7 @@ async function confirmarCompletarCita(){
     await Sheets.completarCita(c.id, {
       precioCobrado: precio, pagos, fecha: c.fechaISO,
       concepto: c.servicio, cliente: c.nombre, empleadoId: c.empleadoId || null,
-      extras: ex.items
+      extras: ex.items, ajusteDetalle
     });
     cerrarModalFin('ov-fin-completar');
     COMPLETANDO = null;
@@ -4740,11 +4786,18 @@ async function abrirDetalleCita(id){
     titulo('Pago');
   html += fila('Precio del servicio', r.precio == null ? 'A consultar' : fmtDinero(r.precio));
   if (c.completadaEn && c.precioCobrado != null && (r.precio == null || Math.abs(Number(c.precioCobrado) - r.precio) >= 0.005)){
-    html += fila('Precio final al completar', fmtDinero(c.precioCobrado));
+    html += fila('Costo total del servicio', fmtDinero(c.precioCobrado));
+    if (r.precio != null){
+      const base = r.precio - r.desc;
+      const dif = Math.round((Number(c.precioCobrado) - base)*100)/100;
+      if (Math.abs(dif) >= 0.005){
+        html += fila(dif > 0 ? 'Costo adicional durante el servicio' : 'Descuento en el local', (dif > 0 ? '+' : '−') + fmtDinero(Math.abs(dif)));
+        if (c.ajusteDetalle) html += `<p style="font-size:12px;color:var(--ink);line-height:1.5;margin:6px 0 0;background:var(--bg);border-radius:8px;padding:8px 10px;"><span style="color:var(--ink-soft);">Detalle:</span> ${escCat(c.ajusteDetalle)}</p>`;
+      }
+    }
   }
   if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc));
-  if (r.cert > 0) html += fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert)) +
-    (c.certificadoSaldoRestante != null ? fila('Saldo tras esta cita', fmtDinero(c.certificadoSaldoRestante)) : '') +
+  if (r.cert > 0) html += '<div id="cd-cert-fila">' + fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert)) + '</div>' +
     '<div id="cd-cert-saldo"></div>';
   if (r.abono > 0){
     html += fila('Abono pagado (' + (r.descontable ? 'descontable' : 'no reembolsable') + ')' + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), fmtDinero(r.abono));
@@ -4791,6 +4844,17 @@ async function abrirDetalleCita(id){
     if (contE){
       if (extras.length) contE.innerHTML = titulo('Ventas adicionales') + extras.map(x => fila(escCat(x.descripcion), fmtDinero(x.monto))).join('');
       else if (errExtras) contE.innerHTML = '<p style="font-size:11px;color:var(--ink-soft);margin:10px 0 0;">No se pudieron cargar las ventas adicionales de esta cita.</p>';
+    }
+    // Certificado: lo aplicado al reservar y lo que se sumó durante la atención (se ven por separado)
+    const EN_ATENCION = /durante la atenci[oó]n/i;
+    const certReserva = pagos.filter(p => p.metodo === 'certificado' && !EN_ATENCION.test(p.referencia || '')).reduce((s,p) => s + p.monto, 0);
+    const certAtencion = pagos.filter(p => p.metodo === 'certificado' && EN_ATENCION.test(p.referencia || '')).reduce((s,p) => s + p.monto, 0);
+    const contCert = elFin('cd-cert-fila');
+    if (contCert && certAtencion > 0){
+      const cod = c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : '';
+      contCert.innerHTML =
+        (certReserva > 0 ? fila('Certificado al reservar' + cod, '−' + fmtDinero(certReserva)) : '') +
+        fila('Certificado durante la atención' + cod, '−' + fmtDinero(certAtencion));
     }
     const cont = elFin('cd-cobros');
     if (cont && pagos.length){
@@ -5092,6 +5156,18 @@ function acRecalcularCobro(){
   if (!AC) return;
   const m = acMontos();
   const d = elFin('ac-desglose');
+  // Si el costo cobrado es distinto al precio del servicio, se pide el detalle de qué se hizo
+  const wrapAj = elFin('ac-ajuste-wrap');
+  if (wrapAj){
+    const catalogo = (AC.svc && AC.svc.price > 0) ? AC.svc.price : 0;
+    const difP = Math.round((m.precio - catalogo)*100)/100;
+    if (m.cobrar && catalogo > 0 && m.precio > 0 && Math.abs(difP) >= 0.005){
+      wrapAj.style.display = 'block';
+      elFin('ac-ajuste-lbl').textContent = difP > 0
+        ? 'Costo adicional durante el servicio: +' + fmtDinero(difP) + ' — ¿Qué se hizo? (obligatorio)'
+        : 'Descuento: −' + fmtDinero(-difP) + ' — Motivo (opcional)';
+    } else wrapAj.style.display = 'none';
+  }
   if (m.cobrar){
     const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color || 'var(--ink)'};">${v}</strong></div>`;
     let h = linea('Precio del servicio', fmtDinero(m.precio));
@@ -5154,8 +5230,15 @@ async function guardarAgregarCita(){
   const precio = M.precio;
   let pagos = [];
   let extrasItems = [];
+  let ajusteDetalle = '';
   if (cobrar){
     if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
+    const catalogo = AC.svc.price > 0 ? AC.svc.price : 0;
+    const difP = Math.round((precio - catalogo)*100)/100;
+    if (catalogo > 0 && Math.abs(difP) >= 0.005){
+      ajusteDetalle = elFin('ac-ajuste').value.trim();
+      if (difP > 0 && !ajusteDetalle){ msg.textContent = 'Describe qué se hizo por el costo adicional de ' + fmtDinero(difP) + '.'; return; }
+    }
     const ex = extrasValidar('ac-extras');
     if (!ex.ok){ msg.textContent = ex.msg; return; }
     if (ex.items.length && typeof Sheets.getExtrasFinanzas !== 'function'){
@@ -5183,7 +5266,7 @@ async function guardarAgregarCita(){
     citaId = await Sheets.guardarCita({
       nombre, telefono: tel, correo, nota: elFin('ac-nota').value.trim(),
       servicio: AC.svc.name, categoria: AC.svc.cat,
-      precioTotal: precioConocido, precioEsConsultar: precioConocido <= 0,
+      precioTotal: (AC.svc.price > 0 ? AC.svc.price : precioConocido), precioEsConsultar: precioConocido <= 0,
       fecha: fechaTexto, hora: AC.hora, duracionMin: AC.svc.durMin || 60,
       comprobante: 'Cita en el local', abonoMonto: 0, abonoTipo: '', metodoPago: '',
       cuponUsado: '', descuentoCupon: 0,
@@ -5221,7 +5304,7 @@ async function guardarAgregarCita(){
       await Sheets.completarCita(citaId, {
         precioCobrado: precio, pagos: pagosFinales, fecha: fechaIso,
         concepto: AC.svc.name, cliente: nombre, empleadoId,
-        extras: extrasItems
+        extras: extrasItems, ajusteDetalle
       });
     } catch(e){
       console.error(e);
