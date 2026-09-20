@@ -610,7 +610,8 @@ img{max-width:100%;}
       <button class="btn-add" style="margin-left:auto;flex-shrink:0;" onclick="abrirModalAgregarCita()"><i class="ti ti-plus"></i> Agregar cita</button>
     </div>
     <div class="adm-sec">
-      <div class="adm-sec-hdr"><span class="adm-sec-title">Hoy y próximos 7 días</span></div>
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Citas</span></div>
+      <div id="citas-vistas" class="cats" style="padding:.85rem 1rem 0;"></div>
       <div id="citas-filtro-wrap" style="display:none;padding:.85rem 1rem 0;">
         <label class="flbl">Filtrar por profesional</label>
         <select class="fi" id="citas-filtro-prof" onchange="filtrarCitasPorProfesional(this.value)"></select>
@@ -2651,7 +2652,7 @@ async function verDetalleCertificado(certificateId){
       <div><span style="color:#888;">Comprador</span><br><strong>${c.compradorNombre || '—'}</strong>${c.compradorTelefono ? ' · ' + c.compradorTelefono : ''}${c.compradorCorreo ? '<br>' + c.compradorCorreo : ''}</div>
       <div><span style="color:#888;">Destinatario</span><br><strong>${c.destinatarioNombre || '—'}</strong>${c.destinatarioTelefono ? ' · ' + c.destinatarioTelefono : ''}${c.destinatarioCorreo ? '<br>' + c.destinatarioCorreo : ''}</div>
       <div><span style="color:#888;">Monto inicial</span><br><strong>$${c.montoInicial.toFixed(2)}</strong></div>
-      <div><span style="color:#888;">Saldo actual</span><br><strong>$${c.saldoRestante.toFixed(2)}</strong></div>
+      <div><span style="color:#888;">Saldo actual</span><br><strong id="dc-saldo">$${c.saldoRestante.toFixed(2)}</strong></div>
       <div><span style="color:#888;">Emitido</span><br><strong>${c.fechaEmision || '—'}</strong></div>
       <div><span style="color:#888;">Vence</span><br><strong>${c.fechaVencimiento || '—'}</strong></div>
     </div>
@@ -2668,6 +2669,18 @@ async function verDetalleCertificado(certificateId){
     <div id="detalle-cert-canjes"><p style="font-size:12px;color:#aaa;">Cargando...</p></div>`;
 
   document.getElementById('ov-modal-detalle-certificado').classList.add('open');
+
+  // El saldo se lee de nuevo de la base: la lista puede tener datos de antes del último canje
+  try {
+    const fresco = await Sheets.getCertificadoPorCodigo(c.codigo);
+    if (fresco){
+      c.saldoRestante = fresco.saldoRestante;
+      c.estado = fresco.estado;
+      const el = document.getElementById('dc-saldo');
+      if (el) el.textContent = '$' + fresco.saldoRestante.toFixed(2);
+      renderListaCertificados();
+    }
+  } catch(e){ console.error(e); }
 
   try {
     const canjes = await Sheets.getCanjesCertificado(certificateId);
@@ -2837,78 +2850,85 @@ function filtrarCitasPorProfesional(id){
   loadCitas();
 }
 
+// Vistas de la lista de citas: Activas (vigentes), Por completar (ya pasaron y falta el cobro) y Completadas
+let VISTA_CITAS = 'activas';
+
+function cambiarVistaCitas(v){
+  VISTA_CITAS = v;
+  loadCitas();
+}
+
+function citaInicio(c){
+  const [y, m, d] = String(c.fechaISO || '').split('-').map(Number);
+  const [hh, mm] = String(c.horaISO || '0:00').split(':').map(Number);
+  return new Date(y || 1970, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+}
+
+function htmlCitasAgrupadas(lista){
+  const hoyISO = isoLocal(new Date());
+  const grupos = [], idx = {};
+  lista.forEach(c => {
+    if (!(c.fechaISO in idx)){ idx[c.fechaISO] = grupos.length; grupos.push({ iso:c.fechaISO, fecha:c.fecha, items:[] }); }
+    grupos[idx[c.fechaISO]].items.push(c);
+  });
+  return grupos.map(g => `<div style="margin-bottom:14px;">
+      <p style="font-size:12px;font-weight:700;color:var(--charcoal);margin:0 0 8px;letter-spacing:.02em;display:flex;align-items:center;gap:6px;"><i class="ti ti-calendar" style="font-size:14px;color:var(--gold-dark);"></i>${g.iso === hoyISO ? 'HOY · ' : ''}${g.fecha}</p>
+      ${g.items.map(c => htmlCardCita(c)).join('')}
+    </div>`).join('');
+}
+
 async function loadCitas(){
-  const cont=document.getElementById('lista-citas');
-  cont.innerHTML='<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando citas...</p>';
-  let citas=[];
-  try { citas=await Sheets.getCitas(); }
-  catch(e){ cont.innerHTML='<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar citas.</p>'; return; }
+  const cont = document.getElementById('lista-citas');
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando citas...</p>';
+  let citas = [];
+  try { citas = await Sheets.getCitas(); }
+  catch(e){ cont.innerHTML = '<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar citas.</p>'; return; }
   CITAS_CACHE = citas;
   await poblarFiltroProfesionales();
 
-  const hoy=new Date(); hoy.setHours(0,0,0,0);
-  const limite=new Date(hoy); limite.setDate(limite.getDate()+7);
+  const finOn = moduloDisponible('FINANZAS');
+  if (!finOn) VISTA_CITAS = 'activas';
 
-  // Filtrar hoy + próximos 7 días
-  const filtradas=citas.map(c=>({...c,_fecha:parseFechaCita(c.fecha)}))
-    .filter(c=>c._fecha && c._fecha>=hoy && c._fecha<=limite)
-    .filter(c=>!FILTRO_CITAS_PROF || c.empleadoId===FILTRO_CITAS_PROF)
-    .sort((a,b)=>{
-      if(a._fecha.getTime()!==b._fecha.getTime()) return a._fecha-b._fecha;
-      return horaAMin(a.hora)-horaAMin(b.hora);
-    });
+  const ahora = new Date();
+  const hoyISO = isoLocal(ahora);
+  const hace90 = new Date(ahora); hace90.setDate(hace90.getDate() - 90);
 
-  // Citas pasadas sin completar (solo con Finanzas): se completan para registrar el cobro
-  const haceUnMes=new Date(hoy); haceUnMes.setDate(haceUnMes.getDate()-30);
-  const porCompletar=moduloDisponible('FINANZAS')
-    ? citas.map(c=>({...c,_fecha:parseFechaCita(c.fecha)}))
-        .filter(c=>c._fecha && c._fecha<hoy && c._fecha>=haceUnMes && !c.completadaEn)
-        .filter(c=>!FILTRO_CITAS_PROF || c.empleadoId===FILTRO_CITAS_PROF)
-        .sort((a,b)=>(b._fecha-a._fecha) || (horaAMin(b.hora)-horaAMin(a.hora)))
+  const base = citas
+    .filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF)
+    .map(c => ({ ...c, _ini: citaInicio(c) }));
+
+  // Activas: vigentes (aún no han pasado). Sin el módulo Finanzas se cuenta desde el inicio del día de hoy.
+  const activas = base.filter(c => !c.completadaEn && (finOn ? c._ini >= ahora : c.fechaISO >= hoyISO))
+    .sort((a,b) => a._ini - b._ini);
+  const porCompletar = finOn
+    ? base.filter(c => !c.completadaEn && c._ini < ahora && c._ini >= hace90).sort((a,b) => b._ini - a._ini)
     : [];
-  const msgSinProximas='<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">'+(FILTRO_CITAS_PROF?'No hay citas de este profesional en los próximos 7 días.':'No hay citas en los próximos 7 días.')+'</p>';
+  const completadas = finOn
+    ? base.filter(c => c.completadaEn && c._ini >= hace90).sort((a,b) => b._ini - a._ini)
+    : [];
 
-  if(filtradas.length===0 && porCompletar.length===0){
-    cont.innerHTML=msgSinProximas;
-    return;
+  const vistas = [{ k:'activas', t:'Activas', n:activas.length }];
+  if (finOn){
+    vistas.push({ k:'porcompletar', t:'Por completar', n:porCompletar.length });
+    vistas.push({ k:'completadas', t:'Completadas', n:completadas.length });
   }
+  document.getElementById('citas-vistas').innerHTML = vistas.map(v =>
+    `<div class="cat-pill${VISTA_CITAS === v.k ? ' sel' : ''}" onclick="cambiarVistaCitas('${v.k}')">${v.t} <span style="opacity:.65;margin-left:2px;">${v.n}</span></div>`).join('');
 
-  // Agrupar por fecha
-  const grupos={};
-  filtradas.forEach(c=>{
-    const key=c.fecha;
-    if(!grupos[key]) grupos[key]=[];
-    grupos[key].push(c);
-  });
+  const vacio = t => `<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">${t}${FILTRO_CITAS_PROF ? ' de este profesional' : ''}.</p>`;
+  const nota = t => `<p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.5;">${t}</p>`;
 
-  let html='';
-  if(porCompletar.length){
-    html+=`<div style="margin-bottom:18px;">
-      <p style="font-size:12px;font-weight:700;color:#B08900;margin:0 0 4px;letter-spacing:.02em;display:flex;align-items:center;gap:6px;"><i class="ti ti-alert-circle" style="font-size:14px;"></i>POR COMPLETAR · ${porCompletar.length}</p>
-      <p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 8px;line-height:1.5;">Citas pasadas: complétalas para registrar el cobro en Finanzas.</p>
-      ${porCompletar.map(c=>`<p style="font-size:11px;font-weight:700;color:var(--gold-dark);margin:0 0 4px;">${c.fecha}</p>`+htmlCardCita(c)).join('')}
-    </div>`;
+  if (VISTA_CITAS === 'porcompletar'){
+    cont.innerHTML = porCompletar.length
+      ? nota('Citas que ya pasaron: complétalas para registrar el cobro en Finanzas.') + htmlCitasAgrupadas(porCompletar)
+      : vacio('No hay citas por completar');
+  } else if (VISTA_CITAS === 'completadas'){
+    cont.innerHTML = completadas.length
+      ? nota('Citas ya cobradas (últimos 90 días). Abre el detalle para ver el desglose y los cobros.') + htmlCitasAgrupadas(completadas)
+      : vacio('Todavía no hay citas completadas');
+  } else {
+    cont.innerHTML = activas.length ? htmlCitasAgrupadas(activas) : vacio('No hay citas vigentes');
   }
-  if(filtradas.length===0) html+=msgSinProximas;
-  const PALETA_CAT = {
-    'VIP': {bg:'#F3EDFB', fg:'#7C4DA0'},
-    'Básicos': {bg:'#FBF0E4', fg:'#B8935A'},
-    'Tratamientos': {bg:'#E9F3ED', fg:'#4A9D6E'},
-    'Alisados': {bg:'#EEF1FB', fg:'#5C6FBE'},
-    'Color': {bg:'#FBEDEE', fg:'#C2695A'},
-    'Extensiones': {bg:'#FBF6E4', fg:'#B8935A'}
-  };
-  function inicialesNombre(n){
-    return (n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase();
-  }
-  Object.keys(grupos).forEach(fecha=>{
-    const esHoy=grupos[fecha][0]._fecha.getTime()===hoy.getTime();
-    html+=`<div style="margin-bottom:14px;">
-      <p style="font-size:12px;font-weight:700;color:var(--charcoal);margin:0 0 8px;letter-spacing:.02em;display:flex;align-items:center;gap:6px;"><i class="ti ti-calendar" style="font-size:14px;color:var(--gold-dark);"></i>${esHoy?'HOY · ':''}${fecha}</p>`;
-    grupos[fecha].forEach(c=>{ html+=htmlCardCita(c); });
-    html+=`</div>`;
-  });
-  cont.innerHTML=html;
 }
 
 // ===== Funciones auxiliares de calendario (copiadas de index.html) =====
@@ -5159,6 +5179,20 @@ async function guardarAgregarCita(){
   loadCitas();
   if (cobrar && typeof FIN_VISTA !== 'undefined' && elFin('fin-contenido') && elFin('finanzas-activo').style.display === 'block') loadFinanzas();
 }
+
+
+// Al volver a esta pestaña del navegador, se refresca la sección que estás viendo
+// (por ejemplo, después de reservar desde el sitio público en otra pestaña).
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const activa = document.querySelector('.adm-tab.active');
+  const tab = activa ? activa.id.replace('tab-', '') : null;
+  try {
+    if (tab === 'certificados' && moduloDisponible('CERTIFICADOS')) loadCertificados();
+    else if (tab === 'citas') loadCitas();
+    else if (tab === 'finanzas' && moduloDisponible('FINANZAS')) loadFinanzas();
+  } catch(e){ console.error(e); }
+});
 
 // El arranque ahora ocurre en verificarSesionInicial() / hacerLogin(), al inicio del archivo
 </script>
