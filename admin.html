@@ -1522,7 +1522,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=25"></script>
+<script src="sheets.js?v=26"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -4916,6 +4916,17 @@ async function abrirCompletarCita(id){
   extrasIniciar('fc-extras', 'fcRecalcular');
   fcRecalcular(true);
   elFin('ov-fin-completar').classList.add('open');
+
+  // Certificado que el cliente validó al reservar (precio no fijo): se propone aplicarlo ahora.
+  // Si no corresponde (por ejemplo, no calificó para el servicio), se borra el código y queda intacto.
+  if (c.certificadoCodigo && !(Number(c.certificadoMonto) > 0) && elFin('fc-cert')){
+    elFin('fc-cert').value = c.certificadoCodigo;
+    await fcAplicarCertificado();
+    const msgCert = elFin('fc-cert-msg');
+    if (msgCert && COMPLETANDO && COMPLETANDO.certExtra){
+      msgCert.textContent += ' El cliente lo validó al reservar. Si no aplica, borra el código y queda intacto.';
+    }
+  }
 }
 
 async function fcAplicarCertificado(){
@@ -5082,6 +5093,7 @@ function chipsPagoCita(c){
   const out = [];
   if (r.pct > 0) out.push(chip('Cupón ' + r.pct + '%', '#FBEDEE', '#C2695A'));
   if (r.cert > 0) out.push(chip('Certificado −' + fmtDinero(r.cert), '#E9F6EF', '#159A61'));
+  else if (c.certificadoCodigo && !c.completadaEn) out.push(chip('Certificado por aplicar', '#F3EDFB', '#7C4DA0'));
   if (r.abono > 0) out.push(chip('Abono ' + fmtDinero(r.abono) + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
   if (r.excedente > 0) out.push(chip('Saldo a favor ' + fmtDinero(r.excedente), '#FBF6E4', '#B08900'));
   if (c.completadaEn) out.push(chip('Cobrada ' + fmtDinero(c.precioCobrado), '#E9F6EF', '#159A61'));
@@ -5170,6 +5182,11 @@ async function abrirDetalleCita(id){
   if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc));
   if (r.cert > 0) html += '<div id="cd-cert-fila">' + fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert)) + '</div>' +
     '<div id="cd-cert-saldo"></div>';
+  // Certificado validado al reservar pero todavía sin descontar (precio no fijo)
+  if (!(r.cert > 0) && c.certificadoCodigo){
+    html += fila('Certificado por aplicar (' + escCat(c.certificadoCodigo) + ')', c.completadaEn ? 'No se aplicó' : 'Sin descontar');
+    if (!c.completadaEn) html += `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:6px 0 0;">Lo validó el cliente al reservar. Como el precio no es fijo, se descuenta al completar la cita, según el precio final.</p>`;
+  }
   if (r.abono > 0){
     html += fila('Abono pagado (' + (r.descontable ? 'descontable' : 'no reembolsable') + ')' + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), fmtDinero(r.abono));
     if (c.comprobante) html += fila('Comprobante del abono', escCat(c.comprobante));
@@ -5581,13 +5598,17 @@ function acMontos(){
   const cobrar = !!(elFin('ac-completar').checked && moduloDisponible('FINANZAS'));
   const precioIngresado = Math.round((parseFloat(elFin('ac-precio').value) || 0)*100)/100;
   const precio = cobrar ? precioIngresado : ((AC.svc && AC.svc.price > 0) ? AC.svc.price : 0);
+  // Precio no fijo ("desde…", "consultar"): si solo se agenda (sin cobrar ahora), el certificado se valida
+  // pero no se descuenta; se aplica al completar la cita con el precio final.
+  const noFijo = !!(AC.svc && (AC.svc.price <= 0 || (AC.svc.precioTexto && String(AC.svc.precioTexto).trim())));
   let certUsado = 0;
   if (AC.cert){
-    if (precio > 0) certUsado = Math.min(AC.cert.saldoDisponible, precio);
-    else if (!cobrar && AC.svc) certUsado = AC.cert.saldoDisponible; // servicio "a consultar": se aplica el saldo, como en la agenda pública
+    if (cobrar) certUsado = precio > 0 ? Math.min(AC.cert.saldoDisponible, precio) : 0;
+    else if (!noFijo && precio > 0) certUsado = Math.min(AC.cert.saldoDisponible, precio);
   }
+  const certPorAplicar = !!AC.cert && !cobrar && noFijo;
   const porCobrar = Math.max(0, Math.round(((precio > 0 ? precio : 0) - certUsado)*100)/100);
-  return { cobrar, precio, certUsado, porCobrar };
+  return { cobrar, precio, certUsado, certPorAplicar, noFijo, porCobrar };
 }
 
 function acRecalcularCobro(){
@@ -5642,7 +5663,9 @@ async function acAplicarCertificado(){
     msg.textContent = (r.cert.unSoloUso
         ? '✓ Certificado de cortesía: ' + fmtDinero(r.cert.saldoDisponible) + '. Es de un solo uso: se consume completo en esta cita.'
         : '✓ Certificado válido: ' + fmtDinero(r.cert.saldoDisponible) + ' disponibles.') +
-      (m.certUsado > 0 ? ' Se aplicarán ' + fmtDinero(m.certUsado) + ' a esta cita.' : ' Se aplicará al indicar el precio del servicio.');
+      (m.certPorAplicar
+        ? ' Como el precio del servicio no es fijo, no se descuenta ahora: se aplicará al completar la cita con el precio final.'
+        : (m.certUsado > 0 ? ' Se aplicarán ' + fmtDinero(m.certUsado) + ' a esta cita.' : ' Se aplicará al indicar el precio del servicio.'));
   } else {
     AC.cert = null;
     msg.style.color = '#c0392b'; msg.textContent = r.msg;
@@ -5712,7 +5735,7 @@ async function guardarAgregarCita(){
       comprobante: 'Cita en el local', abonoMonto: 0, abonoTipo: '', metodoPago: '',
       cuponUsado: '', descuentoCupon: 0,
       precioFinal: Math.max(0, precioConocido - certUsado),
-      certificadoCodigo: certUsado > 0 ? AC.cert.codigo : null,
+      certificadoCodigo: (certUsado > 0 || M.certPorAplicar) ? AC.cert.codigo : null,
       certificadoMonto: certUsado > 0 ? certUsado : null,
       certificadoSaldoRestante: certUsado > 0 ? saldoTrasCert(AC.cert, certUsado) : null,
       citaId: 'cita-' + Date.now(), empleadoId
