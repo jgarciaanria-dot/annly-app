@@ -473,6 +473,121 @@ img{max-width:100%;}
 .plan-card.premium{border:1.5px solid #CDB6EE;box-shadow:0 12px 30px -18px rgba(124,58,237,.28);}
 @media(max-width:1050px){.plan-modules{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:780px){.plan-modules{grid-template-columns:1fr;}}
+
+/* ===== FINANZAS — TARJETAS RESUMEN ===== */
+.fin-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;
+  margin-bottom:1rem;
+}
+
+.fin-summary-card{
+  border-radius:14px;
+  padding:14px;
+  border:1px solid #E8E5EC;
+  box-shadow:0 2px 8px rgba(45,32,75,.035);
+  color:#111111;
+  transition:
+    transform .24s ease,
+    box-shadow .24s ease,
+    border-color .24s ease,
+    background .24s ease;
+  cursor:default;
+}
+
+.fin-summary-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 26px rgba(45,32,75,.10);
+}
+
+.fin-summary-card.income{
+  background:linear-gradient(135deg,#F0FFF6 0%,#FFFFFF 78%);
+  border-color:#CBEBD8;
+}
+
+.fin-summary-card.income:hover{
+  background:linear-gradient(135deg,#E5FAEE 0%,#FFFFFF 78%);
+  border-color:#91D6AA;
+}
+
+.fin-summary-card.expense{
+  background:linear-gradient(135deg,#FFF2F2 0%,#FFFFFF 78%);
+  border-color:#F0D0D0;
+}
+
+.fin-summary-card.expense:hover{
+  background:linear-gradient(135deg,#FFE7E7 0%,#FFFFFF 78%);
+  border-color:#E5A3A3;
+}
+
+.fin-summary-card.previous{
+  background:linear-gradient(135deg,#F8F8F8 0%,#FFFFFF 78%);
+  border-color:#E4E4E4;
+}
+
+.fin-summary-card.previous:hover{
+  background:linear-gradient(135deg,#F2F2F2 0%,#FFFFFF 78%);
+  border-color:#D4D4D4;
+}
+
+.fin-summary-card.certificates{
+  background:linear-gradient(135deg,#FAF5FF 0%,#FFFFFF 78%);
+  border-color:#E5D7F5;
+}
+
+.fin-summary-card.certificates:hover{
+  background:linear-gradient(135deg,#F4E9FF 0%,#FFFFFF 78%);
+  border-color:#CDB1EA;
+}
+
+/* Todo el texto de las tarjetas en negro */
+.fin-summary-card,
+.fin-summary-card *,
+.fin-summary-card .fin-card-title,
+.fin-summary-card .fin-card-value,
+.fin-summary-card .fin-card-note{
+  color:#111111 !important;
+}
+
+.fin-summary-card .fin-card-value{
+  font-size:21px;
+  font-weight:800;
+  margin-top:5px;
+  font-variant-numeric:tabular-nums;
+}
+
+.fin-summary-card .fin-card-title{
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  font-weight:700;
+}
+
+.fin-summary-card .fin-card-note{
+  font-size:10.5px;
+  margin-top:4px;
+  line-height:1.4;
+}
+
+.fin-summary-card .fin-card-icon{
+  font-size:19px;
+  vertical-align:-3px;
+  margin-right:4px;
+}
+
+@media(max-width:600px){
+  .fin-summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:420px){
+  .fin-summary-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -4656,21 +4771,32 @@ function animarNumerosFin(raiz){
 
 // Tarjeta "Frente al periodo anterior": cuánto cambiaron los ingresos respecto al periodo de la misma duración justo antes
 function tarjetaComparacion(ingresos){
-  const caja = (borde, cuerpo) => `<div style="background:#FAFAF8;border:0.5px solid ${borde};border-radius:12px;padding:14px;">
-      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Frente al periodo anterior</div>${cuerpo}</div>`;
-  const nota = t => `<div style="font-size:10.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;">${t}</div>`;
+  const caja = (cuerpo) => `<div class="fin-summary-card previous">
+      ${cuerpo}</div>`;
+  const nota = t => `<div class="fin-card-note">${t}</div>`;
   const p = FIN.previo;
-  if (!p) return caja('#E4EBE4', `<div style="font-size:21px;font-weight:800;color:var(--ink-soft);margin-top:5px;">—</div>${nota('Todavía no hay con qué comparar este periodo.')}`);
-  const rango = fechaCortaFin(p.desde) + ' al ' + fechaCortaFin(p.hasta);
-  if (!(p.ingresos > 0)){
-    return caja('#E4EBE4', `<div style="font-size:21px;font-weight:800;color:var(--ink-soft);margin-top:5px;">—</div>${nota('Ingresos ' + fmtDinero(ingresos) + '<br>El periodo anterior (' + rango + ') no tuvo ingresos.')}`);
+
+  if (!p) {
+    return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
+      <div class="fin-card-value">—</div>
+      ${nota('Todavía no hay con qué comparar este periodo.')}`);
   }
+
+  const rango = fechaCortaFin(p.desde) + ' al ' + fechaCortaFin(p.hasta);
+
+  if (!(p.ingresos > 0)){
+    return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
+      <div class="fin-card-value">—</div>
+      ${nota('Ingresos ' + fmtDinero(ingresos) + '<br>El periodo anterior (' + rango + ') no tuvo ingresos.')}`);
+  }
+
   const pct = Math.max(-999, Math.min(999, Math.round((ingresos - p.ingresos) / p.ingresos * 100)));
-  const color = pct > 0 ? '#159A61' : (pct < 0 ? COLOR_EGRESO : 'var(--ink-soft)');
   const icono = pct > 0 ? 'ti-trending-up' : (pct < 0 ? 'ti-trending-down' : 'ti-minus');
   const texto = (pct > 0 ? '+' : (pct < 0 ? '−' : '')) + Math.abs(pct) + '%';
-  return caja(pct === 0 ? '#E4EBE4' : color, `<div style="font-size:21px;font-weight:800;color:${color};margin-top:5px;font-variant-numeric:tabular-nums;"><i class="ti ${icono}" style="font-size:19px;vertical-align:-3px;margin-right:4px;" aria-hidden="true"></i><span data-pct="${pct}">${texto}</span></div>` +
-    nota('Ingresos ' + fmtDinero(ingresos) + '<br>antes ' + fmtDinero(p.ingresos) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior')));
+
+  return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
+    <div class="fin-card-value"><i class="ti ${icono} fin-card-icon" aria-hidden="true"></i><span data-pct="${pct}">${texto}</span></div>
+    ${nota('Ingresos ' + fmtDinero(ingresos) + '<br>antes ' + fmtDinero(p.ingresos) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
 }
 
 // ---------- Resumen ----------
@@ -4688,11 +4814,11 @@ function htmlResumenFin(){
   const porMetodo = {};
   [...FIN.pagos, ...FIN.pagosCert].forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
 
-  const kpi = (titulo, valor, color, nota, numero) => `
-    <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:12px;padding:14px;">
-      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">${titulo}</div>
-      <div ${numero !== undefined ? `data-num="${numero}" ` : ''}style="font-size:21px;font-weight:800;color:${color};margin-top:5px;font-variant-numeric:tabular-nums;">${valor}</div>
-      ${nota ? `<div style="font-size:10.5px;color:var(--ink-soft);margin-top:4px;line-height:1.4;">${nota}</div>` : ''}
+  const kpi = (titulo, valor, color, nota, numero, clase='') => `
+    <div class="fin-summary-card ${clase}">
+      <div class="fin-card-title">${titulo}</div>
+      <div ${numero !== undefined ? `data-num="${numero}" ` : ''}class="fin-card-value">${valor}</div>
+      ${nota ? `<div class="fin-card-note">${nota}</div>` : ''}
     </div>`;
 
   const barra = (etiqueta, monto, total, color, detalle) => {
@@ -4716,11 +4842,11 @@ function htmlResumenFin(){
     : '';
 
   return `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem;">
-      ${kpi('Ingreso real', fmtDinero(resultado), resultado >= 0 ? '#159A61' : COLOR_EGRESO, 'Ingresos ' + fmtDinero(ingresos) + '<br>menos gastos ' + fmtDinero(gastos), resultado)}
-      ${kpi('Gastos', fmtDinero(gastos), COLOR_EGRESO, 'Egresos del periodo', gastos)}
+    <div class="fin-summary-grid">
+      ${kpi('Ingreso real', fmtDinero(resultado), '#111111', 'Ingresos ' + fmtDinero(ingresos) + '<br>menos gastos ' + fmtDinero(gastos), resultado, 'income')}
+      ${kpi('Gastos', fmtDinero(gastos), '#111111', 'Egresos del periodo', gastos, 'expense')}
       ${tarjetaComparacion(ingresos)}
-      ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#7C3AED', 'Servicios que aún debes a clientes. El dinero ya contó como ingreso al venderse.', FIN.certPorCanjear)}
+      ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#111111', 'Servicios que aún debes a clientes. El dinero ya contó como ingreso al venderse.', FIN.certPorCanjear, 'certificates')}
     </div>
     ${vacio}
     <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Ingresos por origen</span></div>
