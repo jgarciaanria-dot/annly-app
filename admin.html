@@ -1667,6 +1667,285 @@ img{max-width:100%;}
   margin-bottom:8px;
 }
 
+
+/* =========================================================
+   MODALES PRINCIPALES — COMPACTOS Y CON SCROLL INTERNO
+   ========================================================= */
+.annly-modal{
+  max-height:calc(100vh - 28px);
+  display:flex !important;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.annly-modal .annly-modal-hdr{
+  flex:0 0 auto;
+  padding:14px 17px 12px;
+  min-height:62px;
+  box-sizing:border-box;
+}
+
+.annly-modal-title-wrap{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+.annly-modal-icon{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#EEE3FF;
+  color:#7C3AED;
+  flex-shrink:0;
+}
+
+.annly-modal-icon i{font-size:18px;}
+
+.annly-modal .modal-title{
+  color:#17172B;
+  font-size:17px;
+  font-weight:800;
+  line-height:1.1;
+}
+
+.annly-modal-subtitle{
+  color:#77758A;
+  font-size:10px;
+  margin-top:3px;
+}
+
+.annly-modal-close{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:#F7F5F8;
+  color:#77758A;
+  transition:all .18s ease;
+}
+.annly-modal-close:hover{
+  background:#FDEAF3;
+  color:#E83E93;
+  transform:rotate(90deg);
+}
+
+.annly-modal-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:12px 17px 10px !important;
+  scrollbar-width:thin;
+  scrollbar-color:#DCCDEB transparent;
+}
+.annly-modal-body::-webkit-scrollbar{width:6px;}
+.annly-modal-body::-webkit-scrollbar-track{background:transparent;}
+.annly-modal-body::-webkit-scrollbar-thumb{background:#DCCDEB;border-radius:99px;}
+
+.annly-modal-notice{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:8px 9px;
+  margin-bottom:10px;
+  border:1px solid #CFE9D9;
+  border-radius:10px;
+  background:linear-gradient(135deg,#F1FFF6,#fff);
+}
+.annly-modal-notice.neutral{
+  border-color:#E3DDED;
+  background:linear-gradient(135deg,#FAF8FC,#fff);
+}
+.annly-notice-icon{
+  width:27px;height:27px;border-radius:8px;
+  background:#DDF6E9;color:#159A61;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.annly-modal-notice.neutral .annly-notice-icon{
+  background:#EEE3FF;color:#7C3AED;
+}
+.annly-notice-title{font-size:10px;font-weight:800;color:#159A61;}
+.annly-modal-notice.neutral .annly-notice-title{color:#7C3AED;}
+.annly-notice-text{font-size:9.5px;line-height:1.35;color:#5D5965;margin-top:2px;}
+
+.annly-modal-section{
+  margin:10px 0 0;
+  padding-top:9px;
+  border-top:1px solid #F0ECF4;
+}
+.annly-modal-section:first-of-type{border-top:0;padding-top:0;}
+.annly-modal-section-head{
+  display:flex;align-items:center;gap:7px;margin-bottom:7px;
+}
+.annly-section-icon{
+  width:23px;height:23px;border-radius:7px;
+  background:#F3EBFC;color:#7C3AED;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;
+}
+.annly-section-title{
+  font-size:10.5px;font-weight:800;color:#17172B;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.annly-section-helper{
+  margin-left:auto;color:#9994A3;font-size:9px;
+}
+.annly-required{color:#E83E93;font-weight:800;}
+.annly-optional{color:#9994A3;font-weight:600;font-size:9px;}
+
+.annly-two-col,.annly-three-col{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.annly-three-col{grid-template-columns:1.5fr .75fr .75fr;}
+
+.annly-field{margin-bottom:7px;}
+.annly-field .flbl{
+  display:block;
+  margin:0 0 3px;
+  color:#5F5A68;
+  font-size:9px;
+  line-height:1.2;
+  font-weight:800;
+  text-transform:none;
+  letter-spacing:.01em;
+}
+.annly-field .fi{
+  min-height:35px;
+  padding:7px 9px;
+  border-radius:9px;
+  font-size:11px;
+}
+.annly-field textarea.fi{min-height:50px;line-height:1.35;}
+
+.annly-type-options{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+}
+.annly-type-options label{
+  display:flex;align-items:center;gap:5px;
+  min-height:35px;
+  padding:5px 7px;
+  border:1px solid #E3D8EE;
+  border-radius:9px;
+  cursor:pointer;
+  color:#3E3948;
+  font-size:10.5px;
+  font-weight:700;
+  background:#fff;
+  transition:.18s ease;
+}
+.annly-type-options label:hover{background:#FBF8FE;border-color:#CDB8E6;}
+.annly-type-options input{accent-color:#7C3AED;}
+.annly-type-options i{color:#7C3AED;font-size:13px;}
+
+.annly-inline-note{
+  margin:0 0 8px;
+  padding:7px 9px;
+  border-radius:9px;
+  background:#FAF8FC;
+  color:#77758A;
+  border:1px solid #E8E2EF;
+  font-size:9.5px;
+  line-height:1.35;
+}
+
+.annly-cobro-box,.annly-charge-box{
+  background:#FAFAF8;
+  border:1px solid #E8E2EA;
+  border-radius:11px;
+  padding:9px 10px;
+  margin-top:9px;
+}
+.annly-cobro-box p,.annly-charge-box p{
+  font-size:9.5px;color:#77758A;line-height:1.35;margin:5px 0 0;
+}
+
+.annly-helper-msg{
+  color:#8A8795;
+  font-size:9.5px;
+  line-height:1.35;
+  margin:4px 0 0;
+}
+.annly-form-msg{
+  min-height:15px;
+  margin:5px 0 0;
+  color:#C2695A;
+  font-size:10px;
+}
+
+.annly-modal-footer{
+  flex:0 0 auto;
+  padding:9px 17px 11px;
+  border-top:1px solid #EEE8F2;
+  background:#fff;
+}
+.annly-primary-action{
+  width:100%;
+  min-height:40px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:800;
+  box-shadow:0 7px 16px rgba(124,58,237,.16);
+  background:linear-gradient(90deg,#7C3AED,#EC3F9B);
+}
+.annly-primary-action:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 20px rgba(124,58,237,.22);
+}
+
+.annly-success-icon{
+  width:52px;height:52px;border-radius:50%;
+  background:#EAF7F0;color:#159A61;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin:4px auto 12px;
+}
+.annly-success-label{font-size:11px;color:#77758A;margin-bottom:5px;}
+.annly-success-code{font-size:24px;font-weight:800;letter-spacing:.04em;color:#272331;margin-bottom:13px;}
+.annly-cert-success p{font-size:10.5px;color:#77758A;line-height:1.45;margin:0 auto 14px;max-width:330px;}
+
+.annly-calendar-nav{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;
+}
+.annly-calendar-nav button{
+  background:#fff;border:1px solid #E5DDED;border-radius:8px;width:30px;height:30px;
+  cursor:pointer;font-size:16px;color:#6D6677;
+}
+.annly-calendar-nav span{
+  font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:#272331;
+}
+.annly-calendar-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
+}
+.annly-hours-title{
+  font-size:9px;font-weight:800;color:#7C3AED;
+  margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;
+}
+.annly-time-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;
+}
+.annly-slot-hint{font-size:9.5px;color:#77758A;line-height:1.35;margin:6px 0 0;}
+.annly-inline-input{display:flex;align-items:center;gap:6px;}
+.annly-small-action{height:35px;padding:0 12px;white-space:nowrap;}
+.annly-check-label{
+  display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#272331;cursor:pointer;
+}
+.annly-check-label input{accent-color:#7C3AED;}
+
+@media(max-width:650px){
+  .annly-modal{max-height:100vh;}
+  .annly-two-col,.annly-three-col{grid-template-columns:1fr;}
+  .annly-type-options{grid-template-columns:1fr 1fr 1fr;}
+  .annly-modal .annly-modal-hdr{padding:12px 14px 10px;}
+  .annly-modal-body{padding:10px 14px 8px !important;}
+  .annly-modal-footer{padding:8px 14px 10px;}
+}
+
 </style>
 </head>
 <body>
@@ -2365,55 +2644,118 @@ img{max-width:100%;}
 
 <!-- MODAL EMITIR CERTIFICADO -->
 <div class="ov" id="ov-modal-certificado">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-title">Emitir certificado</span>
-      <button class="modal-close" onclick="closeModalCertificado()">×</button>
-    </div>
-    <div class="modal-body" id="modal-certificado-form">
-      <div class="fg">
-        <label class="flbl">Tipo</label>
-        <div style="display:flex;gap:8px;">
-          <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
-            <input type="radio" name="cert-tipo" value="venta" checked onchange="certTipoCambio()"/> Venta
-          </label>
-          <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
-            <input type="radio" name="cert-tipo" value="regalo" onchange="certTipoCambio()"/> Regalo
-          </label>
-          <label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;font-size:12.5px;">
-            <input type="radio" name="cert-tipo" value="cortesia" onchange="certTipoCambio()"/> Cortesía
-          </label>
+  <div class="modal annly-modal cert-modal">
+    <div class="modal-hdr annly-modal-hdr">
+      <div class="annly-modal-title-wrap">
+        <div class="annly-modal-icon"><i class="ti ti-gift"></i></div>
+        <div>
+          <div class="modal-title">Emitir certificado</div>
+          <div class="annly-modal-subtitle">Crea y entrega un certificado de regalo</div>
         </div>
       </div>
-      <p id="cert-cortesia-nota" style="display:none;font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:-4px 0 10px;background:var(--bg);border-radius:8px;padding:8px 10px;">Cortesía: el negocio lo regala. No se cobra, no cuenta como ingreso y es de un solo uso: se consume completo en la primera cita, aunque el servicio valga menos. Ese servicio queda sin cobro.</p>
-      <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" id="cert-monto" type="number" min="1" step="0.01" oninput="certMontoCambio()"/></div>
-      <div class="fg"><label class="flbl">Vence el</label><input class="fi" id="cert-vencimiento" type="date"/></div>
-      <div class="fg" id="cert-cobro-wrap" style="display:none;background:#FAFAF8;border:1px solid var(--line);border-radius:12px;padding:12px 14px;">
+      <button class="modal-close annly-modal-close" onclick="closeModalCertificado()">×</button>
+    </div>
+
+    <div class="modal-body annly-modal-body" id="modal-certificado-form">
+      <div class="annly-modal-notice">
+        <div class="annly-notice-icon"><i class="ti ti-cash"></i></div>
+        <div>
+          <div class="annly-notice-title">Ingreso del negocio</div>
+          <div class="annly-notice-text">El certificado se registra como ingreso desde el momento en que se vende.</div>
+        </div>
+      </div>
+
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-adjustments"></i></div>
+          <div class="annly-section-title">Configuración</div>
+        </div>
+
+        <div class="annly-three-col">
+          <div class="fg annly-field">
+            <label class="flbl">Tipo</label>
+            <div class="annly-type-options">
+              <label><input type="radio" name="cert-tipo" value="venta" checked onchange="certTipoCambio()"/><span><i class="ti ti-receipt"></i> Venta</span></label>
+              <label><input type="radio" name="cert-tipo" value="regalo" onchange="certTipoCambio()"/><span><i class="ti ti-gift"></i> Regalo</span></label>
+              <label><input type="radio" name="cert-tipo" value="cortesia" onchange="certTipoCambio()"/><span><i class="ti ti-heart"></i> Cortesía</span></label>
+            </div>
+          </div>
+          <div class="fg annly-field"><label class="flbl">Monto ($)</label><input class="fi" id="cert-monto" type="number" min="1" step="0.01" oninput="certMontoCambio()"/></div>
+          <div class="fg annly-field"><label class="flbl">Vence el</label><input class="fi" id="cert-vencimiento" type="date"/></div>
+        </div>
+
+        <p id="cert-cortesia-nota" class="annly-inline-note" style="display:none;">Cortesía: el negocio lo regala. No se cobra, no cuenta como ingreso y es de un solo uso: se consume completo en la primera cita, aunque el servicio valga menos. Ese servicio queda sin cobro.</p>
+      </div>
+
+      <div class="fg annly-cobro-box" id="cert-cobro-wrap" style="display:none;">
         <div id="cert-cobro-detalle">
           <label class="flbl">¿Cómo pagó?</label>
           <div id="cert-pagos"></div>
-          <p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:8px 0 0;">Se registra como dinero recibido: es ingreso del negocio desde que se vende.</p>
+          <p>Se registra como dinero recibido: es ingreso del negocio desde que se vende.</p>
         </div>
       </div>
-      <div id="cert-comprador-grupo">
-        <div class="fg"><label class="flbl">Nombre de quien compra / regala</label><input class="fi" id="cert-comprador-nombre"/></div>
-        <div class="fg"><label class="flbl">Teléfono de quien compra / regala (opcional)</label><input class="fi" id="cert-comprador-telefono"/></div>
-        <div class="fg"><label class="flbl">Correo de quien compra / regala (opcional — sin correo no se envía confirmación)</label><input class="fi" id="cert-comprador-correo" type="email"/></div>
+
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-user"></i></div>
+          <div class="annly-section-title">Quien compra / regala</div>
+          <span class="annly-section-helper">Datos del comprador</span>
+        </div>
+
+        <div id="cert-comprador-grupo">
+          <div class="annly-two-col">
+            <div class="fg annly-field"><label class="flbl">Nombre <span class="annly-required">*</span></label><input class="fi" id="cert-comprador-nombre"/></div>
+            <div class="fg annly-field"><label class="flbl">Teléfono <span class="annly-optional">Opcional</span></label><input class="fi" id="cert-comprador-telefono"/></div>
+          </div>
+          <div class="fg annly-field"><label class="flbl">Correo <span class="annly-optional">Opcional · necesario para enviar confirmación</span></label><input class="fi" id="cert-comprador-correo" type="email"/></div>
+        </div>
       </div>
-      <div class="fg"><label class="flbl" id="cert-destinatario-lbl">Nombre de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-nombre"/></div>
-      <div class="fg"><label class="flbl">Teléfono de quien lo recibe (opcional)</label><input class="fi" id="cert-destinatario-telefono"/></div>
-      <div class="fg"><label class="flbl">Correo de quien lo recibe (opcional — sin correo no se le envía el regalo)</label><input class="fi" id="cert-destinatario-correo" type="email"/></div>
-      <div class="fg"><label class="flbl">Mensaje para el destinatario (opcional, se muestra en su regalo)</label><textarea class="fi" id="cert-mensaje" rows="2" style="resize:vertical;" placeholder="Disfruta este momento, te lo mereces."></textarea></div>
-      <div class="fg"><label class="flbl">Nota interna (opcional, no la ve el cliente)</label><textarea class="fi" id="cert-nota" rows="2" style="resize:vertical;"></textarea></div>
-      <p id="cert-form-msg" style="font-size:11px;color:#C2695A;min-height:14px;"></p>
-      <button class="btn-save" id="btnGuardarCertificado" onclick="guardarCertificado()"><i class="ti ti-check" style="font-size:17px;"></i> Emitir certificado</button>
+
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-user-heart"></i></div>
+          <div class="annly-section-title">Destinatario</div>
+          <span class="annly-section-helper">Persona que recibe el regalo</span>
+        </div>
+
+        <div class="annly-two-col">
+          <div class="fg annly-field"><label class="flbl" id="cert-destinatario-lbl">Nombre <span class="annly-optional">Opcional</span></label><input class="fi" id="cert-destinatario-nombre"/></div>
+          <div class="fg annly-field"><label class="flbl">Teléfono <span class="annly-optional">Opcional</span></label><input class="fi" id="cert-destinatario-telefono"/></div>
+        </div>
+        <div class="fg annly-field"><label class="flbl">Correo <span class="annly-optional">Opcional · necesario para enviar el regalo</span></label><input class="fi" id="cert-destinatario-correo" type="email"/></div>
+      </div>
+
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-message-heart"></i></div>
+          <div class="annly-section-title">Mensaje para el destinatario</div>
+          <span class="annly-section-helper">Se muestra en el regalo</span>
+        </div>
+        <div class="fg annly-field"><textarea class="fi" id="cert-mensaje" rows="2" placeholder="Disfruta este momento, te lo mereces."></textarea></div>
+      </div>
+
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-lock"></i></div>
+          <div class="annly-section-title">Nota interna</div>
+          <span class="annly-section-helper">Solo visible para el negocio</span>
+        </div>
+        <div class="fg annly-field"><textarea class="fi" id="cert-nota" rows="2"></textarea></div>
+      </div>
+
+      <p id="cert-form-msg" class="annly-form-msg"></p>
     </div>
-    <div class="modal-body" id="modal-certificado-listo" style="display:none;text-align:center;">
-      <div style="width:52px;height:52px;border-radius:50%;background:#EAF7F0;color:#159A61;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 14px;"><i class="ti ti-circle-check-filled"></i></div>
-      <div style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">Código generado</div>
-      <div id="cert-codigo-generado" style="font-size:24px;font-weight:800;letter-spacing:.04em;color:var(--charcoal2);margin-bottom:16px;"></div>
-      <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-bottom:16px;">Comparte este código con tu cliente — lo puede aplicar al reservar su cita en el sitio público.</p>
-      <button class="btn-save" onclick="closeModalCertificado()"><i class="ti ti-check"></i> Listo</button>
+
+    <div class="annly-modal-footer">
+      <button class="btn-save annly-primary-action" id="btnGuardarCertificado" onclick="guardarCertificado()"><i class="ti ti-gift"></i> Emitir certificado</button>
+    </div>
+
+    <div class="modal-body annly-modal-body annly-cert-success" id="modal-certificado-listo" style="display:none;text-align:center;">
+      <div class="annly-success-icon"><i class="ti ti-circle-check-filled"></i></div>
+      <div class="annly-success-label">Código generado</div>
+      <div id="cert-codigo-generado" class="annly-success-code"></div>
+      <p>Comparte este código con tu cliente — lo puede aplicar al reservar su cita en el sitio público.</p>
+      <button class="btn-save annly-primary-action" onclick="closeModalCertificado()"><i class="ti ti-check"></i> Listo</button>
     </div>
   </div>
 </div>
@@ -2437,73 +2779,119 @@ img{max-width:100%;}
 
 <!-- MODAL AGREGAR CITA (cliente que llega al local o reserva por teléfono) -->
 <div class="ov" id="ov-agregar-cita">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-title">Agregar cita</span>
-      <button class="modal-close" onclick="cerrarAgregarCita()">×</button>
+  <div class="modal annly-modal cita-modal">
+    <div class="modal-hdr annly-modal-hdr">
+      <div class="annly-modal-title-wrap">
+        <div class="annly-modal-icon"><i class="ti ti-calendar-plus"></i></div>
+        <div>
+          <div class="modal-title">Agregar cita</div>
+          <div class="annly-modal-subtitle">Registra una reserva directamente desde el panel</div>
+        </div>
+      </div>
+      <button class="modal-close annly-modal-close" onclick="cerrarAgregarCita()">×</button>
     </div>
-    <div class="modal-body">
-      <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;">Para clientes que llegan al local o reservan por teléfono. Ocupa el horario igual que una reserva de la agenda pública.</p>
-      <div class="fg"><label class="flbl">Nombre del cliente</label>
-        <input class="fi" id="ac-nombre" list="ac-clientes-dl" oninput="acClienteCambio()" autocomplete="off"/>
-        <datalist id="ac-clientes-dl"></datalist>
-      </div>
-      <div class="frow">
-        <div class="fg"><label class="flbl">WhatsApp (opcional)</label><input class="fi" id="ac-tel"/></div>
-        <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="ac-correo"/></div>
-      </div>
-      <div class="fg"><label class="flbl">Servicio</label><select class="fi" id="ac-servicio" onchange="acServicioCambio()"></select></div>
-      <div class="fg" id="ac-prof-wrap" style="display:none;"><label class="flbl">Profesional (para su comisión)</label><select class="fi" id="ac-prof" onchange="acProfesionalCambio()"></select></div>
 
-      <div class="fg">
-        <label class="flbl">Fecha y hora</label>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <button type="button" onclick="acCambiarMes(-1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">‹</button>
-          <span id="acCalMes" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;"></span>
-          <button type="button" onclick="acCambiarMes(1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">›</button>
-        </div>
-        <div id="acCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
-        <div id="ac-hora-sec" style="display:none;margin-top:1rem;">
-          <p style="font-size:10px;font-weight:500;color:var(--gold-dark);margin-bottom:6px;letter-spacing:.1em;text-transform:uppercase;">Horas disponibles</p>
-          <div id="acTimeGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;"></div>
-          <p id="ac-slot-hint" style="font-size:11.5px;color:var(--gold-dark);line-height:1.5;margin:8px 0 0;"></p>
+    <div class="modal-body annly-modal-body" id="agregar-cita-body">
+      <div class="annly-modal-notice neutral">
+        <div class="annly-notice-icon"><i class="ti ti-info-circle"></i></div>
+        <div>
+          <div class="annly-notice-title">Reserva desde el negocio</div>
+          <div class="annly-notice-text">Ocupa el horario igual que una reserva de la agenda pública.</div>
         </div>
       </div>
 
-      <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="ac-nota"/></div>
-
-      <div class="fg" id="ac-cert-wrap" style="display:none;">
-        <label class="flbl">¿Tiene un certificado de regalo?</label>
-        <div style="display:flex;gap:8px;">
-          <input class="fi" id="ac-cert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;"/>
-          <button type="button" class="btn-add" onclick="acAplicarCertificado()">Aplicar</button>
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-user"></i></div>
+          <div class="annly-section-title">Cliente</div>
         </div>
-        <p id="ac-cert-msg" style="font-size:11.5px;margin-top:6px;min-height:14px;"></p>
+
+        <div class="fg annly-field">
+          <label class="flbl">Nombre del cliente <span class="annly-required">*</span></label>
+          <input class="fi" id="ac-nombre" list="ac-clientes-dl" oninput="acClienteCambio()" autocomplete="off"/>
+          <datalist id="ac-clientes-dl"></datalist>
+        </div>
+
+        <div class="annly-two-col">
+          <div class="fg annly-field"><label class="flbl">WhatsApp <span class="annly-optional">Opcional</span></label><input class="fi" id="ac-tel"/></div>
+          <div class="fg annly-field"><label class="flbl">Correo <span class="annly-optional">Opcional</span></label><input class="fi" id="ac-correo"/></div>
+        </div>
       </div>
 
-      <div id="ac-cobro-wrap" style="display:none;background:#FAFAF8;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;">
-          <input type="checkbox" id="ac-completar" checked onchange="acToggleCompletar()"/> Cobrar y marcar como completada ahora
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-sparkles"></i></div>
+          <div class="annly-section-title">Servicio</div>
+        </div>
+
+        <div class="fg annly-field"><label class="flbl">Servicio <span class="annly-required">*</span></label><select class="fi" id="ac-servicio" onchange="acServicioCambio()"></select></div>
+        <div class="fg annly-field" id="ac-prof-wrap" style="display:none;"><label class="flbl">Profesional <span class="annly-optional">Para su comisión</span></label><select class="fi" id="ac-prof" onchange="acProfesionalCambio()"></select></div>
+      </div>
+
+      <div class="annly-modal-section">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-calendar-event"></i></div>
+          <div class="annly-section-title">Fecha y hora</div>
+        </div>
+
+        <div class="annly-calendar-nav">
+          <button type="button" onclick="acCambiarMes(-1)">‹</button>
+          <span id="acCalMes"></span>
+          <button type="button" onclick="acCambiarMes(1)">›</button>
+        </div>
+
+        <div id="acCalGrid" class="annly-calendar-grid"></div>
+
+        <div id="ac-hora-sec" style="display:none;margin-top:10px;">
+          <div class="annly-hours-title">Horas disponibles</div>
+          <div id="acTimeGrid" class="annly-time-grid"></div>
+          <p id="ac-slot-hint" class="annly-slot-hint"></p>
+        </div>
+      </div>
+
+      <div class="annly-modal-section">
+        <div class="fg annly-field"><label class="flbl">Nota <span class="annly-optional">Opcional</span></label><input class="fi" id="ac-nota"/></div>
+      </div>
+
+      <div class="annly-modal-section" id="ac-cert-wrap" style="display:none;">
+        <div class="annly-modal-section-head">
+          <div class="annly-section-icon"><i class="ti ti-gift"></i></div>
+          <div class="annly-section-title">Certificado</div>
+        </div>
+        <div class="fg annly-field">
+          <label class="flbl">¿Tiene un certificado de regalo?</label>
+          <div class="annly-inline-input">
+            <input class="fi" id="ac-cert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;"/>
+            <button type="button" class="btn-add annly-small-action" onclick="acAplicarCertificado()">Aplicar</button>
+          </div>
+          <p id="ac-cert-msg" class="annly-helper-msg"></p>
+        </div>
+      </div>
+
+      <div class="annly-modal-section annly-charge-box" id="ac-cobro-wrap" style="display:none;">
+        <label class="annly-check-label">
+          <input type="checkbox" id="ac-completar" checked onchange="acToggleCompletar()"/>
+          <span>Cobrar y marcar como completada ahora</span>
         </label>
-        <div id="ac-cobro-detalle" style="margin-top:12px;">
-          <div class="fg"><label class="flbl">Precio final del servicio ($)</label>
-            <input class="fi" id="ac-precio" type="number" step="0.01" min="0" oninput="acPrecioCambio()"/>
-          </div>
-          <div class="fg" id="ac-ajuste-wrap" style="display:none;">
-            <label class="flbl" id="ac-ajuste-lbl"></label>
-            <input class="fi" id="ac-ajuste" placeholder="Ej: Tratamiento adicional de espalda"/>
-          </div>
-          <div class="fg"><label class="flbl">Ventas adicionales (opcional)</label>
-            <p style="font-size:11px;color:var(--ink-soft);margin:0 0 6px;line-height:1.5;">Tratamientos, productos u otros que compra en la visita. Se suman al cobro.</p>
+
+        <div id="ac-cobro-detalle" style="margin-top:10px;">
+          <div class="fg annly-field"><label class="flbl">Precio final del servicio ($)</label><input class="fi" id="ac-precio" type="number" step="0.01" min="0" oninput="acPrecioCambio()"/></div>
+          <div class="fg annly-field" id="ac-ajuste-wrap" style="display:none;"><label class="flbl" id="ac-ajuste-lbl"></label><input class="fi" id="ac-ajuste" placeholder="Ej: Tratamiento adicional de espalda"/></div>
+          <div class="fg annly-field">
+            <label class="flbl">Ventas adicionales <span class="annly-optional">Opcional</span></label>
+            <p class="annly-helper-msg" style="margin-top:-2px;">Tratamientos, productos u otros que compra en la visita. Se suman al cobro.</p>
             <div id="ac-extras"></div>
           </div>
-          <div id="ac-desglose" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
-          <div class="fg" style="margin-bottom:0;"><label class="flbl">¿Cómo pagó?</label><div id="ac-pagos"></div></div>
+          <div id="ac-desglose" style="display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:12px;line-height:1.8;"></div>
+          <div class="fg annly-field" style="margin-bottom:0;"><label class="flbl">¿Cómo pagó?</label><div id="ac-pagos"></div></div>
         </div>
       </div>
 
-      <p id="ac-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
-      <button class="btn-save" id="ac-btn" onclick="guardarAgregarCita()"></button>
+      <p id="ac-msg" class="annly-form-msg"></p>
+    </div>
+
+    <div class="annly-modal-footer">
+      <button class="btn-save annly-primary-action" id="ac-btn" onclick="guardarAgregarCita()"></button>
     </div>
   </div>
 </div>
