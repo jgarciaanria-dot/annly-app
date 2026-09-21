@@ -1223,6 +1223,157 @@ img{max-width:100%;}
   border-color:#CDEBDD;
 }
 
+
+/* =========================================================
+   ANNLY — SISTEMA VISUAL UNIFICADO PARA TARJETAS
+   Mismo lenguaje visual en Finanzas, Citas y Certificados
+   ========================================================= */
+
+.annly-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;
+  margin-bottom:1rem;
+}
+
+.annly-kpi-card{
+  position:relative;
+  overflow:hidden;
+  min-height:112px;
+  border:1px solid #E8E5EC;
+  border-radius:16px;
+  padding:15px;
+  background:linear-gradient(135deg,#FAFAFA 0%,#FFFFFF 78%);
+  box-shadow:0 2px 10px rgba(45,32,75,.04);
+  transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease,background .24s ease;
+}
+
+.annly-kpi-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 14px 28px rgba(45,32,75,.10);
+}
+
+.annly-kpi-card::after{
+  content:'';
+  position:absolute;
+  right:8px;
+  bottom:5px;
+  width:58px;
+  height:72px;
+  opacity:.07;
+  pointer-events:none;
+  background:currentColor;
+  clip-path:polygon(0 100%,0 72%,18% 72%,18% 52%,40% 52%,40% 30%,62% 30%,62% 8%,82% 8%,82% 100%);
+}
+
+.annly-kpi-card.green{
+  background:linear-gradient(135deg,#F0FFF6 0%,#FFFFFF 78%);
+  border-color:#CBEBD8;
+  color:#159A61;
+}
+.annly-kpi-card.red{
+  background:linear-gradient(135deg,#FFF2F2 0%,#FFFFFF 78%);
+  border-color:#F0D0D0;
+  color:#E53935;
+}
+.annly-kpi-card.purple{
+  background:linear-gradient(135deg,#FAF5FF 0%,#FFFFFF 78%);
+  border-color:#E4D5F5;
+  color:#7C3AED;
+}
+.annly-kpi-card.gold{
+  background:linear-gradient(135deg,#FFFBEF 0%,#FFFFFF 78%);
+  border-color:#F0E3B7;
+  color:#B08900;
+}
+.annly-kpi-card.neutral{
+  background:linear-gradient(135deg,#F7F9FA 0%,#FFFFFF 78%);
+  border-color:#E0E6EA;
+  color:#475569;
+}
+
+.annly-kpi-card .annly-kpi-title{
+  position:relative;
+  z-index:1;
+  color:#111 !important;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+  font-weight:800;
+  line-height:1.15;
+  max-width:78%;
+}
+
+.annly-kpi-card .annly-kpi-value{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin-top:6px;
+  color:#17172B;
+  font-size:21px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+
+.annly-kpi-card.green .annly-kpi-value{color:#159A61 !important;}
+.annly-kpi-card.red .annly-kpi-value{color:#E53935 !important;}
+.annly-kpi-card.purple .annly-kpi-value{color:#7C3AED !important;}
+.annly-kpi-card.gold .annly-kpi-value{color:#B08900 !important;}
+.annly-kpi-card.neutral .annly-kpi-value{color:#334155 !important;}
+
+.annly-kpi-icon{
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  font-size:17px;
+}
+
+.annly-kpi-card.green .annly-kpi-icon{background:#DDF6E9;color:#159A61;}
+.annly-kpi-card.red .annly-kpi-icon{background:#FDE1E1;color:#E53935;}
+.annly-kpi-card.purple .annly-kpi-icon{background:#EEE3FF;color:#7C3AED;}
+.annly-kpi-card.gold .annly-kpi-icon{background:#FFF1C9;color:#B08900;}
+.annly-kpi-card.neutral .annly-kpi-icon{background:#E8EEF2;color:#64748B;}
+
+.annly-kpi-card .annly-kpi-note{
+  position:relative;
+  z-index:1;
+  margin-top:7px;
+  color:#111 !important;
+  font-size:10.5px;
+  line-height:1.4;
+  max-width:88%;
+}
+
+.annly-kpi-card.compact{
+  min-height:104px;
+  text-align:left;
+}
+
+.annly-kpi-card.compact .annly-kpi-value{
+  font-size:20px;
+}
+
+.annly-kpi-card.cert-pending{
+  background:linear-gradient(135deg,#FAF5FF 0%,#FFFFFF 78%);
+  border-color:#E4D5F5;
+}
+
+.annly-kpi-card.cert-pending .annly-kpi-value{color:#7C3AED !important;}
+
+@media(max-width:700px){
+  .annly-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:430px){
+  .annly-kpi-grid{grid-template-columns:1fr;}
+}
+
 </style>
 </head>
 <body>
@@ -1530,22 +1681,34 @@ img{max-width:100%;}
           <span class="adm-sec-title">Certificados</span>
           <button class="btn-add" onclick="abrirModalCertificado()"><i class="ti ti-plus"></i> Emitir certificado</button>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:1rem;">
-          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
-            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Emitido</div>
-            <div id="cert-stat-emitido" style="font-size:17px;font-weight:800;color:var(--ink);margin-top:4px;">$0</div>
+        <div class="annly-kpi-grid" style="padding:1rem;">
+          <div class="annly-kpi-card neutral compact">
+            <div class="annly-kpi-title">Emitido</div>
+            <div class="annly-kpi-value">
+              <i class="ti ti-gift annly-kpi-icon" aria-hidden="true"></i>
+              <span id="cert-stat-emitido">$0</span>
+            </div>
           </div>
-          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
-            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Canjeado</div>
-            <div id="cert-stat-canjeado" style="font-size:17px;font-weight:800;color:#159A61;margin-top:4px;">$0</div>
+          <div class="annly-kpi-card green compact">
+            <div class="annly-kpi-title">Canjeado</div>
+            <div class="annly-kpi-value">
+              <i class="ti ti-check annly-kpi-icon" aria-hidden="true"></i>
+              <span id="cert-stat-canjeado">$0</span>
+            </div>
           </div>
-          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
-            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Saldo pendiente</div>
-            <div id="cert-stat-pendiente" style="font-size:17px;font-weight:800;color:#7C3AED;margin-top:4px;">$0</div>
+          <div class="annly-kpi-card cert-pending compact">
+            <div class="annly-kpi-title">Saldo pendiente</div>
+            <div class="annly-kpi-value">
+              <i class="ti ti-hourglass annly-kpi-icon" aria-hidden="true"></i>
+              <span id="cert-stat-pendiente">$0</span>
+            </div>
           </div>
-          <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:10px;padding:12px;text-align:center;">
-            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Activos</div>
-            <div id="cert-stat-activos" style="font-size:17px;font-weight:800;color:var(--ink);margin-top:4px;">0</div>
+          <div class="annly-kpi-card neutral compact">
+            <div class="annly-kpi-title">Activos</div>
+            <div class="annly-kpi-value">
+              <i class="ti ti-circle-check annly-kpi-icon" aria-hidden="true"></i>
+              <span id="cert-stat-activos">0</span>
+            </div>
           </div>
         </div>
         <div id="lista-certificados" style="padding:0 1rem 1rem;">
@@ -4076,12 +4239,24 @@ function htmlResumenCitas(base){
     sv.n++; sv.valor += valor; sv.cons += aCons;
   });
 
-  const kpi = (titulo, valor, color, nota) => `
-    <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:12px;padding:14px;">
-      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">${titulo}</div>
-      <div style="font-size:21px;font-weight:800;color:${color};margin-top:5px;">${valor}</div>
-      ${nota ? `<div style="font-size:10.5px;color:var(--ink-soft);margin-top:4px;line-height:1.4;">${nota}</div>` : ''}
+  const kpi = (titulo, valor, color, nota) => {
+    const cfg = {
+      'Citas': ['purple','ti-calendar'],
+      'Horas agendadas': ['neutral','ti-clock'],
+      'Valor de los servicios': ['green','ti-cash'],
+      'Abonos recibidos': ['purple','ti-wallet'],
+      'Pagado con certificado': ['gold','ti-gift'],
+      'Por cobrar en el local': ['red','ti-receipt']
+    }[titulo] || ['neutral','ti-chart-bar'];
+    return `<div class="annly-kpi-card ${cfg[0]}">
+      <div class="annly-kpi-title">${titulo}</div>
+      <div class="annly-kpi-value">
+        <i class="ti ${cfg[1]} annly-kpi-icon" aria-hidden="true"></i>
+        <span>${valor}</span>
+      </div>
+      ${nota ? `<div class="annly-kpi-note">${nota}</div>` : ''}
     </div>`;
+  };
   const fila = (izq, sub, der, subDer) => `
     <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line-soft);">
       <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:var(--ink);">${izq}</div>${sub ? `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${sub}</div>` : ''}</div>
@@ -4107,7 +4282,7 @@ function htmlResumenCitas(base){
   const estados = finOn
     ? `${T.completadas} completada${T.completadas === 1 ? '' : 's'} · ${T.porCompletar} por completar · ${T.proximas} próxima${T.proximas === 1 ? '' : 's'}`
     : `${T.proximas} próxima${T.proximas === 1 ? '' : 's'} · ${T.pasadas} ya pasaron`;
-  const kpis = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem;">
+  const kpis = `<div class="annly-kpi-grid">
     ${kpi('Citas', T.n, 'var(--charcoal)', estados)}
     ${kpi('Horas agendadas', fmtHorasMin(T.min), 'var(--charcoal)')}
     ${kpi('Valor de los servicios', fmtDinero(T.valor), '#159A61', T.aConsultar ? T.aConsultar + ' cita' + (T.aConsultar === 1 ? '' : 's') + ' a consultar, sin valor todavía' : 'Cobradas: precio final. Pendientes: precio de lista menos cupón')}
