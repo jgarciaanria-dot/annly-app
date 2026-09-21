@@ -4946,7 +4946,7 @@ async function abrirCompletarCita(id){
     ${moduloDisponible('CERTIFICADOS') ? `
     <div class="fg"><label class="flbl">¿Paga con un certificado de regalo?</label>
       <div style="display:flex;gap:8px;">
-        <input class="fi" id="fc-cert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;"/>
+        <input class="fi" id="fc-cert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;" oninput="fcCertVacio()"/>
         <button type="button" class="btn-add" onclick="fcAplicarCertificado()">Aplicar</button>
       </div>
       <p id="fc-cert-msg" style="font-size:11.5px;margin-top:6px;min-height:14px;"></p>
@@ -5001,15 +5001,38 @@ async function fcAplicarCertificado(){
   fcRecalcular();
 }
 
+// El motivo se pide cuando el cliente traía un certificado por aplicar y hoy NO se va a descontar nada:
+// porque se quitó el código, porque no alcanza/venció, o porque el precio final ya quedó cubierto (ej. solo la evaluación).
+function certNoSeAplicaHoy(){
+  if (!COMPLETANDO || !COMPLETANDO.certPorAplicar) return false;
+  const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
+  if (!COMPLETANDO.certExtra || !(precio > 0)) return true;
+  try { return !(calcularCompletar(precio, fcContexto()).certExtraUsado > 0); }
+  catch(e){ return true; }
+}
+
+function fcActualizarMotivoCert(){
+  const wrapMotivo = elFin('fc-certmotivo-wrap');
+  if (wrapMotivo) wrapMotivo.style.display = certNoSeAplicaHoy() ? 'block' : 'none';
+}
+
+// Si se borra el texto del código, el certificado deja de contarse sin tener que pulsar "Aplicar"
+function fcCertVacio(){
+  if (!COMPLETANDO) return;
+  if (!elFin('fc-cert').value.trim()){
+    COMPLETANDO.certExtra = null;
+    elFin('fc-cert-msg').textContent = '';
+    fcRecalcular();
+  }
+}
+
 function fcContexto(){
   return Object.assign({}, COMPLETANDO, { certExtra: COMPLETANDO.certExtra ? COMPLETANDO.certExtra.saldoDisponible : 0 });
 }
 
 function fcRecalcular(inicial){
   if (!COMPLETANDO) return;
-  // El motivo se pide solo si el cliente traía un certificado por aplicar y hoy no se va a usar
-  const wrapMotivo = elFin('fc-certmotivo-wrap');
-  if (wrapMotivo) wrapMotivo.style.display = (COMPLETANDO.certPorAplicar && !COMPLETANDO.certExtra) ? 'block' : 'none';
+  fcActualizarMotivoCert();
   const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
   // Si el costo cambió respecto a lo reservado, se pide el detalle de qué se hizo
   const difPrecio = Math.round((precio - COMPLETANDO.neto)*100)/100;
@@ -5078,6 +5101,8 @@ async function confirmarCompletarCita(){
   const motivoCert = (certNoAplicado && elFin('fc-certmotivo')) ? elFin('fc-certmotivo').value.trim() : '';
   if (certNoAplicado && !motivoCert){
     msg.textContent = 'Indica el motivo por el que no se aplicó el certificado del cliente.';
+    const wrapM = elFin('fc-certmotivo-wrap');
+    if (wrapM){ wrapM.style.display = 'block'; try { wrapM.scrollIntoView({ block:'center' }); elFin('fc-certmotivo').focus(); } catch(e){} }
     return;
   }
   const pagos = [];
