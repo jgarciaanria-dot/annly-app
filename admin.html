@@ -1522,7 +1522,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=26"></script>
+<script src="sheets.js?v=27"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -4924,7 +4924,8 @@ async function abrirCompletarCita(id){
   const base = Number(c.precioTotal) || 0;
   const pct = Number(c.descuentoCupon) || 0;
   const neto = consultar ? 0 : Math.max(0, base - base*pct/100);
-  COMPLETANDO = { c, consultar, neto, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable'), certExtra:null, certExtraAplicado:0 };
+  COMPLETANDO = { c, consultar, neto, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable'), certExtra:null, certExtraAplicado:0,
+    certPorAplicar: !!(c.certificadoCodigo && !(Number(c.certificadoMonto) > 0)) };
   const pistaPrecio = consultar
     ? 'Este servicio era "a consultar": ingresa el precio acordado.'
     : (pct > 0 ? 'Incluye el descuento del cupón (' + pct + '%). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
@@ -4950,6 +4951,11 @@ async function abrirCompletarCita(id){
       </div>
       <p id="fc-cert-msg" style="font-size:11.5px;margin-top:6px;min-height:14px;"></p>
     </div>` : ''}
+    <div class="fg" id="fc-certmotivo-wrap" style="display:none;">
+      <label class="flbl">Motivo por el que no se aplicó el certificado (obligatorio)</label>
+      <input class="fi" id="fc-certmotivo" maxlength="200" placeholder="Ej: El cliente no calificó para el servicio; solo se cobró la evaluación"/>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">El cliente validó su certificado al reservar. Si no se usa hoy, queda el motivo registrado y el certificado sigue intacto.</p>
+    </div>
     <div class="fg"><label class="flbl">Ventas adicionales (opcional)</label>
       <p style="font-size:11px;color:var(--ink-soft);margin:0 0 6px;line-height:1.5;">Tratamientos, productos u otros que el cliente compró en la visita. Se suman al cobro y quedan registrados con su detalle.</p>
       <div id="fc-extras"></div>
@@ -5001,6 +5007,9 @@ function fcContexto(){
 
 function fcRecalcular(inicial){
   if (!COMPLETANDO) return;
+  // El motivo se pide solo si el cliente traía un certificado por aplicar y hoy no se va a usar
+  const wrapMotivo = elFin('fc-certmotivo-wrap');
+  if (wrapMotivo) wrapMotivo.style.display = (COMPLETANDO.certPorAplicar && !COMPLETANDO.certExtra) ? 'block' : 'none';
   const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
   // Si el costo cambió respecto a lo reservado, se pide el detalle de qué se hizo
   const difPrecio = Math.round((precio - COMPLETANDO.neto)*100)/100;
@@ -5064,6 +5073,13 @@ async function confirmarCompletarCita(){
   const v = pagoValidar('fc-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
   const r = calcularCompletar(precio, fcContexto());
+  // Trazabilidad: si el certificado validado al reservar no se aplica, debe quedar el motivo
+  const certNoAplicado = COMPLETANDO.certPorAplicar && !(r.certExtraUsado > 0);
+  const motivoCert = (certNoAplicado && elFin('fc-certmotivo')) ? elFin('fc-certmotivo').value.trim() : '';
+  if (certNoAplicado && !motivoCert){
+    msg.textContent = 'Indica el motivo por el que no se aplicó el certificado del cliente.';
+    return;
+  }
   const pagos = [];
   if (COMPLETANDO.abono > 0) pagos.push({ metodo:metodoDeAbono(c.metodoPago), monto:COMPLETANDO.abono, referencia:c.comprobante || null });
   if (r.certUsado > 0) pagos.push({ metodo:'certificado', monto:r.certUsado, referencia:c.certificadoCodigo || null });
@@ -5087,7 +5103,7 @@ async function confirmarCompletarCita(){
       precioCobrado: precio, pagos, fecha: c.fechaISO,
       concepto: c.servicio, cliente: c.nombre, empleadoId: empleadoElegido || c.empleadoId || null,
       cambiarEmpleado: cambioEmpleado, empleadoIdOriginal: c.empleadoId || null,
-      extras: ex.items, ajusteDetalle
+      extras: ex.items, ajusteDetalle, certNoAplicadoMotivo: motivoCert
     });
     cerrarModalFin('ov-fin-completar');
     COMPLETANDO = null;
@@ -5232,6 +5248,7 @@ async function abrirDetalleCita(id){
   if (!(r.cert > 0) && c.certificadoCodigo){
     html += fila('Certificado por aplicar (' + escCat(c.certificadoCodigo) + ')', c.completadaEn ? 'No se aplicó' : 'Sin descontar');
     if (!c.completadaEn) html += `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:6px 0 0;">Lo validó el cliente al reservar. Como el precio no es fijo, se descuenta al completar la cita, según el precio final.</p>`;
+    else if (c.certificadoMotivoNoAplicado) html += `<p style="font-size:12px;color:var(--ink);line-height:1.5;margin:6px 0 0;background:var(--bg);border-radius:8px;padding:8px 10px;"><span style="color:var(--ink-soft);">Motivo:</span> ${escCat(c.certificadoMotivoNoAplicado)}</p>`;
   }
   if (r.abono > 0){
     html += fila('Abono pagado (' + (r.descontable ? 'descontable' : 'no reembolsable') + ')' + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), fmtDinero(r.abono));
