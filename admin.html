@@ -1176,6 +1176,33 @@ img{max-width:100%;}
   #panel-finanzas .fin-cert-grid{grid-template-columns:1fr;}
 }
 
+
+/* Corrección KPI Certificados: regalo siempre visible */
+#panel-finanzas .fin-gift-icon{
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  background:#EEE3FF;
+  color:#7C3AED;
+  position:relative;
+  z-index:2;
+  font-size:18px;
+}
+#panel-finanzas .fin-gift-icon .ti{
+  color:#7C3AED !important;
+  font-size:18px;
+}
+#panel-finanzas .fin-gift-fallback{
+  display:none;
+}
+#panel-finanzas .fin-gift-icon .ti:not(.ti-gift) + .fin-gift-fallback{
+  display:inline;
+}
+
 </style>
 </head>
 <body>
@@ -5363,28 +5390,63 @@ function tarjetaComparacion(ingresos){
   const nota = t => `<div class="fin-card-note">${t}</div>`;
   const p = FIN.previo;
 
-  if (!p) {
-    return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
-      <div class="fin-card-value"><i class="ti ti-chart-line fin-card-icon"></i><span>—</span></div>
-      ${nota('Todavía no hay con qué comparar este periodo.')}`);
+  // Si FIN.previo ya viene calculado, lo usamos.
+  // Si no, intentamos construir la comparación con los movimientos
+  // existentes del periodo anterior.
+  let previo = p;
+
+  if (!previo) {
+    try {
+      const desde = new Date(FIN.desde);
+      const hasta = new Date(FIN.hasta);
+      const dias = Math.max(1, Math.round((hasta - desde) / 86400000) + 1);
+      const prevHasta = new Date(desde);
+      prevHasta.setDate(prevHasta.getDate() - 1);
+      const prevDesde = new Date(prevHasta);
+      prevDesde.setDate(prevDesde.getDate() - dias + 1);
+
+      const fechaPago = x => new Date(x.fecha || x.createdAt || x.date || 0);
+      const movimientos = [...(FIN.pagos || []), ...(FIN.pagosCert || [])];
+
+      const ingresosPrevios = movimientos
+        .filter(x => {
+          const f = fechaPago(x);
+          return f >= prevDesde && f <= prevHasta;
+        })
+        .reduce((s,x) => s + Number(x.monto || 0), 0);
+
+      previo = {
+        ingresos: ingresosPrevios,
+        desde: prevDesde.toISOString().slice(0,10),
+        hasta: prevHasta.toISOString().slice(0,10),
+        completo: true
+      };
+    } catch(e) {
+      previo = null;
+    }
   }
 
-  const rango = fechaCortaFin(p.desde) + ' al ' + fechaCortaFin(p.hasta);
-
-  if (!(p.ingresos > 0)){
+  if (!previo || !(previo.ingresos > 0)){
     return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
-      <div class="fin-card-value"><i class="ti ti-chart-line fin-card-icon"></i><span>—</span></div>
-      ${nota('Ingresos ' + fmtDinero(ingresos) + '<br>El periodo anterior (' + rango + ') no tuvo ingresos.')}`);
+      <div class="fin-card-value">
+        <i class="ti ti-trending-up fin-card-icon" aria-hidden="true"></i>
+        <span>—</span>
+      </div>
+      ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>No hay ingresos registrados en el periodo anterior.')}`);
   }
 
-  const pct = Math.max(-999, Math.min(999, Math.round((ingresos - p.ingresos) / p.ingresos * 100)));
-  const icono = pct > 0 ? 'ti-trending-up' : (pct < 0 ? 'ti-trending-down' : 'ti-minus');
-  const texto = (pct > 0 ? '+' : (pct < 0 ? '−' : '')) + Math.abs(pct) + '%';
+  const rango = fechaCortaFin(previo.desde) + ' al ' + fechaCortaFin(previo.hasta);
+  const porcentaje = Math.round((ingresos - previo.ingresos) / previo.ingresos * 100);
+  const icono = porcentaje > 0 ? 'ti-trending-up' : (porcentaje < 0 ? 'ti-trending-down' : 'ti-minus');
+  const texto = (porcentaje > 0 ? '+' : (porcentaje < 0 ? '−' : '')) + Math.abs(porcentaje) + '%';
+  const claseTendencia = porcentaje < 0 ? 'negative' : '';
 
-  const claseTendencia = pct < 0 ? 'negative' : (pct === 0 ? 'neutral' : '');
   return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
-    <div class="fin-card-value ${claseTendencia}"><i class="ti ${icono} fin-card-icon" aria-hidden="true"></i><span data-pct="${pct}">${texto}</span></div>
-    ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>antes: ' + fmtDinero(p.ingresos) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
+    <div class="fin-card-value ${claseTendencia}">
+      <i class="ti ${icono} fin-card-icon" aria-hidden="true"></i>
+      <span data-pct="${porcentaje}">${texto}</span>
+    </div>
+    ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>antes: ' + fmtDinero(previo.ingresos) + ' (' + rango + ')' + (previo.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
 }
 
 // ---------- Resumen ----------
@@ -5509,7 +5571,7 @@ function htmlResumenFin(){
       ${tarjetaComparacion(ingresos)}
 
       ${kpi('Certificados por canjear',
-        '<i class="ti ti-gift fin-card-icon"></i><span>' + fmtDinero(FIN.certPorCanjear) + '</span>',
+        '<span class="fin-gift-icon"><i class="ti ti-gift" aria-hidden="true"></i><span class="fin-gift-fallback">🎁</span></span><span>' + fmtDinero(FIN.certPorCanjear) + '</span>',
         'Servicios pendientes de canje<br>El dinero ya contó como ingreso al venderse.',
         FIN.certPorCanjear,'certificates')}
     </div>
