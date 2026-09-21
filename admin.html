@@ -4588,11 +4588,35 @@ function renderFinanzas(){
   document.querySelectorAll('.fin-sub').forEach(b => b.classList.toggle('sel', b.dataset.v === FIN_VISTA));
   const barra = elFin('fin-barra-periodo');
   if (barra) barra.style.display = FIN_VISTA === 'ajustes' ? 'none' : 'block';
-  if (FIN_VISTA === 'resumen') cont.innerHTML = htmlResumenFin();
+  if (FIN_VISTA === 'resumen'){ cont.innerHTML = htmlResumenFin(); animarNumerosFin(cont); }
   else if (FIN_VISTA === 'movimientos') cont.innerHTML = htmlMovimientosFin();
   else if (FIN_VISTA === 'ventas') cont.innerHTML = htmlVentasFin();
   else if (FIN_VISTA === 'gastos') cont.innerHTML = htmlGastosFin();
   else if (FIN_VISTA === 'ajustes') { cont.innerHTML = htmlAjustesFin(); faCambio(); }
+}
+
+// Color de los egresos (gastos): un rojo franco para que se distingan de un vistazo
+const COLOR_EGRESO = '#D92D20';
+
+// Los números de las tarjetas "giran" desde 0 hasta su valor al cargar (respeta "reducir movimiento")
+function animarNumerosFin(raiz){
+  if (!raiz) return;
+  const els = raiz.querySelectorAll('[data-num]');
+  if (!els.length) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const dur = 900, retraso = 70, t0 = performance.now();
+  els.forEach(el => { el.dataset.final = el.textContent; el.textContent = fmtDinero(0); });
+  const paso = (t) => {
+    let sigue = false;
+    els.forEach((el, i) => {
+      const p = Math.min(1, Math.max(0, (t - t0 - i*retraso) / dur));
+      const e = 1 - Math.pow(1 - p, 3);
+      el.textContent = p >= 1 ? el.dataset.final : fmtDinero(Number(el.dataset.num) * e);
+      if (p < 1) sigue = true;
+    });
+    if (sigue) requestAnimationFrame(paso);
+  };
+  requestAnimationFrame(paso);
 }
 
 // ---------- Resumen ----------
@@ -4610,10 +4634,10 @@ function htmlResumenFin(){
   const porMetodo = {};
   [...FIN.pagos, ...FIN.pagosCert].forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
 
-  const kpi = (titulo, valor, color, nota) => `
+  const kpi = (titulo, valor, color, nota, numero) => `
     <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:12px;padding:14px;">
       <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">${titulo}</div>
-      <div style="font-size:21px;font-weight:800;color:${color};margin-top:5px;">${valor}</div>
+      <div ${numero !== undefined ? `data-num="${numero}" ` : ''}style="font-size:21px;font-weight:800;color:${color};margin-top:5px;font-variant-numeric:tabular-nums;">${valor}</div>
       ${nota ? `<div style="font-size:10.5px;color:var(--ink-soft);margin-top:4px;line-height:1.4;">${nota}</div>` : ''}
     </div>`;
 
@@ -4639,10 +4663,10 @@ function htmlResumenFin(){
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem;">
-      ${kpi('Ingresos', fmtDinero(ingresos), '#159A61', 'Dinero recibido: servicios, ventas y certificados vendidos')}
-      ${kpi('Gastos', fmtDinero(gastos), '#C2695A')}
-      ${kpi('Resultado', fmtDinero(resultado), resultado >= 0 ? '#159A61' : '#C2695A', 'Ingresos menos gastos')}
-      ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#7C3AED', 'Servicios que aún debes a clientes. El dinero ya contó como ingreso al venderse.')}
+      ${kpi('Ingresos', fmtDinero(ingresos), '#159A61', 'Dinero recibido: servicios, ventas y certificados vendidos', ingresos)}
+      ${kpi('Gastos', fmtDinero(gastos), COLOR_EGRESO, '', gastos)}
+      ${kpi('Resultado', fmtDinero(resultado), resultado >= 0 ? '#159A61' : COLOR_EGRESO, 'Ingresos menos gastos', resultado)}
+      ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#7C3AED', 'Servicios que aún debes a clientes. El dinero ya contó como ingreso al venderse.', FIN.certPorCanjear)}
     </div>
     ${vacio}
     <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Ingresos por origen</span></div>
@@ -4743,7 +4767,7 @@ function htmlMovimientosFin(){
     const canje = m.tipo === 'canje';
     const cert = m.tipo === 'certificado';
     const ing = m.tipo === 'ingreso' || cert;
-    const color = canje ? '#8A8378' : (cert ? '#F59E0B' : (ing ? '#159A61' : '#C2695A'));
+    const color = canje ? '#8A8378' : (cert ? '#F59E0B' : (ing ? '#159A61' : COLOR_EGRESO));
     const fondo = canje ? '#F1EEE7' : (cert ? '#FEF3E0' : (ing ? '#E9F6EF' : '#FBEDEE'));
     const icono = (cert || canje) ? 'ti-gift' : (ing ? 'ti-arrow-down-left' : 'ti-arrow-up-right');
     const chips = (m.lineas || []).map(l => `<span style="display:inline-block;background:${l.gris ? '#F1EEE7' : '#F3EDFB'};color:${l.gris ? '#8A8378' : '#7C4DA0'};border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;margin:5px 5px 0 0;">${escCat(l.texto)}</span>`).join('');
@@ -4858,7 +4882,7 @@ function htmlGastosFin(){
         <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
         <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${detalle}</div>
       </div>
-      <div style="font-size:14px;font-weight:800;color:#C2695A;">−${fmtDinero(g.monto)}</div>
+      <div style="font-size:14px;font-weight:800;color:${COLOR_EGRESO};">−${fmtDinero(g.monto)}</div>
       <button class="btn-ico del" style="width:auto;padding:0 10px;gap:5px;font-size:11px;font-weight:700;color:#C2695A;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban"></i> Anular</button>
     </div>`;
   }).join('');
