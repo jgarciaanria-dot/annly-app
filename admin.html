@@ -1097,10 +1097,14 @@ img{max-width:100%;}
     </div>
 
     <div class="plan-extras">
-      <div class="plan-extra">
+      <div class="plan-extra" id="plan-extra-prof">
         <div class="plan-extra-ico"><i class="ti ti-user-plus"></i></div>
-        <div><div class="plan-extra-title">Profesional adicional</div><div class="plan-extra-desc">Agrega capacidad sin cambiar de plan.</div></div>
-        <div class="plan-extra-price">+$7/mes</div>
+        <div>
+          <div class="plan-extra-title">Profesional adicional</div>
+          <div class="plan-extra-desc" id="plan-extra-prof-desc">Agrega capacidad sin cambiar de plan.</div>
+          <div id="plan-extra-prof-controls" style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;"></div>
+        </div>
+        <div class="plan-extra-price" id="plan-extra-prof-price">+$7/mes</div>
       </div>
       <div class="plan-extra">
         <div class="plan-extra-ico"><i class="ti ti-building-store"></i></div>
@@ -1518,7 +1522,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=24"></script>
+<script src="sheets.js?v=25"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -2219,6 +2223,7 @@ async function renderPlan(){
   try {
     SUSCRIPCION_ACTUAL = await Sheets.getSuscripcionActual();
   } catch(e) { console.error('Error leyendo la suscripción:', e); SUSCRIPCION_ACTUAL = null; }
+  await cargarExtrasProfesionales();
 
   const actual = planActualParaUI();
   const p = ANNLY_PLANES_UI[actual] || ANNLY_PLANES_UI.basic;
@@ -2230,7 +2235,8 @@ async function renderPlan(){
   const metaEl = document.getElementById('plan-current-meta');
   const statusEl = document.getElementById('plan-current-status');
   if(nameEl) nameEl.textContent = p.name;
-  if(metaEl) metaEl.textContent = `${p.professionals} profesional${p.professionals===1?'':'es'} · ${p.branches} sucursal${p.branches===1?'':'es'}`;
+  const totalProf = p.professionals + (enPeriodoPrueba() ? 0 : EXTRAS_PROF.cantidad);
+  if(metaEl) metaEl.textContent = `${totalProf} profesional${totalProf===1?'':'es'}${(!enPeriodoPrueba() && EXTRAS_PROF.cantidad) ? ' (' + EXTRAS_PROF.cantidad + ' extra)' : ''} · ${p.branches} sucursal${p.branches===1?'':'es'}`;
   if(statusEl){
     if (SUSCRIPCION_ACTUAL && SUSCRIPCION_ACTUAL.status === 'trial' && SUSCRIPCION_ACTUAL.currentPeriodEnd){
       statusEl.textContent = `Prueba hasta el ${formatFechaCorta(SUSCRIPCION_ACTUAL.currentPeriodEnd)}`;
@@ -2256,6 +2262,7 @@ async function renderPlan(){
   });
 
   await renderModulosPlan();
+  renderExtraProfesional();
   if (pfPaletaSel !== null && document.getElementById('pf-paleta-grid')) renderPaletaPerfil();
 
   // Durante el trial, el acceso real queda limitado a lo que trae Basic —
@@ -2347,7 +2354,10 @@ async function renderModulosPlan(){
   const ICONOS_MODULO = { CERTIFICADOS:'ti-gift', FINANZAS:'ti-chart-bar', PAGOS:'ti-wallet', AGENTE_AI:'ti-sparkles' };
 
   // Agente AI siempre al final — su trato es distinto al resto (precio "desde", no un cobro fijo al toque)
-  const catalogoOrdenado = [...CATALOGO_MODULOS].sort((a,b) => (a.code==='AGENTE_AI'?1:0) - (b.code==='AGENTE_AI'?1:0));
+  // Los "extras por cantidad" (profesional adicional) tienen su propia tarjeta, no van en esta lista
+  const catalogoOrdenado = [...CATALOGO_MODULOS]
+    .filter(m => m.code !== 'PROFESIONAL_ADICIONAL' && m.code !== 'SUCURSAL_ADICIONAL')
+    .sort((a,b) => (a.code==='AGENTE_AI'?1:0) - (b.code==='AGENTE_AI'?1:0));
 
   cont.innerHTML = catalogoOrdenado.map(m => {
     const incluido = FEATURES_DEL_PLAN.includes(m.code);
@@ -2403,6 +2413,74 @@ async function cancelarModuloUI(featureCode, nombre){
 function p_nombrePlanActual(){
   const key = planActualParaUI();
   return (ANNLY_PLANES_UI[key] || ANNLY_PLANES_UI.basic).name;
+}
+
+// ---------- Profesional adicional (tarjeta en Mi plan) ----------
+function renderExtraProfesional(){
+  const desc = document.getElementById('plan-extra-prof-desc');
+  const ctl = document.getElementById('plan-extra-prof-controls');
+  const precioEl = document.getElementById('plan-extra-prof-price');
+  if (!desc || !ctl) return;
+  const precio = precioProfesionalExtra();
+  if (precioEl) precioEl.textContent = '+$' + precio.toFixed(0) + '/mes';
+
+  if (!SUSCRIPCION_ACTUAL){
+    desc.textContent = 'Disponible cuando tengas una suscripción activa.';
+    ctl.innerHTML = '';
+    return;
+  }
+  if (enPeriodoPrueba()){
+    desc.textContent = 'Disponible cuando termine tu prueba: durante el trial el equipo se limita a lo que incluye Basic.';
+    ctl.innerHTML = '';
+    return;
+  }
+  const n = EXTRAS_PROF.cantidad;
+  const pend = EXTRAS_PROF.pendientes.length;
+  desc.innerHTML = n
+    ? `Tienes <strong>${n}</strong> adicional${n===1?'':'es'} · $${EXTRAS_PROF.totalMensual.toFixed(0)}/mes en total.` +
+      (pend ? ` <span style="color:#B08900;">${pend===1?'1 se desactiva':pend+' se desactivan'} el ${formatFechaCorta(EXTRAS_PROF.pendientes[0])}.</span>` : '')
+    : 'Agrega capacidad sin cambiar de plan.';
+  const tope = MAX_EXTRAS_POR_PLAN[planActualParaUI()];
+  const alTope = tope != null && n >= tope;
+  ctl.innerHTML =
+    `<button type="button" class="btn-add" ${alTope ? 'disabled style="opacity:.5;cursor:default;"' : ''} onclick="agregarProfesionalExtraUI()"><i class="ti ti-plus"></i> Agregar uno</button>` +
+    (n > pend ? `<button type="button" class="btn-add" style="color:#C2695A;border-color:#f0d5d0;" onclick="quitarProfesionalExtraUI()"><i class="ti ti-minus"></i> Quitar uno</button>` : '') +
+    (alTope ? `<span style="font-size:11px;color:var(--ink-soft);">Tu plan permite hasta ${tope}; para más, sube de plan.</span>` : '');
+}
+
+async function agregarProfesionalExtraUI(){
+  if (!SUSCRIPCION_ACTUAL){ alert('Todavía no tienes una suscripción configurada. Escríbenos a soporte@annly.app.'); return; }
+  if (enPeriodoPrueba()){ alert('Podrás agregar profesionales adicionales cuando termine tu prueba.'); return; }
+  const precio = precioProfesionalExtra();
+  if (!confirm(`¿Agregar un profesional adicional por $${precio.toFixed(2)}/mes? Se suma un cupo a tu equipo desde hoy.`)) return;
+  try {
+    await Sheets.agregarProfesionalExtra(SUSCRIPCION_ACTUAL.subscriptionId, precio);
+    await renderPlan();
+    if (typeof renderEquipo === 'function' && EQUIPO.length) renderEquipo();
+  } catch(e){
+    console.error('Error agregando el profesional adicional:', e);
+    alert('No se pudo agregar el profesional adicional. Intenta de nuevo.');
+  }
+}
+
+async function quitarProfesionalExtraUI(){
+  if (!SUSCRIPCION_ACTUAL) return;
+  // No se puede quitar un cupo si el equipo quedaría por encima del límite
+  let total = EQUIPO.length;
+  try { total = (await Sheets.getEmpleados()).length; } catch(e){}
+  const nuevoLimite = limiteEmpleadosDelPlan() - 1;
+  if (total > nuevoLimite){
+    alert(`Tu equipo tiene ${total} profesionales y sin este extra el límite sería ${nuevoLimite}. Elimina a un profesional antes de quitar el adicional.`);
+    return;
+  }
+  if (!confirm('¿Quitar un profesional adicional? Se mantiene hasta que termine el mes que ya pagaste y después se desactiva solo.')) return;
+  try {
+    await Sheets.quitarProfesionalExtra(SUSCRIPCION_ACTUAL.subscriptionId);
+    await renderPlan();
+  } catch(e){
+    console.error('Error quitando el profesional adicional:', e);
+    alert('No se pudo quitar el profesional adicional. Intenta de nuevo.');
+  }
 }
 
 async function activarModuloUI(featureCode){
@@ -3444,10 +3522,28 @@ async function loadEquipo(){
   renderEquipo();
 }
 
+// Profesionales adicionales contratados (cada uno suma un cupo al equipo). En el trial no cuentan.
+let EXTRAS_PROF = { cantidad: 0, totalMensual: 0, pendientes: [] };
+// Tope opcional de extras por plan (null = sin tope). Por ejemplo { basic: 2, medium: 1, ultimate: null }
+const MAX_EXTRAS_POR_PLAN = { basic: null, medium: null, ultimate: null };
+
+async function cargarExtrasProfesionales(){
+  EXTRAS_PROF = { cantidad: 0, totalMensual: 0, pendientes: [] };
+  if (!SUSCRIPCION_ACTUAL) return;
+  try { EXTRAS_PROF = await Sheets.getProfesionalesExtra(SUSCRIPCION_ACTUAL.subscriptionId); }
+  catch(e){ console.error('Error leyendo los profesionales adicionales:', e); }
+}
+
+function precioProfesionalExtra(){
+  const m = (CATALOGO_MODULOS || []).find(x => x.code === 'PROFESIONAL_ADICIONAL');
+  return m && m.price > 0 ? m.price : 7;
+}
+
 function limiteEmpleadosDelPlan(){
   const planFuncional = enPeriodoPrueba() ? 'basic' : getPlanActualUI();
   const p = ANNLY_PLANES_UI[planFuncional];
-  return p ? p.professionals : 1;
+  const base = p ? p.professionals : 1;
+  return base + (enPeriodoPrueba() ? 0 : EXTRAS_PROF.cantidad);
 }
 
 // En el plan más alto ya no hay a dónde subir: lo que corresponde es agregar un profesional extra.
@@ -3459,11 +3555,28 @@ function textoAmpliarEquipo(){
   return esPlanMaximoEquipo() ? 'Agregar profesional extra' : 'Subir de plan';
 }
 
+// Cuando el equipo llegó a su límite: subir de plan (si hay un plan más alto) y/o agregar un profesional extra
+function htmlAmpliarEquipo(cerrarModal){
+  const cerrar = cerrarModal ? ' closeModalEmpleado();' : '';
+  const subir = esPlanMaximoEquipo() ? '' :
+    `<button type="button" class="equipo-upgrade-link" onclick="switchTab('plan');${cerrar}"><i class="ti ti-arrow-up-right"></i> Subir de plan</button> `;
+  const extra = `<button type="button" class="equipo-upgrade-link" onclick="irAExtraProfesional();${cerrar}"><i class="ti ti-user-plus"></i> Agregar profesional extra</button>`;
+  return subir + extra;
+}
+
+function irAExtraProfesional(){
+  switchTab('plan');
+  setTimeout(() => {
+    const el = document.getElementById('plan-extra-prof');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 200);
+}
+
 function renderEquipo(){
   const cont = document.getElementById('lista-equipo');
   const limite = limiteEmpleadosDelPlan();
   const msgEl = document.getElementById('equipo-limite-msg');
-  msgEl.innerHTML = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.` + (EQUIPO.length >= limite ? ` <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan')"><i class="ti ${esPlanMaximoEquipo() ? 'ti-user-plus' : 'ti-arrow-up-right'}"></i> ${textoAmpliarEquipo()}</button>` : '');
+  msgEl.innerHTML = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.` + (EQUIPO.length >= limite ? ' ' + htmlAmpliarEquipo(false) : '');
 
   if (!EQUIPO.length){
     cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay empleados todavía.</p>';
@@ -3665,7 +3778,7 @@ async function guardarEmpleadoModal(){
   if (!editEmpleadoId){
     const limite = limiteEmpleadosDelPlan();
     if (EQUIPO.length >= limite){
-      msgEl.innerHTML = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan'); closeModalEmpleado();"><i class="ti ${esPlanMaximoEquipo() ? 'ti-user-plus' : 'ti-arrow-up-right'}"></i> ${textoAmpliarEquipo()}</button>`;
+      msgEl.innerHTML = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. ${htmlAmpliarEquipo(true)}`;
       return;
     }
   }
