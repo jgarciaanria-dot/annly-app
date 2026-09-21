@@ -1038,24 +1038,29 @@ const Sheets = {
   // =======================================================
 
   async getServicios() {
-
     await window.AnnlyReady;
-
-
-    const {
+    // Se piden en el orden en que se crearon (así las categorías salen en orden de creación);
+    // si esa columna no existiera, se piden sin orden.
+    let {
       data,
       error
     } = await sbClient
       .from('services')
       .select('*')
-      .eq('business_id', BUSINESS_ID);
-
-
+      .eq('business_id', BUSINESS_ID)
+      .order('creado_en', { ascending: true });
+    if (error) {
+      ({
+        data,
+        error
+      } = await sbClient
+        .from('services')
+        .select('*')
+        .eq('business_id', BUSINESS_ID));
+    }
     if (error || !data) {
       return [];
     }
-
-
     return data.map(s => ({
 
       id: s.id,
@@ -3433,6 +3438,8 @@ const Sheets = {
     await window.AnnlyReady;
     const marca = { completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado };
     if (datos.ajusteDetalle) marca.ajuste_detalle = datos.ajusteDetalle;
+    // Si quien realizó el servicio es otra persona, la cita queda a nombre de ese profesional
+    if (datos.cambiarEmpleado && datos.empleadoId) marca.employee_id = datos.empleadoId;
     const { data: marcada, error: errMarca } = await sbClient.from('appointments')
       .update(marca)
       .eq('id', citaId).eq('business_id', BUSINESS_ID).is('completada_en', null)
@@ -3441,7 +3448,7 @@ const Sheets = {
     if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
 
     const revertirMarca = () => sbClient.from('appointments')
-      .update({ completada_en: null, precio_cobrado: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}) }).eq('id', citaId);
+      .update({ completada_en: null, precio_cobrado: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}), ...(datos.cambiarEmpleado ? { employee_id: datos.empleadoIdOriginal || null } : {}) }).eq('id', citaId);
 
     // Ventas adicionales de la visita (tratamientos, productos, etc.)
     let extrasIds = [];
