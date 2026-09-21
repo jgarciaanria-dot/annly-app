@@ -3567,6 +3567,59 @@ const Sheets = {
     if (error) throw error;
   },
 
+  // ---------------------------------------------------------------
+  // PROFESIONAL ADICIONAL (módulo por cantidad)
+  // Cada extra es una fila (quantity 1) con su propio precio y su propio ciclo de cobro.
+  // ---------------------------------------------------------------
+  async getProfesionalesExtra(subscriptionId) {
+    await window.AnnlyReady;
+    const vacio = { cantidad: 0, totalMensual: 0, pendientes: [] };
+    if (!subscriptionId) return vacio;
+    const hoy = new Date();
+    const hoyISO = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+    const { data, error } = await sbClient.from('subscription_items')
+      .select('id, quantity, unit_price, created_at, cancela_el')
+      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
+      .eq('item_code', 'PROFESIONAL_ADICIONAL').eq('is_active', true)
+      .order('created_at', { ascending: true });
+    if (error) { console.error('Error leyendo profesionales adicionales:', error); return vacio; }
+    // Uno con fecha de baja sigue contando hasta esa fecha (ya está pagado)
+    const vigentes = (data || []).filter(r => !r.cancela_el || r.cancela_el >= hoyISO);
+    return {
+      cantidad: vigentes.reduce((s, r) => s + (r.quantity || 1), 0),
+      totalMensual: vigentes.reduce((s, r) => s + (Number(r.unit_price) || 0) * (r.quantity || 1), 0),
+      pendientes: vigentes.filter(r => r.cancela_el).map(r => r.cancela_el).sort()
+    };
+  },
+
+  async agregarProfesionalExtra(subscriptionId, precio) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('subscription_items').insert([{
+      subscription_id: subscriptionId, item_type: 'addon', item_code: 'PROFESIONAL_ADICIONAL',
+      description: 'Profesional adicional', quantity: 1, unit_price: precio, is_active: true
+    }]);
+    if (error) throw error;
+  },
+
+  // Da de baja UN profesional extra al terminar su ciclo mensual ya pagado (no se corta a mitad del mes).
+  // Se toma el más antiguo que aún no tenga baja programada. Devuelve la fecha de baja.
+  async quitarProfesionalExtra(subscriptionId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('subscription_items')
+      .select('id, created_at')
+      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
+      .eq('item_code', 'PROFESIONAL_ADICIONAL').eq('is_active', true).is('cancela_el', null)
+      .order('created_at', { ascending: true }).limit(1);
+    if (error || !data || !data.length) throw error || new Error('No hay profesionales adicionales para quitar.');
+    const corte = new Date(data[0].created_at);
+    const ahora = new Date();
+    while (corte <= ahora) corte.setMonth(corte.getMonth() + 1);
+    const fecha = corte.getFullYear() + '-' + String(corte.getMonth() + 1).padStart(2, '0') + '-' + String(corte.getDate()).padStart(2, '0');
+    const { error: errUpd } = await sbClient.from('subscription_items').update({ cancela_el: fecha }).eq('id', data[0].id);
+    if (errUpd) throw errUpd;
+    return fecha;
+  },
+
   // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
   // público (visitantes SIN sesión, que por RLS no pueden leer subscriptions).
   // Lo resuelve la función SQL modulos_publicos (security definer): en trial
