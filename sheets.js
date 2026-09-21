@@ -1843,33 +1843,21 @@ const Sheets = {
   },
 
 
-  async cancelarCita(id) {
-
+  async cancelarCita(id, motivo, detalle) {
     await window.AnnlyReady;
-
-
-    const {
-      error
-    } = await sbClient
-      .from('appointments')
-      .update({
-        estado: 'cancelada'
-      })
-      .eq('id', id)
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
+    const base = { estado: 'cancelada' };
+    const conMotivo = motivo ? { ...base, cancelacion_motivo: motivo, cancelada_en: new Date().toISOString() } : base;
+    let { error } = await sbClient.from('appointments').update(conMotivo).eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error && motivo) {
+      // Si las columnas del motivo aún no existen, se cancela igual (el motivo queda en la bitácora)
+      ({ error } = await sbClient.from('appointments').update(base).eq('id', id).eq('business_id', BUSINESS_ID));
+    }
     if (error) {
-
-      console.error(
-        'Error cancelando la cita:',
-        error
-      );
-
+      console.error('Error cancelando la cita:', error);
       throw error;
+    }
+    if (motivo) {
+      await this.registrarAccion({ entidad: 'cita', entidadId: id, accion: 'cancelada', motivo, monto: null, detalle });
     }
   },
 
@@ -3368,7 +3356,8 @@ const Sheets = {
     if (error) throw error;
     return (data || []).map(g => ({
       id: g.id, fecha: g.fecha, categoria: g.categoria, descripcion: g.descripcion,
-      monto: Number(g.monto), metodo: g.metodo, referencia: g.referencia, creadoEn: g.creado_en
+      monto: Number(g.monto), metodo: g.metodo, referencia: g.referencia, creadoEn: g.creado_en,
+      anulado: !!g.anulado, motivoAnulacion: g.anulado_motivo || '', anuladoEn: g.anulado_en || null
     }));
   },
 
@@ -3380,6 +3369,39 @@ const Sheets = {
       referencia: g.referencia || null
     }]);
     if (error) throw error;
+  },
+
+  // Bitácora de acciones (anulaciones, cancelaciones): quién, cuándo, por qué y los datos que tenía.
+  // Si no se puede guardar, no bloquea la acción; devuelve false y queda el aviso en la consola.
+  async registrarAccion({ entidad, entidadId, accion, motivo, monto, detalle }) {
+    await window.AnnlyReady;
+    try {
+      const { data: u } = await sbClient.auth.getUser();
+      const user = u && u.user;
+      const { error } = await sbClient.from('registro_acciones').insert([{
+        business_id: BUSINESS_ID, entidad, entidad_id: entidadId != null ? String(entidadId) : null,
+        accion, motivo, monto: monto != null ? monto : null, detalle: detalle || null,
+        usuario_id: user ? user.id : null, usuario_correo: user ? user.email : null
+      }]);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.error('No se pudo guardar el registro de la acción:', e);
+      return false;
+    }
+  },
+
+  // Anula un gasto: queda en la lista, tachado, con su motivo, y deja de contar en los totales.
+  async anularGasto(id, motivo, detalle) {
+    await window.AnnlyReady;
+    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
+    const { data: filas, error } = await sbClient.from('finance_expenses')
+      .update({ anulado: true, anulado_motivo: motivo.trim(), anulado_en: new Date().toISOString() })
+      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulado', false)
+      .select('id');
+    if (error) throw error;
+    if (!filas || !filas.length) throw new Error('El gasto ya estaba anulado o no existe.');
+    await this.registrarAccion({ entidad: 'gasto', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: detalle && detalle.monto, detalle });
   },
 
   async eliminarGasto(id) {
@@ -3430,7 +3452,7 @@ const Sheets = {
 
   // Anula una venta en el local (devolución, error de captura...): no se borra, queda en
   // el historial con su motivo, y sus pagos dejan de contar en los ingresos.
-  async anularVentaLocal(id, motivo) {
+  async anularVentaLocal(id, motivo, detalle) {
     await window.AnnlyReady;
     if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
 
@@ -3451,6 +3473,7 @@ const Sheets = {
         .eq('local_sale_id', id).eq('business_id', BUSINESS_ID).eq('estado', 'anulado');
       throw errVenta || new Error('La venta ya estaba anulada o no existe.');
     }
+    await this.registrarAccion({ entidad: 'venta_local', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: detalle && detalle.monto, detalle });
   },
 
   // Completa una cita de la Agenda: la cita existente es el origen del cobro
