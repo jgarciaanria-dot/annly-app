@@ -3151,6 +3151,7 @@ const Sheets = {
     await window.AnnlyReady;
 
 
+    // Se toma la fila que trae el horario completo (aunque hubiera filas viejas sin él)
     const {
       data
     } = await sbClient
@@ -3162,11 +3163,15 @@ const Sheets = {
         'employee_id',
         empleadoId
       )
-      .maybeSingle();
+      .not(
+        'horario_estructurado',
+        'is',
+        null
+      )
+      .limit(1);
 
-
-    return data
-      ? data.horario_estructurado
+    return (data && data.length)
+      ? data[0].horario_estructurado
       : null;
   },
 
@@ -3179,67 +3184,36 @@ const Sheets = {
     await window.AnnlyReady;
 
 
+    // Se reemplaza lo que hubiera (incluidas filas de un diseño anterior por día)
+    // por una sola fila con el horario completo.
     const {
-      data: existente,
-      error: errLeer
+      error: errBorrar
     } = await sbClient
       .from('employee_schedules')
-      .select('id')
+      .delete()
       .eq(
         'employee_id',
         empleadoId
-      )
-      .maybeSingle();
+      );
 
-    if (errLeer) {
-      throw errLeer;
+    if (errBorrar) {
+      throw errBorrar;
     }
 
 
-    if (existente) {
+    const {
+      error: errInsert
+    } = await sbClient
+      .from('employee_schedules')
+      .insert([{
+        employee_id:
+          empleadoId,
+        horario_estructurado:
+          horario
+      }]);
 
-      const {
-        data: filas,
-        error: errUpdate
-      } = await sbClient
-        .from('employee_schedules')
-        .update({
-          horario_estructurado:
-            horario
-        })
-        .eq(
-          'id',
-          existente.id
-        )
-        .select('id');
-
-      if (errUpdate) {
-        throw errUpdate;
-      }
-
-      // Si la base no permitió el cambio, no hay error pero tampoco filas actualizadas
-      if (!filas || !filas.length) {
-        throw new Error(
-          'No se pudo actualizar el horario (sin permisos en la base de datos).'
-        );
-      }
-
-    } else {
-
-      const {
-        error: errInsert
-      } = await sbClient
-        .from('employee_schedules')
-        .insert([{
-          employee_id:
-            empleadoId,
-          horario_estructurado:
-            horario
-        }]);
-
-      if (errInsert) {
-        throw errInsert;
-      }
+    if (errInsert) {
+      throw errInsert;
     }
   },
 
