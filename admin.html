@@ -44,16 +44,46 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .login-photo-sub{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#8A8378;margin-top:2px;}
 
 /* Collage: la foto femenina (grande) + la de barbería (chica, superpuesta) */
-.login-collage{position:relative;height:230px;margin:1.3rem 0 .2rem;}
+.login-collage{
+  position:relative;
+  height:clamp(390px,48vh,450px);
+  margin:1rem 0 .2rem;
+  isolation:isolate;
+}
 .login-collage img{position:absolute;object-fit:cover;border-radius:18px;box-shadow:0 14px 30px -10px rgba(47,27,73,.22);}
-.login-collage img.femenino{width:70%;height:100%;left:0;top:0;object-position:center 12%;}
-.login-collage img.masculino{width:46%;height:72%;right:0;bottom:-14px;border:5px solid #fff;object-position:center 20%;}
+.login-collage img.femenino{
+  width:72%;
+  height:100%;
+  left:0;
+  top:0;
+  object-fit:cover;
+  object-position:center 20%;
+  z-index:1;
+}
+.login-collage img.masculino{
+  width:43%;
+  height:64%;
+  right:0;
+  bottom:6px;
+  border:3px solid rgba(255,255,255,.92);
+  object-position:center 12%;
+  z-index:3;
+  box-shadow:0 20px 40px -14px rgba(47,27,73,.30);
+}
 
-.login-tagline{font-family:'Playfair Display',serif;font-size:1.9rem;line-height:1.14;font-weight:700;margin:1.5rem 0 0;color:#1A1625;}
+.login-tagline{
+  font-size:clamp(1.85rem,2.7vw,2.25rem);
+  line-height:1.1;
+  margin:1.15rem 0 0;
+  letter-spacing:-.025em;
+}
 .login-tagline em{font-style:italic;background:linear-gradient(100deg,#7C3AED,#EC4899);-webkit-background-clip:text;background-clip:text;color:transparent;}
 .login-tagline-sub{font-size:12.5px;color:#5B5568;margin-top:8px;max-width:300px;line-height:1.5;}
 
-.login-features{list-style:none;margin-top:1.4rem;display:flex;flex-direction:column;gap:11px;}
+.login-features{
+  margin-top:.95rem;
+  gap:7px;
+}
 .login-feature{display:flex;align-items:center;gap:11px;}
 .login-feature-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .login-feature-ico i{font-size:15px;}
@@ -521,12 +551,10 @@ img{max-width:100%;}
 /* Collage principal */
 .login-collage{
   position:relative;
-  height:clamp(225px,31vh,285px);
-  margin:1rem 0 .1rem;
+  height:clamp(310px,38vh,355px);
+  margin:1rem 0 .2rem;
   isolation:isolate;
-}
-
-.login-collage img{
+}.login-collage img{
   position:absolute;
   object-fit:cover;
   border-radius:20px;
@@ -720,13 +748,13 @@ img{max-width:100%;}
 
 /* En alturas pequeñas reducimos la composición sin crear scroll en la columna izquierda */
 @media (min-width:861px) and (max-height:780px){
-  .login-photo{padding-top:1.35rem;padding-bottom:1rem;}
+  .login-photo{padding-top:1.15rem;padding-bottom:.8rem;}
   .login-photo-logo img{width:70px !important;height:70px !important;}
-  .login-collage{height:210px;margin:.7rem 0 0;}
-  .login-tagline{font-size:1.75rem;margin-top:.75rem;}
-  .login-features{margin-top:.75rem;gap:6px;}
+  .login-collage{height:300px;margin:.7rem 0 0;}
+  .login-tagline{font-size:1.75rem;margin-top:.8rem;}
+  .login-features{margin-top:.7rem;gap:6px;}
   .login-quote{display:none;}
-  .login-photo-foot{padding-top:.55rem;}
+  .login-photo-foot{padding-top:.45rem;}
 }
 
 @media(max-width:860px){
@@ -739,7 +767,6 @@ img{max-width:100%;}
 @media(max-width:520px){
   .login-card{padding:1.7rem 1.25rem;}
 }
-
 
 
 /* =========================================================
@@ -1451,6 +1478,7 @@ img{max-width:100%;}
     top:34% !important;
   }
 }
+
 </style>
 </head>
 <body>
@@ -1467,7 +1495,7 @@ img{max-width:100%;}
       <div class="login-collage">
         <img class="femenino" src="login-estilista-annly.png" alt="Profesional de belleza revisando su agenda"/>
         <img class="masculino" src="login-cliente-annly.png" alt="Cliente confirmando su cita desde el celular"/>
-<div class="gift-floating-notice" aria-hidden="true">
+        <div class="gift-floating-notice" aria-hidden="true">
           <span class="gift-floating-icon"><i class="ti ti-gift"></i></span>
           <span class="gift-floating-text">
             <b>Tienes un certificado</b>
