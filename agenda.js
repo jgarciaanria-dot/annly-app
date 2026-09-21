@@ -657,8 +657,37 @@ function escTextoEmp(t){
 }
 
 // Presentación del profesional (la que el negocio escribió en su ficha)
-function bioEmpleadoHtml(e, etiqueta){
-  if (!e || (!e.bio && !e.fotoUrl)) return '';
+// "11:00" -> "11:00 AM"
+function horaLegible(t){
+  const [h, m] = String(t || '0:00').split(':').map(Number);
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return hh + ':' + String(m || 0).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+
+// Días y horas que atiende un profesional con horario propio, agrupando días seguidos con la misma hora.
+// Ej.: "Mar a Vie · 11:00 AM – 5:00 PM"
+function resumenHorarioEmpleado(h){
+  if (!h) return '';
+  const orden = [['Lun',1],['Mar',2],['Mié',3],['Jue',4],['Vie',5],['Sáb',6],['Dom',0]];
+  const dias = orden.map(([nombre, dow]) => {
+    const c = cfgDia(h, dow);
+    return (!c.cerrado && c.abre && c.cierra) ? { nombre, rango: horaLegible(c.abre) + ' – ' + horaLegible(c.cierra) } : null;
+  });
+  const grupos = [];
+  dias.forEach((d, i) => {
+    if (!d) return;
+    const ant = grupos[grupos.length - 1];
+    if (ant && ant.fin === i - 1 && ant.rango === d.rango) { ant.fin = i; ant.hasta = d.nombre; }
+    else grupos.push({ desde: d.nombre, hasta: d.nombre, fin: i, rango: d.rango });
+  });
+  if (!grupos.length) return '';
+  return grupos.map(g => (g.desde === g.hasta ? g.desde : g.desde + ' a ' + g.hasta) + ' · ' + g.rango).join(' | ');
+}
+
+// Presentación del profesional (la que el negocio escribió en su ficha) y su horario asignado
+function bioEmpleadoHtml(e, etiqueta, horario){
+  const horarioTxt = resumenHorarioEmpleado(horario);
+  if (!e || (!e.bio && !e.fotoUrl && !horarioTxt)) return '';
   const inicial = escTextoEmp((e.nombre || '?').trim().charAt(0).toUpperCase());
   const foto = e.fotoUrl
     ? `<img class="emp-bio-foto" src="${escTextoEmp(e.fotoUrl)}" alt=""/>`
@@ -666,6 +695,7 @@ function bioEmpleadoHtml(e, etiqueta){
   return `<div class="emp-bio">
     <div class="emp-bio-head">${foto}<div class="emp-bio-name">${etiqueta} ${escTextoEmp(e.nombre)}</div></div>
     ${e.bio ? `<p>${escTextoEmp(e.bio)}</p>` : ''}
+    ${horarioTxt ? `<div class="emp-bio-horario"><i class="ti ti-clock" aria-hidden="true"></i> Atiende: ${escTextoEmp(horarioTxt)}</div>` : ''}
   </div>`;
 }
 
@@ -675,7 +705,8 @@ function renderSelectorEmpleado(){
   if (empleadosDelServicio.length <= 1){
     // Con un solo profesional no se pregunta "¿con quién?", pero si tiene presentación se muestra
     const unico = empleadosDelServicio[0];
-    if (unico && (unico.bio || unico.fotoUrl)){ cont.style.display='block'; cont.innerHTML = bioEmpleadoHtml(unico, 'Tu profesional:'); }
+    const tarjeta = unico ? bioEmpleadoHtml(unico, 'Tu profesional:', empleadoHorarioCache) : '';
+    if (tarjeta){ cont.style.display='block'; cont.innerHTML = tarjeta; }
     else { cont.style.display='none'; cont.innerHTML=''; }
     return;
   }
@@ -695,7 +726,7 @@ function renderSelectorEmpleado(){
       </div>
       ${pills}
     </div>
-    ${bioEmpleadoHtml(elegido, 'Sobre')}`;
+    ${bioEmpleadoHtml(elegido, 'Sobre', empleadoHorarioCache)}`;
 }
 
 async function elegirEmpleado(id){
