@@ -155,8 +155,11 @@ body.modo-oscuro .card-icon{
 .svc-desc{font-size:13px;color:#444;line-height:1.7;margin-bottom:1rem;}
 .incl-title{font-size:10px;font-weight:500;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;}
 .incl-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:1rem;}
-.incl-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#333;}
-.incl-dot{width:4px;height:4px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+.incl-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;color:#333;text-align:left;}
+.incl-item strong{font-weight:600;color:#222;}
+.incl-dot{width:5px;height:5px;margin-top:.6em;border-radius:50%;background:var(--gold);flex-shrink:0;}
+.incl-grid.incl-uno{grid-template-columns:1fr;gap:9px;}
+@media(max-width:560px){.incl-grid{grid-template-columns:1fr;gap:9px;}}
 
 .mechon-box{background:#F8F3FB;border:0.5px solid #D9C5E8;border-radius:var(--radius);padding:.875rem;margin-bottom:1rem;}
 .mechon-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
