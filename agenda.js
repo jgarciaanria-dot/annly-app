@@ -488,18 +488,32 @@ let pagoRender=null, abonoMostrado=null;
 // Fuente única de los montos de la reserva (precio, cupón, certificado y abono).
 // Si el certificado cubre parte del servicio, el abono nunca puede ser mayor a lo
 // que aún queda por pagar; si lo cubre completo, no se cobra abono.
+// Un precio "no fijo" (sin precio, o con texto como "desde $25" o "consultar") no se conoce
+// hasta atender al cliente. En ese caso el certificado SOLO se valida al reservar: no se
+// descuenta nada hasta que el negocio complete la cita con el precio final.
+function precioNoFijo(svc){
+  return !svc || svc.price<=0 || !!(svc.precioTexto && String(svc.precioTexto).trim());
+}
+
+// Duración con espacio entre el número y la unidad ("4 - 6Horas" -> "4 - 6 Horas")
+function fmtDur(d){
+  return String(d==null?'':d).replace(/(\d)\s*(horas?|hrs?|min(?:utos)?)\b/gi,'$1 $2');
+}
+
 function calcularMontos(){
   const precio=curSvc.price>0?curSvc.price:0;
   const esConsultar=curSvc.price<=0;
+  const noFijo=precioNoFijo(curSvc);
   const descuentoMonto=(!esConsultar&&cuponDescuentoPct>0)?precio*(cuponDescuentoPct/100):0;
   const precioTrasCupon=Math.max(0,precio-descuentoMonto);
-  const montoCert=certAplicado?(esConsultar?certAplicado.saldoDisponible:Math.min(certAplicado.saldoDisponible,precioTrasCupon)):0;
+  const certPorAplicar=!!certAplicado && noFijo;
+  const montoCert=(certAplicado && !noFijo)?Math.min(certAplicado.saldoDisponible,precioTrasCupon):0;
   const precioFinal=Math.max(0,precioTrasCupon-montoCert);
   const tieneAbono=!!(curSvc.esEval||curSvc.requiereAbono);
   const abonoBase=curSvc.esEval?10:(curSvc.abonoMonto||10);
   let abono=tieneAbono?abonoBase:0;
   if(tieneAbono && !esConsultar && montoCert>0) abono=Math.min(abonoBase,precioFinal);
-  return {precio,esConsultar,descuentoMonto,precioTrasCupon,montoCert,precioFinal,tieneAbono,abonoBase,abono};
+  return {precio,esConsultar,noFijo,certPorAplicar,descuentoMonto,precioTrasCupon,montoCert,precioFinal,tieneAbono,abonoBase,abono};
 }
 let currentDayStr='';
 const CERT_DESDE_URL = new URLSearchParams(window.location.search).get('certificado') || '';
@@ -572,7 +586,7 @@ function buildCard(s,icon,full=false){
     <div class="card-top"><div class="card-icon" style="${s.imagenUrl?'overflow:hidden;background:none;border:none;border-radius:12px;':''}">${iconHtml}</div><div class="card-name">${s.name}</div></div>
     <div class="card-desc">${s.desc}</div>
     <div class="card-sep"></div>
-    <div class="card-footer"><span class="card-price">${precio}</span><span class="card-dur">${s.dur}</span></div>
+    <div class="card-footer"><span class="card-price">${precio}</span><span class="card-dur">${fmtDur(s.dur)}</span></div>
     <div class="card-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
   </div>`;
 }
@@ -585,7 +599,14 @@ function openDetail(id, esPromo){
   }
   const icon=SVC_ICONS[curSvc.id]||'ti-star';
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
-  const incl=curSvc.includes.map(i=>`<div class="incl-item"><span class="incl-dot"></span>${i}</div>`).join('');
+  // Cada ítem: punto alineado con la primera línea; lo que va antes del guion largo, en negrita.
+  // Si los textos son largos, la lista va en una sola columna para que se lea ordenada.
+  const inclLargo=curSvc.includes.some(i=>String(i).length>34);
+  const incl=curSvc.includes.map(i=>{
+    const partes=String(i).split(' — ');
+    const texto=partes.length>1 ? `<strong>${partes[0]}</strong> — ${partes.slice(1).join(' — ')}` : i;
+    return `<div class="incl-item"><span class="incl-dot"></span><span>${texto}</span></div>`;
+  }).join('');
 
   let extraBox='';
   if(curSvc.esEval){
@@ -612,13 +633,13 @@ function openDetail(id, esPromo){
         <div class="svc-banner-name">${curSvc.name}</div>
         <div class="svc-banner-meta">
           <span class="svc-banner-price">${curSvc._promo?`<span style="color:#aaa;text-decoration:line-through;font-weight:400;">$${curSvc._precioOriginal.toFixed(2)}</span> <span style="color:#D95F2B;">${precio}</span> <span style="background:#D95F2B;color:#fff;font-size:9px;padding:2px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;">PROMO</span>`:`${precio}${curSvc.esEval?' · descontable':''}`}</span>
-          <span class="svc-banner-dur">${curSvc.dur}</span>
+          <span class="svc-banner-dur">${fmtDur(curSvc.dur)}</span>
         </div>
       </div>
     </div>
     <p class="svc-desc">${curSvc.desc}</p>
     <p class="incl-title">Incluye</p>
-    <div class="incl-grid">${incl}</div>
+    <div class="incl-grid${inclLargo?' incl-uno':''}">${incl}</div>
     ${extraBox}
     <button class="btn-main" onclick="openCal()">Agendar este servicio</button>
     <button class="btn-ghost" onclick="closeOv('ov-detail')">Volver</button>`;
@@ -632,7 +653,7 @@ async function openCal(){
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
   document.getElementById('cal-svc-info').innerHTML=`
     <span class="svc-pill-name">${curSvc.name}</span>
-    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${curSvc.dur}</span></div>`;
+    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${fmtDur(curSvc.dur)}</span></div>`;
   document.getElementById('timeSec').style.display='none';
   document.getElementById('btnContinue').disabled=true;
 
@@ -1030,7 +1051,7 @@ function goForm(){
   document.getElementById('form-body').innerHTML=`
     <div style="background:#3A3A3A;border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;">
       <div style="font-size:15px;font-weight:700;color:var(--gold);font-family:var(--font-heading);">${curSvc.name}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;">${dayStr} · ${selTime} · ${curSvc.dur}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;">${dayStr} · ${selTime} · ${fmtDur(curSvc.dur)}</div>
     </div>
     <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
     <div class="frow">
@@ -1078,11 +1099,18 @@ async function aplicarCertificadoCodigo(){
   if(res.valido){
     certAplicado={id:res.certificateId, codigo:res.codigo, saldoDisponible:res.saldoDisponible, unSoloUso:!!res.unSoloUso};
     msgEl.style.color='#3a7a3a';
-    msgEl.textContent=res.unSoloUso
-      ? `✓ Certificado de cortesía: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso: se aplica en esta cita y no queda saldo.`
-      : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles.`;
     const _m=calcularMontos();
-    if(_m.tieneAbono && !_m.esConsultar && _m.abono<=0) msgEl.textContent+=' Cubre tu servicio: no necesitas pagar abono.';
+    if(_m.noFijo){
+      // Precio no fijo: el certificado solo se valida; se descuenta el día de la cita
+      msgEl.textContent=res.unSoloUso
+        ? `✓ Certificado de cortesía válido: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso. Como el precio de este servicio no es fijo, no se descuenta ahora: se aplicará el día de tu cita, cuando se confirme el precio.`
+        : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles. Como el precio de este servicio no es fijo, no se descuenta ahora: se aplicará el día de tu cita, cuando se confirme el precio.`;
+    } else {
+      msgEl.textContent=res.unSoloUso
+        ? `✓ Certificado de cortesía: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso: se aplica en esta cita y no queda saldo.`
+        : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles.`;
+      if(_m.tieneAbono && !_m.esConsultar && _m.abono<=0) msgEl.textContent+=' Cubre tu servicio: no necesitas pagar abono.';
+    }
   } else {
     certAplicado=null;
     msgEl.style.color='#c0392b';
@@ -1319,18 +1347,19 @@ async function finalizarCita(dayStr, ref){
   const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'sujeto a política de cancelación';
   const precio=curSvc.price>0?curSvc.price:0;
   const esConsultar = curSvc.price<=0;
+  const noFijo = precioNoFijo(curSvc);
   const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
   const citaId = 'cita-' + Date.now();
 
   const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
   const precioTrasCupon = Math.max(0, precio - descuentoMonto);
-  // El certificado es dinero real ya pagado, así que se descuenta siempre —
-  // incluso en servicios "a consultar" sin precio fijo. Como no hay un precio
-  // conocido para topear el descuento, se aplica el saldo completo disponible
-  // y el negocio lo resta del monto que acuerde con el cliente en persona.
-  const montoCertAplicado = certAplicado
-    ? (esConsultar ? certAplicado.saldoDisponible : Math.min(certAplicado.saldoDisponible, precioTrasCupon))
+  // Precio fijo: el certificado se descuenta ahora. Precio no fijo ("desde…", "consultar"):
+  // solo se valida, y el negocio lo aplica al completar la cita con el precio final. Así, si el
+  // cliente no califica para el servicio, su certificado queda intacto.
+  const montoCertAplicado = (certAplicado && !noFijo)
+    ? Math.min(certAplicado.saldoDisponible, precioTrasCupon)
     : 0;
+  const certPorAplicar = !!certAplicado && noFijo;
   const precioFinal = Math.max(0, precioTrasCupon - montoCertAplicado);
 
   const cita={nombre,telefono:tel,correo,nota:notaFinal,servicio:curSvc.name,categoria:curSvc.cat,
@@ -1338,7 +1367,7 @@ async function finalizarCita(dayStr, ref){
     comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
     metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
     cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
-    certificadoCodigo: montoCertAplicado>0 ? certAplicado.codigo : null,
+    certificadoCodigo: (montoCertAplicado>0 || certPorAplicar) ? certAplicado.codigo : null,
     certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
     certificadoSaldoRestante: montoCertAplicado>0 ? (certAplicado.unSoloUso ? 0 : Math.max(0, certAplicado.saldoDisponible - montoCertAplicado)) : null};
   let appointmentId=null;
@@ -1352,7 +1381,7 @@ async function finalizarCita(dayStr, ref){
   Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre, telefonoCliente:tel, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
   await new Promise(r=>setTimeout(r,900));
   const precioStr=esConsultar?'Por confirmar':(curSvc.precioTexto&&curSvc.precioTexto.toLowerCase().includes('desde')?'Desde $'+precio.toFixed(2):'$'+precio.toFixed(2));
-  const restanteTexto = esConsultar
+  const restanteTexto = noFijo
     ? (tieneAbono ? 'Se aplicará el abono al precio acordado' : 'Por confirmar')
     : '$'+(tipoAbono==='descontable' ? Math.max(0, precioFinal - montoAbono).toFixed(2) : precioFinal.toFixed(2));
   const abonoLine=tieneAbono?`<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`
@@ -1365,7 +1394,10 @@ async function finalizarCita(dayStr, ref){
       ? '<span style="color:#c0392b;font-size:12px;">No pudimos actualizar el saldo de tu certificado; el negocio lo revisará contigo.</span><br>'
       : `<strong>Saldo restante del certificado:</strong> <span style="color:#4CAF50;font-weight:600;">$${(certAplicado.unSoloUso ? 0 : Math.max(0,certAplicado.saldoDisponible-montoCertAplicado)).toFixed(2)}</span>${certAplicado.unSoloUso ? ' <span style="font-size:11px;color:#888;">(cortesía de un solo uso)</span>' : ''}<br>`}`
     : '';
-  const totalLine = esConsultar
+  const certPendienteLine = certPorAplicar
+    ? `<strong>Certificado (${certAplicado.codigo}):</strong> validado, con $${certAplicado.saldoDisponible.toFixed(2)} disponibles<br><span style="font-size:12px;color:#888;">No se ha descontado nada. Se aplicará el día de tu cita, cuando se confirme el precio final.</span><br>`
+    : '';
+  const totalLine = noFijo
     ? `<strong>Monto a cancelar el día de la cita:</strong> ${restanteTexto}<br>`
     : `<strong>Total a pagar:</strong> <span style="color:#D95F2B;font-weight:600;">${restanteTexto}</span><br>`;
   document.getElementById('form-body').innerHTML=`
@@ -1377,11 +1409,12 @@ async function finalizarCita(dayStr, ref){
         <strong>Servicio:</strong> ${curSvc.name}<br>
         <strong>Fecha:</strong> ${dayStr}<br>
         <strong>Hora:</strong> ${selTime ? (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})() : selTime}<br>
-        <strong>Duración aprox.:</strong> ${curSvc.dur}<br>
+        <strong>Duración aprox.:</strong> ${fmtDur(curSvc.dur)}<br>
         <strong>Precio total:</strong> <span style="color:#D95F2B;font-weight:600;">${precioStr}</span><br>
         ${abonoLine}
         ${cuponLine}
         ${certLine}
+        ${certPendienteLine}
         ${totalLine}
       </div>
       ${abonoExonerado?'':'<p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>'}
