@@ -1236,7 +1236,7 @@ img{max-width:100%;}
         <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="ac-correo"/></div>
       </div>
       <div class="fg"><label class="flbl">Servicio</label><select class="fi" id="ac-servicio" onchange="acServicioCambio()"></select></div>
-      <div class="fg" id="ac-prof-wrap" style="display:none;"><label class="flbl">Profesional</label><select class="fi" id="ac-prof" onchange="acProfesionalCambio()"></select></div>
+      <div class="fg" id="ac-prof-wrap" style="display:none;"><label class="flbl">Profesional (para su comisión)</label><select class="fi" id="ac-prof" onchange="acProfesionalCambio()"></select></div>
 
       <div class="fg">
         <label class="flbl">Fecha y hora</label>
@@ -1318,7 +1318,7 @@ img{max-width:100%;}
         <datalist id="fv-servicios-dl"></datalist>
       </div>
       <div class="frow">
-        <div class="fg"><label class="flbl">Profesional</label><select class="fi" id="fv-prof"></select></div>
+        <div class="fg"><label class="flbl">Profesional (para su comisión)</label><select class="fi" id="fv-prof"></select></div>
         <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" type="number" step="0.01" min="0" id="fv-monto" oninput="fvMontoCambio()"/></div>
       </div>
       <div class="fg"><label class="flbl">¿Cómo pagó?</label><div id="fv-pagos"></div></div>
@@ -1518,7 +1518,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=22"></script>
+<script src="sheets.js?v=24"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -1802,8 +1802,44 @@ function escCat(t){
 }
 
 // Las categorías salen de los servicios (en orden de aparición)
+// Orden de las categorías: el que guardó el dueño; las nuevas se agregan al final (orden de creación).
+// Sin un orden guardado se usa el clásico (Básicos, Tratamientos...) y luego las demás.
+function ordenCategorias(presentes, guardado){
+  if (guardado && guardado.length){
+    return [...guardado.filter(c => presentes.includes(c)), ...presentes.filter(c => !guardado.includes(c))];
+  }
+  const clasico = ['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+  return [...clasico.filter(c => presentes.includes(c)), ...presentes.filter(c => !clasico.includes(c))];
+}
+
+function categoriasGuardadas(){
+  return (window.ANNLY_BUSINESS && Array.isArray(window.ANNLY_BUSINESS.categorias_servicios)) ? window.ANNLY_BUSINESS.categorias_servicios : [];
+}
+
 function categoriasActuales(){
-  return [...new Set(SERVICES.map(sv=>sv.cat).filter(Boolean))];
+  const presentes = [...new Set(SERVICES.map(sv => sv.cat).filter(Boolean))];
+  return ordenCategorias(presentes, categoriasGuardadas());
+}
+
+async function guardarOrdenCategorias(lista){
+  try { await Sheets.actualizarPerfil({ categorias_servicios: lista }); }
+  catch(e){ console.error('Error guardando el orden de categorías:', e); alert('No se pudo guardar el orden de las categorías.'); }
+}
+
+// Guarda el orden vigente si cambió (por ejemplo, al crearse una categoría nueva)
+function persistirOrdenCategorias(){
+  const lista = categoriasActuales();
+  if (JSON.stringify(lista) !== JSON.stringify(categoriasGuardadas())) guardarOrdenCategorias(lista);
+}
+
+// Sube o baja una categoría en la lista (también cambia el orden en el sitio público)
+async function moverCategoria(i, dir){
+  const lista = categoriasActuales();
+  const j = i + dir;
+  if (j < 0 || j >= lista.length) return;
+  [lista[i], lista[j]] = [lista[j], lista[i]];
+  await guardarOrdenCategorias(lista);
+  renderAdmin();
 }
 
 // Corrige el nombre de una categoría: se actualiza en todos sus servicios
@@ -1816,8 +1852,10 @@ function renombrarCategoria(i){
     alert('Ya tienes una categoría con ese nombre.');
     return;
   }
+  const ordenAntes = categoriasActuales();
   SERVICES.forEach(sv=>{ if(sv.cat===actual) sv.cat=nuevo; });
   saveServices();
+  guardarOrdenCategorias(ordenAntes.map(c => c===actual ? nuevo : c));
   renderAdmin();
 }
 
@@ -1842,6 +1880,8 @@ function renderAdmin(){
         <span class="adm-sec-title">${escCat(cat)}</span>
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="btn-add" onclick="agregarServicioEnCat(${ci})"><i class="ti ti-plus"></i> Agregar</button>
+          <button class="btn-ico" ${ci===0?'disabled style="opacity:.35;cursor:default;"':''} onclick="moverCategoria(${ci},-1)" title="Subir categoría"><i class="ti ti-arrow-up"></i></button>
+          <button class="btn-ico" ${ci===categorias.length-1?'disabled style="opacity:.35;cursor:default;"':''} onclick="moverCategoria(${ci},1)" title="Bajar categoría"><i class="ti ti-arrow-down"></i></button>
           <button class="btn-ico" onclick="renombrarCategoria(${ci})" title="Editar nombre de la categoría"><i class="ti ti-pencil"></i></button>
         </div>
       </div>`;
@@ -2069,7 +2109,7 @@ function guardar(){
     const newId=uuidNuevo();
     SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,requiereAbono,abonoMonto,abonoTipo,desc,includes,imagenUrl});
   }
-  saveServices(); closeModal(); renderAdmin();
+  saveServices(); persistirOrdenCategorias(); closeModal(); renderAdmin();
 }
 
 function closeModal(){document.getElementById('ov-modal').classList.remove('open');}
@@ -4577,7 +4617,10 @@ function abrirModalVenta(){
   elFin('fv-monto').value = '';
   elFin('fv-msg').textContent = '';
   elFin('fv-servicios-dl').innerHTML = (typeof SERVICES !== 'undefined' ? SERVICES : []).filter(s => s.active).map(s => `<option value="${escCat(s.name)}"></option>`).join('');
-  elFin('fv-prof').innerHTML = '<option value="">Sin asignar</option>' + FIN.empleados.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
+  // El profesional es obligatorio cuando el negocio tiene equipo: las comisiones dependen de él
+  elFin('fv-prof').innerHTML = FIN.empleados.length
+    ? (FIN.empleados.length > 1 ? '<option value="">Elige el profesional…</option>' : '') + FIN.empleados.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('')
+    : '<option value="">Sin profesionales</option>';
   pagoIniciar('fv-pagos', 0);
   elFin('ov-fin-venta').classList.add('open');
 }
@@ -4605,6 +4648,7 @@ async function guardarVentaLocal(){
   if (!servicio){ msg.textContent = 'Escribe el servicio o producto.'; return; }
   if (!(monto > 0)){ msg.textContent = 'Ingresa el monto de la venta.'; return; }
   if (!fecha){ msg.textContent = 'Elige la fecha.'; return; }
+  if (FIN.empleados.length && !elFin('fv-prof').value){ msg.textContent = 'Elige el profesional que realizó la venta (sus comisiones dependen de esto).'; return; }
   const v = pagoValidar('fv-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
   const btn = elFin('fv-btn');
@@ -4699,9 +4743,24 @@ function calcularCompletar(precio, ctx){
   return { certUsado, abonoDescontado, certExtraUsado, porCobrar };
 }
 
-function abrirCompletarCita(id){
+async function abrirCompletarCita(id){
   const c = (typeof CITAS_CACHE !== 'undefined' ? CITAS_CACHE : []).find(x => String(x.id) === String(id));
   if (!c) return;
+  // Profesionales activos (para elegir quién realizó el servicio: de ahí salen las comisiones)
+  if (!FIN.empleados.length){
+    try {
+      const todos = await Sheets.getEmpleados();
+      FIN.empleados = todos.filter(e => e.activo);
+      FIN.equipo = Object.fromEntries(todos.map(e => [e.id, e.nombre]));
+    } catch(e){ console.error(e); }
+  }
+  const emps = FIN.empleados.slice();
+  if (c.empleadoId && !emps.some(e => e.id === c.empleadoId)) emps.push({ id:c.empleadoId, nombre:c.empleadoNombre || 'Profesional' });
+  const htmlProf = emps.length ? `
+    <div class="fg" id="fc-prof-wrap"><label class="flbl">Profesional que realizó el servicio</label>
+      <select class="fi" id="fc-prof">${!c.empleadoId ? '<option value="">Elige el profesional…</option>' : ''}${emps.map(e => `<option value="${e.id}"${e.id === c.empleadoId ? ' selected' : ''}>${escCat(e.nombre)}</option>`).join('')}</select>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Sus comisiones se calculan sobre este profesional.</p>
+    </div>` : '';
   const consultar = !!c.precioEsConsultar;
   const base = Number(c.precioTotal) || 0;
   const pct = Number(c.descuentoCupon) || 0;
@@ -4715,6 +4774,7 @@ function abrirCompletarCita(id){
       <strong>${escCat(c.servicio)}</strong><br>
       ${escCat(c.nombre)}${c.empleadoNombre ? ' · ' + escCat(c.empleadoNombre) : ''} · ${escCat(c.fecha)}
     </div>
+    ${htmlProf}
     <div class="fg"><label class="flbl">Precio final del servicio ($)</label>
       <input class="fi" id="fc-precio" type="number" step="0.01" min="0" value="${neto > 0 ? neto.toFixed(2) : ''}" oninput="fcRecalcular()"/>
       <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${pistaPrecio}</p>
@@ -4813,6 +4873,10 @@ async function confirmarCompletarCita(){
   const c = COMPLETANDO.c;
   const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
   if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del servicio.'; return; }
+  const selProf = elFin('fc-prof');
+  const empleadoElegido = selProf ? selProf.value : (c.empleadoId || '');
+  if (selProf && !empleadoElegido){ msg.textContent = 'Elige el profesional que realizó el servicio.'; return; }
+  const cambioEmpleado = !!(selProf && empleadoElegido && empleadoElegido !== c.empleadoId);
   const difPrecio = Math.round((precio - COMPLETANDO.neto)*100)/100;
   const hayAjuste = !COMPLETANDO.consultar && Math.abs(difPrecio) >= 0.005;
   const ajusteDetalle = (hayAjuste && elFin('fc-ajuste')) ? elFin('fc-ajuste').value.trim() : '';
@@ -4851,7 +4915,8 @@ async function confirmarCompletarCita(){
     }
     await Sheets.completarCita(c.id, {
       precioCobrado: precio, pagos, fecha: c.fechaISO,
-      concepto: c.servicio, cliente: c.nombre, empleadoId: c.empleadoId || null,
+      concepto: c.servicio, cliente: c.nombre, empleadoId: empleadoElegido || c.empleadoId || null,
+      cambiarEmpleado: cambioEmpleado, empleadoIdOriginal: c.empleadoId || null,
       extras: ex.items, ajusteDetalle
     });
     cerrarModalFin('ov-fin-completar');
@@ -5183,17 +5248,22 @@ async function acServicioCambio(){
 
   try { AC.emps = await Sheets.getEmpleadosParaServicio(AC.svc.id); } catch(e){ AC.emps = []; }
   AC.horariosEmp = {};
+  // En el local SIEMPRE se elige un profesional: las comisiones dependen de saber quién atendió.
+  AC.modoCualquiera = false;
   if (AC.emps.length > 1){
-    const hs = await Promise.all(AC.emps.map(e => Sheets.getEmpleadoHorario(e.id).catch(() => null)));
-    AC.emps.forEach((e, i) => { AC.horariosEmp[e.id] = hs[i]; });
-    AC.modoCualquiera = true; AC.empId = null; AC.horarioEmp = null;
-    elFin('ac-prof').innerHTML = '<option value="">Cualquiera disponible</option>' +
+    AC.empId = null; AC.horarioEmp = null;
+    elFin('ac-prof').innerHTML = '<option value="">Elige el profesional…</option>' +
       AC.emps.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
+    elFin('ac-prof').disabled = false;
+    elFin('ac-prof-wrap').style.display = 'block';
+  } else if (AC.emps.length === 1){
+    AC.empId = AC.emps[0].id;
+    AC.horarioEmp = await Sheets.getEmpleadoHorario(AC.empId).catch(() => null);
+    elFin('ac-prof').innerHTML = `<option value="${AC.empId}">${escCat(AC.emps[0].nombre)}</option>`;
+    elFin('ac-prof').disabled = true;
     elFin('ac-prof-wrap').style.display = 'block';
   } else {
-    AC.modoCualquiera = false;
-    AC.empId = AC.emps[0] ? AC.emps[0].id : null;
-    AC.horarioEmp = AC.empId ? await Sheets.getEmpleadoHorario(AC.empId).catch(() => null) : null;
+    AC.empId = null; AC.horarioEmp = null;
     elFin('ac-prof-wrap').style.display = 'none';
   }
   acRenderCal();
@@ -5204,9 +5274,10 @@ async function acProfesionalCambio(){
   const val = elFin('ac-prof').value;
   AC.dia = null; AC.hora = null; AC.empAsignado = null; AC.ocupadas = {};
   elFin('ac-hora-sec').style.display = 'none';
-  if (!val){ AC.modoCualquiera = true; AC.empId = null; AC.horarioEmp = null; }
+  AC.modoCualquiera = false;
+  if (!val){ AC.empId = null; AC.horarioEmp = null; }
   else {
-    AC.modoCualquiera = false; AC.empId = val;
+    AC.empId = val;
     AC.horarioEmp = await Sheets.getEmpleadoHorario(val).catch(() => null);
   }
   acRenderCal();
@@ -5253,6 +5324,10 @@ function acRenderCal(){
   let h = dn.map((d,i) => `<div class="cdn${i === 0 ? ' dom' : ''}">${d}</div>`).join('');
   if (!AC.svc){
     elFin('acCalGrid').innerHTML = '<p style="grid-column:span 7;text-align:center;font-size:12px;color:#aaa;padding:1rem;">Elige primero el servicio para ver la disponibilidad.</p>';
+    return;
+  }
+  if (AC.emps.length > 1 && !AC.empId){
+    elFin('acCalGrid').innerHTML = '<p style="grid-column:span 7;text-align:center;font-size:12px;color:#aaa;padding:1rem;">Elige el profesional para ver su disponibilidad.</p>';
     return;
   }
   const first = new Date(AC.y, AC.m, 1).getDay();
@@ -5475,6 +5550,7 @@ async function guardarAgregarCita(){
   const nombre = elFin('ac-nombre').value.trim();
   if (!nombre){ msg.textContent = 'Escribe el nombre del cliente.'; return; }
   if (!AC.svc){ msg.textContent = 'Elige el servicio.'; return; }
+  if (AC.emps.length > 1 && !AC.empId){ msg.textContent = 'Elige el profesional que atenderá (sus comisiones dependen de esto).'; return; }
   if (!AC.dia || !AC.hora){ msg.textContent = 'Elige la fecha y la hora.'; return; }
 
   const M = acMontos();
