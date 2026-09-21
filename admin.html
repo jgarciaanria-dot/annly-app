@@ -1479,6 +1479,43 @@ img{max-width:100%;}
   }
 }
 
+
+/* ============================================================
+   FIX RESPONSIVE FINAL
+   La portada visual se oculta en móvil y el formulario ocupa
+   todo el ancho. La notificación de regalo también se oculta.
+   ============================================================ */
+@media (max-width:860px){
+  .login-bg{
+    grid-template-columns:1fr !important;
+    min-height:100vh !important;
+  }
+
+  .login-photo{
+    display:none !important;
+  }
+
+  .login-form-wrap{
+    width:100% !important;
+    min-height:100vh !important;
+    padding:1rem !important;
+    box-sizing:border-box !important;
+  }
+
+  .gift-floating-notice{
+    display:none !important;
+  }
+}
+
+@media (max-width:520px){
+  .login-card{
+    width:100% !important;
+    max-width:430px !important;
+    box-sizing:border-box !important;
+    padding:1.7rem 1.25rem !important;
+  }
+}
+
 </style>
 </head>
 <body>
