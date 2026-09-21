@@ -1652,7 +1652,10 @@ const Sheets = {
             : null,
 
         ajusteDetalle:
-          c.ajuste_detalle || ''
+          c.ajuste_detalle || '',
+
+        certificadoMotivoNoAplicado:
+          c.certificado_no_aplicado_motivo || ''
 
       }));
   },
@@ -3438,6 +3441,8 @@ const Sheets = {
     await window.AnnlyReady;
     const marca = { completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado };
     if (datos.ajusteDetalle) marca.ajuste_detalle = datos.ajusteDetalle;
+    // Motivo por el que un certificado validado al reservar no se aplicó (trazabilidad)
+    if (datos.certNoAplicadoMotivo) marca.certificado_no_aplicado_motivo = datos.certNoAplicadoMotivo;
     // Si quien realizó el servicio es otra persona, la cita queda a nombre de ese profesional
     if (datos.cambiarEmpleado && datos.empleadoId) marca.employee_id = datos.empleadoId;
     const { data: marcada, error: errMarca } = await sbClient.from('appointments')
@@ -3448,7 +3453,7 @@ const Sheets = {
     if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
 
     const revertirMarca = () => sbClient.from('appointments')
-      .update({ completada_en: null, precio_cobrado: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}), ...(datos.cambiarEmpleado ? { employee_id: datos.empleadoIdOriginal || null } : {}) }).eq('id', citaId);
+      .update({ completada_en: null, precio_cobrado: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}), ...(datos.certNoAplicadoMotivo ? { certificado_no_aplicado_motivo: null } : {}), ...(datos.cambiarEmpleado ? { employee_id: datos.empleadoIdOriginal || null } : {}) }).eq('id', citaId);
 
     // Ventas adicionales de la visita (tratamientos, productos, etc.)
     let extrasIds = [];
