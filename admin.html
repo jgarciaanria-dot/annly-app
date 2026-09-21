@@ -1203,6 +1203,26 @@ img{max-width:100%;}
   display:inline;
 }
 
+
+#panel-finanzas .fin-cert-sub{
+  color:#77758A;
+  font-size:9.5px;
+  line-height:1.4;
+  margin-top:3px;
+}
+#panel-finanzas .fin-cert-sub strong{
+  color:#4B4657;
+  font-weight:800;
+}
+#panel-finanzas .fin-cert-box.cert-count .fin-cert-value{
+  color:#159A61;
+  font-size:16px;
+}
+#panel-finanzas .fin-cert-box.cert-count{
+  background:linear-gradient(145deg,#F5FFF9,#fff);
+  border-color:#CDEBDD;
+}
+
 </style>
 </head>
 <body>
@@ -5190,7 +5210,7 @@ const METODOS_COBRO = ['efectivo','yappy','transferencia','tarjeta'];
 const CATEGORIAS_GASTO = ['Insumos y productos','Alquiler','Servicios básicos','Pagos al personal','Publicidad','Mantenimiento','Otros'];
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-let FIN = { pagos:[], pagosCert:[], pagosCanje:[], previo:null, cortesiasPeriodo:0, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+let FIN = { pagos:[], pagosCert:[], pagosCanje:[], previo:null, cortesiasPeriodo:0, certEmitidos:{total:0,venta:0,regalo:0,cortesia:0}, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
 let FIN_PERIODO = 'actual';
 let FIN_VISTA = 'resumen';
 let FIN_FILTRO_MOV = 'todos';
@@ -5311,11 +5331,32 @@ async function loadFinanzas(){
   }
   try {
     const certs = await Sheets.getCertificados();
-    FIN.certPorCanjear = certs.filter(c => estadoCertificado(c).texto === 'Activo').reduce((s,c) => s + c.saldoRestante, 0);
-    FIN.cortesiasPeriodo = certs.filter(c => c.tipo === 'cortesia' && c.estado !== 'cancelado' &&
-      String(c.fechaEmision || '').slice(0,10) >= desde && String(c.fechaEmision || '').slice(0,10) <= hasta)
-      .reduce((s,c) => s + c.montoInicial, 0);
-  } catch(e){ FIN.certPorCanjear = 0; }
+
+    const emitidosPeriodo = certs.filter(c => {
+      const fecha = String(c.fechaEmision || '').slice(0,10);
+      return c.estado !== 'cancelado' && fecha >= desde && fecha <= hasta;
+    });
+
+    FIN.certEmitidos = {
+      total: emitidosPeriodo.length,
+      venta: emitidosPeriodo.filter(c => String(c.tipo || '').toLowerCase() === 'venta').length,
+      regalo: emitidosPeriodo.filter(c => String(c.tipo || '').toLowerCase() === 'regalo').length,
+      cortesia: emitidosPeriodo.filter(c => String(c.tipo || '').toLowerCase() === 'cortesia').length
+    };
+
+    FIN.certPorCanjear = certs
+      .filter(c => estadoCertificado(c).texto === 'Activo')
+      .reduce((s,c) => s + c.saldoRestante, 0);
+
+    FIN.cortesiasPeriodo = emitidosPeriodo
+      .filter(c => String(c.tipo || '').toLowerCase() === 'cortesia')
+      .reduce((s,c) => s + Number(c.montoInicial || 0), 0);
+
+  } catch(e){
+    FIN.certPorCanjear = 0;
+    FIN.certEmitidos = {total:0,venta:0,regalo:0,cortesia:0};
+    console.error('No se pudieron cargar los certificados de Finanzas:', e);
+  }
   renderFinanzas();
 }
 
@@ -5390,53 +5431,32 @@ function tarjetaComparacion(ingresos){
   const nota = t => `<div class="fin-card-note">${t}</div>`;
   const p = FIN.previo;
 
-  // Si FIN.previo ya viene calculado, lo usamos.
-  // Si no, intentamos construir la comparación con los movimientos
-  // existentes del periodo anterior.
-  let previo = p;
-
-  if (!previo) {
-    try {
-      const desde = new Date(FIN.desde);
-      const hasta = new Date(FIN.hasta);
-      const dias = Math.max(1, Math.round((hasta - desde) / 86400000) + 1);
-      const prevHasta = new Date(desde);
-      prevHasta.setDate(prevHasta.getDate() - 1);
-      const prevDesde = new Date(prevHasta);
-      prevDesde.setDate(prevDesde.getDate() - dias + 1);
-
-      const fechaPago = x => new Date(x.fecha || x.createdAt || x.date || 0);
-      const movimientos = [...(FIN.pagos || []), ...(FIN.pagosCert || [])];
-
-      const ingresosPrevios = movimientos
-        .filter(x => {
-          const f = fechaPago(x);
-          return f >= prevDesde && f <= prevHasta;
-        })
-        .reduce((s,x) => s + Number(x.monto || 0), 0);
-
-      previo = {
-        ingresos: ingresosPrevios,
-        desde: prevDesde.toISOString().slice(0,10),
-        hasta: prevHasta.toISOString().slice(0,10),
-        completo: true
-      };
-    } catch(e) {
-      previo = null;
-    }
+  // El backend ya calcula el periodo comparable: misma duración y mismo tramo
+  // transcurrido del periodo anterior.
+  if (!p){
+    return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
+      <div class="fin-card-value">
+        <i class="ti ti-chart-line fin-card-icon" aria-hidden="true"></i>
+        <span>Sin comparación</span>
+      </div>
+      ${nota('Ingresos actuales: ' + fmtDinero(ingresos) + '<br>No hay un periodo anterior disponible para comparar.')}`);
   }
 
-  if (!previo || !(previo.ingresos > 0)){
+  const anterior = Number(p.ingresos || 0);
+  const rango = fechaCortaFin(p.desde) + ' al ' + fechaCortaFin(p.hasta);
+
+  // Si el periodo anterior tuvo $0, un porcentaje no sería matemáticamente válido.
+  // Mostramos el dato real y una etiqueta clara en lugar de dejar la tarjeta vacía.
+  if (anterior === 0){
     return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
       <div class="fin-card-value">
         <i class="ti ti-trending-up fin-card-icon" aria-hidden="true"></i>
-        <span>—</span>
+        <span>Nuevo ingreso</span>
       </div>
-      ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>No hay ingresos registrados en el periodo anterior.')}`);
+      ${nota('Ingresos actuales: ' + fmtDinero(ingresos) + '<br>Periodo anterior: ' + fmtDinero(anterior) + ' (' + rango + ')')}`);
   }
 
-  const rango = fechaCortaFin(previo.desde) + ' al ' + fechaCortaFin(previo.hasta);
-  const porcentaje = Math.round((ingresos - previo.ingresos) / previo.ingresos * 100);
+  const porcentaje = Math.round((ingresos - anterior) / anterior * 100);
   const icono = porcentaje > 0 ? 'ti-trending-up' : (porcentaje < 0 ? 'ti-trending-down' : 'ti-minus');
   const texto = (porcentaje > 0 ? '+' : (porcentaje < 0 ? '−' : '')) + Math.abs(porcentaje) + '%';
   const claseTendencia = porcentaje < 0 ? 'negative' : '';
@@ -5446,7 +5466,7 @@ function tarjetaComparacion(ingresos){
       <i class="ti ${icono} fin-card-icon" aria-hidden="true"></i>
       <span data-pct="${porcentaje}">${texto}</span>
     </div>
-    ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>antes: ' + fmtDinero(previo.ingresos) + ' (' + rango + ')' + (previo.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
+    ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>antes: ' + fmtDinero(anterior) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
 }
 
 // ---------- Resumen ----------
@@ -5544,16 +5564,24 @@ function htmlResumenFin(){
     : '';
 
   const certBoxes = [
-    ['sold','ti ti-gift','Vendidos en el periodo',ventaCert,'Ya son ingreso'],
-    ['','ti ti-check','Servicios pagados con certificado',canjeados,'No suman otra vez'],
-    ['','ti ti-heart','Cortesías emitidas',FIN.cortesiasPeriodo,'No generan ingreso'],
-    ['pending','ti ti-hourglass','Por canjear',FIN.certPorCanjear,'Servicios pendientes']
-  ].map(([clase,icon,titulo,valor,sub]) => `
+    ['sold','ti ti-gift','Emitidos en el periodo',FIN.certEmitidos.total,
+      `<strong>Venta:</strong> ${FIN.certEmitidos.venta} · <strong>Regalo:</strong> ${FIN.certEmitidos.regalo} · <strong>Cortesía:</strong> ${FIN.certEmitidos.cortesia}`,
+      'cert-count'],
+    ['','ti ti-check','Servicios pagados con certificado',canjeados,
+      'No suman otra vez',
+      'money'],
+    ['','ti ti-heart','Cortesías emitidas',FIN.cortesiasPeriodo,
+      FIN.certEmitidos.cortesia + ' emitidas · No generan ingreso',
+      'money'],
+    ['pending','ti ti-hourglass','Por canjear',FIN.certPorCanjear,
+      'Servicios pendientes',
+      'money']
+  ].map(([clase,icon,titulo,valor,sub,modo]) => `
     <div class="fin-cert-box ${clase}">
       <div class="fin-cert-icon"><i class="${icon}"></i></div>
       <div class="fin-cert-label">${titulo}</div>
-      <div class="fin-cert-value">${fmtDinero(valor)}</div>
-      <div style="font-size:9.5px;color:#8A8795;margin-top:2px;">${sub}</div>
+      <div class="fin-cert-value">${modo === 'cert-count' ? valor + ' emitidos' : fmtDinero(valor)}</div>
+      <div class="fin-cert-sub">${sub}</div>
     </div>`).join('');
 
   return `
