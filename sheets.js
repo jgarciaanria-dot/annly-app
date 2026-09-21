@@ -1012,6 +1012,27 @@ function formatHoraSitio(horaPg) {
 }
 
 
+// "13:00:00" -> "1:00 PM" | "09:30:00" -> "9:30 AM" | "00:15:00" -> "12:15 AM"
+function formatHora12Cita(horaPg) {
+
+  if (!horaPg) {
+    return '';
+  }
+
+  const [hStr, mStr] =
+    horaPg.split(':');
+
+  const h = parseInt(hStr, 10);
+
+  return (
+    ((h % 12) || 12) +
+    ':' +
+    (mStr || '00') +
+    (h >= 12 ? ' PM' : ' AM')
+  );
+}
+
+
 function genCodigoCupon() {
 
   return 'RUL-' +
@@ -1574,12 +1595,7 @@ const Sheets = {
           isoAFechaTexto(c.fecha),
 
         hora:
-          formatHoraSitio(c.hora) +
-          (
-            parseInt(c.hora) >= 12
-              ? ' PM'
-              : ' AM'
-          ),
+          formatHora12Cita(c.hora),
 
         duracion:
           c.duracion_min,
@@ -1655,7 +1671,10 @@ const Sheets = {
           c.ajuste_detalle || '',
 
         certificadoMotivoNoAplicado:
-          c.certificado_no_aplicado_motivo || ''
+          c.certificado_no_aplicado_motivo || '',
+
+        creadoEn:
+          c.creado_en || ''
 
       }));
   },
