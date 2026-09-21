@@ -4460,7 +4460,7 @@ const METODOS_COBRO = ['efectivo','yappy','transferencia','tarjeta'];
 const CATEGORIAS_GASTO = ['Insumos y productos','Alquiler','Servicios básicos','Pagos al personal','Publicidad','Mantenimiento','Otros'];
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-let FIN = { pagos:[], pagosCert:[], pagosCanje:[], cortesiasPeriodo:0, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+let FIN = { pagos:[], pagosCert:[], pagosCanje:[], previo:null, cortesiasPeriodo:0, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
 let FIN_PERIODO = 'actual';
 let FIN_VISTA = 'resumen';
 let FIN_FILTRO_MOV = 'todos';
@@ -4572,6 +4572,13 @@ async function loadFinanzas(){
     return;
   }
   try { FIN.extras = await Sheets.getExtrasFinanzas(desde, hasta); } catch(e){ FIN.extras = []; }
+  // Ingresos del periodo anterior (para la tarjeta de comparación)
+  FIN.previo = null;
+  const prev = rangoPrevioComparable(desde, hasta);
+  if (prev){
+    try { FIN.previo = { ...prev, ingresos: ingresosDeCobros(await Sheets.getPagosFinanzas(prev.desde, prev.hasta)) }; }
+    catch(e){ console.error('No se pudo leer el periodo anterior:', e); FIN.previo = null; }
+  }
   try {
     const certs = await Sheets.getCertificados();
     FIN.certPorCanjear = certs.filter(c => estadoCertificado(c).texto === 'Activo').reduce((s,c) => s + c.saldoRestante, 0);
@@ -4595,28 +4602,75 @@ function renderFinanzas(){
   else if (FIN_VISTA === 'ajustes') { cont.innerHTML = htmlAjustesFin(); faCambio(); }
 }
 
+// Periodo anterior comparable: mismo largo, justo antes. Si el periodo actual sigue en curso, se compara
+// solo el mismo tramo (por ejemplo los primeros 6 días), para que la comparación sea justa.
+function isoADateFin(iso){ const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); }
+function dateAIsoFin(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+function rangoPrevioComparable(desde, hasta){
+  const d0 = isoADateFin(desde), d1 = isoADateFin(hasta);
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (d0 > hoy) return null;                       // un periodo futuro no se compara
+  const dia = 86400000;
+  const largo = Math.round((d1 - d0) / dia) + 1;
+  const hastaEfectivo = d1 < hoy ? d1 : hoy;
+  const transcurridos = Math.round((hastaEfectivo - d0) / dia) + 1;
+  const pd = new Date(d0); pd.setDate(pd.getDate() - largo);
+  const ph = new Date(pd); ph.setDate(ph.getDate() + transcurridos - 1);
+  return { desde: dateAIsoFin(pd), hasta: dateAIsoFin(ph), completo: transcurridos === largo };
+}
+
+// Dinero recibido en una lista de cobros (lo mismo que cuenta como Ingresos)
+function ingresosDeCobros(pagos){
+  return pagos.filter(p => p.origen === 'certificado' || p.metodo !== 'certificado').reduce((s, p) => s + p.monto, 0);
+}
+
 // Color de los egresos (gastos): un rojo franco para que se distingan de un vistazo
 const COLOR_EGRESO = '#D92D20';
 
 // Los números de las tarjetas "giran" desde 0 hasta su valor al cargar (respeta "reducir movimiento")
 function animarNumerosFin(raiz){
   if (!raiz) return;
-  const els = raiz.querySelectorAll('[data-num]');
+  const els = raiz.querySelectorAll('[data-num], [data-pct]');
   if (!els.length) return;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const dur = 900, retraso = 70, t0 = performance.now();
-  els.forEach(el => { el.dataset.final = el.textContent; el.textContent = fmtDinero(0); });
+  els.forEach(el => { el.dataset.final = el.textContent; el.textContent = el.dataset.pct !== undefined ? '0%' : fmtDinero(0); });
   const paso = (t) => {
     let sigue = false;
     els.forEach((el, i) => {
       const p = Math.min(1, Math.max(0, (t - t0 - i*retraso) / dur));
       const e = 1 - Math.pow(1 - p, 3);
-      el.textContent = p >= 1 ? el.dataset.final : fmtDinero(Number(el.dataset.num) * e);
+      if (el.dataset.pct !== undefined){
+        const v = Number(el.dataset.pct);
+        el.textContent = p >= 1 ? el.dataset.final : (v > 0 ? '+' : (v < 0 ? '−' : '')) + Math.round(Math.abs(v) * e) + '%';
+      } else {
+        el.textContent = p >= 1 ? el.dataset.final : fmtDinero(Number(el.dataset.num) * e);
+      }
       if (p < 1) sigue = true;
     });
     if (sigue) requestAnimationFrame(paso);
   };
   requestAnimationFrame(paso);
+}
+
+// Tarjeta "Frente al periodo anterior": cuánto cambiaron los ingresos respecto al periodo de la misma duración justo antes
+function tarjetaComparacion(ingresos){
+  const caja = (borde, cuerpo) => `<div style="background:#FAFAF8;border:0.5px solid ${borde};border-radius:12px;padding:14px;">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Frente al periodo anterior</div>${cuerpo}</div>`;
+  const nota = t => `<div style="font-size:10.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;">${t}</div>`;
+  const p = FIN.previo;
+  if (!p) return caja('#E4EBE4', `<div style="font-size:21px;font-weight:800;color:var(--ink-soft);margin-top:5px;">—</div>${nota('Todavía no hay con qué comparar este periodo.')}`);
+  const rango = fechaCortaFin(p.desde) + ' al ' + fechaCortaFin(p.hasta);
+  if (!(p.ingresos > 0)){
+    return caja('#E4EBE4', `<div style="font-size:21px;font-weight:800;color:var(--ink-soft);margin-top:5px;">—</div>${nota('Ingresos ' + fmtDinero(ingresos) + '<br>El periodo anterior (' + rango + ') no tuvo ingresos.')}`);
+  }
+  const pct = Math.max(-999, Math.min(999, Math.round((ingresos - p.ingresos) / p.ingresos * 100)));
+  const color = pct > 0 ? '#159A61' : (pct < 0 ? COLOR_EGRESO : 'var(--ink-soft)');
+  const icono = pct > 0 ? 'ti-trending-up' : (pct < 0 ? 'ti-trending-down' : 'ti-minus');
+  const texto = (pct > 0 ? '+' : (pct < 0 ? '−' : '')) + Math.abs(pct) + '%';
+  return caja(pct === 0 ? '#E4EBE4' : color, `<div style="font-size:21px;font-weight:800;color:${color};margin-top:5px;font-variant-numeric:tabular-nums;"><i class="ti ${icono}" style="font-size:19px;vertical-align:-3px;margin-right:4px;" aria-hidden="true"></i><span data-pct="${pct}">${texto}</span></div>` +
+    nota('Ingresos ' + fmtDinero(ingresos) + '<br>antes ' + fmtDinero(p.ingresos) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior')));
 }
 
 // ---------- Resumen ----------
@@ -4663,9 +4717,9 @@ function htmlResumenFin(){
 
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem;">
-      ${kpi('Ingresos', fmtDinero(ingresos), '#159A61', 'Dinero recibido: servicios, ventas y certificados vendidos', ingresos)}
-      ${kpi('Gastos', fmtDinero(gastos), COLOR_EGRESO, '', gastos)}
-      ${kpi('Resultado', fmtDinero(resultado), resultado >= 0 ? '#159A61' : COLOR_EGRESO, 'Ingresos menos gastos', resultado)}
+      ${kpi('Ingreso real', fmtDinero(resultado), resultado >= 0 ? '#159A61' : COLOR_EGRESO, 'Ingresos ' + fmtDinero(ingresos) + '<br>menos gastos ' + fmtDinero(gastos), resultado)}
+      ${kpi('Gastos', fmtDinero(gastos), COLOR_EGRESO, 'Egresos del periodo', gastos)}
+      ${tarjetaComparacion(ingresos)}
       ${kpi('Certificados por canjear', fmtDinero(FIN.certPorCanjear), '#7C3AED', 'Servicios que aún debes a clientes. El dinero ya contó como ingreso al venderse.', FIN.certPorCanjear)}
     </div>
     ${vacio}
