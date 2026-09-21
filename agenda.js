@@ -513,10 +513,17 @@ function renderServices(){
       </div>`;
     return;
   }
-  const knownOrder=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+  // Orden de las categorías: el que definió el negocio en su panel (las nuevas van al final).
+  // Sin un orden guardado se mantiene el clásico.
   const presentes=[...new Set(SERVICES.map(s=>s.cat).filter(Boolean))];
-  const extra=presentes.filter(c=>!knownOrder.includes(c));
-  const cats=[...knownOrder, ...extra];
+  const guardado=(window.ANNLY_BUSINESS && Array.isArray(window.ANNLY_BUSINESS.categorias_servicios)) ? window.ANNLY_BUSINESS.categorias_servicios : [];
+  let cats;
+  if(guardado.length){
+    cats=[...guardado.filter(c=>presentes.includes(c)), ...presentes.filter(c=>!guardado.includes(c))];
+  } else {
+    const knownOrder=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+    cats=[...knownOrder, ...presentes.filter(c=>!knownOrder.includes(c))];
+  }
   let html='';
   cats.forEach(cat=>{
     const svcs=SERVICES.filter(s=>s.cat===cat&&s.active);
