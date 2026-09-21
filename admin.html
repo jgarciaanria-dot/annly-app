@@ -612,6 +612,13 @@ img{max-width:100%;}
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Citas</span></div>
       <div id="citas-vistas" class="cats" style="padding:.85rem 1rem 0;"></div>
+      <div id="citas-buscar-wrap" style="padding:.85rem 1rem 0;">
+        <label class="flbl">Buscar cliente</label>
+        <div style="position:relative;">
+          <input class="fi" id="citas-buscar" type="text" placeholder="Nombre, teléfono o correo" oninput="buscarCitasInput(this.value)" autocomplete="off" style="padding-right:38px;"/>
+          <button type="button" id="citas-buscar-x" onclick="limpiarBusquedaCitas()" title="Borrar búsqueda" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;font-size:16px;color:var(--ink-soft);cursor:pointer;"><i class="ti ti-x"></i></button>
+        </div>
+      </div>
       <div id="citas-filtro-wrap" style="display:none;padding:.85rem 1rem 0;">
         <label class="flbl">Filtrar por profesional</label>
         <select class="fi" id="citas-filtro-prof" onchange="filtrarCitasPorProfesional(this.value)"></select>
@@ -1522,7 +1529,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=27"></script>
+<script src="sheets.js?v=28"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -3066,19 +3073,36 @@ async function loadCitas(){
   catch(e){ cont.innerHTML = '<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar citas.</p>'; return; }
   CITAS_CACHE = citas;
   await poblarFiltroProfesionales();
+  renderCitas();
+}
+
+// Dibuja las listas con lo ya cargado (sin volver a pedirlo a la base): se usa también al escribir en el buscador
+function renderCitas(){
+  const cont = document.getElementById('lista-citas');
+  const citas = CITAS_CACHE;
+  const inputBusca = document.getElementById('citas-buscar');
+  if (inputBusca && inputBusca.value !== BUSQUEDA_CITAS) inputBusca.value = BUSQUEDA_CITAS;
+  const btnX = document.getElementById('citas-buscar-x');
+  if (btnX) btnX.style.display = BUSQUEDA_CITAS ? 'block' : 'none';
 
   const finOn = moduloDisponible('FINANZAS');
-  if (!finOn) VISTA_CITAS = 'activas';
+  if (!finOn && VISTA_CITAS !== 'resumen') VISTA_CITAS = 'activas';
 
   const ahora = new Date();
   const hoyISO = isoLocal(ahora);
   const hace90 = new Date(ahora); hace90.setDate(hace90.getDate() - 90);
 
-  const base = citas
+  // Solo el profesional (lo usa el Resumen, que tiene su propio selector de rangos)
+  const baseProf = citas
     .filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF)
+    .filter(c => citaCoincide(c, BUSQUEDA_CITAS))
     .map(c => ({ ...c, _ini: citaInicio(c) }));
+  // Para las listas: profesional + filtro de fechas
+  const rf = VISTA_CITAS === 'resumen' ? null : rangoFiltroFechaCitas(VISTA_CITAS);
+  const base = rf ? baseProf.filter(c => c.fechaISO >= rf.desde && c.fechaISO <= rf.hasta) : baseProf;
 
   // Activas: vigentes (aún no han pasado). Sin el módulo Finanzas se cuenta desde el inicio del día de hoy.
+  // Activas: línea de tiempo (21 sep, luego 22 sep...); lo recién reservado lleva la etiqueta NUEVA
   const activas = base.filter(c => !c.completadaEn && (finOn ? c._ini >= ahora : c.fechaISO >= hoyISO))
     .sort((a,b) => a._ini - b._ini);
   const porCompletar = finOn
@@ -3093,23 +3117,248 @@ async function loadCitas(){
     vistas.push({ k:'porcompletar', t:'Por completar', n:porCompletar.length });
     vistas.push({ k:'completadas', t:'Completadas', n:completadas.length });
   }
+  vistas.push({ k:'resumen', t:'Resumen', n:null });   // disponible en todos los planes
   document.getElementById('citas-vistas').innerHTML = vistas.map(v =>
-    `<div class="cat-pill${VISTA_CITAS === v.k ? ' sel' : ''}" onclick="cambiarVistaCitas('${v.k}')">${v.t} <span style="opacity:.65;margin-left:2px;">${v.n}</span></div>`).join('');
+    `<div class="cat-pill${VISTA_CITAS === v.k ? ' sel' : ''}" onclick="cambiarVistaCitas('${v.k}')">${v.t}${v.n == null ? '' : ` <span style="opacity:.65;margin-left:2px;">${v.n}</span>`}</div>`).join('');
 
-  const vacio = t => `<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">${t}${FILTRO_CITAS_PROF ? ' de este profesional' : ''}.</p>`;
+  const vacio = t => {
+    let extra = '';
+    if (BUSQUEDA_CITAS){
+      // Si aquí no hay nada, se indica en qué otras listas sí hay coincidencias (con los mismos filtros)
+      const otras = vistas.filter(v => v.k !== VISTA_CITAS && v.k !== 'resumen' && v.n > 0);
+      extra = otras.length
+        ? `<br><span style="color:var(--ink-soft);">Sí hay coincidencias en: ${otras.map(v => `<a href="#" onclick="cambiarVistaCitas('${v.k}');return false;" style="color:var(--gold-dark);font-weight:700;">${v.t} (${v.n})</a>`).join(' · ')}.</span>`
+        : (finOn ? '<br><span style="color:var(--ink-soft);">En Por completar y Completadas se buscan los últimos 90 días.</span>' : '');
+    }
+    return `<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;line-height:1.7;">${t}${FILTRO_CITAS_PROF ? ' de este profesional' : ''}${BUSQUEDA_CITAS ? ' para «' + escCat(BUSQUEDA_CITAS) + '»' : ''}${rf ? ' en este rango' : ''}.${extra}</p>`;
+  };
+  const filtroFecha = VISTA_CITAS === 'resumen' ? '' : htmlFiltroFechaCitas(VISTA_CITAS);
   const nota = t => `<p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.5;">${t}</p>`;
 
   if (VISTA_CITAS === 'porcompletar'){
-    cont.innerHTML = porCompletar.length
+    cont.innerHTML = filtroFecha + (porCompletar.length
       ? nota('Citas que ya pasaron: complétalas para registrar el cobro en Finanzas.') + htmlCitasAgrupadas(porCompletar)
-      : vacio('No hay citas por completar');
+      : vacio('No hay citas por completar'));
   } else if (VISTA_CITAS === 'completadas'){
-    cont.innerHTML = completadas.length
+    cont.innerHTML = filtroFecha + (completadas.length
       ? nota('Citas ya cobradas (últimos 90 días). Abre el detalle para ver el desglose y los cobros.') + htmlCitasAgrupadas(completadas)
-      : vacio('Todavía no hay citas completadas');
+      : vacio('Todavía no hay citas completadas'));
+  } else if (VISTA_CITAS === 'resumen'){
+    cont.innerHTML = htmlResumenCitas(baseProf);
   } else {
-    cont.innerHTML = activas.length ? htmlCitasAgrupadas(activas) : vacio('No hay citas vigentes');
+    cont.innerHTML = filtroFecha + (activas.length ? htmlCitasAgrupadas(activas) : vacio('No hay citas vigentes'));
   }
+}
+
+// ---------- Buscar cliente (en todas las vistas de Citas) ----------
+let BUSQUEDA_CITAS = '';
+let _timerBusquedaCitas = null;
+
+function normBusqueda(t){
+  return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+// Coincide por nombre, correo o teléfono (sin importar mayúsculas ni tildes; el teléfono, sin guiones ni espacios)
+function citaCoincide(c, q){
+  const n = normBusqueda(q);
+  if (!n) return true;
+  if (normBusqueda(c.nombre).includes(n) || normBusqueda(c.correo).includes(n)) return true;
+  const dq = n.replace(/\D/g, '');
+  return dq.length >= 3 && String(c.telefono || '').replace(/\D/g, '').includes(dq);
+}
+
+function buscarCitasInput(v){
+  BUSQUEDA_CITAS = v;
+  const btnX = document.getElementById('citas-buscar-x');
+  if (btnX) btnX.style.display = v ? 'block' : 'none';
+  clearTimeout(_timerBusquedaCitas);
+  _timerBusquedaCitas = setTimeout(() => renderCitas(), 180);
+}
+
+function limpiarBusquedaCitas(){
+  BUSQUEDA_CITAS = '';
+  const inp = document.getElementById('citas-buscar');
+  if (inp){ inp.value = ''; inp.focus(); }
+  renderCitas();
+}
+
+// ---------- Filtro de fechas de las listas de citas (Activas, Por completar, Completadas) ----------
+let FILTRO_CITAS_FECHA = { tipo:'todas', desde:'', hasta:'' };
+
+// Rango {desde, hasta} del filtro para esa vista, o null si son todas. "Mañana" solo existe en Activas y "Ayer" en las otras.
+function rangoFiltroFechaCitas(vista){
+  const t = FILTRO_CITAS_FECHA.tipo;
+  if (t === 'todas') return null;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const suma = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  if (t === 'hoy') return { desde: isoLocal(hoy), hasta: isoLocal(hoy) };
+  if (t === 'manana') return vista === 'activas' ? { desde: isoLocal(suma(hoy, 1)), hasta: isoLocal(suma(hoy, 1)) } : null;
+  if (t === 'ayer') return vista !== 'activas' ? { desde: isoLocal(suma(hoy, -1)), hasta: isoLocal(suma(hoy, -1)) } : null;
+  if (t === 'semana'){ const lunes = suma(hoy, -((hoy.getDay() + 6) % 7)); return { desde: isoLocal(lunes), hasta: isoLocal(suma(lunes, 6)) }; }
+  if (t === 'mes') return { desde: isoLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: isoLocal(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)) };
+  if (t === 'rango' && FILTRO_CITAS_FECHA.desde && FILTRO_CITAS_FECHA.hasta){
+    const a = FILTRO_CITAS_FECHA.desde, b = FILTRO_CITAS_FECHA.hasta;
+    return a <= b ? { desde:a, hasta:b } : { desde:b, hasta:a };
+  }
+  return null;
+}
+
+function htmlFiltroFechaCitas(vista){
+  const opciones = [['todas','Todas'], ['hoy','Hoy'], [vista === 'activas' ? 'manana' : 'ayer', vista === 'activas' ? 'Mañana' : 'Ayer'], ['semana','Esta semana'], ['mes','Este mes'], ['rango','Rango']];
+  // Si el filtro guardado no existe en esta lista (por ejemplo "Mañana" en Completadas), se muestra "Todas"
+  const activo = opciones.some(o => o[0] === FILTRO_CITAS_FECHA.tipo) ? FILTRO_CITAS_FECHA.tipo : 'todas';
+  return `<div class="cats" style="margin-bottom:.7rem;">${opciones.map(([k, t]) =>
+      `<div class="cat-pill${activo === k ? ' sel' : ''}" onclick="cambiarFiltroFechaCitas('${k}')">${t}</div>`).join('')}</div>` +
+    (activo === 'rango' ? `<div style="display:flex;gap:8px;margin-bottom:.8rem;flex-wrap:wrap;">
+      <input type="date" class="fi" id="cf-desde" value="${FILTRO_CITAS_FECHA.desde}" onchange="cambiarRangoFechaCitas()" style="flex:1;min-width:140px;"/>
+      <input type="date" class="fi" id="cf-hasta" value="${FILTRO_CITAS_FECHA.hasta}" onchange="cambiarRangoFechaCitas()" style="flex:1;min-width:140px;"/>
+    </div>` : '');
+}
+
+function cambiarFiltroFechaCitas(k){
+  FILTRO_CITAS_FECHA.tipo = k;
+  return loadCitas();
+}
+
+function cambiarRangoFechaCitas(){
+  FILTRO_CITAS_FECHA.desde = document.getElementById('cf-desde').value;
+  FILTRO_CITAS_FECHA.hasta = document.getElementById('cf-hasta').value;
+  return loadCitas();
+}
+
+// ---------- Resumen de citas (todos los planes) ----------
+let RESUMEN_CITAS = { tipo:'semana', desde:'', hasta:'' };
+const DIAS_CORTOS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+function rangoResumenCitas(){
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const suma = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const t = RESUMEN_CITAS.tipo;
+  if (t === 'hoy') return { desde: isoLocal(hoy), hasta: isoLocal(hoy) };
+  if (t === 'manana') return { desde: isoLocal(suma(hoy, 1)), hasta: isoLocal(suma(hoy, 1)) };
+  if (t === 'mes') return { desde: isoLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: isoLocal(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)) };
+  if (t === 'custom' && RESUMEN_CITAS.desde && RESUMEN_CITAS.hasta){
+    return RESUMEN_CITAS.desde <= RESUMEN_CITAS.hasta ? { desde: RESUMEN_CITAS.desde, hasta: RESUMEN_CITAS.hasta } : { desde: RESUMEN_CITAS.hasta, hasta: RESUMEN_CITAS.desde };
+  }
+  // semana: de lunes a domingo
+  const lunes = suma(hoy, -((hoy.getDay() + 6) % 7));
+  return { desde: isoLocal(lunes), hasta: isoLocal(suma(lunes, 6)) };
+}
+
+function cambiarRangoResumen(tipo){
+  RESUMEN_CITAS.tipo = tipo;
+  renderResumenCitasVista();
+}
+
+function cambiarFechaResumen(){
+  RESUMEN_CITAS.desde = document.getElementById('rc-desde').value;
+  RESUMEN_CITAS.hasta = document.getElementById('rc-hasta').value;
+  renderResumenCitasVista();
+}
+
+function renderResumenCitasVista(){
+  const base = CITAS_CACHE.filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF);
+  document.getElementById('lista-citas').innerHTML = htmlResumenCitas(base);
+}
+
+function fmtHorasMin(min){
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h ? (m ? h + ' h ' + m + ' min' : h + ' h') : m + ' min';
+}
+
+function hora12(min){
+  const h = Math.floor(min / 60) % 24, m = min % 60;
+  return ((h % 12) || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+
+function htmlResumenCitas(base){
+  const { desde, hasta } = rangoResumenCitas();
+  const ahora = new Date();
+  const finOn = moduloDisponible('FINANZAS');
+  const citas = base.filter(c => c.fechaISO >= desde && c.fechaISO <= hasta);
+
+  // Totales
+  const T = { n:0, min:0, valor:0, abonos:0, cert:0, porCobrar:0, aConsultar:0, proximas:0, pasadas:0, completadas:0, porCompletar:0 };
+  const dias = {}, profs = {}, servs = {};
+  citas.forEach(c => {
+    const r = resumenPagoCita(c);
+    const dur = parseInt(c.duracion) || 60;
+    const ini = citaInicio(c);
+    const iniMin = ini.getHours() * 60 + ini.getMinutes();
+    const valor = r.neto != null ? r.neto : 0;
+    const pendiente = !c.completadaEn;
+    T.n++; T.min += dur; T.valor += valor; T.abonos += r.abono; T.cert += r.cert;
+    if (pendiente && r.neto == null) T.aConsultar++;
+    if (pendiente && r.porCobrar != null) T.porCobrar += r.porCobrar;
+    if (ini >= ahora) T.proximas++; else T.pasadas++;
+    if (c.completadaEn) T.completadas++; else if (ini < ahora) T.porCompletar++;
+
+    const aCons = (pendiente && r.neto == null) ? 1 : 0;
+    const d = dias[c.fechaISO] || (dias[c.fechaISO] = { n:0, min:0, valor:0, abonos:0, cons:0, ini:1e9, fin:0 });
+    d.n++; d.min += dur; d.valor += valor; d.abonos += r.abono; d.cons += aCons;
+    if (iniMin < d.ini){ d.ini = iniMin; }
+    if (iniMin + dur > d.fin){ d.fin = iniMin + dur; }
+
+    const p = profs[c.empleadoNombre || 'Sin asignar'] || (profs[c.empleadoNombre || 'Sin asignar'] = { n:0, min:0, valor:0, cons:0 });
+    p.n++; p.min += dur; p.valor += valor; p.cons += aCons;
+    const sv = servs[c.servicio || 'Servicio'] || (servs[c.servicio || 'Servicio'] = { n:0, valor:0, cons:0 });
+    sv.n++; sv.valor += valor; sv.cons += aCons;
+  });
+
+  const kpi = (titulo, valor, color, nota) => `
+    <div style="background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:12px;padding:14px;">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">${titulo}</div>
+      <div style="font-size:21px;font-weight:800;color:${color};margin-top:5px;">${valor}</div>
+      ${nota ? `<div style="font-size:10.5px;color:var(--ink-soft);margin-top:4px;line-height:1.4;">${nota}</div>` : ''}
+    </div>`;
+  const fila = (izq, sub, der, subDer) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line-soft);">
+      <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:var(--ink);">${izq}</div>${sub ? `<div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${sub}</div>` : ''}</div>
+      <div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:var(--ink);">${der}</div>${subDer ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${subDer}</div>` : ''}</div>
+    </div>`;
+  // Valor de un grupo: si hay citas "a consultar" se avisa en vez de mostrar un $0.00 engañoso
+  const valorTxt = g => g.cons ? (g.valor > 0 ? fmtDinero(g.valor) + ' + ' + g.cons + ' a consultar' : 'A consultar') : fmtDinero(g.valor);
+  const pill = (k, t) => `<div class="cat-pill${RESUMEN_CITAS.tipo === k ? ' sel' : ''}" onclick="cambiarRangoResumen('${k}')">${t}</div>`;
+  const nombreDia = iso => { const [y,m,dd] = iso.split('-').map(Number); return DIAS_CORTOS[new Date(y, m - 1, dd).getDay()] + ' ' + fechaCortaFin(iso); };
+  const tituloRango = desde === hasta ? nombreDia(desde) : 'Del ' + nombreDia(desde) + ' al ' + nombreDia(hasta);
+
+  const selector = `<div class="cats" style="margin-bottom:.7rem;">${pill('hoy','Hoy')}${pill('manana','Mañana')}${pill('semana','Esta semana')}${pill('mes','Este mes')}${pill('custom','Personalizado')}</div>` +
+    (RESUMEN_CITAS.tipo === 'custom' ? `<div style="display:flex;gap:8px;margin-bottom:.8rem;flex-wrap:wrap;">
+      <input type="date" class="fi" id="rc-desde" value="${RESUMEN_CITAS.desde}" onchange="cambiarFechaResumen()" style="flex:1;min-width:140px;"/>
+      <input type="date" class="fi" id="rc-hasta" value="${RESUMEN_CITAS.hasta}" onchange="cambiarFechaResumen()" style="flex:1;min-width:140px;"/>
+    </div>` : '');
+  const encabezado = `<p style="font-size:12.5px;font-weight:700;color:var(--charcoal);margin:0 0 10px;">${tituloRango}${FILTRO_CITAS_PROF ? ' · profesional filtrado' : ''}${BUSQUEDA_CITAS ? ' · cliente: «' + escCat(BUSQUEDA_CITAS) + '»' : ''}</p>`;
+
+  if (!citas.length){
+    return selector + encabezado + '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay citas en este rango.</p>';
+  }
+
+  const estados = finOn
+    ? `${T.completadas} completada${T.completadas === 1 ? '' : 's'} · ${T.porCompletar} por completar · ${T.proximas} próxima${T.proximas === 1 ? '' : 's'}`
+    : `${T.proximas} próxima${T.proximas === 1 ? '' : 's'} · ${T.pasadas} ya pasaron`;
+  const kpis = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem;">
+    ${kpi('Citas', T.n, 'var(--charcoal)', estados)}
+    ${kpi('Horas agendadas', fmtHorasMin(T.min), 'var(--charcoal)')}
+    ${kpi('Valor de los servicios', fmtDinero(T.valor), '#159A61', T.aConsultar ? T.aConsultar + ' cita' + (T.aConsultar === 1 ? '' : 's') + ' a consultar, sin valor todavía' : 'Cobradas: precio final. Pendientes: precio de lista menos cupón')}
+    ${kpi('Abonos recibidos', fmtDinero(T.abonos), '#7C3AED')}
+    ${T.cert > 0 ? kpi('Pagado con certificado', fmtDinero(T.cert), '#B08900', 'Ya descontado de certificados') : ''}
+    ${kpi('Por cobrar en el local', fmtDinero(T.porCobrar), '#C2695A', 'Estimado de las citas sin completar')}
+  </div>`;
+
+  const secDias = `<div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Por día</span></div>
+    <div style="padding:.2rem 1rem .8rem;">${Object.keys(dias).sort().map(iso => {
+      const d = dias[iso];
+      return fila(nombreDia(iso), hora12(d.ini) + ' – ' + hora12(d.fin) + ' · ' + fmtHorasMin(d.min), d.n + ' cita' + (d.n === 1 ? '' : 's'), valorTxt(d) + (d.abonos ? ' · abonos ' + fmtDinero(d.abonos) : ''));
+    }).join('')}</div></div>`;
+  const nProf = Object.keys(profs).length;
+  const secProfs = nProf > 1 ? `<div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Por profesional</span></div>
+    <div style="padding:.2rem 1rem .8rem;">${Object.keys(profs).sort((a,b) => profs[b].n - profs[a].n).map(nm =>
+      fila(escCat(nm), fmtHorasMin(profs[nm].min), profs[nm].n + ' cita' + (profs[nm].n === 1 ? '' : 's'), valorTxt(profs[nm]))).join('')}</div></div>` : '';
+  const secServs = `<div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Por servicio</span></div>
+    <div style="padding:.2rem 1rem .8rem;">${Object.keys(servs).sort((a,b) => servs[b].n - servs[a].n).map(nm =>
+      fila(escCat(nm), '', servs[nm].n + ' cita' + (servs[nm].n === 1 ? '' : 's'), valorTxt(servs[nm]))).join('')}</div></div>`;
+  const nota = `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:10px 0 0;">No incluye citas canceladas.${finOn ? ' Para ver el dinero realmente cobrado en este rango, abre <a href="#" onclick="switchTab(\'finanzas\');return false;" style="color:var(--gold-dark);font-weight:600;">Finanzas</a>.' : ''}</p>`;
+  return selector + encabezado + kpis + secDias + secProfs + secServs + nota;
 }
 
 // ===== Funciones auxiliares de calendario (copiadas de index.html) =====
@@ -5190,6 +5439,12 @@ function chipsPagoCita(c){
   return out.join('');
 }
 
+// Reservada en las últimas 24 horas y aún sin completar
+function citaEsNueva(c){
+  const t = c.creadoEn ? new Date(c.creadoEn).getTime() : 0;
+  return !c.completadaEn && t > 0 && (Date.now() - t) < 24*60*60*1000;
+}
+
 function htmlCardCita(c){
   const cat = PALETA_CAT_CITAS[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
   const [horaNum, ampm] = c.hora.split(' ');
@@ -5216,7 +5471,7 @@ function htmlCardCita(c){
       </div>
       <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--charcoal2);">${inicialesCita(c.nombre)}</div>
       <div style="flex:1;min-width:0;">
-        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}</p>
+        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}${citaEsNueva(c) ? ' <span style="display:inline-block;vertical-align:middle;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:9.5px;font-weight:700;letter-spacing:.03em;background:#FBF6E4;color:#B08900;">NUEVA</span>' : ''}</p>
         <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
         <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
           <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
