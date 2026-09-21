@@ -1362,6 +1362,27 @@ img{max-width:100%;}
   </div>
 </div>
 
+<div class="ov" id="ov-motivo">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="mo-titulo">Confirmar</span>
+      <button class="modal-close" onclick="resolverMotivo(null)">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="mo-resumen" style="background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.6;margin-bottom:12px;"></div>
+      <div id="mo-aviso" style="display:none;background:#FBF6E4;border:1px solid #F0E3B0;color:#7A6410;border-radius:12px;padding:10px 14px;font-size:12px;line-height:1.6;margin-bottom:12px;"></div>
+      <div class="fg"><label class="flbl" id="mo-etiqueta">Motivo (obligatorio)</label>
+        <textarea class="fi" id="mo-motivo" rows="3" maxlength="300" style="resize:vertical;"></textarea>
+      </div>
+      <p id="mo-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-save" id="mo-btn" style="flex:1;background:#C2695A;box-shadow:none;" onclick="confirmarMotivo()"></button>
+        <button class="btn-ico" style="width:auto;padding:0 18px;height:auto;font-weight:700;" onclick="resolverMotivo(null)">Volver</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-fin-completar">
   <div class="modal">
     <div class="modal-hdr">
@@ -1529,7 +1550,7 @@ img{max-width:100%;}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=29"></script>
+<script src="sheets.js?v=30"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -3530,14 +3551,29 @@ async function guardarReprogramacion(){
 }
 
 async function cancelarCitaAdmin(id, nombre){
-  if(!confirm(`¿Cancelar la cita de ${nombre}?`)) return;
+  const c = (CITAS_CACHE || []).find(x => x.id === id);
+  const cert = c ? Number(c.certificadoMonto) || 0 : 0;
+  const abono = c ? Number(c.abonoMonto) || 0 : 0;
+  const avisoDinero = (cert > 0 || abono > 0)
+    ? `<strong>Ojo:</strong> esta cita tiene ${cert > 0 ? 'un certificado aplicado de $' + cert.toFixed(2) : ''}${cert > 0 && abono > 0 ? ' y ' : ''}${abono > 0 ? 'un abono de $' + abono.toFixed(2) : ''}. Por ahora <strong>no se devuelven solos</strong>: revísalo tú y anota en el motivo qué hiciste.<br>`
+    : '';
+  const motivo = await pedirMotivo({
+    titulo: 'Cancelar cita',
+    resumenHtml: c
+      ? `<strong>${escCat(c.nombre || nombre)}</strong><br>${escCat(c.servicio || '')} · ${escCat(c.fecha || '')} · ${escCat(c.hora || '')}${c.empleadoNombre ? ' · ' + escCat(c.empleadoNombre) : ''}`
+      : `<strong>${escCat(nombre)}</strong>`,
+    avisoHtml: avisoDinero + 'Se avisará al cliente de la cancelación (si dejó correo). Queda registrado quién la canceló y por qué.',
+    etiqueta: 'Motivo de la cancelación (obligatorio)',
+    placeholder: 'Ej: el cliente avisó que no puede asistir, cancelamos por una emergencia',
+    textoBoton: 'Cancelar cita'
+  });
+  if (!motivo) return;
   try {
-    await Sheets.cancelarCita(id);
-    const c = (CITAS_CACHE || []).find(x => x.id === id);
+    await Sheets.cancelarCita(id, motivo, c ? { cliente: c.nombre, servicio: c.servicio, fecha: c.fecha, hora: c.hora, profesional: c.empleadoNombre || null, certificado: cert, abono } : null);
     if (c) Sheets.enviarCorreo('cita_cancelada', {nombreCliente:c.nombre, servicio:c.servicio, fecha:c.fecha, hora:c.hora});
     loadCitas();
   }
-  catch(e){ alert('No se pudo cancelar la cita.'); }
+  catch(e){ console.error(e); alert('No se pudo cancelar la cita.'); }
 }
 
 function horaAMin(horaStr){
@@ -4424,7 +4460,7 @@ const METODOS_COBRO = ['efectivo','yappy','transferencia','tarjeta'];
 const CATEGORIAS_GASTO = ['Insumos y productos','Alquiler','Servicios básicos','Pagos al personal','Publicidad','Mantenimiento','Otros'];
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-let FIN = { pagos:[], pagosCert:[], pagosCanje:[], cortesiasPeriodo:0, gastos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+let FIN = { pagos:[], pagosCert:[], pagosCanje:[], cortesiasPeriodo:0, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
 let FIN_PERIODO = 'actual';
 let FIN_VISTA = 'resumen';
 let FIN_FILTRO_MOV = 'todos';
@@ -4526,7 +4562,8 @@ async function loadFinanzas(){
     FIN.pagos = pagos.filter(p => p.origen !== 'certificado' && p.metodo !== 'certificado');
     FIN.pagosCert = pagos.filter(p => p.origen === 'certificado');
     FIN.pagosCanje = pagos.filter(p => p.origen !== 'certificado' && p.metodo === 'certificado');
-    FIN.gastos = gastos; FIN.ventas = ventas;
+    // Los gastos anulados se ven en la lista (tachados) pero no cuentan en los totales
+    FIN.gastosTodos = gastos; FIN.gastos = gastos.filter(g => !g.anulado); FIN.ventas = ventas;
     FIN.empleados = empleados.filter(e => e.activo);
     FIN.equipo = Object.fromEntries(empleados.map(e => [e.id, e.nombre]));
   } catch(e){
@@ -4783,10 +4820,17 @@ function htmlVentasFin(){
 async function anularVentaFin(id){
   const v = FIN.ventas.find(x => x.id === id);
   if (!v) return;
-  const motivo = (prompt('Anular la venta "' + v.servicio + '" por ' + fmtDinero(v.monto) + '.\n\n¿Cuál es el motivo? (por ejemplo: devolución del cliente, error de captura)') || '').trim();
+  const motivo = await pedirMotivo({
+    titulo: 'Anular venta',
+    resumenHtml: `<strong>${escCat(v.servicio)}</strong><br>${fmtDinero(v.monto)} · ${fechaCortaFin(v.fecha)}${v.cliente ? ' · ' + escCat(v.cliente) : ''}${FIN.equipo[v.empleadoId] ? ' · ' + escCat(FIN.equipo[v.empleadoId]) : ''}`,
+    avisoHtml: 'La venta se queda en la lista, tachada, y deja de contar en los ingresos. Queda registrada quién la anuló y por qué.',
+    etiqueta: 'Motivo de la anulación (obligatorio)',
+    placeholder: 'Ej: devolución del cliente, error de captura',
+    textoBoton: 'Anular venta'
+  });
   if (!motivo) return;
   try {
-    await Sheets.anularVentaLocal(id, motivo);
+    await Sheets.anularVentaLocal(id, motivo, { servicio: v.servicio, cliente: v.cliente, fecha: v.fecha, monto: v.monto, profesional: FIN.equipo[v.empleadoId] || null });
     await loadFinanzas();
   } catch(e){
     console.error(e);
@@ -4797,25 +4841,53 @@ async function anularVentaFin(id){
 // ---------- Gastos ----------
 function htmlGastosFin(){
   const total = sumaFin(FIN.gastos);
-  const filas = FIN.gastos.map(g => `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
+  const filas = FIN.gastosTodos.map(g => {
+    const detalle = `${fechaCortaFin(g.fecha)} · ${METODOS_PAGO[g.metodo]||g.metodo}${g.referencia ? ' · ' + escCat(g.referencia) : ''}`;
+    if (g.anulado){
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);opacity:.7;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--ink);text-decoration:line-through;">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin:2px 0 6px;">${detalle}</div>
+          <span style="display:inline-block;background:#FBEDEE;color:#C2695A;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;">Anulado${g.motivoAnulacion ? ' · ' + escCat(g.motivoAnulacion) : ''}</span>
+        </div>
+        <div style="font-size:14px;font-weight:800;color:var(--ink-soft);text-decoration:line-through;">−${fmtDinero(g.monto)}</div>
+      </div>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
-        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${fechaCortaFin(g.fecha)} · ${METODOS_PAGO[g.metodo]||g.metodo}${g.referencia ? ' · ' + escCat(g.referencia) : ''}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${detalle}</div>
       </div>
       <div style="font-size:14px;font-weight:800;color:#C2695A;">−${fmtDinero(g.monto)}</div>
-      <button class="btn-ico del" onclick="eliminarGastoFin('${g.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
-    </div>`).join('');
+      <button class="btn-ico del" style="width:auto;padding:0 10px;gap:5px;font-size:11px;font-weight:700;color:#C2695A;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban"></i> Anular</button>
+    </div>`;
+  }).join('');
   return `<div class="adm-sec">
-    <div class="adm-sec-hdr"><span class="adm-sec-title">Gastos${FIN.gastos.length ? ' · ' + fmtDinero(total) : ''}</span><button class="btn-add" onclick="abrirModalGasto()"><i class="ti ti-plus"></i> Registrar gasto</button></div>
+    <div class="adm-sec-hdr"><span class="adm-sec-title">Gastos${FIN.gastosTodos.length ? ' · ' + fmtDinero(total) : ''}</span><button class="btn-add" onclick="abrirModalGasto()"><i class="ti ti-plus"></i> Registrar gasto</button></div>
     <div style="padding:0 1rem 1rem;">${filas || '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay gastos en este periodo.</p>'}</div>
   </div>`;
 }
 
-async function eliminarGastoFin(id){
-  if (!confirm('¿Eliminar este gasto?')) return;
-  try { await Sheets.eliminarGasto(id); await loadFinanzas(); }
-  catch(e){ console.error(e); alert('No se pudo eliminar el gasto.'); }
+// Anular un gasto: queda a la vista, tachado, con su motivo; deja de contar y queda en el registro de acciones
+async function anularGastoFin(id){
+  const g = FIN.gastosTodos.find(x => x.id === id);
+  if (!g) return;
+  const motivo = await pedirMotivo({
+    titulo: 'Anular gasto',
+    resumenHtml: `<strong>${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</strong><br>${fmtDinero(g.monto)} · ${fechaCortaFin(g.fecha)} · ${METODOS_PAGO[g.metodo]||g.metodo}`,
+    avisoHtml: 'El gasto se queda en la lista, tachado, y deja de contar en los totales. Queda registrado quién lo anuló y por qué.',
+    etiqueta: 'Motivo de la anulación (obligatorio)',
+    placeholder: 'Ej: se registró dos veces, monto equivocado',
+    textoBoton: 'Anular gasto'
+  });
+  if (!motivo) return;
+  try {
+    await Sheets.anularGasto(id, motivo, { categoria: g.categoria, descripcion: g.descripcion, monto: g.monto, metodo: g.metodo, fecha: g.fecha, referencia: g.referencia });
+    await loadFinanzas();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo anular el gasto.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
 }
 
 // ---------- Ajustes (periodo de cierre) ----------
@@ -5016,6 +5088,40 @@ function extrasValidar(id){
 }
 
 function cerrarModalFin(id){ elFin(id).classList.remove('open'); }
+
+// ---------- Ventana con motivo (anular, cancelar) ----------
+// Devuelve el motivo escrito, o null si se cierra sin confirmar.
+let _motivoResolve = null;
+function pedirMotivo({ titulo, resumenHtml, avisoHtml, etiqueta, placeholder, textoBoton }){
+  return new Promise(resolve => {
+    if (_motivoResolve) _motivoResolve(null);
+    _motivoResolve = resolve;
+    elFin('mo-titulo').textContent = titulo;
+    elFin('mo-resumen').innerHTML = resumenHtml || '';
+    elFin('mo-resumen').style.display = resumenHtml ? 'block' : 'none';
+    const av = elFin('mo-aviso');
+    av.innerHTML = avisoHtml || '';
+    av.style.display = avisoHtml ? 'block' : 'none';
+    elFin('mo-etiqueta').textContent = etiqueta || 'Motivo (obligatorio)';
+    elFin('mo-motivo').placeholder = placeholder || '';
+    elFin('mo-motivo').value = '';
+    elFin('mo-msg').textContent = '';
+    elFin('mo-btn').innerHTML = '<i class="ti ti-check" style="font-size:17px;"></i> ' + (textoBoton || 'Confirmar');
+    elFin('ov-motivo').classList.add('open');
+    setTimeout(() => { try { elFin('mo-motivo').focus(); } catch(e){} }, 60);
+  });
+}
+
+function confirmarMotivo(){
+  const m = elFin('mo-motivo').value.trim();
+  if (m.length < 3){ elFin('mo-msg').textContent = 'Escribe el motivo (mínimo 3 letras).'; return; }
+  resolverMotivo(m);
+}
+
+function resolverMotivo(valor){
+  elFin('ov-motivo').classList.remove('open');
+  if (_motivoResolve){ const r = _motivoResolve; _motivoResolve = null; r(valor); }
+}
 
 // ---------- Registrar venta en el local ----------
 function abrirModalVenta(){
@@ -5439,12 +5545,6 @@ function chipsPagoCita(c){
   return out.join('');
 }
 
-// Reservada en las últimas 24 horas y aún sin completar
-function citaEsNueva(c){
-  const t = c.creadoEn ? new Date(c.creadoEn).getTime() : 0;
-  return !c.completadaEn && t > 0 && (Date.now() - t) < 24*60*60*1000;
-}
-
 function htmlCardCita(c){
   const cat = PALETA_CAT_CITAS[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
   const [horaNum, ampm] = c.hora.split(' ');
@@ -5471,7 +5571,7 @@ function htmlCardCita(c){
       </div>
       <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--charcoal2);">${inicialesCita(c.nombre)}</div>
       <div style="flex:1;min-width:0;">
-        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}${citaEsNueva(c) ? ' <span style="display:inline-block;vertical-align:middle;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:9.5px;font-weight:700;letter-spacing:.03em;background:#FBF6E4;color:#B08900;">NUEVA</span>' : ''}</p>
+        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}</p>
         <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
         <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
           <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
