@@ -3410,11 +3410,20 @@ function limiteEmpleadosDelPlan(){
   return p ? p.professionals : 1;
 }
 
+// En el plan más alto ya no hay a dónde subir: lo que corresponde es agregar un profesional extra.
+function esPlanMaximoEquipo(){
+  const planFuncional = enPeriodoPrueba() ? 'basic' : getPlanActualUI();
+  return planFuncional === 'ultimate';
+}
+function textoAmpliarEquipo(){
+  return esPlanMaximoEquipo() ? 'Agregar profesional extra' : 'Subir de plan';
+}
+
 function renderEquipo(){
   const cont = document.getElementById('lista-equipo');
   const limite = limiteEmpleadosDelPlan();
   const msgEl = document.getElementById('equipo-limite-msg');
-  msgEl.innerHTML = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.` + (EQUIPO.length >= limite ? ` <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan')"><i class="ti ti-arrow-up-right"></i> Subir de plan</button>` : '');
+  msgEl.innerHTML = `${EQUIPO.length} de ${limite} empleado${limite===1?'':'s'} incluidos en tu plan.` + (EQUIPO.length >= limite ? ` <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan')"><i class="ti ${esPlanMaximoEquipo() ? 'ti-user-plus' : 'ti-arrow-up-right'}"></i> ${textoAmpliarEquipo()}</button>` : '');
 
   if (!EQUIPO.length){
     cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay empleados todavía.</p>';
@@ -3616,7 +3625,7 @@ async function guardarEmpleadoModal(){
   if (!editEmpleadoId){
     const limite = limiteEmpleadosDelPlan();
     if (EQUIPO.length >= limite){
-      msgEl.innerHTML = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan'); closeModalEmpleado();"><i class="ti ti-arrow-up-right"></i> Subir de plan</button>`;
+      msgEl.innerHTML = `Tu plan incluye ${limite} empleado${limite===1?'':'s'}. <button type="button" class="equipo-upgrade-link" onclick="switchTab('plan'); closeModalEmpleado();"><i class="ti ${esPlanMaximoEquipo() ? 'ti-user-plus' : 'ti-arrow-up-right'}"></i> ${textoAmpliarEquipo()}</button>`;
       return;
     }
   }
