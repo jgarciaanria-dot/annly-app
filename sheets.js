@@ -3542,7 +3542,8 @@ const Sheets = {
       .select('certificado_codigo, certificado_monto')
       .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
     if (!cita) return;
-    if (cita.certificado_codigo && cita.certificado_codigo !== codigo) return;
+    // Un certificado ya descontado en la cita no se cambia por otro; uno solo "por aplicar" (monto 0) sí
+    if (cita.certificado_codigo && Number(cita.certificado_monto) > 0 && cita.certificado_codigo !== codigo) return;
     const { error } = await sbClient.from('appointments').update({
       certificado_codigo: codigo,
       certificado_monto: (Number(cita.certificado_monto) || 0) + monto,
