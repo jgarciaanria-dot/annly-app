@@ -4377,36 +4377,79 @@ function htmlResumenFin(){
 // ---------- Movimientos ----------
 function setFiltroMov(v){ FIN_FILTRO_MOV = v; renderFinanzas(); }
 
+// Junta los cobros que pertenecen a lo mismo (una cita, una venta en el local o la venta de un certificado)
+// para que un cobro repartido en varios métodos se vea como UN movimiento con su detalle.
+function claveMovimiento(p){
+  if (p.appointmentId) return 'a:' + p.appointmentId;
+  if (p.localSaleId) return 'v:' + p.localSaleId;
+  if (p.certificateId) return 'c:' + p.certificateId;
+  return null;
+}
+
+function bloquesDeCobros(){
+  const grupos = new Map();
+  const sueltos = [];
+  const agregar = (p, esCanje, esVentaCert) => {
+    const k = claveMovimiento(p);
+    if (!k){ sueltos.push({ p, esCanje, esVentaCert }); return; }
+    if (!grupos.has(k)) grupos.set(k, { k, dinero: [], canje: [], ventaCert: [] });
+    const g = grupos.get(k);
+    (esVentaCert ? g.ventaCert : (esCanje ? g.canje : g.dinero)).push(p);
+  };
+  FIN.pagos.forEach(p => agregar(p, false, false));
+  FIN.pagosCanje.forEach(p => agregar(p, true, false));
+  FIN.pagosCert.forEach(p => agregar(p, false, true));
+
+  const bloques = [];
+  const lineaDe = (p) => ({ texto: (METODOS_PAGO[p.metodo] || p.metodo) + ' ' + fmtDinero(p.monto) + (p.referencia ? ' · ' + p.referencia : '') });
+  const masReciente = (lista) => lista.slice().sort((a,b) => String(b.creadoEn||'').localeCompare(String(a.creadoEn||'')))[0];
+
+  grupos.forEach(g => {
+    const todos = [...g.dinero, ...g.canje, ...g.ventaCert];
+    const ref = todos[0];
+    const fecha = todos.map(p => p.fecha).sort().slice(-1)[0];
+    const creado = masReciente(todos).creadoEn;
+    const cliente = ref.cliente, prof = FIN.equipo[ref.empleadoId];
+    if (g.ventaCert.length){
+      bloques.push({ tipo:'certificado', fecha, creado, titulo:'Venta de ' + (ref.concepto || 'certificado'),
+        sub:[cliente].filter(Boolean).join(' · '), monto:g.ventaCert.reduce((s,p) => s + p.monto, 0), lineas:g.ventaCert.map(lineaDe) });
+      return;
+    }
+    const origen = ref.origen === 'local' ? 'En el local' : 'Agenda';
+    const extras = g.k.startsWith('a:') ? FIN.extras.filter(x => 'a:' + x.appointmentId === g.k) : [];
+    const lineas = g.dinero.map(lineaDe);
+    g.canje.forEach(p => lineas.push({ texto:'Certificado ' + fmtDinero(p.monto) + (p.referencia ? ' · ' + p.referencia : '') + ' (no es dinero nuevo)', gris:true }));
+    const nota = extras.length ? 'Incluye venta adicional: ' + extras.map(x => x.descripcion + ' ' + fmtDinero(x.monto)).join(' · ') : '';
+    if (g.dinero.length){
+      bloques.push({ tipo:'ingreso', fecha, creado, titulo:ref.concepto || 'Cobro', sub:[cliente, prof, origen].filter(Boolean).join(' · '),
+        monto:g.dinero.reduce((s,p) => s + p.monto, 0), lineas, nota, conCert:g.canje.length > 0 });
+    } else {
+      bloques.push({ tipo:'canje', fecha, creado, titulo:ref.concepto || 'Servicio', sub:[cliente, prof, origen].filter(Boolean).join(' · '),
+        monto:g.canje.reduce((s,p) => s + p.monto, 0), lineas, nota, conCert:true });
+    }
+  });
+  sueltos.forEach(({ p, esCanje, esVentaCert }) => {
+    bloques.push({ tipo: esVentaCert ? 'certificado' : (esCanje ? 'canje' : 'ingreso'), fecha:p.fecha, creado:p.creadoEn,
+      titulo: esVentaCert ? 'Venta de ' + (p.concepto || 'certificado') : (p.concepto || 'Cobro'),
+      sub:[p.cliente, FIN.equipo[p.empleadoId], p.origen === 'local' ? 'En el local' : (p.origen === 'agenda' ? 'Agenda' : '')].filter(Boolean).join(' · '),
+      monto:p.monto, lineas:[lineaDe(p)], conCert:esCanje });
+  });
+  return bloques;
+}
+
 function htmlMovimientosFin(){
   let movs = [
-    ...FIN.pagos.map(p => ({
-      tipo:'ingreso', fecha:p.fecha, creado:p.creadoEn,
-      titulo:p.concepto || 'Cobro',
-      sub:[METODOS_PAGO[p.metodo]||p.metodo, p.cliente, FIN.equipo[p.empleadoId], p.origen === 'local' ? 'En el local' : 'Agenda'].filter(Boolean).join(' · '),
-      monto:p.monto
-    })),
-    ...FIN.pagosCert.map(p => ({
-      tipo:'certificado', fecha:p.fecha, creado:p.creadoEn,
-      titulo:'Venta de ' + (p.concepto || 'certificado'),
-      sub:[METODOS_PAGO[p.metodo]||p.metodo, p.cliente].filter(Boolean).join(' · '),
-      monto:p.monto
-    })),
-    ...FIN.pagosCanje.map(p => ({
-      tipo:'canje', fecha:p.fecha, creado:p.creadoEn,
-      titulo:p.concepto || 'Servicio',
-      sub:['Pagado con certificado', p.referencia, p.cliente, FIN.equipo[p.empleadoId]].filter(Boolean).join(' · '),
-      monto:p.monto
-    })),
+    ...bloquesDeCobros(),
     ...FIN.gastos.map(g => ({
       tipo:'gasto', fecha:g.fecha, creado:g.creadoEn,
       titulo:g.categoria + (g.descripcion ? ' — ' + g.descripcion : ''),
       sub:[METODOS_PAGO[g.metodo]||g.metodo, g.referencia].filter(Boolean).join(' · '),
-      monto:g.monto
+      monto:g.monto, lineas:[]
     }))
   ];
   if (FIN_FILTRO_MOV === 'ingresos') movs = movs.filter(m => m.tipo === 'ingreso' || m.tipo === 'certificado');
   if (FIN_FILTRO_MOV === 'gastos') movs = movs.filter(m => m.tipo === 'gasto');
-  if (FIN_FILTRO_MOV === 'certificados') movs = movs.filter(m => m.tipo === 'certificado' || m.tipo === 'canje');
+  if (FIN_FILTRO_MOV === 'certificados') movs = movs.filter(m => m.tipo === 'certificado' || m.tipo === 'canje' || m.conCert);
   movs.sort((a,b) => a.fecha < b.fecha ? 1 : (a.fecha > b.fecha ? -1 : String(b.creado||'').localeCompare(String(a.creado||''))));
 
   const chip = (v, txt) => `<div class="cat-pill${FIN_FILTRO_MOV === v ? ' sel' : ''}" onclick="setFiltroMov('${v}')">${txt}</div>`;
@@ -4417,13 +4460,16 @@ function htmlMovimientosFin(){
     const color = canje ? '#8A8378' : (cert ? '#F59E0B' : (ing ? '#159A61' : '#C2695A'));
     const fondo = canje ? '#F1EEE7' : (cert ? '#FEF3E0' : (ing ? '#E9F6EF' : '#FBEDEE'));
     const icono = (cert || canje) ? 'ti-gift' : (ing ? 'ti-arrow-down-left' : 'ti-arrow-up-right');
-    return `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);">
+    const chips = (m.lineas || []).map(l => `<span style="display:inline-block;background:${l.gris ? '#F1EEE7' : '#F3EDFB'};color:${l.gris ? '#8A8378' : '#7C4DA0'};border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;margin:5px 5px 0 0;">${escCat(l.texto)}</span>`).join('');
+    return `<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
       <div style="width:34px;height:34px;border-radius:50%;background:${fondo};color:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ${icono}"></i></div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(m.titulo)}</div>
-        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${fechaCortaFin(m.fecha)} · ${escCat(m.sub)}${canje ? ' · <span style="color:#8A8378;font-weight:600;">no es dinero nuevo</span>' : ''}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${fechaCortaFin(m.fecha)}${m.sub ? ' · ' + escCat(m.sub) : ''}${canje ? ' · <span style="color:#8A8378;font-weight:600;">no es dinero nuevo</span>' : ''}</div>
+        ${chips ? `<div>${chips}</div>` : ''}
+        ${m.nota ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">${escCat(m.nota)}</div>` : ''}
       </div>
-      <div style="font-size:14px;font-weight:800;color:${color};white-space:nowrap;">${canje ? '' : (ing ? '+' : '−')}${fmtDinero(m.monto)}</div>
+      <div style="font-size:14px;font-weight:800;color:${color};white-space:nowrap;padding-top:6px;">${canje ? '' : (ing ? '+' : '−')}${fmtDinero(m.monto)}</div>
     </div>`;
   }).join('');
 
