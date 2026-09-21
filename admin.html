@@ -743,6 +743,439 @@ img{max-width:100%;}
   .fin-summary-card::after{opacity:.05;}
 }
 
+
+/* =========================================================
+   FINANZAS — VISUAL PASS
+   Dashboard financiero limpio, moderno y consistente con Annly
+   ========================================================= */
+
+#panel-finanzas #finanzas-activo{
+  width:100%;
+}
+
+#panel-finanzas .fin-page-head{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:1rem;
+}
+
+#panel-finanzas .fin-page-icon{
+  width:50px;
+  height:50px;
+  border-radius:14px;
+  background:linear-gradient(145deg,#F4ECFF,#FCEAF4);
+  color:#7C3AED;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  box-shadow:0 5px 14px rgba(124,58,237,.08);
+}
+
+#panel-finanzas .fin-page-icon i{font-size:24px;}
+
+#panel-finanzas .fin-page-title{
+  font-family:'DM Sans',sans-serif;
+  font-size:26px;
+  font-weight:800;
+  color:#17172B;
+  line-height:1;
+  letter-spacing:-.025em;
+}
+
+#panel-finanzas .fin-page-sub{
+  font-size:12.5px;
+  color:#77758A;
+  margin-top:5px;
+}
+
+#panel-finanzas .fin-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-bottom:1rem;
+}
+
+#panel-finanzas .fin-tab{
+  border:1px solid #E7E1EF;
+  background:#fff;
+  color:#5E596B;
+  border-radius:999px;
+  padding:8px 13px;
+  font-size:11.5px;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .18s ease;
+}
+
+#panel-finanzas .fin-tab:hover{
+  color:#5B21B6;
+  border-color:#D6C5EA;
+  background:#FBF9FE;
+  transform:translateY(-1px);
+}
+
+#panel-finanzas .fin-tab.sel{
+  color:#5B21B6;
+  background:#F3EBFC;
+  border-color:#BFA1E8;
+  box-shadow:0 2px 7px rgba(124,58,237,.08);
+}
+
+#panel-finanzas .fin-periodo{
+  margin-bottom:1rem;
+}
+
+#panel-finanzas .fin-periodo .fi{
+  background:#fff;
+  border-color:#E7E1EE;
+  border-radius:12px;
+  height:40px;
+  font-size:12px;
+  font-weight:600;
+}
+
+#panel-finanzas .fin-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:14px;
+}
+
+#panel-finanzas .fin-summary-card{
+  position:relative;
+  overflow:hidden;
+  min-height:126px;
+  border-radius:16px;
+  padding:15px;
+  border:1px solid #E8E5EC;
+  box-shadow:0 2px 10px rgba(45,32,75,.04);
+  transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease,background .24s ease;
+}
+
+#panel-finanzas .fin-summary-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 14px 28px rgba(45,32,75,.10);
+}
+
+#panel-finanzas .fin-summary-card::after{
+  content:'';
+  position:absolute;
+  right:9px;
+  bottom:6px;
+  width:58px;
+  height:72px;
+  opacity:.075;
+  pointer-events:none;
+  background:currentColor;
+  clip-path:polygon(0 100%,0 72%,18% 72%,18% 52%,40% 52%,40% 30%,62% 30%,62% 8%,82% 8%,82% 100%);
+}
+
+#panel-finanzas .fin-summary-card.income{
+  background:linear-gradient(135deg,#F0FFF6 0%,#fff 78%);
+  border-color:#CBEBD8;
+  color:#159A61;
+}
+#panel-finanzas .fin-summary-card.expense{
+  background:linear-gradient(135deg,#FFF2F2 0%,#fff 78%);
+  border-color:#F0D0D0;
+  color:#E53935;
+}
+#panel-finanzas .fin-summary-card.previous{
+  background:linear-gradient(135deg,#F7F9FA 0%,#fff 78%);
+  border-color:#E0E6EA;
+  color:#159A61;
+}
+#panel-finanzas .fin-summary-card.certificates{
+  background:linear-gradient(135deg,#FAF5FF 0%,#fff 78%);
+  border-color:#E4D5F5;
+  color:#7C3AED;
+}
+
+#panel-finanzas .fin-summary-card.certificates::after{
+  width:62px;
+  height:62px;
+  right:-18px;
+  bottom:-25px;
+  background:none;
+  border:17px solid #7C3AED;
+  border-radius:11px;
+  transform:rotate(45deg);
+  opacity:.055;
+}
+
+#panel-finanzas .fin-card-title{
+  position:relative;
+  z-index:1;
+  color:#111 !important;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+  font-weight:800;
+  line-height:1.15;
+  max-width:75%;
+}
+
+#panel-finanzas .fin-card-value{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin-top:6px;
+  font-size:22px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:-.025em;
+}
+
+#panel-finanzas .income .fin-card-value{color:#159A61 !important;}
+#panel-finanzas .expense .fin-card-value{color:#E53935 !important;}
+#panel-finanzas .previous .fin-card-value{color:#159A61 !important;}
+#panel-finanzas .previous .fin-card-value.negative{color:#E53935 !important;}
+#panel-finanzas .certificates .fin-card-value{color:#7C3AED !important;}
+
+#panel-finanzas .fin-card-icon{
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  font-size:18px;
+}
+
+#panel-finanzas .income .fin-card-icon{background:#DDF6E9;color:#159A61 !important;}
+#panel-finanzas .expense .fin-card-icon{background:#FDE1E1;color:#E53935 !important;}
+#panel-finanzas .previous .fin-card-icon{background:#E5F5EF;color:#159A61 !important;}
+#panel-finanzas .previous .fin-card-value.negative .fin-card-icon{background:#FDE1E1;color:#E53935 !important;}
+#panel-finanzas .certificates .fin-card-icon{background:#EEE3FF;color:#7C3AED !important;}
+
+#panel-finanzas .fin-card-note{
+  position:relative;
+  z-index:1;
+  margin-top:7px;
+  color:#111 !important;
+  font-size:10.5px;
+  line-height:1.45;
+  max-width:86%;
+}
+
+#panel-finanzas .fin-mini-summary{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:10px 13px;
+  margin:0 0 14px;
+  border:1px solid #ECE8F2;
+  border-radius:13px;
+  background:#FCFBFD;
+}
+
+#panel-finanzas .fin-mini-label{
+  color:#77758A;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+
+#panel-finanzas .fin-mini-result{
+  color:#17172B;
+  font-size:13px;
+  font-weight:800;
+}
+
+#panel-finanzas .fin-mini-result strong{color:#159A61;}
+#panel-finanzas .fin-mini-sep{width:1px;height:22px;background:#E8E3ED;}
+
+#panel-finanzas .fin-data-card{
+  background:#fff;
+  border:1px solid #ECE8F2;
+  border-radius:16px;
+  margin-bottom:14px;
+  overflow:hidden;
+  box-shadow:0 2px 12px rgba(45,32,75,.035);
+}
+
+#panel-finanzas .fin-data-head{
+  padding:12px 14px;
+  border-bottom:1px solid #F0EDF5;
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+#panel-finanzas .fin-data-head-icon{
+  width:28px;
+  height:28px;
+  border-radius:9px;
+  background:#F3EBFC;
+  color:#7C3AED;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:15px;
+}
+
+#panel-finanzas .fin-data-title{
+  color:#17172B;
+  font-size:13px;
+  font-weight:800;
+}
+
+#panel-finanzas .fin-data-body{padding:13px 14px;}
+
+#panel-finanzas .fin-origin-row,
+#panel-finanzas .fin-method-row{
+  margin-bottom:14px;
+}
+#panel-finanzas .fin-origin-row:last-child,
+#panel-finanzas .fin-method-row:last-child{margin-bottom:0;}
+
+#panel-finanzas .fin-row-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:6px;
+}
+
+#panel-finanzas .fin-row-label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  color:#111;
+  font-size:12px;
+  font-weight:700;
+}
+
+#panel-finanzas .fin-row-label i{
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  font-size:14px;
+}
+
+#panel-finanzas .fin-row-value{
+  color:#17172B;
+  font-size:11.5px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+#panel-finanzas .fin-row-value span{
+  color:#77758A;
+  font-weight:600;
+}
+
+#panel-finanzas .fin-progress{
+  height:7px;
+  background:#EEEAF3;
+  border-radius:999px;
+  overflow:hidden;
+}
+#panel-finanzas .fin-progress > div{
+  height:100%;
+  border-radius:999px;
+  transition:width .55s ease;
+}
+
+#panel-finanzas .fin-row-detail{
+  color:#77758A;
+  font-size:10.5px;
+  line-height:1.4;
+  margin-top:5px;
+}
+
+#panel-finanzas .fin-cert-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+#panel-finanzas .fin-cert-box{
+  min-height:84px;
+  border:1px solid #ECE8F2;
+  border-radius:13px;
+  background:#FCFBFD;
+  padding:11px;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+#panel-finanzas .fin-cert-box:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 18px rgba(45,32,75,.07);
+  border-color:#D9CBEA;
+}
+
+#panel-finanzas .fin-cert-box.pending{
+  background:linear-gradient(145deg,#FAF5FF,#fff);
+  border-color:#DCC5F3;
+}
+
+#panel-finanzas .fin-cert-icon{
+  width:28px;
+  height:28px;
+  border-radius:9px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#F3EBFC;
+  color:#7C3AED;
+  margin-bottom:7px;
+}
+
+#panel-finanzas .fin-cert-label{
+  color:#77758A;
+  font-size:10px;
+  line-height:1.3;
+  min-height:25px;
+}
+
+#panel-finanzas .fin-cert-value{
+  color:#17172B;
+  font-size:15px;
+  font-weight:800;
+  margin-top:4px;
+}
+#panel-finanzas .fin-cert-box.sold .fin-cert-value{color:#159A61;}
+#panel-finanzas .fin-cert-box.pending .fin-cert-value{color:#7C3AED;}
+
+#panel-finanzas .fin-cert-note{
+  margin-top:11px;
+  padding:9px 10px;
+  border-radius:10px;
+  background:#F9F7FB;
+  color:#77758A;
+  font-size:10.5px;
+  line-height:1.45;
+}
+
+@media(max-width:1050px){
+  #panel-finanzas .fin-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #panel-finanzas .fin-cert-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+
+@media(max-width:700px){
+  #panel-finanzas .fin-page-title{font-size:22px;}
+  #panel-finanzas .fin-summary-grid{grid-template-columns:1fr;}
+  #panel-finanzas .fin-summary-card{min-height:115px;}
+  #panel-finanzas .fin-cert-grid{grid-template-columns:1fr 1fr;}
+  #panel-finanzas .fin-mini-summary{flex-wrap:wrap;gap:8px 14px;}
+  #panel-finanzas .fin-mini-sep{display:none;}
+}
+
+@media(max-width:430px){
+  #panel-finanzas .fin-cert-grid{grid-template-columns:1fr;}
+}
+
 </style>
 </head>
 <body>
@@ -1097,21 +1530,21 @@ img{max-width:100%;}
     </div>
 
     <div id="finanzas-activo" style="display:none;">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.1rem;">
-        <div style="width:50px;height:50px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-chart-bar" style="font-size:24px;color:var(--charcoal);"></i></div>
+      <div class="fin-page-head">
+        <div class="fin-page-icon"><i class="ti ti-chart-bar"></i></div>
         <div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1;">Finanzas</div>
-          <div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">Ingresos, gastos y movimientos de tu negocio</div>
+          <div class="fin-page-title">Finanzas</div>
+          <div class="fin-page-sub">Controla los ingresos, gastos y movimientos de tu negocio</div>
         </div>
       </div>
-      <div class="cats" style="margin-bottom:1rem;">
-        <div class="cat-pill fin-sub sel" data-v="resumen" onclick="finSub('resumen')">Resumen</div>
-        <div class="cat-pill fin-sub" data-v="movimientos" onclick="finSub('movimientos')">Movimientos</div>
-        <div class="cat-pill fin-sub" data-v="ventas" onclick="finSub('ventas')">Ventas en el local</div>
-        <div class="cat-pill fin-sub" data-v="gastos" onclick="finSub('gastos')">Gastos</div>
-        <div class="cat-pill fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Periodo de cierre</div>
+      <div class="fin-tabs">
+        <div class="fin-tab fin-sub sel" data-v="resumen" onclick="finSub('resumen')">Resumen</div>
+        <div class="fin-tab fin-sub" data-v="movimientos" onclick="finSub('movimientos')">Movimientos</div>
+        <div class="fin-tab fin-sub" data-v="ventas" onclick="finSub('ventas')">Ventas en el local</div>
+        <div class="fin-tab fin-sub" data-v="gastos" onclick="finSub('gastos')">Gastos</div>
+        <div class="fin-tab fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Periodo de cierre</div>
       </div>
-      <div id="fin-barra-periodo" style="margin-bottom:1rem;">
+      <div id="fin-barra-periodo" class="fin-periodo">
         <select class="fi" id="fin-periodo" onchange="cambiarPeriodoFinanzas(this.value)"></select>
         <div id="fin-rango" style="display:none;gap:8px;margin-top:8px;">
           <input type="date" class="fi" id="fin-desde" onchange="loadFinanzas()"/>
@@ -4948,8 +5381,9 @@ function tarjetaComparacion(ingresos){
   const icono = pct > 0 ? 'ti-trending-up' : (pct < 0 ? 'ti-trending-down' : 'ti-minus');
   const texto = (pct > 0 ? '+' : (pct < 0 ? '−' : '')) + Math.abs(pct) + '%';
 
+  const claseTendencia = pct < 0 ? 'negative' : (pct === 0 ? 'neutral' : '');
   return caja(`<div class="fin-card-title">Frente al periodo anterior</div>
-    <div class="fin-card-value"><i class="ti ${icono} fin-card-icon" aria-hidden="true"></i><span data-pct="${pct}">${texto}</span></div>
+    <div class="fin-card-value ${claseTendencia}"><i class="ti ${icono} fin-card-icon" aria-hidden="true"></i><span data-pct="${pct}">${texto}</span></div>
     ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>antes: ' + fmtDinero(p.ingresos) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
 }
 
@@ -4965,27 +5399,79 @@ function htmlResumenFin(){
   const adicionales = Math.min(agenda, sumaFin(FIN.extras));
   const serviciosAgenda = agenda - adicionales;
   const canjeados = sumaFin(FIN.pagosCanje);
-  const porMetodo = {};
-  [...FIN.pagos, ...FIN.pagosCert].forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
 
-  const kpi = (titulo, valor, color, nota, numero, clase='') => `
+  const porMetodo = {};
+  [...FIN.pagos, ...FIN.pagosCert].forEach(p => {
+    porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto;
+  });
+
+  const kpi = (titulo, valor, nota, numero, clase='') => `
     <div class="fin-summary-card ${clase}">
       <div class="fin-card-title">${titulo}</div>
       <div ${numero !== undefined ? `data-num="${numero}" ` : ''}class="fin-card-value">${valor}</div>
       ${nota ? `<div class="fin-card-note">${nota}</div>` : ''}
     </div>`;
 
-  const barra = (etiqueta, monto, total, color, detalle) => {
-    const pct = total > 0 ? Math.round(monto/total*100) : 0;
-    return `<div style="margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="font-weight:600;">${etiqueta}</span><span>${fmtDinero(monto)} <span style="color:var(--ink-soft);">· ${pct}%</span></span></div>
-      <div style="height:6px;background:#EEEAF3;border-radius:999px;"><div style="width:${pct}%;height:100%;background:${color};border-radius:999px;"></div></div>
-      ${detalle ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">${detalle}</div>` : ''}
+  const pct = (monto,total) => total > 0 ? Math.round(monto/total*100) : 0;
+
+  const iconOrigen = {
+    servicios:'ti ti-sparkles',
+    local:'ti ti-building-store',
+    certificado:'ti ti-gift'
+  };
+
+  const colorOrigen = {
+    servicios:'#EC4899',
+    local:'#7C3AED',
+    certificado:'#F59E0B'
+  };
+
+  const barraOrigen = (tipo, etiqueta, monto, total, detalle) => {
+    const porcentaje = pct(monto,total);
+    const color = colorOrigen[tipo] || '#7C3AED';
+    return `<div class="fin-origin-row">
+      <div class="fin-row-top">
+        <div class="fin-row-label">
+          <i class="${iconOrigen[tipo] || 'ti ti-chart-bar'}" style="background:${color}14;color:${color};"></i>
+          <span>${etiqueta}</span>
+        </div>
+        <div class="fin-row-value">${fmtDinero(monto)} <span>· ${porcentaje}%</span></div>
+      </div>
+      <div class="fin-progress"><div style="width:${porcentaje}%;background:${color};"></div></div>
+      ${detalle ? `<div class="fin-row-detail">${detalle}</div>` : ''}
     </div>`;
   };
 
-  const metodosHtml = Object.keys(porMetodo).sort((a,b) => porMetodo[b]-porMetodo[a])
-    .map(m => barra(METODOS_PAGO[m] || m, porMetodo[m], ingresos, '#7C3AED')).join('');
+  const iconMetodo = {
+    efectivo:'ti ti-cash',
+    yappy:'ti ti-device-mobile',
+    tarjeta:'ti ti-credit-card',
+    transferencia:'ti ti-building-bank',
+    certificado:'ti ti-gift'
+  };
+
+  const metodoKey = m => String(m||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  const barraMetodo = (metodo, monto, total) => {
+    const porcentaje = pct(monto,total);
+    const key = metodoKey(metodo);
+    const icon = iconMetodo[key] || 'ti ti-wallet';
+    return `<div class="fin-method-row">
+      <div class="fin-row-top">
+        <div class="fin-row-label">
+          <i class="ti ${icon}" style="background:#F3EBFC;color:#7C3AED;"></i>
+          <span>${METODOS_PAGO[metodo] || metodo}</span>
+        </div>
+        <div class="fin-row-value">${fmtDinero(monto)} <span>· ${porcentaje}%</span></div>
+      </div>
+      <div class="fin-progress"><div style="width:${porcentaje}%;background:#7C3AED;"></div></div>
+    </div>`;
+  };
+
+  const metodosHtml = Object.keys(porMetodo)
+    .sort((a,b) => porMetodo[b]-porMetodo[a])
+    .map(m => barraMetodo(m, porMetodo[m], ingresos))
+    .join('');
 
   const vacio = (!FIN.pagos.length && !FIN.pagosCert.length)
     ? '<p style="font-size:12px;color:var(--ink-soft);text-align:center;padding:.5rem 1rem 1rem;line-height:1.6;">Todavía no hay cobros en este periodo. Completa una cita desde <strong>Citas</strong>, registra una venta en el local o emite un certificado.</p>'
@@ -4995,25 +5481,89 @@ function htmlResumenFin(){
     ? 'Además, ' + fmtDinero(canjeados) + ' de servicios se pagaron con certificados (ya contaron como ingreso al venderse el certificado).'
     : '';
 
+  const certBoxes = [
+    ['sold','ti ti-gift','Vendidos en el periodo',ventaCert,'Ya son ingreso'],
+    ['','ti ti-check','Servicios pagados con certificado',canjeados,'No suman otra vez'],
+    ['','ti ti-heart','Cortesías emitidas',FIN.cortesiasPeriodo,'No generan ingreso'],
+    ['pending','ti ti-hourglass','Por canjear',FIN.certPorCanjear,'Servicios pendientes']
+  ].map(([clase,icon,titulo,valor,sub]) => `
+    <div class="fin-cert-box ${clase}">
+      <div class="fin-cert-icon"><i class="${icon}"></i></div>
+      <div class="fin-cert-label">${titulo}</div>
+      <div class="fin-cert-value">${fmtDinero(valor)}</div>
+      <div style="font-size:9.5px;color:#8A8795;margin-top:2px;">${sub}</div>
+    </div>`).join('');
+
   return `
     <div class="fin-summary-grid">
-      ${kpi('Ingreso real', '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(resultado) + '</span>', '#159A61', 'Ingresos ' + fmtDinero(ingresos) + '<br>menos gastos ' + fmtDinero(gastos), resultado, 'income')}
-      ${kpi('Gastos', '<i class="ti ti-trending-down fin-card-icon"></i><span>' + fmtDinero(gastos) + '</span>', '#E53935', 'Egresos del periodo', gastos, 'expense')}
+      ${kpi('Ingreso real',
+        '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(resultado) + '</span>',
+        'Ingresos ' + fmtDinero(ingresos) + '<br>menos gastos ' + fmtDinero(gastos),
+        resultado,'income')}
+
+      ${kpi('Gastos',
+        '<i class="ti ti-trending-down fin-card-icon"></i><span>' + fmtDinero(gastos) + '</span>',
+        'Egresos del periodo',
+        gastos,'expense')}
+
       ${tarjetaComparacion(ingresos)}
-      ${kpi('Certificados por canjear', '<i class="ti ti-gift fin-card-icon"></i><span>' + fmtDinero(FIN.certPorCanjear) + '</span>', '#7C3AED', 'Servicios que aún debes a clientes. El dinero ya contó como ingreso al venderse.', FIN.certPorCanjear, 'certificates')}
+
+      ${kpi('Certificados por canjear',
+        '<i class="ti ti-gift fin-card-icon"></i><span>' + fmtDinero(FIN.certPorCanjear) + '</span>',
+        'Servicios pendientes de canje<br>El dinero ya contó como ingreso al venderse.',
+        FIN.certPorCanjear,'certificates')}
     </div>
+
+    <div class="fin-mini-summary">
+      <span class="fin-mini-label">Resultado del periodo</span>
+      <span class="fin-mini-result"><strong>${fmtDinero(resultado)}</strong> después de gastos</span>
+      <span class="fin-mini-sep"></span>
+      <span class="fin-mini-label">Ingresos</span>
+      <span class="fin-mini-result">${fmtDinero(ingresos)}</span>
+      <span class="fin-mini-sep"></span>
+      <span class="fin-mini-label">Gastos</span>
+      <span class="fin-mini-result">${fmtDinero(gastos)}</span>
+    </div>
+
     ${vacio}
-    <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Ingresos por origen</span></div>
-      <div style="padding:1rem;">${barra('Servicios de citas completadas', serviciosAgenda, ingresos, '#EC4899', detalleServicios)}${barra('Ventas en el local', local + adicionales, ingresos, '#7C3AED', adicionales > 0 ? fmtDinero(local) + ' sin cita · ' + fmtDinero(adicionales) + ' vendido en citas (productos y tratamientos)' : '')}${barra('Certificados vendidos', ventaCert, ingresos, '#F59E0B')}</div>
+
+    <div class="fin-data-card">
+      <div class="fin-data-head">
+        <div class="fin-data-head-icon"><i class="ti ti-chart-donut"></i></div>
+        <div class="fin-data-title">Ingresos por origen</div>
+      </div>
+      <div class="fin-data-body">
+        ${barraOrigen('servicios','Servicios de citas completadas',serviciosAgenda,ingresos,detalleServicios)}
+        ${barraOrigen('local','Ventas en el local',local + adicionales,ingresos,
+          adicionales > 0
+            ? fmtDinero(local) + ' sin cita · ' + fmtDinero(adicionales) + ' vendido en citas (productos y tratamientos)'
+            : '')}
+        ${barraOrigen('certificado','Certificados vendidos',ventaCert,ingresos,'')}
+      </div>
     </div>
-    <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Por método de pago</span></div>
-      <div style="padding:1rem;">${metodosHtml || '<p style="font-size:12px;color:#aaa;text-align:center;">Sin cobros en este periodo.</p>'}</div>
+
+    <div class="fin-data-card">
+      <div class="fin-data-head">
+        <div class="fin-data-head-icon"><i class="ti ti-wallet"></i></div>
+        <div class="fin-data-title">Por método de pago</div>
+      </div>
+      <div class="fin-data-body">
+        ${metodosHtml || '<p style="font-size:12px;color:#999;text-align:center;">Sin cobros en este periodo.</p>'}
+      </div>
     </div>
-    <div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Certificados de regalo</span></div>
-      <div style="padding:.4rem 1rem 1rem;">
-        ${[['Vendidos en el periodo (ya son ingreso)', ventaCert, '#159A61'], ['Servicios pagados con certificado en el periodo (no suman otra vez)', canjeados, 'var(--ink)'], ['Cortesías emitidas en el periodo (sin cobro, no son ingreso)', FIN.cortesiasPeriodo, 'var(--ink)'], ['Por canjear (servicios pendientes)', FIN.certPorCanjear, '#7C3AED']]
-          .map(([t, v, c]) => `<div style="display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;"><span style="color:var(--ink-soft);">${t}</span><strong style="color:${c};">${fmtDinero(v)}</strong></div>`).join('')}
-        <p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:10px 0 0;">El certificado se cobra al venderlo y ese dinero es ingreso desde ese momento. Cuando el cliente lo canjea, el servicio se paga con el certificado y no suma otra vez. Las cortesías no generan ingreso.</p>
+
+    <div class="fin-data-card">
+      <div class="fin-data-head">
+        <div class="fin-data-head-icon"><i class="ti ti-gift"></i></div>
+        <div class="fin-data-title">Certificados de regalo</div>
+      </div>
+      <div class="fin-data-body">
+        <div class="fin-cert-grid">${certBoxes}</div>
+        <div class="fin-cert-note">
+          El certificado se cobra al venderlo y ese dinero es ingreso desde ese momento.
+          Cuando el cliente lo canjea, el servicio se paga con el certificado y no suma otra vez.
+          Las cortesías no generan ingreso.
+        </div>
       </div>
     </div>`;
 }
