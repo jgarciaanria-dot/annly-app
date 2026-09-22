@@ -4436,6 +4436,12 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:1rem;"><input type="checkbox" id="me-activo" checked/> Activo (visible para agendar)</label>
 
       <div class="fg">
+        <label class="flbl">Comisión global (%)</label>
+        <input class="fi" id="me-comision-global" type="number" min="0" max="100" step="0.1" placeholder="Ej: 50" style="max-width:140px;"/>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Se aplica a todos sus servicios. Puedes poner un % distinto por servicio abajo — ese manda sobre este.</p>
+      </div>
+
+      <div class="fg">
         <label class="flbl">Servicios que realiza</label>
         <div id="me-servicios-list" style="display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:240px;overflow-y:auto;"></div>
         <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Marca una categoría para asignar todos sus servicios, o elige uno por uno. Si no marcas ninguno, se asume que hace todos.</p>
@@ -4559,7 +4565,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=31"></script>
+<script src="sheets.js?v=32"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -6983,14 +6989,16 @@ async function openModalEmpleado(id){
   document.getElementById('me-correo').value = e ? (e.correo||'') : '';
   document.getElementById('me-bio').value = e ? (e.bio||'') : '';
   document.getElementById('me-activo').checked = e ? e.activo : true;
+  document.getElementById('me-comision-global').value = (e && e.comisionGlobal != null) ? e.comisionGlobal : '';
   document.getElementById('me-foto-url').value = e ? (e.fotoUrl||'') : '';
   document.getElementById('me-foto-preview').innerHTML = e && e.fotoUrl
     ? `<img src="${e.fotoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`
     : `<i class="ti ti-user" style="font-size:22px;color:var(--ink-soft);"></i>`;
   document.getElementById('me-btn-eliminar').style.display = (e && !e.esDueno) ? 'flex' : 'none';
 
-  // Servicios que hace
+  // Servicios que hace, y la comisión particular que tenga cada uno (si tiene)
   const serviciosMarcados = e ? await Sheets.getEmpleadoServicios(e.id) : [];
+  const comisionesServ = e ? await Sheets.getComisionesServiciosEmpleado(e.id) : {};
   const listaServ = document.getElementById('me-servicios-list');
   if (!SERVICES.length){
     listaServ.innerHTML = '<p style="font-size:12px;color:var(--ink-soft);">Todavía no tienes servicios creados.</p>';
@@ -7009,6 +7017,7 @@ async function openModalEmpleado(id){
           ${g.svcs.map(s => `
             <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
               <input type="checkbox" class="me-servicio-chk" data-g="${gi}" value="${s.id}" ${serviciosMarcados.includes(s.id)?'checked':''} onchange="actualizarEstadoCategoriaEmpleado(${gi})"/> ${escCat(s.name)}
+              <input type="number" class="fi me-servicio-comision" data-service-id="${s.id}" min="0" max="100" step="0.1" placeholder="% global" value="${comisionesServ[s.id] != null ? comisionesServ[s.id] : ''}" style="width:80px;padding:5px 8px;font-size:11.5px;margin-left:auto;" title="% de comisión para este servicio (vacío = usa el % global)"/>
             </label>`).join('')}
         </div>
       </div>`).join('');
@@ -7128,6 +7137,12 @@ async function guardarEmpleadoModal(){
     }
   }
 
+  const comisionGlobalVal = document.getElementById('me-comision-global').value.trim();
+  if (comisionGlobalVal !== '' && (isNaN(comisionGlobalVal) || comisionGlobalVal < 0 || comisionGlobalVal > 100)){
+    msgEl.textContent = 'La comisión global debe ser un número entre 0 y 100.';
+    return;
+  }
+
   const empleado = {
     id: editEmpleadoId,
     nombre,
@@ -7135,7 +7150,8 @@ async function guardarEmpleadoModal(){
     correo: document.getElementById('me-correo').value.trim(),
     bio: document.getElementById('me-bio').value.trim(),
     fotoUrl: document.getElementById('me-foto-url').value.trim(),
-    activo: document.getElementById('me-activo').checked
+    activo: document.getElementById('me-activo').checked,
+    comisionGlobal: comisionGlobalVal !== '' ? Number(comisionGlobalVal) : null
   };
 
   if (document.getElementById('me-horario-propio').checked){
@@ -7146,7 +7162,11 @@ async function guardarEmpleadoModal(){
   try {
     const empleadoId = await Sheets.guardarEmpleado(empleado);
 
-    const serviciosMarcados = Array.from(document.querySelectorAll('.me-servicio-chk:checked')).map(el => el.value);
+    const serviciosMarcados = Array.from(document.querySelectorAll('.me-servicio-chk:checked')).map(el => {
+      const inputComision = document.querySelector('.me-servicio-comision[data-service-id="' + el.value + '"]');
+      const val = inputComision ? inputComision.value.trim() : '';
+      return { id: el.value, comision: val !== '' ? Number(val) : null };
+    });
     await Sheets.guardarEmpleadoServicios(empleadoId, serviciosMarcados);
 
     const usaHorarioPropio = document.getElementById('me-horario-propio').checked;
