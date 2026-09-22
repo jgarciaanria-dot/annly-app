@@ -3295,6 +3295,346 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 }
 </style>
 
+
+<style id="annly-mobile-responsive-fix">
+/* =========================================================
+   ANNLY — MOBILE RESPONSIVE FIX
+   Solo CSS. No modifica HTML ni JavaScript.
+   Recupera el comportamiento móvil tipo drawer del diseño base.
+   ========================================================= */
+@media (max-width:900px){
+  html,body{
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    overflow-x:hidden!important;
+  }
+
+  .adm-shell{
+    width:100%;
+    min-width:0;
+    overflow-x:hidden;
+  }
+
+  .adm-main{
+    width:100%!important;
+    min-width:0!important;
+    margin-left:0!important;
+    background:var(--annly-bg)!important;
+  }
+
+  .adm-hdr{
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+    min-width:0!important;
+  }
+
+  .adm-hdr-left{
+    min-width:0!important;
+    flex:1 1 auto!important;
+  }
+
+  .adm-hdr-title{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  .adm-hdr-actions{
+    flex:0 0 auto!important;
+    min-width:0!important;
+  }
+
+  .adm-body{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    box-sizing:border-box!important;
+  }
+
+  .adm-content-inner{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+
+  /* Drawer */
+  .adm-sidebar{
+    position:fixed!important;
+    top:0!important;
+    bottom:0!important;
+    left:0!important;
+    right:auto!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    width:min(292px,88vw)!important;
+    transform:translate3d(-105%,0,0)!important;
+    overflow:hidden!important;
+    z-index:100!important;
+  }
+
+  .adm-sidebar.open{
+    transform:translate3d(0,0,0)!important;
+  }
+
+  .adm-nav{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .adm-sidebar-foot{
+    flex:0 0 auto!important;
+    margin-top:auto!important;
+  }
+
+  .adm-drawer-overlay{
+    position:fixed!important;
+    inset:0!important;
+    z-index:90!important;
+  }
+
+  /* Evita que las tarjetas/filas con contenido largo rompan el viewport */
+  .adm-sec,
+  .plan-hero,
+  .plan-card,
+  .plan-extra,
+  .plan-module,
+  .fin-summary-card{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  .adm-sec-hdr{
+    min-width:0!important;
+  }
+
+  .adm-sec-hdr > *{
+    min-width:0;
+  }
+
+  .svc-row{
+    min-width:0!important;
+    width:100%!important;
+  }
+
+  .svc-info{
+    min-width:0!important;
+    overflow:hidden;
+  }
+
+  .svc-nm,
+  .svc-meta{
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .svc-actions{
+    flex:0 0 auto!important;
+  }
+
+  /* Tablas, listas y contenedores anchos: scroll interno, nunca scroll de toda la app */
+  .table-wrap,
+  .tabla-wrap,
+  .table-responsive,
+  .responsive-table{
+    max-width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  /* Modales: ocupan el ancho real del teléfono */
+  .ov{
+    padding:0!important;
+    align-items:flex-end!important;
+  }
+
+  .modal{
+    width:100%!important;
+    max-width:none!important;
+    max-height:92dvh!important;
+    border-radius:18px 18px 0 0!important;
+    margin:0!important;
+  }
+
+  .modal-hdr{
+    padding:14px 15px!important;
+  }
+
+  .modal-body{
+    padding:14px!important;
+  }
+
+  .frow{
+    grid-template-columns:1fr!important;
+  }
+}
+
+@media (max-width:600px){
+  .adm-hdr{
+    min-height:62px!important;
+    height:auto!important;
+    padding:9px 11px!important;
+    gap:8px!important;
+  }
+
+  .adm-mobile-menu-btn{
+    width:36px!important;
+    height:36px!important;
+    flex:0 0 36px!important;
+  }
+
+  .adm-hdr-title{
+    font-size:14px!important;
+    line-height:1.15!important;
+    max-width:190px!important;
+  }
+
+  .adm-hdr-actions{
+    gap:4px!important;
+  }
+
+  .adm-hdr-back{
+    width:35px!important;
+    height:35px!important;
+    padding:0!important;
+    justify-content:center!important;
+  }
+
+  .adm-body{
+    padding:14px 10px 32px!important;
+  }
+
+  .adm-sec{
+    border-radius:14px!important;
+    margin-bottom:12px!important;
+  }
+
+  .adm-sec-hdr{
+    padding:10px 11px!important;
+    min-height:56px!important;
+    gap:8px!important;
+  }
+
+  .adm-sec-title{
+    min-width:0!important;
+    font-size:12.5px!important;
+  }
+
+  .adm-sec-title span{
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .svc-row{
+    padding:10px 11px!important;
+    gap:8px!important;
+    min-height:68px!important;
+  }
+
+  .svc-row > div:first-child{
+    flex:0 0 44px!important;
+    width:44px!important;
+    height:44px!important;
+  }
+
+  .svc-toggle{
+    flex:0 0 35px!important;
+    width:35px!important;
+  }
+
+  .svc-nm{
+    font-size:12.5px!important;
+  }
+
+  .svc-meta{
+    font-size:10px!important;
+    white-space:nowrap;
+  }
+
+  .svc-actions{
+    gap:4px!important;
+  }
+
+  .svc-actions .btn-ico{
+    width:33px!important;
+    height:33px!important;
+  }
+
+  .fin-summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+
+  .plan-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  .plan-modules{
+    grid-template-columns:1fr!important;
+  }
+
+  .plan-extras{
+    grid-template-columns:1fr!important;
+  }
+}
+
+@media (max-width:420px){
+  .adm-hdr{
+    padding:8px 9px!important;
+  }
+
+  .adm-hdr-title{
+    max-width:150px!important;
+    font-size:13.5px!important;
+  }
+
+  .adm-body{
+    padding:12px 8px 28px!important;
+  }
+
+  .adm-sec-hdr{
+    padding:9px 10px!important;
+  }
+
+  .svc-row{
+    padding:9px 10px!important;
+  }
+
+  .svc-row > div:first-child{
+    flex-basis:40px!important;
+    width:40px!important;
+    height:40px!important;
+  }
+
+  .svc-toggle{
+    display:none!important;
+  }
+
+  .svc-actions .btn-ico{
+    width:31px!important;
+    height:31px!important;
+  }
+
+  .fin-summary-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  .modal{
+    max-height:94dvh!important;
+    border-radius:16px 16px 0 0!important;
+  }
+
+  .modal-title{
+    font-size:17px!important;
+  }
+}
+</style>
+
 </head>
 <body>
 
