@@ -8901,58 +8901,74 @@ async function abrirDetalleCita(id){
   const c = (typeof CITAS_CACHE !== 'undefined' ? CITAS_CACHE : []).find(x => String(x.id) === String(id));
   if (!c) return;
   const r = resumenPagoCita(c);
-  const fila = (t, v) => `<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;"><span style="color:var(--ink-soft);">${t}</span><strong style="text-align:right;">${v}</strong></div>`;
-  const titulo = t => `<p style="font-size:10px;font-weight:700;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin:14px 0 2px;">${t}</p>`;
+
+  // Colores por "tono": pos = ingreso/dinero recibido, neg = descuento o deducción,
+  // money = monto de referencia (ni ingreso ni descuento), pending = por cobrar todavía.
+  const TONOS = { pos:'#159A61', neg:'#C2695A', money:'var(--ink)', pending:'#B08900' };
+  // Cada fila: ícono sutil a la izquierda + etiqueta sin negrita: solo el valor lleva
+  // negrita, y únicamente cuando es un monto de dinero (opts.tone u opts.color).
+  const fila = (t, v, opts) => {
+    opts = opts || {};
+    const icono = opts.icon ? `<i class="ti ${opts.icon}" style="font-size:14px;color:var(--ink-soft);opacity:.55;flex-shrink:0;"></i>` : '';
+    const color = opts.color || TONOS[opts.tone] || 'var(--ink)';
+    const peso = (opts.tone || opts.color) ? '700' : '500';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;">
+      <span style="display:flex;align-items:center;gap:7px;color:var(--ink-soft);">${icono}<span>${t}</span></span>
+      <span style="text-align:right;color:${color};font-weight:${peso};">${v}</span>
+    </div>`;
+  };
+  const titulo = (t, icon) => `<p style="display:flex;align-items:center;gap:7px;font-size:10px;font-weight:500;color:var(--gold-dark);letter-spacing:.1em;text-transform:uppercase;margin:16px 0 2px;">${icon ? `<i class="ti ${icon}" style="font-size:13px;opacity:.7;"></i>` : ''}${t}</p>`;
+
   const digitos = String(c.telefono || '').replace(/\D/g, '');
   const wa = digitos ? 'https://wa.me/' + (digitos.length === 8 ? '507' + digitos : digitos) : '';
 
-  let html = titulo('Cliente') +
-    fila('Nombre', escCat(c.nombre || '—')) +
-    fila('WhatsApp', c.telefono ? (wa ? `<a href="${wa}" target="_blank" style="color:#159A61;">${escCat(c.telefono)}</a>` : escCat(c.telefono)) : '—') +
-    fila('Correo', escCat(c.correo || '—')) +
-    titulo('Cita') +
-    fila('Servicio', escCat(c.servicio || '—') + (c.categoria ? ' · ' + escCat(c.categoria) : '')) +
-    fila('Fecha y hora', escCat(c.fecha) + ' · ' + escCat(c.hora)) +
-    fila('Duración', '~' + (c.duracion || 60) + ' min') +
-    fila('Profesional', escCat(c.empleadoNombre || 'Sin asignar')) +
-    (c.nota ? fila('Nota', escCat(c.nota)) : '') +
-    titulo('Pago');
-  html += fila('Precio del servicio', r.precio == null ? 'A consultar' : fmtDinero(r.precio));
+  let html = titulo('Cliente', 'ti-user') +
+    fila('Nombre', escCat(c.nombre || '—'), {icon:'ti-user'}) +
+    fila('WhatsApp', c.telefono ? (wa ? `<a href="${wa}" target="_blank" style="color:#159A61;">${escCat(c.telefono)}</a>` : escCat(c.telefono)) : '—', {icon:'ti-brand-whatsapp'}) +
+    fila('Correo', escCat(c.correo || '—'), {icon:'ti-mail'}) +
+    titulo('Cita', 'ti-calendar-event') +
+    fila('Servicio', escCat(c.servicio || '—') + (c.categoria ? ' · ' + escCat(c.categoria) : ''), {icon:'ti-sparkles'}) +
+    fila('Fecha y hora', escCat(c.fecha) + ' · ' + escCat(c.hora), {icon:'ti-calendar-event'}) +
+    fila('Duración', '~' + (c.duracion || 60) + ' min', {icon:'ti-clock'}) +
+    fila('Profesional', escCat(c.empleadoNombre || 'Sin asignar'), {icon:'ti-user-check'}) +
+    (c.nota ? fila('Nota', escCat(c.nota), {icon:'ti-notes'}) : '') +
+    titulo('Pago', 'ti-cash');
+  html += fila('Precio del servicio', r.precio == null ? 'A consultar' : fmtDinero(r.precio), {icon:'ti-tag', tone:'money'});
   if (c.completadaEn && c.precioCobrado != null && (r.precio == null || Math.abs(Number(c.precioCobrado) - r.precio) >= 0.005)){
-    html += fila('Costo total del servicio', fmtDinero(c.precioCobrado));
+    html += fila('Costo total del servicio', fmtDinero(c.precioCobrado), {icon:'ti-receipt-2', tone:'money'});
     if (r.precio != null){
       const base = r.precio - r.desc;
       const dif = Math.round((Number(c.precioCobrado) - base)*100)/100;
       if (Math.abs(dif) >= 0.005){
-        html += fila(dif > 0 ? 'Costo adicional durante el servicio' : 'Descuento en el local', (dif > 0 ? '+' : '−') + fmtDinero(Math.abs(dif)));
+        html += fila(dif > 0 ? 'Costo adicional durante el servicio' : 'Descuento en el local', (dif > 0 ? '+' : '−') + fmtDinero(Math.abs(dif)), {icon: dif > 0 ? 'ti-trending-up' : 'ti-trending-down', tone: dif > 0 ? 'pos' : 'neg'});
         if (c.ajusteDetalle) html += `<p style="font-size:12px;color:var(--ink);line-height:1.5;margin:6px 0 0;background:var(--bg);border-radius:8px;padding:8px 10px;"><span style="color:var(--ink-soft);">Detalle:</span> ${escCat(c.ajusteDetalle)}</p>`;
       }
     }
   }
-  if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc));
-  if (r.cert > 0) html += '<div id="cd-cert-fila">' + fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert)) + '</div>' +
+  if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc), {icon:'ti-discount-2', tone:'neg'});
+  if (r.cert > 0) html += '<div id="cd-cert-fila">' + fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert), {icon:'ti-gift', tone:'neg'}) + '</div>' +
     '<div id="cd-cert-saldo"></div>';
   // Certificado validado al reservar pero todavía sin descontar (precio no fijo)
   if (!(r.cert > 0) && c.certificadoCodigo){
-    html += fila('Certificado por aplicar (' + escCat(c.certificadoCodigo) + ')', c.completadaEn ? 'No se aplicó' : 'Sin descontar');
+    html += fila('Certificado por aplicar (' + escCat(c.certificadoCodigo) + ')', c.completadaEn ? 'No se aplicó' : 'Sin descontar', {icon:'ti-gift'});
     if (!c.completadaEn) html += `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:6px 0 0;">Lo validó el cliente al reservar. Como el precio no es fijo, se descuenta al completar la cita, según el precio final.</p>`;
     else if (c.certificadoMotivoNoAplicado) html += `<p style="font-size:12px;color:var(--ink);line-height:1.5;margin:6px 0 0;background:var(--bg);border-radius:8px;padding:8px 10px;"><span style="color:var(--ink-soft);">Motivo:</span> ${escCat(c.certificadoMotivoNoAplicado)}</p>`;
   }
   if (r.abono > 0){
-    html += fila('Abono pagado (' + (r.descontable ? 'descontable' : 'no reembolsable') + ')' + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), fmtDinero(r.abono));
-    if (c.comprobante) html += fila('Comprobante del abono', escCat(c.comprobante));
+    html += fila('Abono pagado (' + (r.descontable ? 'descontable' : 'no reembolsable') + ')' + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), fmtDinero(r.abono), {icon:'ti-wallet', tone:'pos'});
+    if (c.comprobante) html += fila('Comprobante del abono', escCat(c.comprobante), {icon:'ti-receipt'});
   } else if (c.comprobante && c.comprobante !== 'Sin abono') {
-    html += fila('Referencia', escCat(c.comprobante));
+    html += fila('Referencia', escCat(c.comprobante), {icon:'ti-receipt'});
   }
   if (r.excedente > 0){
-    html += fila('Saldo a favor del cliente (cobrado de más)', `<span style="color:#B08900;">${fmtDinero(r.excedente)}</span>`);
+    html += fila('Saldo a favor del cliente (cobrado de más)', fmtDinero(r.excedente), {icon:'ti-alert-circle', color:TONOS.pending});
     const abonoInnecesario = r.abono > 0 && r.descontable && r.cert >= (r.neto || 0);
     html += `<p style="font-size:11px;color:var(--ink-soft);line-height:1.5;margin:6px 0 0;">Lo pagado por adelantado (certificado + abono) supera el precio del servicio.${abonoInnecesario ? ' El abono no era necesario: el certificado ya cubría todo el servicio.' : ''}</p>`;
   }
   if (c.completadaEn){
-    html += fila('Estado', 'Completada · ' + fmtDinero(c.precioCobrado));
+    html += fila('Estado', 'Completada · ' + fmtDinero(c.precioCobrado), {icon:'ti-circle-check', tone:'pos'});
   } else {
-    html += fila('Por cobrar en el local', r.porCobrar == null ? 'Por confirmar' : fmtDinero(r.porCobrar));
+    html += fila('Por cobrar en el local', r.porCobrar == null ? 'Por confirmar' : fmtDinero(r.porCobrar), {icon:'ti-hourglass', tone:'pending'});
   }
   html += '<div id="cd-extras"></div><div id="cd-cobros"></div><div id="cd-cuadre"></div>';
   const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.fechaISO <= isoLocal(new Date());
@@ -8967,8 +8983,9 @@ async function abrirDetalleCita(id){
       const contC = elFin('cd-cert-saldo');
       if (cert && contC){
         contC.innerHTML = fila('Saldo actual del certificado',
-          `<span style="color:${cert.saldoRestante > 0 ? '#159A61' : 'var(--ink-soft)'};">${fmtDinero(cert.saldoRestante)}</span> <span style="color:var(--ink-soft);font-weight:500;">de ${fmtDinero(cert.montoInicial)}</span>`) +
-          (cert.fechaVencimiento && cert.saldoRestante > 0 ? fila('Vence', escCat(cert.fechaVencimiento)) : '');
+          `${fmtDinero(cert.saldoRestante)} <span style="color:var(--ink-soft);font-weight:500;">de ${fmtDinero(cert.montoInicial)}</span>`,
+          {icon:'ti-gift', color: cert.saldoRestante > 0 ? TONOS.pos : 'var(--ink-soft)'}) +
+          (cert.fechaVencimiento && cert.saldoRestante > 0 ? fila('Vence', escCat(cert.fechaVencimiento), {icon:'ti-calendar-time'}) : '');
       }
     } catch(e){}
   }
@@ -8981,7 +8998,7 @@ async function abrirDetalleCita(id){
 
     const contE = elFin('cd-extras');
     if (contE){
-      if (extras.length) contE.innerHTML = titulo('Ventas adicionales') + extras.map(x => fila(escCat(x.descripcion), fmtDinero(x.monto))).join('');
+      if (extras.length) contE.innerHTML = titulo('Ventas adicionales', 'ti-shopping-cart') + extras.map(x => fila(escCat(x.descripcion), fmtDinero(x.monto), {icon:'ti-shopping-cart', tone:'pos'})).join('');
       else if (errExtras) contE.innerHTML = '<p style="font-size:11px;color:var(--ink-soft);margin:10px 0 0;">No se pudieron cargar las ventas adicionales de esta cita.</p>';
     }
     // Certificado: lo aplicado al reservar y lo que se sumó durante la atención (se ven por separado)
@@ -8992,13 +9009,13 @@ async function abrirDetalleCita(id){
     if (contCert && certAtencion > 0){
       const cod = c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : '';
       contCert.innerHTML =
-        (certReserva > 0 ? fila('Certificado al reservar' + cod, '−' + fmtDinero(certReserva)) : '') +
-        fila('Certificado durante la atención' + cod, '−' + fmtDinero(certAtencion));
+        (certReserva > 0 ? fila('Certificado al reservar' + cod, '−' + fmtDinero(certReserva), {icon:'ti-gift', tone:'neg'}) : '') +
+        fila('Certificado durante la atención' + cod, '−' + fmtDinero(certAtencion), {icon:'ti-gift', tone:'neg'});
     }
     const cont = elFin('cd-cobros');
     if (cont && pagos.length){
-      cont.innerHTML = titulo('Cobros registrados') + pagos.map(p =>
-        fila((METODOS_PAGO[p.metodo] || p.metodo) + (p.referencia ? ' · ' + escCat(p.referencia) : ''), fmtDinero(p.monto))).join('');
+      cont.innerHTML = titulo('Cobros registrados', 'ti-cash-banknote') + pagos.map(p =>
+        fila((METODOS_PAGO[p.metodo] || p.metodo) + (p.referencia ? ' · ' + escCat(p.referencia) : ''), fmtDinero(p.monto), {icon:'ti-cash-banknote', tone:'pos'})).join('');
     }
 
     // Cuadre: lo que vale la cita (servicio + adicionales) contra lo que se cobró
@@ -9014,12 +9031,12 @@ async function abrirDetalleCita(id){
       if (Math.abs(dif) < 0.005) estado = '<span style="color:#159A61;font-weight:700;">✓ Cuadra</span>';
       else if (dif > 0) estado = `<span style="color:#B08900;font-weight:700;">Se cobró ${fmtDinero(dif)} más de lo registrado</span>`;
       else estado = `<span style="color:#C2695A;font-weight:700;">Faltan ${fmtDinero(-dif)} por registrar</span>`;
-      contQ.innerHTML = titulo('Cuadre') +
-        fila('Servicio', fmtDinero(servicio)) +
-        (sumExtras > 0 ? fila('Ventas adicionales', fmtDinero(sumExtras)) : '') +
-        (abonoAparte > 0 ? fila('Abono no reembolsable (aparte)', fmtDinero(abonoAparte)) : '') +
-        fila('Total de la cita', fmtDinero(esperado)) +
-        fila('Total cobrado', fmtDinero(sumPagos)) +
+      contQ.innerHTML = titulo('Cuadre', 'ti-scale') +
+        fila('Servicio', fmtDinero(servicio), {icon:'ti-tag', tone:'money'}) +
+        (sumExtras > 0 ? fila('Ventas adicionales', fmtDinero(sumExtras), {icon:'ti-shopping-cart', tone:'pos'}) : '') +
+        (abonoAparte > 0 ? fila('Abono no reembolsable (aparte)', fmtDinero(abonoAparte), {icon:'ti-wallet', tone:'pos'}) : '') +
+        fila('Total de la cita', fmtDinero(esperado), {icon:'ti-receipt-2', tone:'money'}) +
+        fila('Total cobrado', fmtDinero(sumPagos), {icon:'ti-cash-banknote', tone:'pos'}) +
         `<p style="font-size:12px;margin:8px 0 0;line-height:1.5;">${estado}${dif > 0 && !extras.length ? ' <span style="color:var(--ink-soft);">· no hay ninguna venta adicional ligada a esta cita; si el monto extra fue una venta, quedó sin detalle.</span>' : ''}</p>`;
     }
   }
