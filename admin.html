@@ -3739,6 +3739,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <div class="fin-tab fin-sub" data-v="movimientos" onclick="finSub('movimientos')">Movimientos</div>
         <div class="fin-tab fin-sub" data-v="ventas" onclick="finSub('ventas')">Ventas en el local</div>
         <div class="fin-tab fin-sub" data-v="gastos" onclick="finSub('gastos')">Gastos</div>
+        <div class="fin-tab fin-sub" data-v="comisiones" onclick="finSub('comisiones')">Comisiones</div>
         <div class="fin-tab fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Periodo de cierre</div>
       </div>
       <div id="fin-barra-periodo" class="fin-periodo">
@@ -4367,6 +4368,26 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="fg"><label class="flbl">Referencia / comprobante (opcional)</label><input class="fi" id="fg-ref"/></div>
       <p id="fg-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" id="fg-btn" onclick="guardarGasto()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar gasto</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-fin-adelanto">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Dar adelanto</span>
+      <button class="modal-close" onclick="cerrarModalFin('ov-fin-adelanto')">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="fa-empleado" style="font-size:13px;font-weight:800;color:var(--ink);margin:-4px 0 2px;"></p>
+      <p id="fa-disponible" style="font-size:11.5px;color:var(--ink-soft);margin:0 0 12px;"></p>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Fecha</label><input class="fi" type="date" id="fa-fecha"/></div>
+        <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" type="number" step="0.01" min="0" id="fa-monto"/></div>
+      </div>
+      <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fa-nota" placeholder="Ej: adelanto para gasolina"/></div>
+      <p id="fa-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" id="fa-btn" onclick="guardarAdelantoFin()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar adelanto</button>
     </div>
   </div>
 </div>
@@ -7540,7 +7561,7 @@ const METODOS_COBRO = ['efectivo','yappy','transferencia','tarjeta'];
 const CATEGORIAS_GASTO = ['Insumos y productos','Alquiler','Servicios básicos','Pagos al personal','Publicidad','Mantenimiento','Otros'];
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-let FIN = { pagos:[], pagosCert:[], pagosCanje:[], previo:null, cortesiasPeriodo:0, certEmitidos:{total:0,venta:0,regalo:0,cortesia:0}, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+let FIN = { pagos:[], pagosCert:[], pagosCanje:[], previo:null, cortesiasPeriodo:0, certEmitidos:{total:0,venta:0,regalo:0,cortesia:0}, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, comisiones:null, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
 let FIN_PERIODO = 'actual';
 let FIN_VISTA = 'resumen';
 let FIN_FILTRO_MOV = 'todos';
@@ -7627,6 +7648,7 @@ async function loadFinanzas(){
   const cont = elFin('fin-contenido');
   if (!cont) return;
   cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>';
+  FIN.comisiones = null; // se recalcula por periodo, se carga aparte al entrar a la pestaña Comisiones
   try { FIN.ajustes = await Sheets.getAjustesFinanzas(); } catch(e){ console.error(e); }
   actualizarSelectorPeriodo();
   const { desde, hasta } = rangoFinanzas();
@@ -7700,6 +7722,7 @@ function renderFinanzas(){
   else if (FIN_VISTA === 'movimientos') cont.innerHTML = htmlMovimientosFin();
   else if (FIN_VISTA === 'ventas') cont.innerHTML = htmlVentasFin();
   else if (FIN_VISTA === 'gastos') cont.innerHTML = htmlGastosFin();
+  else if (FIN_VISTA === 'comisiones') { cont.innerHTML = FIN.comisiones ? htmlComisionesFin() : '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>'; if (!FIN.comisiones) cargarComisionesFin(); }
   else if (FIN_VISTA === 'ajustes') { cont.innerHTML = htmlAjustesFin(); faCambio(); }
 }
 
@@ -8216,6 +8239,126 @@ async function anularGastoFin(id){
     console.error(e);
     alert('No se pudo anular el gasto.' + (e && e.message ? ' (' + e.message + ')' : ''));
   }
+}
+
+// ---------- Comisiones (comisión generada, propinas pendientes, adelantos) ----------
+async function cargarComisionesFin(){
+  const { desde, hasta } = rangoFinanzas();
+  try {
+    const empleados = FIN.empleados.length ? FIN.empleados : (await Sheets.getEmpleados()).filter(e => e.activo);
+    const [porEmpleado, propinasPendientes] = await Promise.all([
+      Promise.all(empleados.map(async e => ({
+        id: e.id, nombre: e.nombre, fotoUrl: e.fotoUrl,
+        generado: await Sheets.getComisionGeneradaPeriodo(e.id, desde, hasta),
+        adelantos: await Sheets.getAdelantosPeriodo(e.id, desde, hasta)
+      }))),
+      Sheets.getPropinas(null, 'pendiente')
+    ]);
+    FIN.comisiones = { porEmpleado, propinasPendientes, desde, hasta };
+  } catch(e){
+    console.error('Error cargando comisiones:', e);
+    FIN.comisiones = { porEmpleado:[], propinasPendientes:[], desde, hasta, error:true };
+  }
+  if (FIN_VISTA === 'comisiones') elFin('fin-contenido').innerHTML = htmlComisionesFin();
+}
+
+function htmlComisionesFin(){
+  const C = FIN.comisiones;
+  if (!C) return '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>';
+  if (C.error) return '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;line-height:1.6;">No se pudieron cargar las comisiones.</p>';
+
+  const propinasHtml = C.propinasPendientes.length
+    ? C.propinasPendientes.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);">
+        <div>
+          <div style="font-size:12.5px;font-weight:700;">${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</div>
+          <div style="font-size:11px;color:var(--ink-soft);">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}</div>
+        </div>
+        <button class="btn-ico" style="width:auto;padding:0 14px;height:32px;font-size:11.5px;font-weight:700;" onclick="liquidarPropinaFin('${p.id}')">Liquidar</button>
+      </div>`).join('')
+    : '<p style="font-size:12px;color:var(--ink-soft);padding:0.5rem 0 0;">No hay propinas pendientes.</p>';
+
+  const empleadosHtml = C.porEmpleado.length ? C.porEmpleado.map(e => {
+    const neto = Math.round((e.generado - e.adelantos) * 100) / 100;
+    return `<div class="adm-sec" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 1rem 8px;">
+        <img src="${e.fotoUrl || ''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);"/>
+        <div style="font-size:13.5px;font-weight:800;color:var(--ink);">${escCat(e.nombre)}</div>
+      </div>
+      <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong>${fmtDinero(e.generado)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Adelantos dados</span><strong style="color:#C2695A;">−${fmtDinero(e.adelantos)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--line);padding-top:6px;margin-top:2px;"><span style="font-weight:700;color:var(--ink);">Neto estimado</span><strong style="color:#159A61;">${fmtDinero(neto)}</strong></div>
+      </div>
+      <div style="padding:0 1rem 14px;">
+        <button class="btn-ico" style="width:auto;padding:0 14px;height:34px;font-size:12px;font-weight:700;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Dar adelanto</button>
+      </div>
+    </div>`;
+  }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
+
+  return `<div class="adm-sec" style="margin-bottom:14px;">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Propinas pendientes</span></div>
+      <div style="padding:0 1rem 1rem;">${propinasHtml}</div>
+    </div>
+    ${empleadosHtml}`;
+}
+
+async function liquidarPropinaFin(id){
+  const p = (FIN.comisiones && FIN.comisiones.propinasPendientes || []).find(x => x.id === id);
+  if (!p) return;
+  const detalle = await pedirMotivo({
+    titulo: 'Liquidar propina',
+    resumenHtml: `<strong>${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</strong><br>${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}`,
+    avisoHtml: 'Confirma que ya le entregaste este dinero en efectivo al profesional.',
+    etiqueta: 'Detalle de cómo se pagó (obligatorio)',
+    placeholder: 'Ej: pagado en efectivo el 22/09',
+    textoBoton: 'Marcar como pagada'
+  });
+  if (!detalle) return;
+  try {
+    await Sheets.liquidarPropina(id, detalle);
+    await cargarComisionesFin();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo liquidar la propina.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
+}
+
+let ADELANTO_EMPLEADO = null;
+function abrirModalAdelanto(empleadoId, nombre, disponible){
+  ADELANTO_EMPLEADO = { id: empleadoId };
+  elFin('fa-empleado').textContent = nombre;
+  elFin('fa-disponible').textContent = 'Disponible en este periodo: ' + fmtDinero(disponible);
+  elFin('fa-fecha').value = isoLocal(new Date());
+  elFin('fa-monto').value = '';
+  elFin('fa-nota').value = '';
+  elFin('fa-msg').textContent = '';
+  elFin('ov-fin-adelanto').classList.add('open');
+}
+
+async function guardarAdelantoFin(){
+  const msg = elFin('fa-msg');
+  msg.textContent = '';
+  const monto = Math.round((parseFloat(elFin('fa-monto').value) || 0) * 100) / 100;
+  const fecha = elFin('fa-fecha').value;
+  if (!fecha){ msg.textContent = 'Elige la fecha.'; return; }
+  if (!(monto > 0)){ msg.textContent = 'Ingresa el monto del adelanto.'; return; }
+  const btn = elFin('fa-btn');
+  btn.disabled = true;
+  try {
+    const { desde, hasta } = rangoFinanzas();
+    await Sheets.registrarAdelanto({
+      employeeId: ADELANTO_EMPLEADO.id, monto, fecha,
+      nota: elFin('fa-nota').value.trim(),
+      desdeISO: desde, hastaISO: hasta
+    });
+    cerrarModalFin('ov-fin-adelanto');
+    await cargarComisionesFin();
+  } catch(e){
+    console.error(e);
+    msg.textContent = (e && e.message) ? e.message : 'No se pudo registrar el adelanto.';
+  }
+  btn.disabled = false;
 }
 
 // ---------- Ajustes (periodo de cierre) ----------
