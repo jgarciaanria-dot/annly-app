@@ -2951,6 +2951,14 @@ img{max-width:100%;}
    además de la tarjeta: los apilamos en vez de dejarlos en fila. */
 .login-form-wrap{flex-direction:column !important;}
 
+/* FIX: el título "Citas" (fuente decorativa con poco interlineado) quedaba
+   pegado contra la barra "Tu cuenta" de arriba y se le cortaban las
+   partes altas de las letras. Le damos más separación, sobre todo en
+   móvil donde el espacio es más justo. */
+@media(max-width:600px){
+  .panel-citas-hdr{margin-top:16px !important;}
+}
+
 </style>
 
 <style id="annly-modern-visual-pass">
@@ -3464,12 +3472,12 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 
   <div id="panel-citas" style="display:none;">
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;">
+    <div class="panel-citas-hdr" style="display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;margin-top:10px;">
       <div style="width:50px;height:50px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <i class="ti ti-calendar-event" style="font-size:24px;color:var(--charcoal);"></i>
       </div>
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1;">Citas</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1.3;">Citas</div>
         <div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">Gestiona y administra todas las citas del estudio</div>
       </div>
       <button class="btn-add" style="margin-left:auto;flex-shrink:0;" onclick="abrirModalAgregarCita()"><i class="ti ti-plus"></i> Agregar cita</button>
