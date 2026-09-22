@@ -1041,6 +1041,27 @@ function formatHoraSitio(horaPg) {
 }
 
 
+// "13:00:00" -> "1:00 PM" | "09:30:00" -> "9:30 AM" | "00:15:00" -> "12:15 AM"
+function formatHora12Cita(horaPg) {
+
+  if (!horaPg) {
+    return '';
+  }
+
+  const [hStr, mStr] =
+    horaPg.split(':');
+
+  const h = parseInt(hStr, 10);
+
+  return (
+    ((h % 12) || 12) +
+    ':' +
+    (mStr || '00') +
+    (h >= 12 ? ' PM' : ' AM')
+  );
+}
+
+
 function genCodigoCupon() {
 
   return 'RUL-' +
@@ -1067,24 +1088,29 @@ const Sheets = {
   // =======================================================
 
   async getServicios() {
-
     await window.AnnlyReady;
-
-
-    const {
+    // Se piden en el orden en que se crearon (así las categorías salen en orden de creación);
+    // si esa columna no existiera, se piden sin orden.
+    let {
       data,
       error
     } = await sbClient
       .from('services')
       .select('*')
-      .eq('business_id', BUSINESS_ID);
-
-
+      .eq('business_id', BUSINESS_ID)
+      .order('creado_en', { ascending: true });
+    if (error) {
+      ({
+        data,
+        error
+      } = await sbClient
+        .from('services')
+        .select('*')
+        .eq('business_id', BUSINESS_ID));
+    }
     if (error || !data) {
       return [];
     }
-
-
     return data.map(s => ({
 
       id: s.id,
@@ -1133,6 +1159,8 @@ const Sheets = {
   },
 
 
+  // Guarda el catálogo SIN recrear los servicios: cada uno conserva su id, así las
+  // asignaciones de profesionales (employee_services) no se pierden al editar.
   async guardarServicios(serviciosArr) {
 
     await window.AnnlyReady;
@@ -1144,10 +1172,131 @@ const Sheets = {
         : serviciosArr;
 
 
-    await sbClient
+    const esUuid = v =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        .test(String(v || ''));
+
+    const nuevoUuid = () =>
+      (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+
+    const armarFila = s => ({
+
+      business_id:
+        BUSINESS_ID,
+
+      nombre:
+        s.name,
+
+      categoria:
+        s.cat,
+
+      precio:
+        s.price || 0,
+
+      precio_texto:
+        s.precioTexto || null,
+
+      dur:
+        s.dur,
+
+      dur_min:
+        s.durMin,
+
+      activo:
+        s.active,
+
+      es_eval:
+        s.esEval || false,
+
+      requiere_abono:
+        s.requiereAbono || false,
+
+      abono_monto:
+        s.abonoMonto,
+
+      abono_tipo:
+        s.abonoTipo,
+
+      descripcion:
+        s.desc,
+
+      includes:
+        s.includes || [],
+
+      imagen_url:
+        s.imagenUrl || null
+
+    });
+
+
+    const {
+      data: existentes
+    } = await sbClient
       .from('services')
-      .delete()
+      .select('id')
       .eq('business_id', BUSINESS_ID);
+
+    const idsExistentes = (existentes || []).map(r => r.id);
+
+
+    // Respaldo: si los ids de la base no son uuid, se usa el método anterior
+    // (borrar todo y volver a insertar) para no arriesgar los servicios.
+    if (!idsExistentes.every(esUuid)) {
+
+      await sbClient
+        .from('services')
+        .delete()
+        .eq('business_id', BUSINESS_ID);
+
+      if (!servicios.length) {
+        return;
+      }
+
+      const {
+        error: errLegacy
+      } = await sbClient
+        .from('services')
+        .insert(servicios.map(armarFila));
+
+      if (errLegacy) {
+        console.error('Error guardando servicios:', errLegacy);
+      }
+
+      return;
+    }
+
+
+    // Servicios nuevos o viejos sin uuid: se les da uno (y se refleja en memoria)
+    servicios.forEach(s => {
+      if (!esUuid(s.id)) {
+        s.id = nuevoUuid();
+      }
+    });
+
+
+    // 1) Eliminar los que ya no están en la lista
+    const conservados = new Set(servicios.map(s => s.id));
+
+    const aBorrar = idsExistentes.filter(id => !conservados.has(id));
+
+    if (aBorrar.length) {
+
+      const {
+        error: errDel
+      } = await sbClient
+        .from('services')
+        .delete()
+        .in('id', aBorrar);
+
+      if (errDel) {
+        console.error('Error eliminando servicios:', errDel);
+      }
+    }
 
 
     if (!servicios.length) {
@@ -1155,62 +1304,19 @@ const Sheets = {
     }
 
 
+    // 2) Crear o actualizar el resto conservando su id
     const rows =
-      servicios.map(s => ({
-
-        business_id:
-          BUSINESS_ID,
-
-        nombre:
-          s.name,
-
-        categoria:
-          s.cat,
-
-        precio:
-          s.price || 0,
-
-        precio_texto:
-          s.precioTexto || null,
-
-        dur:
-          s.dur,
-
-        dur_min:
-          s.durMin,
-
-        activo:
-          s.active,
-
-        es_eval:
-          s.esEval || false,
-
-        requiere_abono:
-          s.requiereAbono || false,
-
-        abono_monto:
-          s.abonoMonto,
-
-        abono_tipo:
-          s.abonoTipo,
-
-        descripcion:
-          s.desc,
-
-        includes:
-          s.includes || [],
-
-        imagen_url:
-          s.imagenUrl || null
-
-      }));
+      servicios.map(s => ({ id: s.id, ...armarFila(s) }));
 
 
     const {
       error
     } = await sbClient
       .from('services')
-      .insert(rows);
+      .upsert(
+        rows,
+        { onConflict: 'id' }
+      );
 
 
     if (error) {
@@ -1518,12 +1624,7 @@ const Sheets = {
           isoAFechaTexto(c.fecha),
 
         hora:
-          formatHoraSitio(c.hora) +
-          (
-            parseInt(c.hora) >= 12
-              ? ' PM'
-              : ' AM'
-          ),
+          formatHora12Cita(c.hora),
 
         duracion:
           c.duracion_min,
@@ -1552,7 +1653,57 @@ const Sheets = {
         empleadoNombre:
           mapaEmpleados[
             c.employee_id
-          ] || null
+          ] || null,
+
+        abonoMonto:
+          c.abono_monto,
+
+        abonoTipo:
+          c.abono_tipo,
+
+        metodoPago:
+          c.metodo_pago,
+
+        descuentoCupon:
+          c.descuento_cupon,
+
+        certificadoMonto:
+          c.certificado_monto,
+
+        certificadoCodigo:
+          c.certificado_codigo,
+
+        comprobante:
+          c.comprobante,
+
+        completadaEn:
+          c.completada_en || null,
+
+        precioCobrado:
+          c.precio_cobrado,
+
+        correo:
+          c.cliente_correo,
+
+        nota:
+          c.nota,
+
+        cuponAplicado:
+          c.cupon_aplicado,
+
+        certificadoSaldoRestante:
+          c.certificado_saldo_restante != null
+            ? Number(c.certificado_saldo_restante)
+            : null,
+
+        ajusteDetalle:
+          c.ajuste_detalle || '',
+
+        certificadoMotivoNoAplicado:
+          c.certificado_no_aplicado_motivo || '',
+
+        creadoEn:
+          c.creado_en || ''
 
       }));
   },
@@ -1569,12 +1720,10 @@ const Sheets = {
       );
 
 
-    const {
-      data,
-      error
-    } = await sbClient
-      .from('appointments')
-      .insert([{
+    // El saldo que le queda al certificado tras esta cita se guarda en la propia cita
+    // (así aparece en los correos y en el detalle). Si esa columna aún no existe en
+    // la base, se reintenta sin ella para no romper la reserva.
+    const armarFila = (conSaldo) => ({
 
         business_id:
           BUSINESS_ID,
@@ -1642,15 +1791,35 @@ const Sheets = {
         certificado_monto:
           cita.certificadoMonto || null,
 
+        ...(
+          conSaldo && cita.certificadoSaldoRestante != null
+            ? { certificado_saldo_restante: cita.certificadoSaldoRestante }
+            : {}
+        ),
+
         cita_id_externo:
           cita.citaId,
 
         estado:
           'confirmada'
 
-      }])
-      .select('id')
-      .single();
+    });
+
+    const insertar = (fila) =>
+      sbClient
+        .from('appointments')
+        .insert([fila])
+        .select('id')
+        .single();
+
+    let { data, error } = await insertar(armarFila(true));
+
+    if (
+      error &&
+      /certificado_saldo_restante/.test(error.message || '')
+    ) {
+      ({ data, error } = await insertar(armarFila(false)));
+    }
 
 
     if (error) {
@@ -1703,33 +1872,21 @@ const Sheets = {
   },
 
 
-  async cancelarCita(id) {
-
+  async cancelarCita(id, motivo, detalle) {
     await window.AnnlyReady;
-
-
-    const {
-      error
-    } = await sbClient
-      .from('appointments')
-      .update({
-        estado: 'cancelada'
-      })
-      .eq('id', id)
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
+    const base = { estado: 'cancelada' };
+    const conMotivo = motivo ? { ...base, cancelacion_motivo: motivo, cancelada_en: new Date().toISOString() } : base;
+    let { error } = await sbClient.from('appointments').update(conMotivo).eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error && motivo) {
+      // Si las columnas del motivo aún no existen, se cancela igual (el motivo queda en la bitácora)
+      ({ error } = await sbClient.from('appointments').update(base).eq('id', id).eq('business_id', BUSINESS_ID));
+    }
     if (error) {
-
-      console.error(
-        'Error cancelando la cita:',
-        error
-      );
-
+      console.error('Error cancelando la cita:', error);
       throw error;
+    }
+    if (motivo) {
+      await this.registrarAccion({ entidad: 'cita', entidadId: id, accion: 'cancelada', motivo, monto: null, detalle });
     }
   },
 
@@ -2539,6 +2696,9 @@ const Sheets = {
         activo:
           e.activo,
 
+        bio:
+          e.bio || '',
+
         esDueno:
           e.es_dueno || false
 
@@ -2546,56 +2706,76 @@ const Sheets = {
   },
 
 
+  // Garantiza que el dueño exista como empleado y que su ficha traiga los datos
+  // con los que se inscribió (correo de su cuenta y WhatsApp del negocio). Solo
+  // completa campos vacíos: nunca pisa lo que el dueño ya editó.
   async asegurarEmpleadoDueno() {
 
     await window.AnnlyReady;
 
+    const biz = window.ANNLY_BUSINESS || {};
 
-    const {
-      count
-    } = await sbClient
+    // Teléfono: el WhatsApp del registro (guardado como 507 + número)
+    let telefonoDueno = (biz.whatsapp || '').replace(/\D/g, '');
+    if (telefonoDueno.startsWith('507') && telefonoDueno.length > 8) {
+      telefonoDueno = telefonoDueno.substring(3);
+    }
+
+    // Correo y nombre de la cuenta: solo si quien está en el panel ES el dueño
+    // (un Platform Admin viendo otro negocio no debe cargar su propio correo).
+    let correoDueno = null;
+    let nombreCuenta = null;
+
+    if (!window.ANNLY_PLATFORM_ADMIN) {
+      try {
+        const { data } = await sbClient.auth.getUser();
+        const u = data && data.user;
+        correoDueno = (u && u.email) || null;
+        nombreCuenta = (u && u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || null;
+      } catch (e) {}
+    }
+
+    const { data: duenos } = await sbClient
       .from('employees')
-      .select(
-        'id',
-        {
-          count: 'exact',
-          head: true
-        }
-      )
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
+      .select('id, telefono, correo')
+      .eq('business_id', BUSINESS_ID)
+      .eq('es_dueno', true)
+      .limit(1);
 
+    if (duenos && duenos.length) {
+
+      const d = duenos[0];
+      const cambios = {};
+
+      if (!d.telefono && telefonoDueno) cambios.telefono = telefonoDueno;
+      if (!d.correo && correoDueno) cambios.correo = correoDueno;
+
+      if (Object.keys(cambios).length) {
+        await sbClient.from('employees').update(cambios).eq('id', d.id);
+      }
+
+      return;
+    }
+
+    // Sin fila de dueño: si ya hay empleados (negocios viejos) no se toca nada.
+    const { count } = await sbClient
+      .from('employees')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', BUSINESS_ID);
 
     if (count && count > 0) {
       return;
     }
 
-
-    const nombreNegocio =
-      (
-        window.ANNLY_BUSINESS &&
-        window.ANNLY_BUSINESS.nombre
-      ) || 'Dueño/a';
-
-
     await sbClient
       .from('employees')
       .insert([{
-
-        business_id:
-          BUSINESS_ID,
-
-        nombre:
-          nombreNegocio,
-
-        activo:
-          true,
-
-        es_dueno:
-          true
-
+        business_id: BUSINESS_ID,
+        nombre: nombreCuenta || biz.nombre || 'Dueño/a',
+        telefono: telefonoDueno || null,
+        correo: correoDueno,
+        activo: true,
+        es_dueno: true
       }]);
   },
 
@@ -2621,6 +2801,9 @@ const Sheets = {
 
       foto_url:
         empleado.fotoUrl || null,
+
+      bio:
+        (empleado.bio || '').trim() || null,
 
       activo:
         empleado.activo !== false
@@ -2774,7 +2957,9 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    await sbClient
+    const {
+      error: errDel
+    } = await sbClient
       .from('employee_services')
       .delete()
       .eq(
@@ -2782,13 +2967,19 @@ const Sheets = {
         empleadoId
       );
 
+    if (errDel) {
+      throw errDel;
+    }
+
 
     if (!serviceIds.length) {
       return;
     }
 
 
-    await sbClient
+    const {
+      error: errIns
+    } = await sbClient
       .from('employee_services')
       .insert(
 
@@ -2805,6 +2996,10 @@ const Sheets = {
         )
 
       );
+
+    if (errIns) {
+      throw errIns;
+    }
   },
 
 
@@ -2879,12 +3074,15 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    const {
-      data: empleados
+    // Se pide también la presentación (bio); si esa columna aún no existe en la
+    // base, se reintenta sin ella para no romper el selector de profesional.
+    let {
+      data: empleados,
+      error: errEmp
     } = await sbClient
       .from('employees')
       .select(
-        'id, nombre, foto_url'
+        'id, nombre, foto_url, bio'
       )
       .eq(
         'business_id',
@@ -2894,6 +3092,23 @@ const Sheets = {
         'activo',
         true
       );
+
+    if (errEmp) {
+      const reintento = await sbClient
+        .from('employees')
+        .select(
+          'id, nombre, foto_url'
+        )
+        .eq(
+          'business_id',
+          BUSINESS_ID
+        )
+        .eq(
+          'activo',
+          true
+        );
+      empleados = reintento.data;
+    }
 
 
     const lista =
@@ -2964,7 +3179,10 @@ const Sheets = {
           e.nombre,
 
         fotoUrl:
-          e.foto_url
+          e.foto_url,
+
+        bio:
+          e.bio || ''
 
       }));
   },
@@ -2977,6 +3195,7 @@ const Sheets = {
     await window.AnnlyReady;
 
 
+    // Se toma la fila que trae el horario completo (aunque hubiera filas viejas sin él)
     const {
       data
     } = await sbClient
@@ -2988,11 +3207,15 @@ const Sheets = {
         'employee_id',
         empleadoId
       )
-      .maybeSingle();
+      .not(
+        'horario_estructurado',
+        'is',
+        null
+      )
+      .limit(1);
 
-
-    return data
-      ? data.horario_estructurado
+    return (data && data.length)
+      ? data[0].horario_estructurado
       : null;
   },
 
@@ -3005,44 +3228,36 @@ const Sheets = {
     await window.AnnlyReady;
 
 
+    // Se reemplaza lo que hubiera (incluidas filas de un diseño anterior por día)
+    // por una sola fila con el horario completo.
     const {
-      data: existente
+      error: errBorrar
     } = await sbClient
       .from('employee_schedules')
-      .select('id')
+      .delete()
       .eq(
         'employee_id',
         empleadoId
-      )
-      .maybeSingle();
+      );
+
+    if (errBorrar) {
+      throw errBorrar;
+    }
 
 
-    if (existente) {
+    const {
+      error: errInsert
+    } = await sbClient
+      .from('employee_schedules')
+      .insert([{
+        employee_id:
+          empleadoId,
+        horario_estructurado:
+          horario
+      }]);
 
-      await sbClient
-        .from('employee_schedules')
-        .update({
-          horario_estructurado:
-            horario
-        })
-        .eq(
-          'id',
-          existente.id
-        );
-
-    } else {
-
-      await sbClient
-        .from('employee_schedules')
-        .insert([{
-
-          employee_id:
-            empleadoId,
-
-          horario_estructurado:
-            horario
-
-        }]);
+    if (errInsert) {
+      throw errInsert;
     }
   },
 
@@ -3054,13 +3269,19 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    await sbClient
+    const {
+      error
+    } = await sbClient
       .from('employee_schedules')
       .delete()
       .eq(
         'employee_id',
         empleadoId
       );
+
+    if (error) {
+      throw error;
+    }
   },
 
 
@@ -3113,6 +3334,379 @@ const Sheets = {
     const { data: plan } = await sbClient.from('plans').select('id').eq('code', code.toUpperCase()).maybeSingle();
     if (!plan) return [];
     return await this.getFeaturesDelPlan(plan.id);
+  },
+
+  // =======================================================
+  // FINANZAS
+  // =======================================================
+
+  // Periodo de cierre del negocio (semanal o quincenal)
+  async getAjustesFinanzas() {
+    await window.AnnlyReady;
+    const { data } = await sbClient.from('finance_settings').select('*').eq('business_id', BUSINESS_ID).maybeSingle();
+    return {
+      periodo: (data && data.periodo_cierre) || 'quincenal',
+      semanaInicia: (data && data.semana_inicia != null) ? data.semana_inicia : 1
+    };
+  },
+
+  async guardarAjustesFinanzas({ periodo, semanaInicia }) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('finance_settings').upsert({
+      business_id: BUSINESS_ID,
+      periodo_cierre: periodo === 'semanal' ? 'semanal' : 'quincenal',
+      semana_inicia: Number.isInteger(semanaInicia) ? semanaInicia : 1,
+      actualizado_en: new Date().toISOString()
+    }, { onConflict: 'business_id' });
+    if (error) throw error;
+  },
+
+  // Cobros confirmados del periodo (de citas completadas y de ventas en el local)
+  async getPagosFinanzas(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('finance_payments').select('*')
+      .eq('business_id', BUSINESS_ID).eq('estado', 'confirmado')
+      .gte('fecha', desdeISO).lte('fecha', hastaISO)
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(p => ({
+      id: p.id, origen: p.origen, appointmentId: p.appointment_id, localSaleId: p.local_sale_id, certificateId: p.certificate_id,
+      metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha,
+      concepto: p.concepto, cliente: p.cliente_nombre, empleadoId: p.employee_id, creadoEn: p.creado_en
+    }));
+  },
+
+  async getGastosFinanzas(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('finance_expenses').select('*')
+      .eq('business_id', BUSINESS_ID)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO)
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(g => ({
+      id: g.id, fecha: g.fecha, categoria: g.categoria, descripcion: g.descripcion,
+      monto: Number(g.monto), metodo: g.metodo, referencia: g.referencia, creadoEn: g.creado_en,
+      anulado: !!g.anulado, motivoAnulacion: g.anulado_motivo || '', anuladoEn: g.anulado_en || null
+    }));
+  },
+
+  async registrarGasto(g) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('finance_expenses').insert([{
+      business_id: BUSINESS_ID, fecha: g.fecha, categoria: g.categoria,
+      descripcion: g.descripcion || null, monto: g.monto, metodo: g.metodo,
+      referencia: g.referencia || null
+    }]);
+    if (error) throw error;
+  },
+
+  // Bitácora de acciones (anulaciones, cancelaciones): quién, cuándo, por qué y los datos que tenía.
+  // Si no se puede guardar, no bloquea la acción; devuelve false y queda el aviso en la consola.
+  async registrarAccion({ entidad, entidadId, accion, motivo, monto, detalle }) {
+    await window.AnnlyReady;
+    try {
+      const { data: u } = await sbClient.auth.getUser();
+      const user = u && u.user;
+      const { error } = await sbClient.from('registro_acciones').insert([{
+        business_id: BUSINESS_ID, entidad, entidad_id: entidadId != null ? String(entidadId) : null,
+        accion, motivo, monto: monto != null ? monto : null, detalle: detalle || null,
+        usuario_id: user ? user.id : null, usuario_correo: user ? user.email : null
+      }]);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.error('No se pudo guardar el registro de la acción:', e);
+      return false;
+    }
+  },
+
+  // Anula un gasto: queda en la lista, tachado, con su motivo, y deja de contar en los totales.
+  async anularGasto(id, motivo, detalle) {
+    await window.AnnlyReady;
+    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
+    const { data: filas, error } = await sbClient.from('finance_expenses')
+      .update({ anulado: true, anulado_motivo: motivo.trim(), anulado_en: new Date().toISOString() })
+      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulado', false)
+      .select('id');
+    if (error) throw error;
+    if (!filas || !filas.length) throw new Error('El gasto ya estaba anulado o no existe.');
+    await this.registrarAccion({ entidad: 'gasto', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: detalle && detalle.monto, detalle });
+  },
+
+  async eliminarGasto(id) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('finance_expenses').delete().eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) throw error;
+  },
+
+  async getVentasLocales(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('local_sales').select('*')
+      .eq('business_id', BUSINESS_ID)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO)
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(v => ({
+      id: v.id, fecha: v.fecha, cliente: v.cliente_nombre, servicio: v.servicio_nombre,
+      empleadoId: v.employee_id, monto: Number(v.monto), creadoEn: v.creado_en,
+      anulada: !!v.anulada, motivoAnulacion: v.anulada_motivo || '', anuladaEn: v.anulada_en || null
+    }));
+  },
+
+  // Una venta y sus pagos son cosas separadas: una venta puede tener varios pagos.
+  async registrarVentaLocal(v, pagos) {
+    await window.AnnlyReady;
+    const { data: venta, error } = await sbClient.from('local_sales').insert([{
+      business_id: BUSINESS_ID, fecha: v.fecha, cliente_nombre: v.cliente || null,
+      servicio_nombre: v.servicio, employee_id: v.empleadoId || null, monto: v.monto
+    }]).select('id').single();
+    if (error) throw error;
+
+    const filas = (pagos || []).filter(p => p.monto > 0).map(p => ({
+      business_id: BUSINESS_ID, origen: 'local', local_sale_id: venta.id,
+      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
+      fecha: v.fecha, concepto: v.servicio, cliente_nombre: v.cliente || null,
+      employee_id: v.empleadoId || null
+    }));
+    if (filas.length) {
+      const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
+      if (errPagos) {
+        // No dejamos una venta sin sus pagos
+        await sbClient.from('local_sales').delete().eq('id', venta.id);
+        throw errPagos;
+      }
+    }
+    return venta.id;
+  },
+
+  // Anula una venta en el local (devolución, error de captura...): no se borra, queda en
+  // el historial con su motivo, y sus pagos dejan de contar en los ingresos.
+  async anularVentaLocal(id, motivo, detalle) {
+    await window.AnnlyReady;
+    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
+
+    // 1) Los pagos de la venta dejan de contar como ingreso
+    const { error: errPagos } = await sbClient.from('finance_payments')
+      .update({ estado: 'anulado' })
+      .eq('local_sale_id', id).eq('business_id', BUSINESS_ID).eq('estado', 'confirmado');
+    if (errPagos) throw errPagos;
+
+    // 2) La venta queda marcada como anulada, con su motivo
+    const { data: filas, error: errVenta } = await sbClient.from('local_sales')
+      .update({ anulada: true, anulada_motivo: motivo.trim(), anulada_en: new Date().toISOString() })
+      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulada', false)
+      .select('id');
+    if (errVenta || !filas || !filas.length) {
+      // Si no se pudo marcar la venta, los pagos vuelven a contar
+      await sbClient.from('finance_payments').update({ estado: 'confirmado' })
+        .eq('local_sale_id', id).eq('business_id', BUSINESS_ID).eq('estado', 'anulado');
+      throw errVenta || new Error('La venta ya estaba anulada o no existe.');
+    }
+    await this.registrarAccion({ entidad: 'venta_local', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: detalle && detalle.monto, detalle });
+  },
+
+  // Completa una cita de la Agenda: la cita existente es el origen del cobro
+  // (no se crea una venta duplicada). Se marca primero, solo si aún no estaba
+  // completada, para que dos clics no registren el cobro dos veces.
+  async completarCita(citaId, datos) {
+    await window.AnnlyReady;
+    const marca = { completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado };
+    if (datos.ajusteDetalle) marca.ajuste_detalle = datos.ajusteDetalle;
+    // Motivo por el que un certificado validado al reservar no se aplicó (trazabilidad)
+    if (datos.certNoAplicadoMotivo) marca.certificado_no_aplicado_motivo = datos.certNoAplicadoMotivo;
+    // Si quien realizó el servicio es otra persona, la cita queda a nombre de ese profesional
+    if (datos.cambiarEmpleado && datos.empleadoId) marca.employee_id = datos.empleadoId;
+    const { data: marcada, error: errMarca } = await sbClient.from('appointments')
+      .update(marca)
+      .eq('id', citaId).eq('business_id', BUSINESS_ID).is('completada_en', null)
+      .select('id');
+    if (errMarca) throw errMarca;
+    if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
+
+    const revertirMarca = () => sbClient.from('appointments')
+      .update({ completada_en: null, precio_cobrado: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}), ...(datos.certNoAplicadoMotivo ? { certificado_no_aplicado_motivo: null } : {}), ...(datos.cambiarEmpleado ? { employee_id: datos.empleadoIdOriginal || null } : {}) }).eq('id', citaId);
+
+    // Ventas adicionales de la visita (tratamientos, productos, etc.)
+    let extrasIds = [];
+    const extras = (datos.extras || []).filter(x => x.monto > 0 && x.descripcion);
+    if (extras.length) {
+      const { data: insertados, error: errExtras } = await sbClient.from('appointment_extras').insert(
+        extras.map(x => ({
+          business_id: BUSINESS_ID, appointment_id: citaId, descripcion: x.descripcion,
+          monto: x.monto, fecha: datos.fecha, employee_id: datos.empleadoId || null,
+          cliente_nombre: datos.cliente || null
+        }))
+      ).select('id');
+      if (errExtras) {
+        await revertirMarca();
+        throw errExtras;
+      }
+      extrasIds = (insertados || []).map(r => r.id);
+    }
+
+    const filas = (datos.pagos || []).filter(p => p.monto > 0).map(p => ({
+      business_id: BUSINESS_ID, origen: 'agenda', appointment_id: citaId,
+      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
+      fecha: datos.fecha, concepto: datos.concepto || null,
+      cliente_nombre: datos.cliente || null, employee_id: datos.empleadoId || null
+    }));
+    if (filas.length) {
+      const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
+      if (errPagos) {
+        // Si fallan los pagos, se deshace todo y la cita vuelve a quedar por completar
+        if (extrasIds.length) await sbClient.from('appointment_extras').delete().in('id', extrasIds);
+        await revertirMarca();
+        throw errPagos;
+      }
+    }
+  },
+
+  // Cobros registrados de una cita (para su detalle / trazabilidad)
+  async getPagosDeCita(citaId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('finance_payments').select('*')
+      .eq('business_id', BUSINESS_ID).eq('appointment_id', citaId)
+      .order('creado_en', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(p => ({
+      id: p.id, metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha
+    }));
+  },
+
+  // Ventas adicionales (tratamientos, productos...) registradas en las visitas del periodo
+  async getExtrasFinanzas(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('appointment_extras').select('*')
+      .eq('business_id', BUSINESS_ID)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO);
+    if (error) throw error;
+    return (data || []).map(x => ({
+      id: x.id, appointmentId: x.appointment_id, descripcion: x.descripcion,
+      monto: Number(x.monto), fecha: x.fecha, empleadoId: x.employee_id, cliente: x.cliente_nombre, creadoEn: x.creado_en
+    }));
+  },
+
+  async getExtrasDeCita(citaId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('appointment_extras').select('*')
+      .eq('business_id', BUSINESS_ID).eq('appointment_id', citaId)
+      .order('creado_en', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(x => ({ id: x.id, descripcion: x.descripcion, monto: Number(x.monto) }));
+  },
+
+  // Datos de un certificado por su código (aunque ya no tenga saldo), para el detalle de una cita
+  async getCertificadoPorCodigo(codigo) {
+    await window.AnnlyReady;
+    const cod = (codigo || '').toUpperCase().trim();
+    if (!cod) return null;
+    const { data, error } = await sbClient.from('gift_certificates').select('*')
+      .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: data.id, codigo: data.codigo, estado: data.estado, tipo: data.tipo,
+      saldoRestante: Number(data.saldo_restante), montoInicial: Number(data.monto_inicial),
+      fechaVencimiento: data.fecha_vencimiento
+    };
+  },
+
+  // Deja constancia en la cita de un certificado usado al completarla en el local
+  // (monto usado y saldo que le quedó). Nunca pisa el certificado de otro código.
+  async registrarCertificadoEnCita(citaId, { codigo, monto, saldo }) {
+    await window.AnnlyReady;
+    const { data: cita } = await sbClient.from('appointments')
+      .select('certificado_codigo, certificado_monto')
+      .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
+    if (!cita) return;
+    // Un certificado ya descontado en la cita no se cambia por otro; uno solo "por aplicar" (monto 0) sí
+    if (cita.certificado_codigo && Number(cita.certificado_monto) > 0 && cita.certificado_codigo !== codigo) return;
+    const { error } = await sbClient.from('appointments').update({
+      certificado_codigo: codigo,
+      certificado_monto: (Number(cita.certificado_monto) || 0) + monto,
+      certificado_saldo_restante: saldo
+    }).eq('id', citaId);
+    if (error) console.error('No se pudo registrar el certificado en la cita:', error);
+  },
+
+  // Cobro de la venta de un certificado (efectivo, Yappy, transferencia o tarjeta).
+  // Es dinero recibido, pero NO ingreso: pasa a ser ingreso cuando el certificado se canjea.
+  async registrarPagosCertificado(certificateId, { codigo, compradorNombre, pagos }) {
+    await window.AnnlyReady;
+    const hoy = new Date();
+    const fecha = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+    const filas = (pagos || []).filter(p => p.monto > 0).map(p => ({
+      business_id: BUSINESS_ID, origen: 'certificado', certificate_id: certificateId,
+      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
+      fecha, concepto: 'Certificado ' + (codigo || ''), cliente_nombre: compradorNombre || null
+    }));
+    if (!filas.length) return;
+    const { error } = await sbClient.from('finance_payments').insert(filas);
+    if (error) throw error;
+  },
+
+  // ---------------------------------------------------------------
+  // PROFESIONAL ADICIONAL (módulo por cantidad)
+  // Cada extra es una fila (quantity 1) con su propio precio y su propio ciclo de cobro.
+  // ---------------------------------------------------------------
+  async getProfesionalesExtra(subscriptionId) {
+    await window.AnnlyReady;
+    const vacio = { cantidad: 0, totalMensual: 0, pendientes: [] };
+    if (!subscriptionId) return vacio;
+    const hoy = new Date();
+    const hoyISO = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+    const { data, error } = await sbClient.from('subscription_items')
+      .select('id, quantity, unit_price, created_at, cancela_el')
+      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
+      .eq('item_code', 'PROFESIONAL_ADICIONAL').eq('is_active', true)
+      .order('created_at', { ascending: true });
+    if (error) { console.error('Error leyendo profesionales adicionales:', error); return vacio; }
+    // Uno con fecha de baja sigue contando hasta esa fecha (ya está pagado)
+    const vigentes = (data || []).filter(r => !r.cancela_el || r.cancela_el >= hoyISO);
+    return {
+      cantidad: vigentes.reduce((s, r) => s + (r.quantity || 1), 0),
+      totalMensual: vigentes.reduce((s, r) => s + (Number(r.unit_price) || 0) * (r.quantity || 1), 0),
+      pendientes: vigentes.filter(r => r.cancela_el).map(r => r.cancela_el).sort()
+    };
+  },
+
+  async agregarProfesionalExtra(subscriptionId, precio) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('subscription_items').insert([{
+      subscription_id: subscriptionId, item_type: 'addon', item_code: 'PROFESIONAL_ADICIONAL',
+      description: 'Profesional adicional', quantity: 1, unit_price: precio, is_active: true
+    }]);
+    if (error) throw error;
+  },
+
+  // Da de baja UN profesional extra al terminar su ciclo mensual ya pagado (no se corta a mitad del mes).
+  // Se toma el más antiguo que aún no tenga baja programada. Devuelve la fecha de baja.
+  async quitarProfesionalExtra(subscriptionId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('subscription_items')
+      .select('id, created_at')
+      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
+      .eq('item_code', 'PROFESIONAL_ADICIONAL').eq('is_active', true).is('cancela_el', null)
+      .order('created_at', { ascending: true }).limit(1);
+    if (error || !data || !data.length) throw error || new Error('No hay profesionales adicionales para quitar.');
+    const corte = new Date(data[0].created_at);
+    const ahora = new Date();
+    while (corte <= ahora) corte.setMonth(corte.getMonth() + 1);
+    const fecha = corte.getFullYear() + '-' + String(corte.getMonth() + 1).padStart(2, '0') + '-' + String(corte.getDate()).padStart(2, '0');
+    const { error: errUpd } = await sbClient.from('subscription_items').update({ cancela_el: fecha }).eq('id', data[0].id);
+    if (errUpd) throw errUpd;
+    return fecha;
+  },
+
+  // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
+  // público (visitantes SIN sesión, que por RLS no pueden leer subscriptions).
+  // Lo resuelve la función SQL modulos_publicos (security definer): en trial
+  // cuenta solo lo de Basic; si no, plan + addons vigentes. Devuelve null si falla.
+  async getModulosPublicos() {
+    await window.AnnlyReady;
+    if (!BUSINESS_ID) return null;
+    const { data, error } = await sbClient.rpc('modulos_publicos', { p_business_id: String(BUSINESS_ID) });
+    if (error) { console.error('Error leyendo módulos públicos:', error); return null; }
+    return Array.isArray(data) ? data : [];
   },
 
   // Todas las features marcadas como módulo adicional (is_addon = true), con su precio.
@@ -3279,7 +3873,7 @@ const Sheets = {
 
   // Emitido por el negocio desde el panel — nace activo de una vez
   // (ya se sabe que el pago, si lo hubo, se resolvió aparte).
-  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, nota }) {
+  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, nota, pagos }) {
     await window.AnnlyReady;
 
     let codigo, intentos = 0;
@@ -3291,7 +3885,7 @@ const Sheets = {
       if (intentos > 5) throw new Error('No se pudo generar un código único.');
     }
 
-    const { error } = await sbClient.from('gift_certificates').insert([{
+    const { data: creado, error } = await sbClient.from('gift_certificates').insert([{
       business_id: BUSINESS_ID,
       codigo,
       tipo,
@@ -3307,8 +3901,18 @@ const Sheets = {
       mensaje: mensaje || null,
       nota: nota || null,
       fecha_vencimiento: fechaVencimiento
-    }]);
+    }]).select('id').single();
     if (error) throw error;
+
+    // El certificado se cobra al venderlo: se deja registrado el dinero recibido
+    // (no es ingreso todavía: cuenta cuando el cliente lo canjea).
+    if (pagos && pagos.length && creado) {
+      try {
+        await this.registrarPagosCertificado(creado.id, { codigo, compradorNombre, pagos });
+      } catch (e) {
+        console.error('El certificado se emitió, pero no se pudo registrar su cobro:', e);
+      }
+    }
 
     await this._notificarCertificadoActivo({
       codigo, monto, fechaVencimiento,
@@ -3373,6 +3977,21 @@ const Sheets = {
     const { error: errUpdate } = await sbClient.from('gift_certificates').update({ estado: 'activo' }).eq('id', certificateId);
     if (errUpdate) throw errUpdate;
 
+    // Compra hecha en el sitio público: al confirmar el pago queda registrado el dinero recibido
+    try {
+      const { data: yaRegistrado } = await sbClient.from('finance_payments').select('id')
+        .eq('business_id', BUSINESS_ID).eq('certificate_id', certificateId).limit(1);
+      if (!yaRegistrado || !yaRegistrado.length) {
+        await this.registrarPagosCertificado(certificateId, {
+          codigo: cert.codigo, compradorNombre: cert.comprador_nombre,
+          pagos: [{
+            metodo: cert.metodo_pago === 'yappy' ? 'yappy' : 'transferencia',
+            monto: Number(cert.monto_inicial), referencia: cert.comprobante || null
+          }]
+        });
+      }
+    } catch (e) { console.error('No se pudo registrar el cobro del certificado:', e); }
+
     await this._notificarCertificadoActivo({
       codigo: cert.codigo, monto: Number(cert.monto_inicial), fechaVencimiento: cert.fecha_vencimiento,
       compradorNombre: cert.comprador_nombre, compradorCorreo: cert.comprador_correo,
@@ -3417,6 +4036,7 @@ const Sheets = {
 
     return {
       valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo,
+      tipo: data.tipo, unSoloUso: data.tipo === 'cortesia',
       montoOriginal: Number(data.monto_inicial), montoDisponible: saldo,
       compradoPorNombre: data.comprador_nombre, destinatarioNombre: data.destinatario_nombre,
       mensaje: data.mensaje, fechaVencimiento: data.fecha_vencimiento
@@ -3428,19 +4048,44 @@ const Sheets = {
   async aplicarCertificado(certificateId, montoAplicado, appointmentId) {
     await window.AnnlyReady;
 
-    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('saldo_restante').eq('id', certificateId).maybeSingle();
+    // 1) Función segura en la base (canjear_certificado): revisa el saldo, lo descuenta y
+    //    registra el canje en un solo paso, con los permisos correctos aunque quien reserva
+    //    sea un cliente sin sesión.
+    const { data: saldoNuevo, error: errRpc } = await sbClient.rpc('canjear_certificado', {
+      p_certificate_id: String(certificateId),
+      p_monto: montoAplicado,
+      p_appointment_id: (appointmentId !== null && appointmentId !== undefined) ? String(appointmentId) : null
+    });
+    if (!errRpc) return Number(saldoNuevo);
+
+    const noExiste = /canjear_certificado|could not find the function|schema cache|PGRST202/i
+      .test((errRpc.message || '') + ' ' + (errRpc.code || ''));
+    if (!noExiste) throw errRpc;
+
+    // 2) Respaldo (si esa función aún no existe): método anterior, pero verificando
+    //    que el saldo realmente se actualizó.
+    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('saldo_restante, tipo').eq('id', certificateId).maybeSingle();
     if (errRead || !cert) throw errRead || new Error('Certificado no encontrado.');
 
-    const nuevoSaldo = Number(cert.saldo_restante) - montoAplicado;
-    if (nuevoSaldo < 0) throw new Error('El monto aplicado supera el saldo disponible.');
+    if (Number(cert.saldo_restante) - montoAplicado < 0) throw new Error('El monto aplicado supera el saldo disponible.');
+    // Cortesía: de un solo uso, se consume completo aunque el servicio valga menos
+    const nuevoSaldo = cert.tipo === 'cortesia' ? 0 : Number(cert.saldo_restante) - montoAplicado;
 
-    const { error: errUpdate } = await sbClient.from('gift_certificates').update({ saldo_restante: nuevoSaldo }).eq('id', certificateId);
+    const { data: filas, error: errUpdate } = await sbClient.from('gift_certificates')
+      .update({ saldo_restante: nuevoSaldo }).eq('id', certificateId).select('id');
     if (errUpdate) throw errUpdate;
+    if (!filas || !filas.length) throw new Error('No se pudo actualizar el saldo del certificado (sin permisos).');
 
-    const { error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([{
+    const filaCanje = {
       certificate_id: certificateId, business_id: BUSINESS_ID, appointment_id: appointmentId || null, monto_aplicado: montoAplicado
-    }]);
+    };
+    let { error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([{ ...filaCanje, saldo_despues: nuevoSaldo }]);
+    // Si la columna saldo_despues aún no existe, se registra el canje sin ella
+    if (errInsert && /saldo_despues/.test(errInsert.message || '')) {
+      ({ error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([filaCanje]));
+    }
     if (errInsert) console.error('No se pudo registrar el canje del certificado:', errInsert);
+    return nuevoSaldo;
   },
 
   // Historial de canjes de un certificado — para trazabilidad ante reclamos
@@ -3455,6 +4100,7 @@ const Sheets = {
     return (data || []).map(r => ({
       id: r.id,
       montoAplicado: Number(r.monto_aplicado),
+      saldoDespues: r.saldo_despues != null ? Number(r.saldo_despues) : null,
       fecha: r.fecha,
       servicioNombre: r.appointments ? r.appointments.servicio_nombre : null,
       fechaCita: r.appointments ? r.appointments.fecha : null,
