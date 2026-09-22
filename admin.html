@@ -8867,6 +8867,7 @@ function chipsPagoCita(c){
   if (r.abono > 0) out.push(chip('Abono ' + fmtDinero(r.abono) + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
   if (r.excedente > 0) out.push(chip('Saldo a favor ' + fmtDinero(r.excedente), '#FBF6E4', '#B08900'));
   if (c.completadaEn) out.push(chip('Cobrada ' + fmtDinero(c.precioCobrado), '#E9F6EF', '#159A61'));
+  if (c.completadaEn && c.comisionMonto != null) out.push(chip('Comisión ' + fmtDinero(c.comisionMonto), '#F3EDFB', '#7C4DA0'));
   else if (r.porCobrar == null) out.push(chip('Precio por confirmar', '#FBF6E4', '#B08900'));
   else if (r.porCobrar > 0) out.push(chip('Por cobrar ' + fmtDinero(r.porCobrar), '#FBF6E4', '#B08900'));
   else out.push(chip('Pagada por anticipado', '#E9F6EF', '#159A61'));
