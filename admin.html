@@ -2959,6 +2959,21 @@ img{max-width:100%;}
   .panel-citas-hdr{margin-top:16px !important;}
 }
 
+/* Modales: siempre centrados y con TODOS los bordes redondeados, en
+   cualquier tamaño de pantalla (antes en móvil solo se redondeaba
+   arriba y el modal quedaba pegado al borde inferior). También
+   escondemos la barra de scroll visual; el desplazamiento sigue
+   funcionando por swipe/rueda como red de seguridad para que nunca se
+   corte contenido en pantallas chicas, pero ya no se ve la barrita. */
+.ov{align-items:center !important;padding:1rem !important;}
+.modal{
+  border-radius:var(--radius-lg) !important;
+  max-height:92vh !important;
+  scrollbar-width:none !important;
+  -ms-overflow-style:none !important;
+}
+.modal::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important;}
+
 </style>
 
 <style id="annly-modern-visual-pass">
