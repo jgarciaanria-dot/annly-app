@@ -261,7 +261,14 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 .wa-prefix{font-size:14px;color:#817B8D;border-right:1px solid var(--line);padding-right:11px;white-space:nowrap;}
 .pw-toggle{cursor:pointer;color:var(--ink-soft);display:flex;}
 
-.terms{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#77728A;line-height:1.5;margin:1.25rem 0 1.25rem;}
+.terms{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#77728A;line-height:1.5;margin:0;}
+.terms input[type="checkbox"]{margin-top:3px;flex-shrink:0;width:16px;height:16px;accent-color:var(--violet);}
+.terms a{color:var(--violet);font-weight:600;text-decoration:none;}
+.terms a:hover{text-decoration:underline;}
+.terms-row{display:flex;flex-direction:column;gap:6px;margin:1.25rem 0 1.25rem;}
+.terms-link{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#77728A;text-decoration:none;margin-left:26px;}
+.terms-link:hover{color:var(--violet);}
+.fhint{font-size:11.5px;color:#B08900;margin:6px 0 0;line-height:1.5;}
 .terms input{
   margin-top:2px;accent-color:var(--violet);width:16px;height:16px;flex-shrink:0;
 }
@@ -476,20 +483,17 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
           <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5M4 9v11h16V9M4 9h16M9 21v-6h6v6"/></svg><input id="r-nombre" placeholder="Nombre de tu negocio"/></div>
         </div>
         <div class="fg"><label class="flbl">Categoría</label>
-          <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            <select id="r-categoria">
-              <option value="">Selecciona una categoría</option>
-              <option value="Salón de belleza">Salón de belleza</option>
-              <option value="Barbería">Barbería</option>
-              <option value="Spa">Spa</option>
-              <option value="Estética">Estética</option>
-              <option value="Tatuajes">Tatuajes</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
+          <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><input id="r-categoria" placeholder="Ej: Spa, Barbería, Salón de belleza, Estética, Tatuajes..."/></div>
+        </div>
+        <div class="fg"><label class="flbl">Representante legal</label>
+          <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><input id="r-representante" placeholder="Nombre completo"/></div>
+        </div>
+        <div class="fg"><label class="flbl">RUC / Cédula</label>
+          <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><path d="M13 10h6M13 14h4"/></svg><input id="r-ruc" placeholder="Ej: 8-888-8888 o 155999999-2-2015"/></div>
         </div>
         <div class="fg"><label class="flbl">WhatsApp</label>
-          <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><span class="wa-prefix">+507</span><input id="r-whatsapp" placeholder="6000-1111"/></div>
+          <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><span class="wa-prefix">+507</span><input id="r-whatsapp" placeholder="6000-1111" oninput="checarWhatsappDuplicado()"/></div>
+          <p class="fhint" id="wa-existe-aviso" style="display:none;">Este WhatsApp ya está registrado con otro negocio. Si administras varios negocios puedes continuar.</p>
         </div>
 
         <p class="msg err" id="msg-1"></p>
@@ -500,14 +504,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
       <div class="step-panel" id="step-2">
         <div class="step-eyebrow">PERSONALIZA</div>
         <h2 class="step-title">Elige tu estilo</h2>
-        <p class="step-sub">Selecciona la paleta que mejor represente tu marca.</p>
+        <p class="step-sub">Selecciona la paleta que mejor represente tu marca. Podrás cambiarla luego desde tu panel.</p>
 
         <div class="palette-grid" id="palette-grid"></div>
-
-        <div style="display:flex;align-items:flex-start;gap:10px;background:#F7F4FC;border:1.5px solid #E4D8F7;border-radius:14px;padding:12px 14px;margin:-.4rem 0 1.5rem;">
-          <span style="font-size:16px;line-height:1.3;">✨</span>
-          <p style="margin:0;font-size:13px;line-height:1.5;color:#5E5872;">Esta será la imagen de tu agenda desde el primer día. Con los planes <strong>Medium</strong> y <strong>Ultimate</strong> podrás cambiar de paleta cuando quieras.</p>
-        </div>
 
         <div class="btn-row">
           <button class="btn-back" onclick="irPaso(1)">Atrás</button>
@@ -528,7 +527,10 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
           <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><input id="r-pass" type="password" placeholder="Mínimo 6 caracteres"/><span class="pw-toggle" onclick="togglePw()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
         </div>
 
-        <label class="terms"><input type="checkbox" id="r-terms"/>Acepto los Términos y Condiciones y la Política de Privacidad.</label>
+        <div class="terms-row">
+          <label class="terms"><input type="checkbox" id="r-terms"/><span>Acepto los <a href="politicas.html#terminos" target="_blank" rel="noopener">Términos y Condiciones</a> y la <a href="politicas.html#privacidad" target="_blank" rel="noopener">Política de Privacidad</a>.</span></label>
+          <a class="terms-link" href="politicas.html" target="_blank" rel="noopener">Revisar políticas <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+        </div>
 
         <p class="msg err" id="msg-3"></p>
         <div class="btn-row">
@@ -542,9 +544,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.35 12.23c0-.7-.06-1.37-.18-2.02H12v3.82h5.22a4.46 4.46 0 0 1-1.94 2.93v2.44h3.14c1.84-1.7 2.93-4.2 2.93-7.17z"/><path fill="#34A853" d="M12 21.8c2.63 0 4.84-.87 6.45-2.4l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.7-1.72-5.47-4.03H3.29v2.52A9.74 9.74 0 0 0 12 21.8z"/><path fill="#FBBC05" d="M6.53 13.85A5.86 5.86 0 0 1 6.22 12c0-.64.11-1.26.31-1.85V7.63H3.29A9.8 9.8 0 0 0 2.2 12c0 1.58.38 3.07 1.09 4.37l3.24-2.52z"/><path fill="#EA4335" d="M12 6.12c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 3.2 14.63 2.2 12 2.2a9.74 9.74 0 0 0-8.71 5.43l3.24 2.52C7.3 7.84 9.46 6.12 12 6.12z"/></svg>
             Google
           </button>
-          <button class="social-btn" type="button" aria-label="Continuar con Apple (próximamente)" onclick="appleProximamente(this)">
+          <button class="social-btn" type="button" aria-label="Continuar con Apple">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.6 0-3.1.9-3.9 2.3-1.7 2.9-.4 7.1 1.2 9.4.8 1.1 1.7 2.4 3 2.3 1.2-.1 1.7-.7 3.1-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.9-2.2.9-1.2 1.3-2.5 1.3-2.6-.1 0-2.8-1.1-2.8-3.9zM14.5 6c.6-.8 1.1-1.9 1-3-.9 0-2 .6-2.6 1.3-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.6-1.2z"/></svg>
-            <span class="social-label">Apple</span>
+            Apple
           </button>
         </div>
       </div>
@@ -619,6 +621,20 @@ function irPaso(n){
   }
 }
 
+let _timerWaCheck = null;
+async function checarWhatsappDuplicado(){
+  clearTimeout(_timerWaCheck);
+  const aviso = document.getElementById('wa-existe-aviso');
+  const num = document.getElementById('r-whatsapp').value.trim().replace(/\D/g,'');
+  if(!num){ aviso.style.display = 'none'; return; }
+  _timerWaCheck = setTimeout(async () => {
+    try {
+      const yaExiste = await window.AnnlyAuth.existeWhatsapp('507' + num);
+      aviso.style.display = yaExiste ? 'block' : 'none';
+    } catch(e){ /* si falla la validación, no bloqueamos el registro por esto */ }
+  }, 500);
+}
+
 function togglePw(){
   const inp = document.getElementById('r-pass');
   inp.type = inp.type === 'password' ? 'text' : 'password';
@@ -643,18 +659,6 @@ function copiarLinkAgenda(){
   });
 }
 
-function appleProximamente(btn){
-  const label = btn.querySelector('.social-label');
-  if(!label || btn.dataset.busy) return;
-  btn.dataset.busy = '1';
-  const original = label.textContent;
-  label.textContent = 'Próximamente';
-  setTimeout(() => {
-    label.textContent = original;
-    delete btn.dataset.busy;
-  }, 1800);
-}
-
 async function registrarConGoogle(){
   const nombre = document.getElementById('r-nombre').value.trim();
   if(!nombre){
@@ -662,14 +666,22 @@ async function registrarConGoogle(){
     document.getElementById('msg-1').textContent = 'Escribe el nombre de tu negocio antes de continuar con Google.';
     return;
   }
-  const categoria = document.getElementById('r-categoria').value;
+  const categoria = document.getElementById('r-categoria').value.trim();
+  const representanteLegal = document.getElementById('r-representante').value.trim();
+  const ruc = document.getElementById('r-ruc').value.trim();
   const whatsappNum = document.getElementById('r-whatsapp').value.trim().replace(/\D/g,'');
   const whatsapp = whatsappNum ? '507' + whatsappNum : '';
   const msgEl = document.getElementById('msg-3');
   msgEl.className = 'msg err'; msgEl.textContent = '';
+  // El check de políticas es obligatorio también al continuar con Google
+  if(!document.getElementById('r-terms').checked){
+    irPaso(3);
+    msgEl.textContent = 'Acepta los Términos y la Política de Privacidad para continuar.';
+    return;
+  }
   try {
     await window.AnnlyAuth.iniciarRegistroConGoogle({
-      nombreNegocio: nombre, categoria, whatsapp,
+      nombreNegocio: nombre, categoria, representanteLegal, ruc, whatsapp,
       colorPrimario: PALETAS[paletaSel].primario,
       colorSecundario: PALETAS[paletaSel].secundario
     });
@@ -701,7 +713,9 @@ async function registrarConGoogle(){
 
 async function registrarNegocio(){
   const nombre = document.getElementById('r-nombre').value.trim();
-  const categoria = document.getElementById('r-categoria').value;
+  const categoria = document.getElementById('r-categoria').value.trim();
+  const representanteLegal = document.getElementById('r-representante').value.trim();
+  const ruc = document.getElementById('r-ruc').value.trim();
   const whatsappNum = document.getElementById('r-whatsapp').value.trim().replace(/\D/g,'');
   const whatsapp = whatsappNum ? '507' + whatsappNum : '';
   const email = document.getElementById('r-email').value.trim();
@@ -721,7 +735,7 @@ async function registrarNegocio(){
 
   try {
     const negocio = await window.AnnlyAuth.registrar({
-      email, password: pass, nombreNegocio: nombre, categoria, whatsapp,
+      email, password: pass, nombreNegocio: nombre, categoria, representanteLegal, ruc, whatsapp,
       colorPrimario: PALETAS[paletaSel].primario,
       colorSecundario: PALETAS[paletaSel].secundario
     });
