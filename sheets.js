@@ -3456,9 +3456,19 @@ const Sheets = {
   // Una venta y sus pagos son cosas separadas: una venta puede tener varios pagos.
   async registrarVentaLocal(v, pagos) {
     await window.AnnlyReady;
+
+    // Comisión: se calcula y se congela en la venta al momento de registrarla
+    // (si luego cambia el % del profesional o del servicio, no altera lo ya generado)
+    let comisionPct = 0, comisionMonto = 0;
+    if (v.empleadoId) {
+      comisionPct = await this.getComisionAplicable(v.empleadoId, v.servicio);
+      comisionMonto = Math.round(Number(v.monto || 0) * comisionPct) / 100;
+    }
+
     const { data: venta, error } = await sbClient.from('local_sales').insert([{
       business_id: BUSINESS_ID, fecha: v.fecha, cliente_nombre: v.cliente || null,
-      servicio_nombre: v.servicio, employee_id: v.empleadoId || null, monto: v.monto
+      servicio_nombre: v.servicio, employee_id: v.empleadoId || null, monto: v.monto,
+      comision_pct: comisionPct, comision_monto: comisionMonto
     }]).select('id').single();
     if (error) throw error;
 
@@ -3476,6 +3486,15 @@ const Sheets = {
         throw errPagos;
       }
     }
+
+    // Propina: si vino en el cobro (nunca desde certificado), queda pendiente de liquidar
+    if (v.propina && v.propina.monto > 0 && v.empleadoId) {
+      await this.registrarPropina({
+        employeeId: v.empleadoId, localSaleId: venta.id, monto: v.propina.monto,
+        metodo: v.propina.metodo, fecha: v.fecha
+      });
+    }
+
     return venta.id;
   },
 
@@ -3510,7 +3529,20 @@ const Sheets = {
   // completada, para que dos clics no registren el cobro dos veces.
   async completarCita(citaId, datos) {
     await window.AnnlyReady;
-    const marca = { completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado };
+
+    // Comisión: se calcula y se congela en la cita al momento de completarla
+    // (si luego cambia el % del profesional o del servicio, no altera lo ya generado)
+    const { data: citaActual } = await sbClient.from('appointments')
+      .select('employee_id, servicio_nombre')
+      .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
+    const empleadoFinal = (datos.cambiarEmpleado && datos.empleadoId) ? datos.empleadoId : (citaActual && citaActual.employee_id);
+    let comisionPct = 0, comisionMonto = 0;
+    if (empleadoFinal) {
+      comisionPct = await this.getComisionAplicable(empleadoFinal, citaActual && citaActual.servicio_nombre);
+      comisionMonto = Math.round(Number(datos.precioCobrado || 0) * comisionPct) / 100;
+    }
+
+    const marca = { completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado, comision_pct: comisionPct, comision_monto: comisionMonto };
     if (datos.ajusteDetalle) marca.ajuste_detalle = datos.ajusteDetalle;
     // Motivo por el que un certificado validado al reservar no se aplicó (trazabilidad)
     if (datos.certNoAplicadoMotivo) marca.certificado_no_aplicado_motivo = datos.certNoAplicadoMotivo;
@@ -3524,7 +3556,7 @@ const Sheets = {
     if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
 
     const revertirMarca = () => sbClient.from('appointments')
-      .update({ completada_en: null, precio_cobrado: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}), ...(datos.certNoAplicadoMotivo ? { certificado_no_aplicado_motivo: null } : {}), ...(datos.cambiarEmpleado ? { employee_id: datos.empleadoIdOriginal || null } : {}) }).eq('id', citaId);
+      .update({ completada_en: null, precio_cobrado: null, comision_pct: null, comision_monto: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}), ...(datos.certNoAplicadoMotivo ? { certificado_no_aplicado_motivo: null } : {}), ...(datos.cambiarEmpleado ? { employee_id: datos.empleadoIdOriginal || null } : {}) }).eq('id', citaId);
 
     // Ventas adicionales de la visita (tratamientos, productos, etc.)
     let extrasIds = [];
@@ -3558,6 +3590,14 @@ const Sheets = {
         await revertirMarca();
         throw errPagos;
       }
+    }
+
+    // Propina: si vino en el cobro (nunca desde certificado), queda pendiente de liquidar
+    if (datos.propina && datos.propina.monto > 0 && empleadoFinal) {
+      await this.registrarPropina({
+        employeeId: empleadoFinal, appointmentId: citaId, monto: datos.propina.monto,
+        metodo: datos.propina.metodo, fecha: datos.fecha
+      });
     }
   },
 
@@ -3593,6 +3633,135 @@ const Sheets = {
       .order('creado_en', { ascending: true });
     if (error) throw error;
     return (data || []).map(x => ({ id: x.id, descripcion: x.descripcion, monto: Number(x.monto) }));
+  },
+
+  // =======================================================
+  // COMISIONES, PROPINAS Y ADELANTOS
+  // =======================================================
+
+  // % aplicable a un profesional: el de servicio (si existe) manda sobre el global
+  async getComisionAplicable(employeeId, servicioNombre) {
+    await window.AnnlyReady;
+    const { data: emp } = await sbClient.from('employees').select('comision_global').eq('id', employeeId).maybeSingle();
+    const global = (emp && emp.comision_global != null) ? Number(emp.comision_global) : 0;
+    if (!servicioNombre) return global;
+    const { data: srv } = await sbClient.from('services').select('id')
+      .eq('business_id', BUSINESS_ID).eq('nombre', servicioNombre).maybeSingle();
+    if (!srv) return global;
+    const { data: es } = await sbClient.from('employee_services').select('comision')
+      .eq('employee_id', employeeId).eq('service_id', srv.id).maybeSingle();
+    return (es && es.comision != null) ? Number(es.comision) : global;
+  },
+
+  async guardarComisionGlobal(employeeId, comision) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('employees')
+      .update({ comision_global: comision != null ? Number(comision) : null })
+      .eq('id', employeeId).eq('business_id', BUSINESS_ID);
+    if (error) throw error;
+  },
+
+  async guardarComisionServicio(employeeId, serviceId, comision) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('employee_services')
+      .update({ comision: comision != null ? Number(comision) : null })
+      .eq('employee_id', employeeId).eq('service_id', serviceId);
+    if (error) throw error;
+  },
+
+  // Comisión ya generada (congelada) por un profesional en un rango — suma directa,
+  // no recalcula %.
+  async getComisionGeneradaPeriodo(employeeId, desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const [citas, ventas] = await Promise.all([
+      sbClient.from('appointments').select('comision_monto')
+        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
+        .not('completada_en', 'is', null)
+        .gte('fecha', desdeISO).lte('fecha', hastaISO),
+      sbClient.from('local_sales').select('comision_monto')
+        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulada', false)
+        .gte('fecha', desdeISO).lte('fecha', hastaISO)
+    ]);
+    const sum = r => (r.data || []).reduce((s, x) => s + Number(x.comision_monto || 0), 0);
+    return sum(citas) + sum(ventas);
+  },
+
+  // ---- Propinas ----
+  // Solo las que llegan al negocio por tarjeta/Yappy/transferencia; nacen "pendiente"
+  // y se liquidan (efectivo en mano del profesional) con liquidarPropina.
+  async registrarPropina({ employeeId, monto, metodo, fecha, appointmentId, localSaleId }) {
+    await window.AnnlyReady;
+    if (metodo === 'certificado') throw new Error('El certificado nunca cubre propina.');
+    const { error } = await sbClient.from('propinas').insert([{
+      business_id: BUSINESS_ID, employee_id: employeeId, monto, metodo, fecha,
+      appointment_id: appointmentId || null, local_sale_id: localSaleId || null
+    }]);
+    if (error) throw error;
+  },
+
+  async getPropinas(employeeId, estado) {
+    await window.AnnlyReady;
+    let q = sbClient.from('propinas').select('*').eq('business_id', BUSINESS_ID);
+    if (employeeId) q = q.eq('employee_id', employeeId);
+    if (estado) q = q.eq('estado', estado);
+    const { data, error } = await q.order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(p => ({
+      id: p.id, empleadoId: p.employee_id, monto: Number(p.monto), metodo: p.metodo,
+      fecha: p.fecha, estado: p.estado, pagadaEn: p.pagada_en, pagadaDetalle: p.pagada_detalle || '',
+      appointmentId: p.appointment_id, localSaleId: p.local_sale_id
+    }));
+  },
+
+  // Marca la propina como pagada (contado): amarrada al registro original, con el
+  // detalle de cómo se liquidó.
+  async liquidarPropina(id, detalle) {
+    await window.AnnlyReady;
+    if (!detalle || !detalle.trim()) throw new Error('Indica el detalle de cómo se pagó la propina.');
+    const { data: u } = await sbClient.auth.getUser();
+    const { data: filas, error } = await sbClient.from('propinas')
+      .update({ estado: 'pagada', pagada_en: new Date().toISOString(), pagada_detalle: detalle.trim(), pagada_por: u && u.user ? u.user.id : null })
+      .eq('id', id).eq('business_id', BUSINESS_ID).eq('estado', 'pendiente')
+      .select('id, monto, employee_id');
+    if (error) throw error;
+    if (!filas || !filas.length) throw new Error('Esa propina ya estaba pagada o no existe.');
+    await this.registrarAccion({ entidad: 'propina', entidadId: id, accion: 'pagada', motivo: detalle.trim(), monto: filas[0].monto, detalle: { employeeId: filas[0].employee_id } });
+  },
+
+  // ---- Adelantos ----
+  // Contra comisión, no contra propina. desdeISO/hastaISO = periodo actual
+  // (rangoPeriodoCierre(FIN.ajustes, 0) en admin.html).
+  async registrarAdelanto({ employeeId, monto, fecha, nota, desdeISO, hastaISO }) {
+    await window.AnnlyReady;
+    const generado = await this.getComisionGeneradaPeriodo(employeeId, desdeISO, hastaISO);
+    const dados = await this.getAdelantosPeriodo(employeeId, desdeISO, hastaISO);
+    const disponible = generado - dados;
+    if (monto > disponible) throw new Error(`El adelanto máximo disponible en este periodo es ${disponible.toFixed(2)}.`);
+    const { error } = await sbClient.from('adelantos').insert([{
+      business_id: BUSINESS_ID, employee_id: employeeId, monto, fecha, nota: nota || null
+    }]);
+    if (error) throw error;
+  },
+
+  async getAdelantosPeriodo(employeeId, desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('adelantos').select('monto')
+      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulado', false)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO);
+    if (error) throw error;
+    return (data || []).reduce((s, r) => s + Number(r.monto), 0);
+  },
+
+  async anularAdelanto(id, motivo) {
+    await window.AnnlyReady;
+    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
+    const { data: filas, error } = await sbClient.from('adelantos')
+      .update({ anulado: true, anulado_motivo: motivo.trim(), anulado_en: new Date().toISOString() })
+      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulado', false)
+      .select('id, monto');
+    if (error) throw error;
+    if (!filas || !filas.length) throw new Error('El adelanto ya estaba anulado o no existe.');
+    await this.registrarAccion({ entidad: 'adelanto', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: filas[0].monto });
   },
 
   // Datos de un certificado por su código (aunque ya no tenga saldo), para el detalle de una cita
