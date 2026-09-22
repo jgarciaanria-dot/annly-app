@@ -1682,6 +1682,12 @@ const Sheets = {
         precioCobrado:
           c.precio_cobrado,
 
+        comisionPct:
+          c.comision_pct != null ? Number(c.comision_pct) : null,
+
+        comisionMonto:
+          c.comision_monto != null ? Number(c.comision_monto) : null,
+
         correo:
           c.cliente_correo,
 
