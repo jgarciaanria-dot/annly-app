@@ -4565,7 +4565,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=32"></script>
+<script src="sheets.js?v=33"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -8990,7 +8990,7 @@ async function abrirDetalleCita(id){
   } else {
     html += fila('Por cobrar en el local', r.porCobrar == null ? 'Por confirmar' : fmtDinero(r.porCobrar), {icon:'ti-hourglass', tone:'pending'});
   }
-  html += '<div id="cd-extras"></div><div id="cd-cobros"></div><div id="cd-cuadre"></div>';
+  html += '<div id="cd-extras"></div><div id="cd-cobros"></div><div id="cd-cuadre"></div><div id="cd-comision"></div>';
   const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.fechaISO <= isoLocal(new Date());
   if (puedeCompletar) html += `<button class="btn-save" style="margin-top:14px;" onclick="cerrarModalFin('ov-cita-detalle');abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar cita</button>`;
   elFin('cd-body').innerHTML = html;
@@ -9058,6 +9058,15 @@ async function abrirDetalleCita(id){
         fila('Total de la cita', fmtDinero(esperado), {icon:'ti-receipt-2', tone:'money'}) +
         fila('Total cobrado', fmtDinero(sumPagos), {icon:'ti-cash-banknote', tone:'pos'}) +
         `<p style="font-size:12px;margin:8px 0 0;line-height:1.5;">${estado}${dif > 0 && !extras.length ? ' <span style="color:var(--ink-soft);">· no hay ninguna venta adicional ligada a esta cita; si el monto extra fue una venta, quedó sin detalle.</span>' : ''}</p>`;
+    }
+
+    // Comisión del profesional que atendió, congelada al completar la cita
+    const contCom = elFin('cd-comision');
+    if (contCom && c.comisionMonto != null){
+      contCom.innerHTML = titulo('Comisión', 'ti-percentage') +
+        fila('Profesional', escCat(c.empleadoNombre || '—'), {icon:'ti-user'}) +
+        fila('% aplicado', c.comisionPct + '%', {icon:'ti-percentage', tone:'money'}) +
+        fila('Comisión generada', fmtDinero(c.comisionMonto), {icon:'ti-cash-banknote', tone:'pos'});
     }
   }
 }
