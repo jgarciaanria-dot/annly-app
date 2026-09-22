@@ -2696,6 +2696,9 @@ const Sheets = {
         activo:
           e.activo,
 
+        comisionGlobal:
+          e.comision_global != null ? Number(e.comision_global) : null,
+
         bio:
           e.bio || '',
 
@@ -2806,7 +2809,10 @@ const Sheets = {
         (empleado.bio || '').trim() || null,
 
       activo:
-        empleado.activo !== false
+        empleado.activo !== false,
+
+      comision_global:
+        empleado.comisionGlobal != null ? Number(empleado.comisionGlobal) : null
 
     };
 
@@ -2949,9 +2955,11 @@ const Sheets = {
   },
 
 
+  // servicios: acepta un array de ids ('svc1','svc2') o de objetos con comisión
+  // por servicio ({ id:'svc1', comision:60 }, { id:'svc2', comision:null }).
   async guardarEmpleadoServicios(
     empleadoId,
-    serviceIds
+    servicios
   ) {
 
     await window.AnnlyReady;
@@ -2972,7 +2980,7 @@ const Sheets = {
     }
 
 
-    if (!serviceIds.length) {
+    if (!servicios.length) {
       return;
     }
 
@@ -2983,16 +2991,22 @@ const Sheets = {
       .from('employee_services')
       .insert(
 
-        serviceIds.map(
-          sid => ({
+        servicios.map(
+          s => {
+            const esObjeto = s && typeof s === 'object';
+            return {
 
-            employee_id:
-              empleadoId,
+              employee_id:
+                empleadoId,
 
-            service_id:
-              sid
+              service_id:
+                esObjeto ? s.id : s,
 
-          })
+              comision:
+                esObjeto && s.comision != null ? Number(s.comision) : null
+
+            };
+          }
         )
 
       );
@@ -3000,6 +3014,17 @@ const Sheets = {
     if (errIns) {
       throw errIns;
     }
+  },
+
+  // Comisión por servicio ya asignada a un empleado: { serviceId: comision|null }
+  async getComisionesServiciosEmpleado(empleadoId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('employee_services')
+      .select('service_id, comision').eq('employee_id', empleadoId);
+    if (error) throw error;
+    const mapa = {};
+    (data || []).forEach(r => { mapa[r.service_id] = r.comision != null ? Number(r.comision) : null; });
+    return mapa;
   },
 
 
