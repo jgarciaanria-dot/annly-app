@@ -175,24 +175,105 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 
 /* Las notificaciones se anclan al MARCO de la foto (no al ancho de la pantalla),
    por eso el mismo porcentaje nunca se sale del recuadro en ninguna pantalla. */
+.brand-photo-wrap{overflow:visible;}
 .bfloat{
-  position:absolute;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
-  border:1px solid rgba(237,233,245,.9);border-radius:14px;
-  box-shadow:0 16px 34px -16px rgba(26,22,37,.30);padding:9px 12px;z-index:5;
-  display:flex;align-items:center;gap:8px;
-  animation:fadeUp .7s ease both;
+  position:absolute;
+  background:rgba(255,255,255,.90);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.78);
+  border-radius:16px;
+  box-shadow:0 16px 34px -14px rgba(26,22,37,.28);
+  padding:9px 12px;
+  z-index:8;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:max-content;
+  will-change:transform;
+  animation:
+    notifIn .65s cubic-bezier(.22,1,.36,1) both,
+    notifFloat 4.8s ease-in-out infinite;
 }
 .bfloat .dot{
-  width:24px;height:24px;border-radius:50%;
+  width:30px;height:30px;border-radius:11px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);
 }
-.bfloat strong{display:block;font-size:10.5px;white-space:nowrap;}
-.bfloat span{display:block;font-size:9px;color:var(--ink-soft);margin-top:1px;white-space:nowrap;}
-.bfloat-1{top:8%;left:6%;animation-delay:.3s;}
-.bfloat-1 .dot{background:#ECFDF5;color:#059669;}
-.bfloat-3{bottom:9%;right:6%;animation-delay:.55s;}
-.bfloat-3 .dot{background:#EEE3FF;color:var(--violet);}
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.notif-emoji{
+  font-size:16px;
+  line-height:1;
+  display:inline-block;
+  filter:drop-shadow(0 2px 3px rgba(26,22,37,.10));
+}
+.bfloat strong{
+  display:block;font-size:10.5px;white-space:nowrap;font-weight:800;
+  letter-spacing:-.1px;
+}
+.bfloat span{
+  display:block;font-size:9px;color:var(--ink-soft);margin-top:2px;white-space:nowrap;
+}
+.bfloat-1{
+  top:9%;left:-108px;
+  --drift-x:3px;--drift-y:-6px;--tilt:-2deg;
+  animation-delay:.15s,.15s;
+}
+.bfloat-1 .dot{background:#F1ECFF;color:var(--violet);}
+.bfloat-2{
+  top:38%;right:-108px;
+  --drift-x:-3px;--drift-y:-7px;--tilt:2deg;
+  animation-delay:.3s,.7s;
+}
+.bfloat-2 .dot{background:#FFF0F7;color:#D946EF;}
+.bfloat-3{
+  bottom:13%;left:-104px;
+  --drift-x:4px;--drift-y:-5px;--tilt:2deg;
+  animation-delay:.45s,1.15s;
+}
+.bfloat-3 .dot{
+  background:linear-gradient(135deg,#FFF3C4,#FFE0F1);
+  color:#F59E0B;
+}
+.bfloat-4{
+  bottom:32%;right:-104px;
+  --drift-x:-4px;--drift-y:-6px;--tilt:-2deg;
+  animation-delay:.6s,1.65s;
+}
+.bfloat-4 .dot{background:#ECFDF5;color:#059669;}
+
+.bfloat--gift{
+  animation:
+    notifIn .65s cubic-bezier(.22,1,.36,1) both,
+    notifFloat 4.8s ease-in-out infinite,
+    giftPulse 2.2s ease-in-out infinite;
+}
+.gift-emoji{animation:giftBounce 1.8s ease-in-out infinite;}
+
+.bfloat:hover{
+  animation-play-state:paused;
+  transform:translateY(-4px) rotate(0deg) scale(1.025);
+  box-shadow:0 22px 42px -16px rgba(91,33,182,.30);
+}
+@keyframes notifIn{
+  from{opacity:0;transform:translateY(16px) scale(.92) rotate(var(--tilt));}
+  to{opacity:1;transform:translateY(0) scale(1) rotate(var(--tilt));}
+}
+@keyframes notifFloat{
+  0%,100%{transform:translate(var(--drift-x),0) rotate(var(--tilt));}
+  50%{transform:translate(calc(var(--drift-x) * -1),var(--drift-y)) rotate(calc(var(--tilt) * -1));}
+}
+@keyframes giftPulse{
+  0%,100%{box-shadow:0 16px 34px -14px rgba(26,22,37,.28),0 0 0 0 rgba(236,72,153,0);}
+  50%{box-shadow:0 20px 38px -14px rgba(26,22,37,.24),0 0 0 7px rgba(236,72,153,.10);}
+}
+@keyframes giftBounce{
+  0%,100%{transform:translateY(0) rotate(0deg);}
+  30%{transform:translateY(-3px) rotate(-7deg);}
+  60%{transform:translateY(0) rotate(5deg);}
+}
+@media (prefers-reduced-motion:reduce){
+  .bfloat,.gift-emoji{animation:none !important;}
+}
 
 .brand-benefits{
   display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:1.1rem;
@@ -409,6 +490,51 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
   .finput{min-height:54px;}
 }
 </style>
+
+<style id="annly-notifications-only">
+/* =========================================================
+   ANNLY — NOTIFICACIONES / DISTRIBUCIÓN VISUAL
+   Solo modifica las tarjetas flotantes del panel izquierdo.
+   ========================================================= */
+@media (min-width:1101px){
+  .bfloat-1{
+    top:5%;
+    left:-154px;
+  }
+  .bfloat-2{
+    top:30%;
+    right:-154px;
+  }
+  .bfloat-3{
+    bottom:38%;
+    left:-154px;
+  }
+  .bfloat-4{
+    bottom:4%;
+    right:-154px;
+  }
+}
+
+@media (min-width:861px) and (max-width:1100px){
+  .bfloat{transform-origin:center;}
+  .bfloat-1{left:-116px; top:4%;}
+  .bfloat-2{right:-116px; top:29%;}
+  .bfloat-3{left:-116px; bottom:39%;}
+  .bfloat-4{right:-116px; bottom:5%;}
+}
+
+@media (min-width:861px){
+  /* Separación extra para que cada tarjeta se sienta independiente
+     y quede visualmente fuera de la silueta central. */
+  .bfloat{
+    z-index:12;
+  }
+}
+
+@media (max-width:860px){
+  .bfloat{display:none;}
+}
+</style>
 </head>
 <body>
 
@@ -429,13 +555,21 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
     <div class="brand-visual">
       <div class="brand-photo-wrap">
         <img src="modelo-registro.png" alt="Dueña de negocio revisando su agenda desde una tablet"/>
-        <div class="bfloat bfloat-1">
-          <div class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
-          <div><strong>¡Nueva cita!</strong><span>Sofía H. · 3:00 PM</span></div>
+        <div class="bfloat bfloat-1 bfloat--booking">
+          <div class="dot"><span class="notif-emoji">📅</span></div>
+          <div><strong>¡Alanis ha agendado!</strong><span>Manicure · 4:30 PM</span></div>
         </div>
-        <div class="bfloat bfloat-3">
-          <div class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></div>
-          <div><strong>Recordatorio enviado</strong><span>A 12 clientes</span></div>
+        <div class="bfloat bfloat-2 bfloat--send">
+          <div class="dot"><span class="notif-emoji">✈️</span></div>
+          <div><strong>¡Notificación enviada!</strong><span>A 12 clientes</span></div>
+        </div>
+        <div class="bfloat bfloat-3 bfloat--gift">
+          <div class="dot"><span class="notif-emoji gift-emoji">🎁</span></div>
+          <div><strong>¡Tienes un certificado!</strong><span>Alguien pensó en ti</span></div>
+        </div>
+        <div class="bfloat bfloat-4 bfloat--new">
+          <div class="dot"><span class="notif-emoji">✨</span></div>
+          <div><strong>¡Nueva cita!</strong><span>María Gabriela · 3:00 PM</span></div>
         </div>
       </div>
     </div>
