@@ -4343,6 +4343,13 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" type="number" step="0.01" min="0" id="fv-monto" oninput="fvMontoCambio()"/></div>
       </div>
       <div class="fg"><label class="flbl">¿Cómo pagó?</label><div id="fv-pagos"></div></div>
+      <div class="fg"><label class="flbl">Propina para el profesional (opcional)</label>
+        <div class="frow">
+          <input class="fi" id="fv-propina-monto" type="number" step="0.01" min="0" placeholder="$0.00"/>
+          <select class="fi" id="fv-propina-metodo">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
+        </div>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el pago (no si el cliente ya se la dio en efectivo aparte). Queda pendiente de liquidar en Finanzas → Comisiones.</p>
+      </div>
       <p id="fv-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" id="fv-btn" onclick="guardarVentaLocal()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar venta</button>
     </div>
@@ -8299,12 +8306,12 @@ function htmlComisionesFin(){
       </div>
       <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:8px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong style="font-size:17px;">${fmtDinero(e.generado)}</strong></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;cursor:pointer;" onclick="abrirDetalleAdelantos('${e.id}','${escCat(e.nombre)}')" title="Ver detalle de adelantos"><span style="color:var(--ink-soft);text-decoration:underline dotted;">Adelantos dados</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;cursor:pointer;" onclick="abrirDetalleAdelantos('${e.id}','${escCat(e.nombre)}')" title="Ver detalle de adelantos"><span style="color:var(--ink);font-weight:700;text-decoration:underline;">Adelanto entregado</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px;">
           <span style="font-weight:700;color:var(--ink);">Neto estimado</span>
           <strong style="font-size:19px;color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong>
         </div>
-        <button class="btn-add" style="width:100%;justify-content:center;font-size:12.5px;margin-top:4px;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Entregar adelanto</button>
+        <button class="btn-add" style="align-self:flex-start;font-size:12.5px;margin-top:4px;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Entregar adelanto</button>
       </div>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
@@ -8669,6 +8676,7 @@ function abrirModalVenta(){
   elFin('fv-cliente').value = '';
   elFin('fv-servicio').value = '';
   elFin('fv-monto').value = '';
+  elFin('fv-propina-monto').value = '';
   elFin('fv-msg').textContent = '';
   elFin('fv-servicios-dl').innerHTML = (typeof SERVICES !== 'undefined' ? SERVICES : []).filter(s => s.active).map(s => `<option value="${escCat(s.name)}"></option>`).join('');
   // El profesional es obligatorio cuando el negocio tiene equipo: las comisiones dependen de él
@@ -8705,13 +8713,15 @@ async function guardarVentaLocal(){
   if (FIN.empleados.length && !elFin('fv-prof').value){ msg.textContent = 'Elige el profesional que realizó la venta (sus comisiones dependen de esto).'; return; }
   const v = pagoValidar('fv-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
+  const propinaMonto = Math.round((parseFloat(elFin('fv-propina-monto').value) || 0)*100)/100;
   const btn = elFin('fv-btn');
   btn.disabled = true;
   try {
     await Sheets.registrarVentaLocal({
       fecha, servicio, monto,
       cliente: elFin('fv-cliente').value.trim(),
-      empleadoId: elFin('fv-prof').value || null
+      empleadoId: elFin('fv-prof').value || null,
+      propina: propinaMonto > 0 ? { monto: propinaMonto, metodo: elFin('fv-propina-metodo').value } : null
     }, v.lineas);
     cerrarModalFin('ov-fin-venta');
     await loadFinanzas();
@@ -8857,6 +8867,14 @@ async function abrirCompletarCita(id){
     </div>
     <div id="fc-desglose" style="background:#FAFAF8;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
     <div class="fg"><label class="flbl">Cobro de hoy</label><div id="fc-pagos"></div></div>
+    ${moduloDisponible('PROPINAS') ? `
+    <div class="fg"><label class="flbl">Propina para el profesional (opcional)</label>
+      <div class="frow">
+        <input class="fi" id="fc-propina-monto" type="number" step="0.01" min="0" placeholder="$0.00"/>
+        <select class="fi" id="fc-propina-metodo">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
+      </div>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el cobro de hoy (no si ya se la dieron en efectivo aparte). El certificado nunca cubre propina. Queda pendiente de liquidar en Finanzas → Comisiones.</p>
+    </div>` : ''}
     <p id="fc-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
     <button class="btn-save" id="fc-btn" onclick="confirmarCompletarCita()"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar y registrar cobro</button>`;
   PAGO_ED['fc-pagos'] = null;
@@ -9019,11 +9037,13 @@ async function confirmarCompletarCita(){
         });
       } catch(e){ console.error(e); }
     }
+    const propinaMontoFC = elFin('fc-propina-monto') ? Math.round((parseFloat(elFin('fc-propina-monto').value) || 0)*100)/100 : 0;
     await Sheets.completarCita(c.id, {
       precioCobrado: precio, pagos, fecha: c.fechaISO,
       concepto: c.servicio, cliente: c.nombre, empleadoId: empleadoElegido || c.empleadoId || null,
       cambiarEmpleado: cambioEmpleado, empleadoIdOriginal: c.empleadoId || null,
-      extras: ex.items, ajusteDetalle, certNoAplicadoMotivo: motivoCert
+      extras: ex.items, ajusteDetalle, certNoAplicadoMotivo: motivoCert,
+      propina: propinaMontoFC > 0 ? { monto: propinaMontoFC, metodo: elFin('fc-propina-metodo').value } : null
     });
     cerrarModalFin('ov-fin-completar');
     COMPLETANDO = null;
