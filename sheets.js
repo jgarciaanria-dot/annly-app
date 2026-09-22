@@ -3774,6 +3774,21 @@ const Sheets = {
     if (error) throw error;
   },
 
+  // Detalle de cada adelanto (no solo el total) en un rango — incluye los anulados,
+  // para que se vean tachados con su motivo, igual que los gastos.
+  async getAdelantosDetalle(employeeId, desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('adelantos').select('*')
+      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO)
+      .order('fecha', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(a => ({
+      id: a.id, monto: Number(a.monto), fecha: a.fecha, nota: a.nota || '',
+      anulado: a.anulado, anuladoMotivo: a.anulado_motivo || '', anuladoEn: a.anulado_en
+    }));
+  },
+
   async getAdelantosPeriodo(employeeId, desdeISO, hastaISO) {
     await window.AnnlyReady;
     const { data, error } = await sbClient.from('adelantos').select('monto')
