@@ -4375,7 +4375,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <div class="ov" id="ov-fin-adelanto">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-title">Dar adelanto</span>
+      <span class="modal-title">Entregar adelanto</span>
       <button class="modal-close" onclick="cerrarModalFin('ov-fin-adelanto')">×</button>
     </div>
     <div class="modal-body">
@@ -4385,9 +4385,21 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <div class="fg"><label class="flbl">Fecha</label><input class="fi" type="date" id="fa-fecha"/></div>
         <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" type="number" step="0.01" min="0" id="fa-monto"/></div>
       </div>
-      <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fa-nota" placeholder="Ej: adelanto para gasolina"/></div>
+      <div class="fg"><label class="flbl">Motivo (opcional)</label><input class="fi" id="fa-nota" placeholder="Ej: viático"/></div>
       <p id="fa-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
-      <button class="btn-save" id="fa-btn" onclick="guardarAdelantoFin()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar adelanto</button>
+      <button class="btn-save" id="fa-btn" onclick="guardarAdelantoFin()"><i class="ti ti-check" style="font-size:17px;"></i> Entregar adelanto</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-fin-adelantos-detalle">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="fad-titulo">Adelantos</span>
+      <button class="modal-close" onclick="cerrarModalFin('ov-fin-adelantos-detalle')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="fad-lista" style="display:flex;flex-direction:column;gap:2px;"></div>
     </div>
   </div>
 </div>
@@ -4586,7 +4598,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=33"></script>
+<script src="sheets.js?v=34"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -8274,7 +8286,7 @@ function htmlComisionesFin(){
           <div style="font-size:12.5px;font-weight:700;">${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</div>
           <div style="font-size:11px;color:var(--ink-soft);">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}</div>
         </div>
-        <button class="btn-ico" style="width:auto;padding:0 14px;height:32px;font-size:11.5px;font-weight:700;" onclick="liquidarPropinaFin('${p.id}')">Liquidar</button>
+        <button class="btn-add" style="font-size:11.5px;" onclick="liquidarPropinaFin('${p.id}')">Liquidar</button>
       </div>`).join('')
     : '<p style="font-size:12px;color:var(--ink-soft);padding:0.5rem 0 0;">No hay propinas pendientes.</p>';
 
@@ -8287,12 +8299,12 @@ function htmlComisionesFin(){
       </div>
       <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:8px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong style="font-size:17px;">${fmtDinero(e.generado)}</strong></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Adelantos dados</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;cursor:pointer;" onclick="abrirDetalleAdelantos('${e.id}','${escCat(e.nombre)}')" title="Ver detalle de adelantos"><span style="color:var(--ink-soft);text-decoration:underline dotted;">Adelantos dados</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px;">
           <span style="font-weight:700;color:var(--ink);">Neto estimado</span>
           <strong style="font-size:19px;color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong>
         </div>
-        <button class="btn-ico" style="width:100%;height:38px;font-size:12.5px;font-weight:700;margin-top:4px;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Dar adelanto</button>
+        <button class="btn-add" style="width:100%;justify-content:center;font-size:12.5px;margin-top:4px;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Entregar adelanto</button>
       </div>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
@@ -8360,6 +8372,62 @@ async function guardarAdelantoFin(){
     msg.textContent = (e && e.message) ? e.message : 'No se pudo registrar el adelanto.';
   }
   btn.disabled = false;
+}
+
+let ADELANTO_DETALLE = { empleadoId:null, nombre:'', lista:[] };
+
+async function abrirDetalleAdelantos(employeeId, nombre){
+  ADELANTO_DETALLE = { empleadoId: employeeId, nombre, lista: [] };
+  elFin('fad-titulo').textContent = 'Adelantos — ' + nombre;
+  elFin('fad-lista').innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>';
+  elFin('ov-fin-adelantos-detalle').classList.add('open');
+  await cargarDetalleAdelantos();
+}
+
+async function cargarDetalleAdelantos(){
+  const { desde, hasta } = rangoFinanzas();
+  try {
+    ADELANTO_DETALLE.lista = await Sheets.getAdelantosDetalle(ADELANTO_DETALLE.empleadoId, desde, hasta);
+  } catch(e){
+    console.error(e);
+    elFin('fad-lista').innerHTML = '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1rem;">No se pudieron cargar los adelantos.</p>';
+    return;
+  }
+  renderDetalleAdelantos();
+}
+
+function renderDetalleAdelantos(){
+  const lista = ADELANTO_DETALLE.lista;
+  elFin('fad-lista').innerHTML = lista.length ? lista.map(a => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);${a.anulado ? 'opacity:.5;' : ''}">
+      <div>
+        <div style="font-size:12.5px;font-weight:700;${a.anulado ? 'text-decoration:line-through;' : ''}">${fmtDinero(a.monto)}${a.nota ? ' · ' + escCat(a.nota) : ''}</div>
+        <div style="font-size:11px;color:var(--ink-soft);">${fechaCortaFin(a.fecha)}${a.anulado ? ' · Anulado: ' + escCat(a.anuladoMotivo) : ''}</div>
+      </div>
+      ${a.anulado ? '' : `<button class="btn-add" style="font-size:11px;" onclick="anularAdelantoFin('${a.id}')">Anular</button>`}
+    </div>`).join('') : '<p style="font-size:12px;color:var(--ink-soft);text-align:center;padding:1rem;">No hay adelantos en este periodo.</p>';
+}
+
+async function anularAdelantoFin(id){
+  const a = ADELANTO_DETALLE.lista.find(x => x.id === id);
+  if (!a) return;
+  const motivo = await pedirMotivo({
+    titulo: 'Anular adelanto',
+    resumenHtml: `<strong>${fmtDinero(a.monto)}</strong>${a.nota ? ' · ' + escCat(a.nota) : ''}<br>${fechaCortaFin(a.fecha)} · ${escCat(ADELANTO_DETALLE.nombre)}`,
+    avisoHtml: 'El adelanto queda tachado en el historial. Vuelve a sumar al neto estimado de comisión.',
+    etiqueta: 'Motivo de la anulación (obligatorio)',
+    placeholder: 'Ej: se registró dos veces',
+    textoBoton: 'Anular adelanto'
+  });
+  if (!motivo) return;
+  try {
+    await Sheets.anularAdelanto(id, motivo);
+    await cargarDetalleAdelantos();
+    await cargarComisionesFin();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo anular el adelanto.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
 }
 
 // ---------- Ajustes (periodo de cierre) ----------
