@@ -3717,6 +3717,17 @@ const Sheets = {
     return sum(citas) + sum(ventas);
   },
 
+  // Total de propinas generadas por un profesional en un rango (pendientes + pagadas) —
+  // para el resumen de "Propinas generadas en caja" en Comisiones.
+  async getPropinasGeneradasPeriodo(employeeId, desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('propinas').select('monto')
+      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
+      .gte('fecha', desdeISO).lte('fecha', hastaISO);
+    if (error) throw error;
+    return (data || []).reduce((s, r) => s + Number(r.monto || 0), 0);
+  },
+
   // ---- Propinas ----
   // Solo las que llegan al negocio por tarjeta/Yappy/transferencia; nacen "pendiente"
   // y se liquidan (efectivo en mano del profesional) con liquidarPropina.
