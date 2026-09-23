@@ -4344,11 +4344,15 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       </div>
       <div class="fg"><label class="flbl">¿Cómo pagó?</label><div id="fv-pagos"></div></div>
       <div class="fg"><label class="flbl">Propina para el profesional (opcional)</label>
-        <div class="frow">
-          <input class="fi" id="fv-propina-monto" type="number" step="0.01" min="0" placeholder="$0.00"/>
-          <select class="fi" id="fv-propina-metodo">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
+        <div style="display:flex;gap:8px;">
+          <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-shrink:0;">
+            <button type="button" id="fv-propina-modo-pct" onclick="fvPropinaModo('pct')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:#fff;color:var(--ink-soft);">%</button>
+            <button type="button" id="fv-propina-modo-monto" onclick="fvPropinaModo('monto')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:var(--annly-lilac);color:var(--annly-purple-dark);">$</button>
+          </div>
+          <input class="fi" id="fv-propina-valor" type="number" step="0.01" min="0" placeholder="0" style="flex:1;" oninput="fvPropinaRecalcular()"/>
+          <select class="fi" id="fv-propina-metodo" style="flex:1;">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
         </div>
-        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el pago (no si el cliente ya se la dio en efectivo aparte). Queda pendiente de liquidar en Finanzas → Comisiones.</p>
+        <p id="fv-propina-calc" style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el pago. Queda pendiente de liquidar en Finanzas → Comisiones.</p>
       </div>
       <p id="fv-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" id="fv-btn" onclick="guardarVentaLocal()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar venta</button>
@@ -4605,7 +4609,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=34"></script>
+<script src="sheets.js?v=35"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -8269,6 +8273,7 @@ async function cargarComisionesFin(){
       Promise.all(empleados.map(async e => ({
         id: e.id, nombre: e.nombre, fotoUrl: e.fotoUrl,
         generado: await Sheets.getComisionGeneradaPeriodo(e.id, desde, hasta),
+        propinasGeneradas: await Sheets.getPropinasGeneradasPeriodo(e.id, desde, hasta),
         adelantos: await Sheets.getAdelantosPeriodo(e.id, desde, hasta)
       }))),
       Sheets.getPropinas(null, 'pendiente')
@@ -8306,7 +8311,8 @@ function htmlComisionesFin(){
       </div>
       <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:8px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong style="font-size:17px;">${fmtDinero(e.generado)}</strong></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;cursor:pointer;" onclick="abrirDetalleAdelantos('${e.id}','${escCat(e.nombre)}')" title="Ver detalle de adelantos"><span style="color:var(--ink);font-weight:700;text-decoration:underline;">Adelanto entregado</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Propinas generadas en caja</span><strong style="font-size:17px;">${fmtDinero(e.propinasGeneradas)}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;cursor:pointer;" onclick="abrirDetalleAdelantos('${e.id}','${escCat(e.nombre)}')" title="Ver detalle de adelantos"><span style="color:var(--ink);font-weight:700;text-decoration:underline;">Adelantos entregados</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px;">
           <span style="font-weight:700;color:var(--ink);">Neto estimado</span>
           <strong style="font-size:19px;color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong>
@@ -8676,7 +8682,7 @@ function abrirModalVenta(){
   elFin('fv-cliente').value = '';
   elFin('fv-servicio').value = '';
   elFin('fv-monto').value = '';
-  elFin('fv-propina-monto').value = '';
+  if (elFin('fv-propina-valor')){ elFin('fv-propina-valor').value = ''; fvPropinaModo('monto'); }
   elFin('fv-msg').textContent = '';
   elFin('fv-servicios-dl').innerHTML = (typeof SERVICES !== 'undefined' ? SERVICES : []).filter(s => s.active).map(s => `<option value="${escCat(s.name)}"></option>`).join('');
   // El profesional es obligatorio cuando el negocio tiene equipo: las comisiones dependen de él
@@ -8699,6 +8705,39 @@ function fvServicioCambio(){
 function fvMontoCambio(){
   const monto = parseFloat(elFin('fv-monto').value) || 0;
   pagoSetEsperado('fv-pagos', Math.round(monto*100)/100);
+  fvPropinaRecalcular();
+}
+
+// Propina de "Venta en el local": % del monto de la venta, o monto fijo
+let FV_PROPINA_MODO = 'monto';
+function fvPropinaModo(modo){
+  FV_PROPINA_MODO = modo;
+  const bPct = elFin('fv-propina-modo-pct'), bMonto = elFin('fv-propina-modo-monto');
+  if (bPct && bMonto){
+    bPct.style.background = modo === 'pct' ? 'var(--annly-lilac)' : '#fff';
+    bPct.style.color = modo === 'pct' ? 'var(--annly-purple-dark)' : 'var(--ink-soft)';
+    bMonto.style.background = modo === 'monto' ? 'var(--annly-lilac)' : '#fff';
+    bMonto.style.color = modo === 'monto' ? 'var(--annly-purple-dark)' : 'var(--ink-soft)';
+  }
+  const input = elFin('fv-propina-valor');
+  if (input) input.placeholder = modo === 'pct' ? 'Ej: 10' : '0.00';
+  fvPropinaRecalcular();
+}
+function fvPropinaMonto(){
+  const valor = elFin('fv-propina-valor') ? (parseFloat(elFin('fv-propina-valor').value) || 0) : 0;
+  if (!(valor > 0)) return 0;
+  const monto = Math.round((parseFloat(elFin('fv-monto').value) || 0)*100)/100;
+  return Math.round((FV_PROPINA_MODO === 'pct' ? monto * valor / 100 : valor) * 100) / 100;
+}
+function fvPropinaRecalcular(){
+  const p = elFin('fv-propina-calc');
+  if (!p) return;
+  const valor = elFin('fv-propina-valor') ? (parseFloat(elFin('fv-propina-valor').value) || 0) : 0;
+  if (valor > 0 && FV_PROPINA_MODO === 'pct'){
+    p.textContent = valor + '% del monto de la venta = ' + fmtDinero(fvPropinaMonto());
+  } else {
+    p.textContent = 'Solo si vino incluida en el pago. Queda pendiente de liquidar en Finanzas → Comisiones.';
+  }
 }
 
 async function guardarVentaLocal(){
@@ -8713,7 +8752,7 @@ async function guardarVentaLocal(){
   if (FIN.empleados.length && !elFin('fv-prof').value){ msg.textContent = 'Elige el profesional que realizó la venta (sus comisiones dependen de esto).'; return; }
   const v = pagoValidar('fv-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
-  const propinaMonto = Math.round((parseFloat(elFin('fv-propina-monto').value) || 0)*100)/100;
+  const propinaMonto = fvPropinaMonto();
   const btn = elFin('fv-btn');
   btn.disabled = true;
   try {
@@ -8869,17 +8908,22 @@ async function abrirCompletarCita(id){
     <div class="fg"><label class="flbl">Cobro de hoy</label><div id="fc-pagos"></div></div>
     ${moduloDisponible('PROPINAS') ? `
     <div class="fg"><label class="flbl">Propina para el profesional (opcional)</label>
-      <div class="frow">
-        <input class="fi" id="fc-propina-monto" type="number" step="0.01" min="0" placeholder="$0.00"/>
-        <select class="fi" id="fc-propina-metodo">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
+      <div style="display:flex;gap:8px;">
+        <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-shrink:0;">
+          <button type="button" id="fc-propina-modo-pct" onclick="fcPropinaModo('pct')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:#fff;color:var(--ink-soft);">%</button>
+          <button type="button" id="fc-propina-modo-monto" onclick="fcPropinaModo('monto')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:var(--annly-lilac);color:var(--annly-purple-dark);">$</button>
+        </div>
+        <input class="fi" id="fc-propina-valor" type="number" step="0.01" min="0" placeholder="0" style="flex:1;" oninput="fcPropinaRecalcular()"/>
+        <select class="fi" id="fc-propina-metodo" style="flex:1;">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
       </div>
-      <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el cobro de hoy (no si ya se la dieron en efectivo aparte). El certificado nunca cubre propina. Queda pendiente de liquidar en Finanzas → Comisiones.</p>
+      <p id="fc-propina-calc" style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el cobro de hoy. El certificado nunca cubre propina. Queda pendiente de liquidar en Finanzas → Comisiones.</p>
     </div>` : ''}
     <p id="fc-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
     <button class="btn-save" id="fc-btn" onclick="confirmarCompletarCita()"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar y registrar cobro</button>`;
   PAGO_ED['fc-pagos'] = null;
   extrasIniciar('fc-extras', 'fcRecalcular');
   fcRecalcular(true);
+  if (elFin('fc-propina-valor')){ elFin('fc-propina-valor').value = ''; fcPropinaModo('monto'); }
   elFin('ov-fin-completar').classList.add('open');
 
   // Certificado que el cliente validó al reservar (precio no fijo): se propone aplicarlo ahora.
@@ -8939,6 +8983,38 @@ function fcCertVacio(){
   }
 }
 
+// Propina de "Completar cita": puede darse como % del precio cobrado o como monto fijo
+let FC_PROPINA_MODO = 'monto';
+function fcPropinaModo(modo){
+  FC_PROPINA_MODO = modo;
+  const bPct = elFin('fc-propina-modo-pct'), bMonto = elFin('fc-propina-modo-monto');
+  if (bPct && bMonto){
+    bPct.style.background = modo === 'pct' ? 'var(--annly-lilac)' : '#fff';
+    bPct.style.color = modo === 'pct' ? 'var(--annly-purple-dark)' : 'var(--ink-soft)';
+    bMonto.style.background = modo === 'monto' ? 'var(--annly-lilac)' : '#fff';
+    bMonto.style.color = modo === 'monto' ? 'var(--annly-purple-dark)' : 'var(--ink-soft)';
+  }
+  const input = elFin('fc-propina-valor');
+  if (input) input.placeholder = modo === 'pct' ? 'Ej: 10' : '0.00';
+  fcPropinaRecalcular();
+}
+function fcPropinaMonto(){
+  const valor = elFin('fc-propina-valor') ? (parseFloat(elFin('fc-propina-valor').value) || 0) : 0;
+  if (!(valor > 0)) return 0;
+  const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
+  return Math.round((FC_PROPINA_MODO === 'pct' ? precio * valor / 100 : valor) * 100) / 100;
+}
+function fcPropinaRecalcular(){
+  const p = elFin('fc-propina-calc');
+  if (!p) return;
+  const valor = elFin('fc-propina-valor') ? (parseFloat(elFin('fc-propina-valor').value) || 0) : 0;
+  if (valor > 0 && FC_PROPINA_MODO === 'pct'){
+    p.textContent = valor + '% del precio cobrado = ' + fmtDinero(fcPropinaMonto());
+  } else {
+    p.textContent = 'Solo si vino incluida en el cobro de hoy. El certificado nunca cubre propina. Queda pendiente de liquidar en Finanzas → Comisiones.';
+  }
+}
+
 function fcContexto(){
   return Object.assign({}, COMPLETANDO, { certExtra: COMPLETANDO.certExtra ? COMPLETANDO.certExtra.saldoDisponible : 0 });
 }
@@ -8979,6 +9055,7 @@ function fcRecalcular(inicial){
   elFin('fc-desglose').innerHTML = html;
   if (inicial || !PAGO_ED['fc-pagos']) pagoIniciar('fc-pagos', totalHoy);
   else pagoSetEsperado('fc-pagos', totalHoy);
+  fcPropinaRecalcular();
 }
 
 async function confirmarCompletarCita(){
@@ -9037,7 +9114,7 @@ async function confirmarCompletarCita(){
         });
       } catch(e){ console.error(e); }
     }
-    const propinaMontoFC = elFin('fc-propina-monto') ? Math.round((parseFloat(elFin('fc-propina-monto').value) || 0)*100)/100 : 0;
+    const propinaMontoFC = fcPropinaMonto();
     await Sheets.completarCita(c.id, {
       precioCobrado: precio, pagos, fecha: c.fechaISO,
       concepto: c.servicio, cliente: c.nombre, empleadoId: empleadoElegido || c.empleadoId || null,
