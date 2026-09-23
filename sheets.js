@@ -3754,24 +3754,47 @@ const Sheets = {
     return (data || []).map(p => ({
       id: p.id, empleadoId: p.employee_id, monto: Number(p.monto), metodo: p.metodo,
       fecha: p.fecha, estado: p.estado, pagadaEn: p.pagada_en, pagadaDetalle: p.pagada_detalle || '',
+      pagadaMetodo: p.pagada_metodo || '', cierreId: p.cierre_id,
       appointmentId: p.appointment_id, localSaleId: p.local_sale_id,
       clienteNombre: p.cliente_nombre || '', servicioNombre: p.servicio_nombre || ''
     }));
   },
 
-  // Marca la propina como pagada (contado): amarrada al registro original, con el
-  // detalle de cómo se liquidó.
-  async liquidarPropina(id, detalle) {
+  // Propinas pendientes (sin decidir todavía) de un profesional en un rango — para bloquear
+  // el cierre de periodo si queda alguna sin resolver.
+  async getPropinasPendientesPeriodo(employeeId, desdeISO, hastaISO) {
     await window.AnnlyReady;
-    if (!detalle || !detalle.trim()) throw new Error('Indica el detalle de cómo se pagó la propina.');
+    const { data, error } = await sbClient.from('propinas').select('id, monto, fecha, cliente_nombre, servicio_nombre')
+      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('estado', 'pendiente')
+      .gte('fecha', desdeISO).lte('fecha', hastaISO);
+    if (error) throw error;
+    return (data || []).map(p => ({ id: p.id, monto: Number(p.monto), fecha: p.fecha, clienteNombre: p.cliente_nombre || '', servicioNombre: p.servicio_nombre || '' }));
+  },
+
+  // Camino 1: se le paga al profesional ahora mismo (puede ser en cualquier medio, no solo efectivo)
+  async pagarPropinaContado(id, metodo, detalle) {
+    await window.AnnlyReady;
+    if (!metodo) throw new Error('Indica el medio con que se le pagó al profesional.');
     const { data: u } = await sbClient.auth.getUser();
     const { data: filas, error } = await sbClient.from('propinas')
-      .update({ estado: 'pagada', pagada_en: new Date().toISOString(), pagada_detalle: detalle.trim(), pagada_por: u && u.user ? u.user.id : null })
+      .update({ estado: 'pagada_contado', pagada_en: new Date().toISOString(), pagada_metodo: metodo, pagada_detalle: (detalle || '').trim() || null, pagada_por: u && u.user ? u.user.id : null })
       .eq('id', id).eq('business_id', BUSINESS_ID).eq('estado', 'pendiente')
       .select('id, monto, employee_id');
     if (error) throw error;
-    if (!filas || !filas.length) throw new Error('Esa propina ya estaba pagada o no existe.');
-    await this.registrarAccion({ entidad: 'propina', entidadId: id, accion: 'pagada', motivo: detalle.trim(), monto: filas[0].monto, detalle: { employeeId: filas[0].employee_id } });
+    if (!filas || !filas.length) throw new Error('Esa propina ya no está pendiente.');
+    await this.registrarAccion({ entidad: 'propina', entidadId: id, accion: 'pagada_contado', motivo: (detalle || '').trim() || ('Pagada al contado — ' + metodo), monto: filas[0].monto, detalle: { employeeId: filas[0].employee_id, metodo } });
+  },
+
+  // Camino 2: se paga junto con el corte de periodo — no hay reversa
+  async programarPropinaCierre(id) {
+    await window.AnnlyReady;
+    const { data: filas, error } = await sbClient.from('propinas')
+      .update({ estado: 'programada_cierre' })
+      .eq('id', id).eq('business_id', BUSINESS_ID).eq('estado', 'pendiente')
+      .select('id, monto, employee_id');
+    if (error) throw error;
+    if (!filas || !filas.length) throw new Error('Esa propina ya no está pendiente.');
+    await this.registrarAccion({ entidad: 'propina', entidadId: id, accion: 'programada_cierre', motivo: 'Programada para pagarse en el corte de periodo', monto: filas[0].monto, detalle: { employeeId: filas[0].employee_id } });
   },
 
   // ---- Adelantos ----
@@ -3823,6 +3846,166 @@ const Sheets = {
     if (error) throw error;
     if (!filas || !filas.length) throw new Error('El adelanto ya estaba anulado o no existe.');
     await this.registrarAccion({ entidad: 'adelanto', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: filas[0].monto });
+  },
+
+  // =======================================================
+  // CIERRE DE PERIODO
+  // =======================================================
+
+  // Cierre ya existente para un profesional en ese rango exacto (o null si no se ha cerrado)
+  async getCierreProfesional(employeeId, desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('cierres_profesional').select('*')
+      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
+      .eq('periodo_desde', desdeISO).eq('periodo_hasta', hastaISO).maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      id: data.id, comisionTotal: Number(data.comision_total), propinasTotal: Number(data.propinas_total),
+      adelantosTotal: Number(data.adelantos_total), netoPagado: Number(data.neto_pagado),
+      enviadoEn: data.enviado_en, creadoEn: data.creado_en, pdfBase64: data.pdf_base64, detalle: data.detalle
+    };
+  },
+
+  // Arma el detalle completo (citas, ventas, propinas, adelantos) de un profesional en un rango
+  async _detalleCierreProfesional(employeeId, desdeISO, hastaISO) {
+    const [citas, ventas, propinas, adelantos] = await Promise.all([
+      sbClient.from('appointments').select('fecha, servicio_nombre, cliente_nombre, precio_cobrado, comision_pct, comision_monto')
+        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).not('completada_en', 'is', null)
+        .gte('fecha', desdeISO).lte('fecha', hastaISO),
+      sbClient.from('local_sales').select('fecha, servicio_nombre, cliente_nombre, monto, comision_pct, comision_monto')
+        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulada', false)
+        .gte('fecha', desdeISO).lte('fecha', hastaISO),
+      sbClient.from('propinas').select('id, fecha, cliente_nombre, servicio_nombre, monto, estado')
+        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
+        .gte('fecha', desdeISO).lte('fecha', hastaISO),
+      sbClient.from('adelantos').select('fecha, monto, nota')
+        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulado', false)
+        .gte('fecha', desdeISO).lte('fecha', hastaISO)
+    ]);
+    return {
+      citas: (citas.data || []).map(c => ({ fecha: c.fecha, servicio: c.servicio_nombre, cliente: c.cliente_nombre, precio: Number(c.precio_cobrado || 0), comisionPct: Number(c.comision_pct || 0), comisionMonto: Number(c.comision_monto || 0) })),
+      ventas: (ventas.data || []).map(v => ({ fecha: v.fecha, servicio: v.servicio_nombre, cliente: v.cliente_nombre, precio: Number(v.monto || 0), comisionPct: Number(v.comision_pct || 0), comisionMonto: Number(v.comision_monto || 0) })),
+      propinas: (propinas.data || []).map(p => ({ id: p.id, fecha: p.fecha, cliente: p.cliente_nombre, servicio: p.servicio_nombre, monto: Number(p.monto), estado: p.estado })),
+      adelantos: (adelantos.data || []).map(a => ({ fecha: a.fecha, monto: Number(a.monto), nota: a.nota || '' }))
+    };
+  },
+
+  // Envía tipo 'cierre_profesional' (con PDF) o 'cierre_negocio' (resumen) al Edge Function dedicado.
+  // A diferencia de enviarCorreo(), este SÍ lanza error si falla — el cierre depende de que se envíe.
+  async enviarComprobanteCierre(tipo, datos) {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-cierre-comprobante`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ tipo, businessId: BUSINESS_ID, datos })
+    });
+    const resultado = await resp.json();
+    if (!resultado.ok) throw new Error(resultado.error || 'No se pudo enviar el comprobante.');
+    return resultado;
+  },
+
+  // Cierra el periodo de un profesional: valida, arma el detalle, envía primero el comprobante
+  // (si falla el envío no se escribe nada, queda igual que antes) y solo entonces lo congela en
+  // cierres_profesional y resuelve las propinas que estaban programadas para este corte. No hay reversa.
+  async cerrarPeriodoProfesional({ employeeId, desdeISO, hastaISO }) {
+    await window.AnnlyReady;
+
+    const yaExiste = await this.getCierreProfesional(employeeId, desdeISO, hastaISO);
+    if (yaExiste) throw new Error('Este periodo ya está cerrado para este profesional.');
+
+    const sinDecidir = await this.getPropinasPendientesPeriodo(employeeId, desdeISO, hastaISO);
+    if (sinDecidir.length) throw new Error(`Hay ${sinDecidir.length} propina(s) sin decidir en este periodo. Resuélvelas antes de cerrar.`);
+
+    const { data: emp } = await sbClient.from('employees').select('nombre, correo').eq('id', employeeId).maybeSingle();
+    if (!emp || !emp.correo) throw new Error('Este profesional no tiene correo registrado en su ficha — agrégaselo antes de cerrar.');
+
+    const detalle = await this._detalleCierreProfesional(employeeId, desdeISO, hastaISO);
+    const comisionTotal = Math.round((detalle.citas.reduce((s, c) => s + c.comisionMonto, 0) + detalle.ventas.reduce((s, v) => s + v.comisionMonto, 0)) * 100) / 100;
+    const propinasResueltas = detalle.propinas.filter(p => p.estado === 'programada_cierre');
+    const propinasTotal = Math.round(detalle.propinas.reduce((s, p) => s + p.monto, 0) * 100) / 100;
+    const adelantosTotal = Math.round(detalle.adelantos.reduce((s, a) => s + a.monto, 0) * 100) / 100;
+    const netoPagado = Math.round((comisionTotal - adelantosTotal) * 100) / 100;
+
+    const resultado = await this.enviarComprobanteCierre('cierre_profesional', {
+      employeeId, periodo: { desde: desdeISO, hasta: hastaISO },
+      resumen: { comisionTotal, propinasTotal, adelantosTotal, netoPagado }, detalle
+    });
+
+    const { data: cierre, error } = await sbClient.from('cierres_profesional').insert([{
+      business_id: BUSINESS_ID, employee_id: employeeId, periodo_desde: desdeISO, periodo_hasta: hastaISO,
+      comision_total: comisionTotal, propinas_total: propinasTotal, adelantos_total: adelantosTotal, neto_pagado: netoPagado,
+      detalle, pdf_base64: resultado.pdfBase64 || null, enviado_en: new Date().toISOString()
+    }]).select('id').single();
+    if (error) throw error;
+
+    if (propinasResueltas.length) {
+      const { error: errProp } = await sbClient.from('propinas')
+        .update({ estado: 'pagada_cierre', pagada_en: new Date().toISOString(), cierre_id: cierre.id })
+        .in('id', propinasResueltas.map(p => p.id));
+      if (errProp) throw errProp;
+    }
+
+    return cierre.id;
+  },
+
+  // ¿Ya se puede hacer el cierre general de este periodo? (todos los profesionales activos cerrados)
+  async getCierreNegocioElegibilidad(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const empleados = (await this.getEmpleados()).filter(e => e.activo);
+    const faltantes = [];
+    for (const e of empleados) {
+      const c = await this.getCierreProfesional(e.id, desdeISO, hastaISO);
+      if (!c) faltantes.push(e.nombre);
+    }
+    return { listo: faltantes.length === 0 && empleados.length > 0, faltantes };
+  },
+
+  async getCierreNegocio(desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('cierres_negocio').select('*')
+      .eq('business_id', BUSINESS_ID).eq('periodo_desde', desdeISO).eq('periodo_hasta', hastaISO).maybeSingle();
+    if (error) throw error;
+    return data ? { id: data.id, ingresosTotal: Number(data.ingresos_total), comisionesTotal: Number(data.comisiones_total), enviadoEn: data.enviado_en, creadoEn: data.creado_en } : null;
+  },
+
+  // Cierre general: junta lo ya cerrado por profesional y manda el resumen al correo del dueño.
+  // Solo corre si todos los profesionales activos ya cerraron ese mismo periodo.
+  async cerrarNegocio({ desdeISO, hastaISO }) {
+    await window.AnnlyReady;
+
+    const yaExiste = await this.getCierreNegocio(desdeISO, hastaISO);
+    if (yaExiste) throw new Error('Este periodo ya tiene un cierre general.');
+
+    const elig = await this.getCierreNegocioElegibilidad(desdeISO, hastaISO);
+    if (!elig.listo) throw new Error('Faltan por cerrar: ' + (elig.faltantes.join(', ') || 'no hay profesionales activos'));
+
+    const [pagos, cierresProf] = await Promise.all([
+      sbClient.from('finance_payments').select('monto').eq('business_id', BUSINESS_ID).eq('estado', 'confirmado').gte('fecha', desdeISO).lte('fecha', hastaISO),
+      sbClient.from('cierres_profesional').select('employee_id, comision_total, propinas_total, neto_pagado').eq('business_id', BUSINESS_ID).eq('periodo_desde', desdeISO).eq('periodo_hasta', hastaISO)
+    ]);
+    const ingresosTotal = Math.round((pagos.data || []).reduce((s, p) => s + Number(p.monto), 0) * 100) / 100;
+    const comisionesTotal = Math.round((cierresProf.data || []).reduce((s, c) => s + Number(c.comision_total), 0) * 100) / 100;
+
+    const empleados = await this.getEmpleados();
+    const mapaNombres = Object.fromEntries(empleados.map(e => [e.id, e.nombre]));
+    const porProfesional = (cierresProf.data || []).map(c => ({
+      nombre: mapaNombres[c.employee_id] || 'Profesional', comisionTotal: Number(c.comision_total),
+      propinasTotal: Number(c.propinas_total), netoPagado: Number(c.neto_pagado)
+    }));
+
+    await this.enviarComprobanteCierre('cierre_negocio', {
+      periodo: { desde: desdeISO, hasta: hastaISO },
+      resumen: { ingresosTotal, comisionesTotal }, porProfesional
+    });
+
+    const { data: cierre, error } = await sbClient.from('cierres_negocio').insert([{
+      business_id: BUSINESS_ID, periodo_desde: desdeISO, periodo_hasta: hastaISO,
+      ingresos_total: ingresosTotal, comisiones_total: comisionesTotal, detalle: { porProfesional },
+      enviado_en: new Date().toISOString()
+    }]).select('id').single();
+    if (error) throw error;
+
+    return cierre.id;
   },
 
   // Datos de un certificado por su código (aunque ya no tenga saldo), para el detalle de una cita
