@@ -3739,7 +3739,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <div class="fin-tab fin-sub" data-v="movimientos" onclick="finSub('movimientos')">Movimientos</div>
         <div class="fin-tab fin-sub" data-v="ventas" onclick="finSub('ventas')">Ventas en el local</div>
         <div class="fin-tab fin-sub" data-v="gastos" onclick="finSub('gastos')">Gastos</div>
-        <div class="fin-tab fin-sub" data-v="comisiones" onclick="finSub('comisiones')">Comisiones</div>
+        <div class="fin-tab fin-sub" data-v="comisiones" onclick="finSub('comisiones')">Comisiones y propinas</div>
         <div class="fin-tab fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Periodo de cierre</div>
       </div>
       <div id="fin-barra-periodo" class="fin-periodo">
@@ -4350,7 +4350,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
             <button type="button" id="fv-propina-modo-monto" onclick="fvPropinaModo('monto')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:var(--annly-lilac);color:var(--annly-purple-dark);">$</button>
           </div>
           <input class="fi" id="fv-propina-valor" type="number" step="0.01" min="0" placeholder="0" style="flex:1;" oninput="fvPropinaRecalcular()"/>
-          <select class="fi" id="fv-propina-metodo" style="flex:1;">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
+          <select class="fi" id="fv-propina-metodo" style="flex:1;"></select>
         </div>
         <p id="fv-propina-calc" style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el pago. Queda pendiente de liquidar en Finanzas → Comisiones.</p>
       </div>
@@ -4415,6 +4415,40 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 </div>
 
+<div class="ov" id="ov-fin-propina-contado">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Pagar propina al contado</span>
+      <button class="modal-close" onclick="cerrarModalFin('ov-fin-propina-contado')">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="fpc-resumen" style="font-size:13px;font-weight:800;color:var(--ink);margin:-4px 0 14px;line-height:1.5;"></p>
+      <div class="fg"><label class="flbl">¿Con qué medio se le pagó al profesional?</label>
+        <select class="fi" id="fpc-metodo"></select>
+      </div>
+      <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fpc-nota" placeholder="Ej: se le hizo Yappy el mismo día"/></div>
+      <p id="fpc-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" id="fpc-btn" onclick="confirmarPagarPropinaContado()"><i class="ti ti-check" style="font-size:17px;"></i> Marcar como pagada</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-confirmar">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="cf-titulo">Confirmar</span>
+      <button class="modal-close" onclick="confirmarNo()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="cf-mensaje" style="font-size:13px;line-height:1.6;color:var(--ink);margin-bottom:16px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-save" id="cf-btn" style="flex:1;" onclick="confirmarSi()"><i class="ti ti-check" style="font-size:17px;"></i> Confirmar</button>
+        <button class="btn-add" style="padding:0 18px;" onclick="confirmarNo()">Volver</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-motivo">
   <div class="modal">
     <div class="modal-hdr">
@@ -4430,7 +4464,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <p id="mo-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <div style="display:flex;gap:8px;">
         <button class="btn-save" id="mo-btn" style="flex:1;background:#C2695A;box-shadow:none;" onclick="confirmarMotivo()"></button>
-        <button class="btn-ico" style="width:auto;padding:0 18px;height:auto;font-weight:700;" onclick="resolverMotivo(null)">Volver</button>
+        <button class="btn-add" style="padding:0 18px;" onclick="resolverMotivo(null)">Volver</button>
       </div>
     </div>
   </div>
@@ -4609,7 +4643,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=36"></script>
+<script src="sheets.js?v=37"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -8159,13 +8193,13 @@ function htmlVentasFin(){
     }
     const v = it.v;
     if (v.anulada){
-      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);opacity:.7;">
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--ink);text-decoration:line-through;">${escCat(v.servicio)}</div>
-          <div style="font-size:11.5px;color:var(--ink-soft);margin:2px 0 6px;">${fechaCortaFin(v.fecha)}${v.cliente ? ' · ' + escCat(v.cliente) : ''}${FIN.equipo[v.empleadoId] ? ' · ' + escCat(FIN.equipo[v.empleadoId]) : ''}</div>
-          <span style="display:inline-block;background:#FBEDEE;color:#C2695A;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;">Anulada${v.motivoAnulacion ? ' · ' + escCat(v.motivoAnulacion) : ''}</span>
+          <div style="font-size:13px;font-weight:700;color:#000;text-decoration:line-through;text-decoration-color:#E11D2E;">${escCat(v.servicio)}</div>
+          <div style="font-size:11.5px;color:#000;margin:2px 0 6px;">${fechaCortaFin(v.fecha)}${v.cliente ? ' · ' + escCat(v.cliente) : ''}${FIN.equipo[v.empleadoId] ? ' · ' + escCat(FIN.equipo[v.empleadoId]) : ''}</div>
+          <span style="display:inline-block;background:#FBEDEE;color:#E11D2E;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;">Anulada${v.motivoAnulacion ? ' · ' + escCat(v.motivoAnulacion) : ''}</span>
         </div>
-        <div style="font-size:14px;font-weight:800;color:var(--ink-soft);text-decoration:line-through;">${fmtDinero(v.monto)}</div>
+        <div style="font-size:14px;font-weight:800;color:#E11D2E;text-decoration:line-through;text-decoration-color:#E11D2E;">${fmtDinero(v.monto)}</div>
       </div>`;
     }
     const pagos = FIN.pagos.filter(p => p.localSaleId === v.id);
@@ -8218,22 +8252,22 @@ function htmlGastosFin(){
   const filas = FIN.gastosTodos.map(g => {
     const detalle = `${fechaCortaFin(g.fecha)} · ${METODOS_PAGO[g.metodo]||g.metodo}${g.referencia ? ' · ' + escCat(g.referencia) : ''}`;
     if (g.anulado){
-      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);opacity:.7;">
+      return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--ink);text-decoration:line-through;">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
-          <div style="font-size:11.5px;color:var(--ink-soft);margin:2px 0 6px;">${detalle}</div>
-          <span style="display:inline-block;background:#FBEDEE;color:#C2695A;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;">Anulado${g.motivoAnulacion ? ' · ' + escCat(g.motivoAnulacion) : ''}</span>
+          <div style="font-size:13px;font-weight:700;color:#000;text-decoration:line-through;text-decoration-color:#E11D2E;">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
+          <div style="font-size:11.5px;color:#000;margin:2px 0 6px;">${detalle}</div>
+          <span style="display:inline-block;background:#FBEDEE;color:#E11D2E;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;">Anulado${g.motivoAnulacion ? ' · ' + escCat(g.motivoAnulacion) : ''}</span>
         </div>
-        <div style="font-size:14px;font-weight:800;color:var(--ink-soft);text-decoration:line-through;">−${fmtDinero(g.monto)}</div>
+        <div style="font-size:14px;font-weight:800;color:#E11D2E;text-decoration:line-through;text-decoration-color:#E11D2E;">−${fmtDinero(g.monto)}</div>
       </div>`;
     }
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);">
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:700;color:var(--ink);">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
-        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${detalle}</div>
+        <div style="font-size:13px;font-weight:700;color:#000;">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
+        <div style="font-size:11.5px;color:#000;margin-top:2px;">${detalle}</div>
       </div>
-      <div style="font-size:14px;font-weight:800;color:${COLOR_EGRESO};">−${fmtDinero(g.monto)}</div>
-      <button class="btn-ico del" style="width:auto;padding:0 10px;gap:5px;font-size:11px;font-weight:700;color:#C2695A;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban"></i> Anular</button>
+      <div style="font-size:14px;font-weight:800;color:#E11D2E;">−${fmtDinero(g.monto)}</div>
+      <button class="btn-add" style="font-size:11px;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban"></i> Anular</button>
     </div>`;
   }).join('');
   return `<div class="adm-sec">
@@ -8269,19 +8303,23 @@ async function cargarComisionesFin(){
   const { desde, hasta } = rangoFinanzas();
   try {
     const empleados = FIN.empleados.length ? FIN.empleados : (await Sheets.getEmpleados()).filter(e => e.activo);
-    const [porEmpleado, propinasPendientes] = await Promise.all([
+    const [porEmpleado, propinasPendientes, propinasProgramadas, cierreNegocio, elegibilidad] = await Promise.all([
       Promise.all(empleados.map(async e => ({
         id: e.id, nombre: e.nombre, fotoUrl: e.fotoUrl,
         generado: await Sheets.getComisionGeneradaPeriodo(e.id, desde, hasta),
         propinasGeneradas: await Sheets.getPropinasGeneradasPeriodo(e.id, desde, hasta),
-        adelantos: await Sheets.getAdelantosPeriodo(e.id, desde, hasta)
+        adelantos: await Sheets.getAdelantosPeriodo(e.id, desde, hasta),
+        cierre: await Sheets.getCierreProfesional(e.id, desde, hasta)
       }))),
-      Sheets.getPropinas(null, 'pendiente')
+      Sheets.getPropinas(null, 'pendiente'),
+      Sheets.getPropinas(null, 'programada_cierre'),
+      Sheets.getCierreNegocio(desde, hasta),
+      Sheets.getCierreNegocioElegibilidad(desde, hasta)
     ]);
-    FIN.comisiones = { porEmpleado, propinasPendientes, desde, hasta };
+    FIN.comisiones = { porEmpleado, propinasPendientes, propinasProgramadas, cierreNegocio, elegibilidad, desde, hasta };
   } catch(e){
     console.error('Error cargando comisiones:', e);
-    FIN.comisiones = { porEmpleado:[], propinasPendientes:[], desde, hasta, error:true };
+    FIN.comisiones = { porEmpleado:[], propinasPendientes:[], propinasProgramadas:[], cierreNegocio:null, elegibilidad:{listo:false,faltantes:[]}, desde, hasta, error:true };
   }
   if (FIN_VISTA === 'comisiones') elFin('fin-contenido').innerHTML = htmlComisionesFin();
 }
@@ -8293,17 +8331,51 @@ function htmlComisionesFin(){
 
   const propinasHtml = C.propinasPendientes.length
     ? C.propinasPendientes.map(p => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);">
-        <div>
-          <div style="font-size:12.5px;font-weight:700;">${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</div>
-          <div style="font-size:11px;color:var(--ink-soft);">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}${p.clienteNombre ? ' · ' + escCat(p.clienteNombre) : ''}${p.servicioNombre ? ' · ' + escCat(p.servicioNombre) : ''}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);">
+        <div style="min-width:0;">
+          <div style="font-size:12.5px;font-weight:700;color:#000;">${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</div>
+          <div style="font-size:11px;color:#000;">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}${p.clienteNombre ? ' · ' + escCat(p.clienteNombre) : ''}${p.servicioNombre ? ' · ' + escCat(p.servicioNombre) : ''}</div>
         </div>
-        <button class="btn-add" style="font-size:11.5px;" onclick="liquidarPropinaFin('${p.id}')">Liquidar</button>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn-add" style="font-size:11px;" onclick="abrirPagarPropinaContado('${p.id}')">Pagar al contado</button>
+          <button class="btn-add" style="font-size:11px;" onclick="programarPropinaCierreFin('${p.id}')">Programar para el corte</button>
+        </div>
       </div>`).join('')
     : '<p style="font-size:12px;color:var(--ink-soft);padding:0.5rem 0 0;">No hay propinas pendientes.</p>';
 
+  const programadasHtml = C.propinasProgramadas.length
+    ? C.propinasProgramadas.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#000;">${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</div>
+          <div style="font-size:11px;color:#000;">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)}${p.clienteNombre ? ' · ' + escCat(p.clienteNombre) : ''}</div>
+        </div>
+        <span style="font-size:10.5px;color:var(--ink-soft);">Se paga en el corte</span>
+      </div>`).join('')
+    : '';
+
   const empleadosHtml = C.porEmpleado.length ? C.porEmpleado.map(e => {
     const neto = Math.round((e.generado - e.adelantos) * 100) / 100;
+    const resumenObj = { generado: e.generado, propinasGeneradas: e.propinasGeneradas, adelantos: e.adelantos };
+    if (e.cierre){
+      return `<div class="adm-sec" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 1rem 8px;">
+          <img src="${e.fotoUrl || ''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);"/>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13.5px;font-weight:800;color:var(--ink);">${escCat(e.nombre)}</div>
+            <span style="display:inline-block;background:#E9F6EF;color:#159A61;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;margin-top:2px;">Periodo cerrado</span>
+          </div>
+        </div>
+        <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Comisión pagada</span><strong>${fmtDinero(e.cierre.comisionTotal)}</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Propinas</span><strong>${fmtDinero(e.cierre.propinasTotal)}</strong></div>
+          <div style="display:flex;justify-content:space-between;font-size:13.5px;border-top:1px solid var(--line);padding-top:6px;"><span style="font-weight:700;">Neto pagado</span><strong style="color:#159A61;">${fmtDinero(e.cierre.netoPagado)}</strong></div>
+        </div>
+        <div style="padding:0 1rem 14px;">
+          <button class="btn-add" style="width:100%;justify-content:center;font-size:12px;" onclick="verComprobanteFin('${e.cierre.pdfBase64 || ''}','${escCat(e.nombre)}','${C.desde}','${C.hasta}')"><i class="ti ti-file-download"></i> Ver comprobante</button>
+        </div>
+      </div>`;
+    }
     return `<div class="adm-sec" style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;gap:10px;padding:14px 1rem 8px;">
         <img src="${e.fotoUrl || ''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);"/>
@@ -8318,37 +8390,156 @@ function htmlComisionesFin(){
           <strong style="font-size:19px;color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong>
         </div>
         <button class="btn-add" style="align-self:flex-start;font-size:12.5px;margin-top:4px;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Entregar adelanto</button>
+        <button class="btn-save" style="margin-top:6px;" onclick='cerrarPeriodoFin(${JSON.stringify(e.id)}, ${JSON.stringify(e.nombre)}, ${JSON.stringify(resumenObj)})'><i class="ti ti-lock" style="font-size:16px;"></i> Cerrar periodo</button>
       </div>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
 
-  return `<div class="adm-sec" style="margin-bottom:14px;">
+  const negocioHtml = C.cierreNegocio
+    ? `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
+        <span style="display:inline-block;background:#E9F6EF;color:#159A61;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;">Cierre general enviado</span>
+        <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">Ingresos: ${fmtDinero(C.cierreNegocio.ingresosTotal)} · Comisiones pagadas: ${fmtDinero(C.cierreNegocio.comisionesTotal)}</p>
+      </div>`
+    : `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
+        <button class="btn-save" style="width:100%;" ${C.elegibilidad.listo ? '' : 'disabled'} onclick="cerrarNegocioFin()"><i class="ti ti-building-store" style="font-size:16px;"></i> Cierre general del negocio</button>
+        ${C.elegibilidad.listo ? '' : `<p style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Falta cerrar: ${escCat(C.elegibilidad.faltantes.join(', ') || 'ningún profesional activo')}</p>`}
+      </div>`;
+
+  return `${negocioHtml}
+    <div class="adm-sec" style="margin-bottom:14px;">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Propinas pendientes</span></div>
       <div style="padding:0 1rem 1rem;">${propinasHtml}</div>
     </div>
+    ${programadasHtml ? `<div class="adm-sec" style="margin-bottom:14px;">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Programadas para el corte</span></div>
+      <div style="padding:0 1rem 1rem;">${programadasHtml}</div>
+    </div>` : ''}
     ${empleadosHtml}`;
 }
 
-async function liquidarPropinaFin(id){
+// ---- Propinas: pagar al contado ----
+let PROPINA_CONTADO_ID = null;
+function abrirPagarPropinaContado(id){
   const p = (FIN.comisiones && FIN.comisiones.propinasPendientes || []).find(x => x.id === id);
   if (!p) return;
-  const detalle = await pedirMotivo({
-    titulo: 'Liquidar propina',
-    resumenHtml: `<strong>${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</strong><br>${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}${p.clienteNombre ? ' · ' + escCat(p.clienteNombre) : ''}${p.servicioNombre ? ' · ' + escCat(p.servicioNombre) : ''}`,
-    avisoHtml: 'Confirma que ya le entregaste este dinero en efectivo al profesional.',
-    etiqueta: 'Detalle de cómo se pagó (obligatorio)',
-    placeholder: 'Ej: pagado en efectivo el 22/09',
-    textoBoton: 'Marcar como pagada'
-  });
-  if (!detalle) return;
+  PROPINA_CONTADO_ID = id;
+  elFin('fpc-resumen').innerHTML = `${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}<br><span style="font-weight:400;color:var(--ink-soft);">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)}${p.clienteNombre ? ' · ' + escCat(p.clienteNombre) : ''}</span>`;
+  elFin('fpc-metodo').innerHTML = METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('');
+  elFin('fpc-metodo').value = p.metodo || 'efectivo';
+  elFin('fpc-nota').value = '';
+  elFin('fpc-msg').textContent = '';
+  elFin('ov-fin-propina-contado').classList.add('open');
+}
+async function confirmarPagarPropinaContado(){
+  const msg = elFin('fpc-msg'); msg.textContent = '';
+  const btn = elFin('fpc-btn'); btn.disabled = true;
   try {
-    await Sheets.liquidarPropina(id, detalle);
+    await Sheets.pagarPropinaContado(PROPINA_CONTADO_ID, elFin('fpc-metodo').value, elFin('fpc-nota').value.trim());
+    cerrarModalFin('ov-fin-propina-contado');
     await cargarComisionesFin();
   } catch(e){
     console.error(e);
-    alert('No se pudo liquidar la propina.' + (e && e.message ? ' (' + e.message + ')' : ''));
+    msg.textContent = (e && e.message) ? e.message : 'No se pudo pagar la propina.';
+  }
+  btn.disabled = false;
+}
+
+// ---- Propinas: programar para el corte (sin reversa) ----
+async function programarPropinaCierreFin(id){
+  const p = (FIN.comisiones && FIN.comisiones.propinasPendientes || []).find(x => x.id === id);
+  if (!p) return;
+  const ok = await pedirConfirmacion({
+    titulo: 'Programar propina para el corte',
+    mensajeHtml: `<strong>${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</strong><br>${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)}<p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">Se pagará junto con el corte de periodo, no ahora. No se puede deshacer.</p>`,
+    textoBoton: 'Programar'
+  });
+  if (!ok) return;
+  try {
+    await Sheets.programarPropinaCierre(id);
+    await cargarComisionesFin();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo programar la propina.' + (e && e.message ? ' (' + e.message + ')' : ''));
   }
 }
+
+// ---- Cerrar periodo (por profesional) ----
+async function cerrarPeriodoFin(employeeId, nombre, resumenObj){
+  const neto = Math.round((resumenObj.generado - resumenObj.adelantos) * 100) / 100;
+  const ok = await pedirConfirmacion({
+    titulo: 'Cerrar periodo — ' + nombre,
+    mensajeHtml: `
+      Comisión: <strong>${fmtDinero(resumenObj.generado)}</strong><br>
+      Propinas: <strong>${fmtDinero(resumenObj.propinasGeneradas)}</strong><br>
+      Adelantos: <strong style="color:#E11D2E;">−${fmtDinero(resumenObj.adelantos)}</strong><br>
+      <strong style="font-size:15px;">Neto a pagar: ${fmtDinero(neto)}</strong>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">Esto congela los números de este periodo, genera el comprobante en PDF y se lo envía por correo al profesional. No se puede deshacer ni repetir.</p>`,
+    textoBoton: 'Confirmar cierre'
+  });
+  if (!ok) return;
+  try {
+    const { desde, hasta } = rangoFinanzas();
+    await Sheets.cerrarPeriodoProfesional({ employeeId, desdeISO: desde, hastaISO: hasta });
+    await cargarComisionesFin();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo cerrar el periodo.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
+}
+
+// ---- Cierre general del negocio ----
+async function cerrarNegocioFin(){
+  const C = FIN.comisiones;
+  if (!C || !C.elegibilidad.listo) return;
+  const ok = await pedirConfirmacion({
+    titulo: 'Cierre general del negocio',
+    mensajeHtml: `Se le va a mandar al correo del dueño el resumen del periodo del ${fechaCortaFin(C.desde)} al ${fechaCortaFin(C.hasta)}, con los ingresos del negocio y las comisiones pagadas a todo el equipo.<p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">No se puede deshacer ni repetir para este mismo periodo.</p>`,
+    textoBoton: 'Enviar cierre general'
+  });
+  if (!ok) return;
+  try {
+    const { desde, hasta } = rangoFinanzas();
+    await Sheets.cerrarNegocio({ desdeISO: desde, hastaISO: hasta });
+    await cargarComisionesFin();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo hacer el cierre general.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
+}
+
+// ---- Descargar el PDF guardado de un cierre ya hecho ----
+function verComprobanteFin(pdfBase64, nombre, desde, hasta){
+  if (!pdfBase64){ alert('No hay comprobante guardado para este cierre.'); return; }
+  try {
+    const byteChars = atob(pdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `comprobante-${nombre}-${desde}-${hasta}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch(e){
+    console.error(e);
+    alert('No se pudo abrir el comprobante.');
+  }
+}
+
+// ---- Confirmación genérica sí/no (sin texto obligatorio, para acciones sin reversa) ----
+let _confirmResolve = null;
+function pedirConfirmacion({ titulo, mensajeHtml, textoBoton }){
+  return new Promise(resolve => {
+    if (_confirmResolve) _confirmResolve(false);
+    _confirmResolve = resolve;
+    elFin('cf-titulo').textContent = titulo;
+    elFin('cf-mensaje').innerHTML = mensajeHtml || '';
+    elFin('cf-btn').innerHTML = '<i class="ti ti-check" style="font-size:17px;"></i> ' + (textoBoton || 'Confirmar');
+    elFin('ov-confirmar').classList.add('open');
+  });
+}
+function confirmarSi(){ elFin('ov-confirmar').classList.remove('open'); if (_confirmResolve){ const r = _confirmResolve; _confirmResolve = null; r(true); } }
+function confirmarNo(){ elFin('ov-confirmar').classList.remove('open'); if (_confirmResolve){ const r = _confirmResolve; _confirmResolve = null; r(false); } }
 
 let ADELANTO_EMPLEADO = null;
 function abrirModalAdelanto(empleadoId, nombre, disponible){
@@ -8412,10 +8603,10 @@ async function cargarDetalleAdelantos(){
 function renderDetalleAdelantos(){
   const lista = ADELANTO_DETALLE.lista;
   elFin('fad-lista').innerHTML = lista.length ? lista.map(a => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);${a.anulado ? 'opacity:.5;' : ''}">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);">
       <div>
-        <div style="font-size:12.5px;font-weight:700;${a.anulado ? 'text-decoration:line-through;' : ''}">${fmtDinero(a.monto)}${a.nota ? ' · ' + escCat(a.nota) : ''}</div>
-        <div style="font-size:11px;color:var(--ink-soft);">${fechaCortaFin(a.fecha)}${a.anulado ? ' · Anulado: ' + escCat(a.anuladoMotivo) : ''}</div>
+        <div style="font-size:12.5px;font-weight:700;${a.anulado ? 'color:#E11D2E;text-decoration:line-through;text-decoration-color:#E11D2E;' : 'color:#000;'}">${fmtDinero(a.monto)}${a.nota ? ' · ' + escCat(a.nota) : ''}</div>
+        <div style="font-size:11px;color:#000;">${fechaCortaFin(a.fecha)}${a.anulado ? ' · Anulado: ' + escCat(a.anuladoMotivo) : ''}</div>
       </div>
       ${a.anulado ? '' : `<button class="btn-add" style="font-size:11px;" onclick="anularAdelantoFin('${a.id}')">Anular</button>`}
     </div>`).join('') : '<p style="font-size:12px;color:var(--ink-soft);text-align:center;padding:1rem;">No hay adelantos en este periodo.</p>';
@@ -8682,7 +8873,10 @@ function abrirModalVenta(){
   elFin('fv-cliente').value = '';
   elFin('fv-servicio').value = '';
   elFin('fv-monto').value = '';
-  if (elFin('fv-propina-valor')){ elFin('fv-propina-valor').value = ''; fvPropinaModo('monto'); }
+  if (elFin('fv-propina-valor')){
+    elFin('fv-propina-metodo').innerHTML = METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('');
+    elFin('fv-propina-valor').value = ''; fvPropinaModo('monto');
+  }
   elFin('fv-msg').textContent = '';
   elFin('fv-servicios-dl').innerHTML = (typeof SERVICES !== 'undefined' ? SERVICES : []).filter(s => s.active).map(s => `<option value="${escCat(s.name)}"></option>`).join('');
   // El profesional es obligatorio cuando el negocio tiene equipo: las comisiones dependen de él
