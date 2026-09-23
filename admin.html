@@ -4609,7 +4609,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=35"></script>
+<script src="sheets.js?v=36"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -8296,7 +8296,7 @@ function htmlComisionesFin(){
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);">
         <div>
           <div style="font-size:12.5px;font-weight:700;">${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</div>
-          <div style="font-size:11px;color:var(--ink-soft);">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}</div>
+          <div style="font-size:11px;color:var(--ink-soft);">${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}${p.clienteNombre ? ' · ' + escCat(p.clienteNombre) : ''}${p.servicioNombre ? ' · ' + escCat(p.servicioNombre) : ''}</div>
         </div>
         <button class="btn-add" style="font-size:11.5px;" onclick="liquidarPropinaFin('${p.id}')">Liquidar</button>
       </div>`).join('')
@@ -8334,7 +8334,7 @@ async function liquidarPropinaFin(id){
   if (!p) return;
   const detalle = await pedirMotivo({
     titulo: 'Liquidar propina',
-    resumenHtml: `<strong>${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</strong><br>${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}`,
+    resumenHtml: `<strong>${escCat(FIN.equipo[p.empleadoId] || 'Profesional')}</strong><br>${fmtDinero(p.monto)} · ${fechaCortaFin(p.fecha)} · ${METODOS_PAGO[p.metodo] || p.metodo}${p.clienteNombre ? ' · ' + escCat(p.clienteNombre) : ''}${p.servicioNombre ? ' · ' + escCat(p.servicioNombre) : ''}`,
     avisoHtml: 'Confirma que ya le entregaste este dinero en efectivo al profesional.',
     etiqueta: 'Detalle de cómo se pagó (obligatorio)',
     placeholder: 'Ej: pagado en efectivo el 22/09',
