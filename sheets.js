@@ -3522,7 +3522,8 @@ const Sheets = {
     if (v.propina && v.propina.monto > 0 && v.empleadoId) {
       await this.registrarPropina({
         employeeId: v.empleadoId, localSaleId: venta.id, monto: v.propina.monto,
-        metodo: v.propina.metodo, fecha: v.fecha
+        metodo: v.propina.metodo, fecha: v.fecha,
+        clienteNombre: v.cliente || null, servicioNombre: v.servicio || null
       });
     }
 
@@ -3627,7 +3628,8 @@ const Sheets = {
     if (datos.propina && datos.propina.monto > 0 && empleadoFinal) {
       await this.registrarPropina({
         employeeId: empleadoFinal, appointmentId: citaId, monto: datos.propina.monto,
-        metodo: datos.propina.metodo, fecha: datos.fecha
+        metodo: datos.propina.metodo, fecha: datos.fecha,
+        clienteNombre: datos.cliente || null, servicioNombre: datos.concepto || (citaActual && citaActual.servicio_nombre) || null
       });
     }
   },
@@ -3731,12 +3733,13 @@ const Sheets = {
   // ---- Propinas ----
   // Solo las que llegan al negocio por tarjeta/Yappy/transferencia; nacen "pendiente"
   // y se liquidan (efectivo en mano del profesional) con liquidarPropina.
-  async registrarPropina({ employeeId, monto, metodo, fecha, appointmentId, localSaleId }) {
+  async registrarPropina({ employeeId, monto, metodo, fecha, appointmentId, localSaleId, clienteNombre, servicioNombre }) {
     await window.AnnlyReady;
     if (metodo === 'certificado') throw new Error('El certificado nunca cubre propina.');
     const { error } = await sbClient.from('propinas').insert([{
       business_id: BUSINESS_ID, employee_id: employeeId, monto, metodo, fecha,
-      appointment_id: appointmentId || null, local_sale_id: localSaleId || null
+      appointment_id: appointmentId || null, local_sale_id: localSaleId || null,
+      cliente_nombre: clienteNombre || null, servicio_nombre: servicioNombre || null
     }]);
     if (error) throw error;
   },
@@ -3751,7 +3754,8 @@ const Sheets = {
     return (data || []).map(p => ({
       id: p.id, empleadoId: p.employee_id, monto: Number(p.monto), metodo: p.metodo,
       fecha: p.fecha, estado: p.estado, pagadaEn: p.pagada_en, pagadaDetalle: p.pagada_detalle || '',
-      appointmentId: p.appointment_id, localSaleId: p.local_sale_id
+      appointmentId: p.appointment_id, localSaleId: p.local_sale_id,
+      clienteNombre: p.cliente_nombre || '', servicioNombre: p.servicio_nombre || ''
     }));
   },
 
