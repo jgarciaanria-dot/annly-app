@@ -3740,7 +3740,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <div class="fin-tab fin-sub" data-v="ventas" onclick="finSub('ventas')">Ventas en el local</div>
         <div class="fin-tab fin-sub" data-v="gastos" onclick="finSub('gastos')">Gastos</div>
         <div class="fin-tab fin-sub" data-v="comisiones" onclick="finSub('comisiones')">Comisiones y propinas</div>
-        <div class="fin-tab fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Periodo de cierre</div>
+        <div class="fin-tab fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Cierre de periodos</div>
       </div>
       <div id="fin-barra-periodo" class="fin-periodo">
         <select class="fi" id="fin-periodo" onchange="cambiarPeriodoFinanzas(this.value)"></select>
@@ -7780,7 +7780,7 @@ function renderFinanzas(){
   else if (FIN_VISTA === 'ventas') cont.innerHTML = htmlVentasFin();
   else if (FIN_VISTA === 'gastos') cont.innerHTML = htmlGastosFin();
   else if (FIN_VISTA === 'comisiones') { cont.innerHTML = FIN.comisiones ? htmlComisionesFin() : '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>'; if (!FIN.comisiones) cargarComisionesFin(); }
-  else if (FIN_VISTA === 'ajustes') { cont.innerHTML = htmlAjustesFin(); faCambio(); }
+  else if (FIN_VISTA === 'ajustes') { cont.innerHTML = htmlCierresFin(); faCambio(); if (!FIN.comisiones) cargarComisionesFin(); }
 }
 
 // Periodo anterior comparable: mismo largo, justo antes. Si el periodo actual sigue en curso, se compara
@@ -8322,6 +8322,7 @@ async function cargarComisionesFin(){
     FIN.comisiones = { porEmpleado:[], propinasPendientes:[], propinasProgramadas:[], cierreNegocio:null, elegibilidad:{listo:false,faltantes:[]}, desde, hasta, error:true };
   }
   if (FIN_VISTA === 'comisiones') elFin('fin-contenido').innerHTML = htmlComisionesFin();
+  else if (FIN_VISTA === 'ajustes') { elFin('fin-contenido').innerHTML = htmlCierresFin(); faCambio(); }
 }
 
 function htmlComisionesFin(){
@@ -8356,6 +8357,76 @@ function htmlComisionesFin(){
 
   const empleadosHtml = C.porEmpleado.length ? C.porEmpleado.map(e => {
     const neto = Math.round((e.generado - e.adelantos) * 100) / 100;
+    return `<div class="adm-sec" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 1rem 8px;">
+        <img src="${e.fotoUrl || ''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);"/>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13.5px;font-weight:800;color:var(--ink);">${escCat(e.nombre)}</div>
+          ${e.cierre ? '<span style="display:inline-block;background:#E9F6EF;color:#159A61;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;margin-top:2px;">Periodo cerrado</span>' : ''}
+        </div>
+      </div>
+      <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong style="font-size:17px;">${fmtDinero(e.generado)}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Propinas generadas en caja</span><strong style="font-size:17px;">${fmtDinero(e.propinasGeneradas)}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;cursor:pointer;" onclick="abrirDetalleAdelantos('${e.id}','${escCat(e.nombre)}')" title="Ver detalle de adelantos"><span style="color:var(--ink);font-weight:700;text-decoration:underline;">Adelantos entregados</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px;">
+          <span style="font-weight:700;color:var(--ink);">Neto estimado</span>
+          <strong style="font-size:19px;color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong>
+        </div>
+        ${e.cierre
+          ? '<p style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Este periodo ya se cerró — revisa el comprobante en Cierre de periodos.</p>'
+          : `<button class="btn-add" style="align-self:flex-start;font-size:12.5px;margin-top:4px;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Entregar adelanto</button>`}
+      </div>
+    </div>`;
+  }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
+
+  return `<div class="adm-sec" style="margin-bottom:14px;">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Propinas pendientes</span></div>
+      <div style="padding:0 1rem 1rem;">${propinasHtml}</div>
+    </div>
+    ${programadasHtml ? `<div class="adm-sec" style="margin-bottom:14px;">
+      <div class="adm-sec-hdr"><span class="adm-sec-title">Programadas para el corte</span></div>
+      <div style="padding:0 1rem 1rem;">${programadasHtml}</div>
+    </div>` : ''}
+    ${empleadosHtml}`;
+}
+
+// ---------- Cierre de periodos: config de periodicidad + cierre por profesional + cierre general ----------
+function htmlCierresFin(){
+  const a = FIN.ajustes;
+  const ajustesHtml = `<div class="adm-sec" style="margin-bottom:14px;"><div class="adm-sec-hdr"><span class="adm-sec-title">Configuración del periodo</span></div>
+    <div style="padding:0 1rem 1rem;">
+      <p style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Define cada cuánto liquidas a tu equipo. El Resumen y el cierre de comisiones usan este periodo.</p>
+      <div class="fg"><label class="flbl">Cierre</label>
+        <select class="fi" id="fa-periodo" onchange="faCambio()">
+          <option value="quincenal"${a.periodo === 'quincenal' ? ' selected' : ''}>Quincenal</option>
+          <option value="semanal"${a.periodo === 'semanal' ? ' selected' : ''}>Semanal</option>
+        </select>
+      </div>
+      <p id="fa-nota-quincenal" style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 12px;">Primera quincena: del 1 al 15 · Segunda quincena: del 16 al último día del mes.</p>
+      <div class="fg" id="fa-semana-wrap"><label class="flbl">La semana comienza el</label>
+        <select class="fi" id="fa-dia">${DIAS_SEMANA.map((d,i) => `<option value="${i}"${a.semanaInicia === i ? ' selected' : ''}>${d}</option>`).join('')}</select>
+      </div>
+      <p id="fa-msg" style="font-size:12px;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" onclick="guardarAjustesFin()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar periodo</button>
+    </div></div>`;
+
+  const C = FIN.comisiones;
+  if (!C) return ajustesHtml + '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando el cierre del periodo...</p>';
+  if (C.error) return ajustesHtml + '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;">No se pudo cargar el cierre del periodo.</p>';
+
+  const negocioHtml = C.cierreNegocio
+    ? `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
+        <span style="display:inline-block;background:#E9F6EF;color:#159A61;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;">Cierre general enviado</span>
+        <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">Ingresos: ${fmtDinero(C.cierreNegocio.ingresosTotal)} · Comisiones pagadas: ${fmtDinero(C.cierreNegocio.comisionesTotal)}</p>
+      </div>`
+    : `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
+        <button class="btn-save" style="width:100%;" ${C.elegibilidad.listo ? '' : 'disabled'} onclick="cerrarNegocioFin()"><i class="ti ti-building-store" style="font-size:16px;"></i> Cierre general del negocio</button>
+        ${C.elegibilidad.listo ? '' : `<p style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Falta cerrar: ${escCat(C.elegibilidad.faltantes.join(', ') || 'ningún profesional activo')}</p>`}
+      </div>`;
+
+  const empleadosHtml = C.porEmpleado.length ? C.porEmpleado.map(e => {
+    const neto = Math.round((e.generado - e.adelantos) * 100) / 100;
     const resumenObj = { generado: e.generado, propinasGeneradas: e.propinasGeneradas, adelantos: e.adelantos };
     if (e.cierre){
       return `<div class="adm-sec" style="margin-bottom:12px;">
@@ -8381,40 +8452,17 @@ function htmlComisionesFin(){
         <img src="${e.fotoUrl || ''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);"/>
         <div style="font-size:13.5px;font-weight:800;color:var(--ink);">${escCat(e.nombre)}</div>
       </div>
-      <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong style="font-size:17px;">${fmtDinero(e.generado)}</strong></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;"><span style="color:var(--ink-soft);">Propinas generadas en caja</span><strong style="font-size:17px;">${fmtDinero(e.propinasGeneradas)}</strong></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;cursor:pointer;" onclick="abrirDetalleAdelantos('${e.id}','${escCat(e.nombre)}')" title="Ver detalle de adelantos"><span style="color:var(--ink);font-weight:700;text-decoration:underline;">Adelantos entregados</span><strong style="font-size:17px;color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px;">
-          <span style="font-weight:700;color:var(--ink);">Neto estimado</span>
-          <strong style="font-size:19px;color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong>
-        </div>
-        <button class="btn-add" style="align-self:flex-start;font-size:12.5px;margin-top:4px;" onclick="abrirModalAdelanto('${e.id}','${escCat(e.nombre)}',${neto})"><i class="ti ti-cash"></i> Entregar adelanto</button>
+      <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong>${fmtDinero(e.generado)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Propinas</span><strong>${fmtDinero(e.propinasGeneradas)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Adelantos</span><strong style="color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:13.5px;border-top:1px solid var(--line);padding-top:6px;"><span style="font-weight:700;">Neto a pagar</span><strong style="color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong></div>
         <button class="btn-save" style="margin-top:6px;" onclick='cerrarPeriodoFin(${JSON.stringify(e.id)}, ${JSON.stringify(e.nombre)}, ${JSON.stringify(resumenObj)})'><i class="ti ti-lock" style="font-size:16px;"></i> Cerrar periodo</button>
       </div>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
 
-  const negocioHtml = C.cierreNegocio
-    ? `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
-        <span style="display:inline-block;background:#E9F6EF;color:#159A61;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;">Cierre general enviado</span>
-        <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">Ingresos: ${fmtDinero(C.cierreNegocio.ingresosTotal)} · Comisiones pagadas: ${fmtDinero(C.cierreNegocio.comisionesTotal)}</p>
-      </div>`
-    : `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
-        <button class="btn-save" style="width:100%;" ${C.elegibilidad.listo ? '' : 'disabled'} onclick="cerrarNegocioFin()"><i class="ti ti-building-store" style="font-size:16px;"></i> Cierre general del negocio</button>
-        ${C.elegibilidad.listo ? '' : `<p style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Falta cerrar: ${escCat(C.elegibilidad.faltantes.join(', ') || 'ningún profesional activo')}</p>`}
-      </div>`;
-
-  return `${negocioHtml}
-    <div class="adm-sec" style="margin-bottom:14px;">
-      <div class="adm-sec-hdr"><span class="adm-sec-title">Propinas pendientes</span></div>
-      <div style="padding:0 1rem 1rem;">${propinasHtml}</div>
-    </div>
-    ${programadasHtml ? `<div class="adm-sec" style="margin-bottom:14px;">
-      <div class="adm-sec-hdr"><span class="adm-sec-title">Programadas para el corte</span></div>
-      <div style="padding:0 1rem 1rem;">${programadasHtml}</div>
-    </div>` : ''}
-    ${empleadosHtml}`;
+  return ajustesHtml + negocioHtml + `<div class="adm-sec-hdr" style="padding:0 0 10px;"><span class="adm-sec-title">Cierre por profesional</span></div>` + empleadosHtml;
 }
 
 // ---- Propinas: pagar al contado ----
@@ -8635,26 +8683,6 @@ async function anularAdelantoFin(id){
 }
 
 // ---------- Ajustes (periodo de cierre) ----------
-function htmlAjustesFin(){
-  const a = FIN.ajustes;
-  return `<div class="adm-sec"><div class="adm-sec-hdr"><span class="adm-sec-title">Periodo de cierre</span></div>
-    <div style="padding:1rem;">
-      <p style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Define cada cuánto liquidas a tu equipo. El Resumen usa este periodo y, más adelante, también el cierre de comisiones.</p>
-      <div class="fg"><label class="flbl">Cierre</label>
-        <select class="fi" id="fa-periodo" onchange="faCambio()">
-          <option value="quincenal"${a.periodo === 'quincenal' ? ' selected' : ''}>Quincenal</option>
-          <option value="semanal"${a.periodo === 'semanal' ? ' selected' : ''}>Semanal</option>
-        </select>
-      </div>
-      <p id="fa-nota-quincenal" style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 12px;">Primera quincena: del 1 al 15 · Segunda quincena: del 16 al último día del mes.</p>
-      <div class="fg" id="fa-semana-wrap"><label class="flbl">La semana comienza el</label>
-        <select class="fi" id="fa-dia">${DIAS_SEMANA.map((d,i) => `<option value="${i}"${a.semanaInicia === i ? ' selected' : ''}>${d}</option>`).join('')}</select>
-      </div>
-      <p id="fa-msg" style="font-size:12px;min-height:16px;margin-bottom:6px;"></p>
-      <button class="btn-save" onclick="guardarAjustesFin()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar periodo</button>
-    </div></div>`;
-}
-
 function faCambio(){
   const sel = elFin('fa-periodo');
   if (!sel) return;
