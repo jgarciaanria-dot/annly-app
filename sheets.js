@@ -1592,10 +1592,6 @@ const Sheets = {
       .eq(
         'business_id',
         BUSINESS_ID
-      )
-      .neq(
-        'estado',
-        'cancelada'
       );
 
 
@@ -1715,7 +1711,16 @@ const Sheets = {
           c.certificado_no_aplicado_motivo || '',
 
         creadoEn:
-          c.creado_en || ''
+          c.creado_en || '',
+
+        estado:
+          c.estado,
+
+        cancelacionMotivo:
+          c.cancelacion_motivo || '',
+
+        canceladaEn:
+          c.cancelada_en || null
 
       }));
   },
