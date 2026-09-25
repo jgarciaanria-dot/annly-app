@@ -481,6 +481,8 @@ function getDefaultServices(){
 let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=300;
 let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
 let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={},horariosEmpleadosCache={};
+// Cita doble: un segundo profesional, para la 2da persona de la reserva
+let empleadoSeleccionado2=null,empleadoHorarioCache2=null;
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
 let certAplicado=null; // {id, codigo, saldoDisponible}
 let pagoRender=null, abonoMostrado=null;
@@ -668,11 +670,18 @@ async function openCal(){
     const hs = await Promise.all(empleadosDelServicio.map(e => Sheets.getEmpleadoHorario(e.id).catch(() => null)));
     empleadosDelServicio.forEach((e, i) => { horariosEmpleadosCache[e.id] = hs[i]; });
   }
-  modoCualquiera = empleadosDelServicio.length > 1;
-  empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
-  empleadoHorarioCache = null;
-  if (empleadosDelServicio.length === 1) {
-    try { empleadoHorarioCache = await Sheets.getEmpleadoHorario(empleadoSeleccionado); } catch(e){ empleadoHorarioCache = null; }
+  if (curSvc.esDoble) {
+    // Cita doble: siempre se elige explícito para cada persona, nunca "cualquiera"
+    modoCualquiera = false;
+    empleadoSeleccionado = null; empleadoSeleccionado2 = null;
+    empleadoHorarioCache = null; empleadoHorarioCache2 = null;
+  } else {
+    modoCualquiera = empleadosDelServicio.length > 1;
+    empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
+    empleadoHorarioCache = null;
+    if (empleadosDelServicio.length === 1) {
+      try { empleadoHorarioCache = await Sheets.getEmpleadoHorario(empleadoSeleccionado); } catch(e){ empleadoHorarioCache = null; }
+    }
   }
   renderSelectorEmpleado();
 
@@ -730,6 +739,7 @@ function bioEmpleadoHtml(e, etiqueta, horario){
 function renderSelectorEmpleado(){
   const cont=document.getElementById('cal-empleado-sel');
   if (!cont) return;
+  if (curSvc && curSvc.esDoble){ renderSelectorEmpleadoDoble(); return; }
   if (empleadosDelServicio.length <= 1){
     // Con un solo profesional no se pregunta "¿con quién?", pero si tiene presentación se muestra
     const unico = empleadosDelServicio[0];
@@ -755,6 +765,34 @@ function renderSelectorEmpleado(){
       ${pills}
     </div>
     ${bioEmpleadoHtml(elegido, 'Sobre', empleadoHorarioCache)}`;
+}
+
+// Cita doble: 2 selectores — uno por persona — sin permitir elegir al mismo profesional en los 2
+function renderSelectorEmpleadoDoble(){
+  const cont=document.getElementById('cal-empleado-sel');
+  if (!cont) return;
+  cont.style.display='block';
+  const pill=(e,sel,cual)=>`
+    <div class="emp-pill${sel?' sel':''}" onclick="elegirEmpleadoDoble(${cual},'${e.id}')">
+      <div class="emp-pill-av">${e.fotoUrl?`<img src="${e.fotoUrl}"/>`:`<span>${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`}</div>
+      <span>${e.nombre}</span>
+    </div>`;
+  const pillsA = empleadosDelServicio.filter(e=>e.id!==empleadoSeleccionado2).map(e=>pill(e, empleadoSeleccionado===e.id, 1)).join('');
+  const pillsB = empleadosDelServicio.filter(e=>e.id!==empleadoSeleccionado).map(e=>pill(e, empleadoSeleccionado2===e.id, 2)).join('');
+  cont.innerHTML = `
+    <p class="emp-sel-lbl">Profesional para ti</p>
+    <div class="emp-pill-row">${pillsA}</div>
+    <p class="emp-sel-lbl" style="margin-top:10px;">Profesional para tu acompañante</p>
+    <div class="emp-pill-row">${pillsB}</div>
+    ${(!empleadoSeleccionado||!empleadoSeleccionado2)?'<p style="font-size:11px;color:#aaa;margin-top:8px;">Elige un profesional distinto para cada persona para ver los horarios disponibles.</p>':''}`;
+}
+
+async function elegirEmpleadoDoble(cual, id){
+  if (cual===1){ empleadoSeleccionado=id; try{ empleadoHorarioCache=await Sheets.getEmpleadoHorario(id);}catch(e){ empleadoHorarioCache=null; } }
+  else { empleadoSeleccionado2=id; try{ empleadoHorarioCache2=await Sheets.getEmpleadoHorario(id);}catch(e){ empleadoHorarioCache2=null; } }
+  renderSelectorEmpleadoDoble();
+  renderCal();
+  if (selectedDay) selDay2(selectedDay);
 }
 
 async function elegirEmpleado(id){
@@ -795,6 +833,10 @@ function empleadoTrabajaEn(id, dow, slotKey){
 }
 
 function diaCerrado(dow){
+  if (curSvc && curSvc.esDoble){
+    if (!empleadoSeleccionado || !empleadoSeleccionado2) return true; // hasta elegir a los 2 no hay calendario que mostrar
+    return !!cfgDia(horarioDeEmpleado(empleadoSeleccionado), dow).cerrado || !!cfgDia(horarioDeEmpleado(empleadoSeleccionado2), dow).cerrado;
+  }
   // "Cualquiera disponible": el día está cerrado solo si NINGÚN profesional trabaja ese día
   if (modoCualquiera && empleadosDelServicio.length > 1) {
     return empleadosDelServicio.every(e => !!cfgDia(horarioDeEmpleado(e.id), dow).cerrado);
@@ -838,7 +880,17 @@ function genSlots(){
   const dt=new Date(calY,calM,selectedDay);
   const dow=dt.getDay();
   let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
-  if (modoCualquiera && empleadosDelServicio.length > 1) {
+  if (curSvc && curSvc.esDoble) {
+    if (!empleadoSeleccionado || !empleadoSeleccionado2) return [];
+    const cA = cfgDia(horarioDeEmpleado(empleadoSeleccionado), dow);
+    const cB = cfgDia(horarioDeEmpleado(empleadoSeleccionado2), dow);
+    if (cA.cerrado || cB.cerrado || !cA.abre || !cB.abre || !cA.cierra || !cB.cierra) return [];
+    const abreMax = Math.max(timeToMin(cA.abre), timeToMin(cB.abre));
+    const cierraMin = Math.min(timeToMin(cA.cierra), timeToMin(cB.cierra));
+    if (abreMax >= cierraMin) return [];
+    hIni = Math.floor(abreMax/60); mIni = abreMax % 60;
+    hFin = Math.floor(cierraMin/60); mFin = cierraMin % 60;
+  } else if (modoCualquiera && empleadosDelServicio.length > 1) {
     // Rango que cubre a todos los profesionales que trabajan ese día
     const abiertos = empleadosDelServicio.map(e => cfgDia(horarioDeEmpleado(e.id), dow))
       .filter(c => !c.cerrado && c.abre && c.cierra);
@@ -893,7 +945,16 @@ async function selDay2(d){
   document.getElementById('timeGrid').innerHTML='<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
   const fechaStr=d+' de '+MESES[calM]+' '+calY;
   try{
-    if (modoCualquiera && empleadosDelServicio.length > 1){
+    if (curSvc && curSvc.esDoble){
+      const [ocA, ocB] = await Promise.all([
+        Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado).catch(()=>[]),
+        Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado2).catch(()=>[])
+      ]);
+      ocupadosPorEmpleadoCache = {};
+      ocupadosPorEmpleadoCache[empleadoSeleccionado]=ocA;
+      ocupadosPorEmpleadoCache[empleadoSeleccionado2]=ocB;
+      window._citasOcupadas = null;
+    } else if (modoCualquiera && empleadosDelServicio.length > 1){
       const resultados = await Promise.all(empleadosDelServicio.map(e => Sheets.getHorasOcupadas(fechaStr, e.id).catch(()=>[])));
       ocupadosPorEmpleadoCache = {};
       empleadosDelServicio.forEach((e,i) => { ocupadosPorEmpleadoCache[e.id] = resultados[i]; });
@@ -915,7 +976,9 @@ function renderTimes(){
   grid.innerHTML='';
   slots.forEach(({key,lbl})=>{
     let ocupada;
-    if (modoCualquiera && empleadosDelServicio.length > 1){
+    if (curSvc && curSvc.esDoble){
+      ocupada = isBlocked(key, ocupadosPorEmpleadoCache[empleadoSeleccionado]||[], durSvc) || isBlocked(key, ocupadosPorEmpleadoCache[empleadoSeleccionado2]||[], durSvc);
+    } else if (modoCualquiera && empleadosDelServicio.length > 1){
       // Solo se ve "ocupado" si TODOS los profesionales que hacen el servicio están ocupados
       // o no trabajan a esa hora
       const dowSlot = new Date(calY,calM,selectedDay).getDay();
@@ -1003,9 +1066,10 @@ function goForm(){
         <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}<br><strong>Monto:</strong> $${montoAbono.toFixed(2)}<br><span style="color:#e74c3c;font-size:11px;">Incluye tu nombre en la referencia</span></div>
       </div>`;
     }
+    const stepAbono = curSvc.esDoble ? 3 : 2;
     if(!tieneYappy && !tieneYappyComercial && !tieneBanco){
       pagoSection=`
-      <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">${stepAbono}</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
       <div class="note-box-warn">
         <i class="ti ti-whatsapp" aria-hidden="true"></i>
         <span>Este servicio requiere un abono. Contáctanos por WhatsApp para coordinar el pago antes de confirmar tu cita.</span>
@@ -1013,7 +1077,7 @@ function goForm(){
       <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: coordinado por WhatsApp"/></div>`;
     } else {
       pagoSection=`
-      <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">${stepAbono}</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
       <div class="timer-box" id="timerBox">
         <div class="timer-val" id="timerVal">5:00</div>
         <div class="timer-lbl">Tienes <strong>5 minutos</strong> para completar el pago.<br>Si no se confirma, el cupo se libera.</div>
@@ -1060,6 +1124,13 @@ function goForm(){
     </div>
     <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe" placeholder="tu@correo.com"/></div>
     <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fnote" placeholder="Alguna preferencia o detalle que debamos saber..."/></div>
+    ${curSvc.esDoble ? `
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Datos de tu acompañante</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="fn2" placeholder="Nombre de tu acompañante"/></div>
+      <div class="fg"><label class="flbl">WhatsApp</label><input class="fi" id="fp2" placeholder="+507..."/></div>
+    </div>
+    <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe2" placeholder="correo@acompañante.com"/></div>` : `
     <div class="fg">
       <label class="flbl">¿Tienes un cupón de descuento?</label>
       <div style="display:flex;gap:8px;">
@@ -1075,9 +1146,9 @@ function goForm(){
         <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:#2E2B2B;color:#C9A96E;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
-    </div>
+    </div>`}
     <div id="pagoWrap">${pagoSection}</div>
-    <button class="btn-main" id="btnConfirmar" onclick="confirmar('${dayStr}')" style="${(tieneAbono&&tieneYappyComercial)?'display:none;':''}">Confirmar mi cita</button>`;
+    <button class="btn-main" id="btnConfirmar" onclick="${curSvc.esDoble ? `confirmarDoble('${dayStr}')` : `confirmar('${dayStr}')`}" style="${(tieneAbono&&tieneYappyComercial)?'display:none;':''}">Confirmar mi cita</button>`;
 
   if(tieneAbono && tieneYappyComercial) selPago('yappy');
   if(tieneAbono) startTimer();
@@ -1433,6 +1504,91 @@ async function finalizarCita(dayStr, ref){
       console.error('Error verificando elegibilidad de ruleta:', err);
     }
   }, 1800);
+}
+
+// ---- Cita doble: confirmación y guardado (2 personas, 2 profesionales, 1 solo abono) ----
+async function confirmarDoble(dayStr){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe').value.trim();
+  const nombre2=document.getElementById('fn2').value.trim();
+  const tel2=document.getElementById('fp2').value.trim();
+  const correo2=document.getElementById('fe2').value.trim();
+  const refEl=document.getElementById('fref');
+  const ref=refEl?refEl.value.trim():'Sin abono';
+  const tieneAbono = !!(curSvc.esEval || curSvc.requiereAbono);
+  if(!nombre||!tel||!correo){alert('Por favor completa tu nombre, WhatsApp y correo.');return;}
+  if(!nombre2||!tel2||!correo2){alert('Por favor completa los datos de tu acompañante.');return;}
+  if(!empleadoSeleccionado||!empleadoSeleccionado2){alert('Elige un profesional para cada persona.');return;}
+  if(tieneAbono&&!ref){alert('Por favor ingresa el número de comprobante del pago.');return;}
+  if(timerInt)clearInterval(timerInt);
+  const btnC=document.getElementById('btnConfirmar');
+  if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
+  await finalizarCitaDoble(dayStr, ref);
+}
+
+async function finalizarCitaDoble(dayStr, ref){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe').value.trim();
+  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
+  const nombre2=document.getElementById('fn2').value.trim();
+  const tel2=document.getElementById('fp2').value.trim();
+  const correo2=document.getElementById('fe2').value.trim();
+
+  const tieneAbono = !!(curSvc.esEval || curSvc.requiereAbono);
+  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const precioTotal = curSvc.price>0?curSvc.price:0;
+  const precioMitad = Math.round((precioTotal/2)*100)/100;
+  const citaIdBase = 'cita-' + Date.now();
+
+  const base = {
+    nota, servicio:curSvc.name, categoria:curSvc.cat, precioEsConsultar:false,
+    fecha:dayStr, hora:selTime, duracionMin:curSvc.durMin,
+    cuponUsado:'', descuentoCupon:0, certificadoCodigo:null, certificadoMonto:null, certificadoSaldoRestante:null
+  };
+
+  const citaPrincipal = { ...base, nombre, telefono:tel, correo,
+    precioTotal:precioMitad, precioFinal:precioMitad, comprobante:ref,
+    abonoMonto:tieneAbono?montoAbono:0, abonoTipo:tieneAbono?tipoAbono:'',
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaIdBase, empleadoId:empleadoSeleccionado };
+
+  const citaSecundaria = { ...base, nombre:nombre2, telefono:tel2, correo:correo2,
+    precioTotal:precioMitad, precioFinal:precioMitad,
+    comprobante: tieneAbono ? ('Incluido en la reserva de ' + nombre) : 'Sin abono',
+    abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2 };
+
+  try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }catch(e){ console.error('Error guardando la cita doble:', e); }
+  try{ await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); }catch(e){}
+  try{ await Sheets.upsertClienteDesdeReserva(nombre2, tel2, correo2); }catch(e){}
+
+  const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name+' (con '+nombre2+')', fecha:dayStr, hora:horaDisplay});
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo2, nombreCliente:nombre2, servicio:curSvc.name+' (con '+nombre+')', fecha:dayStr, hora:horaDisplay});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre+' y '+nombre2, telefonoCliente:tel+' / '+tel2, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
+
+  await new Promise(r=>setTimeout(r,900));
+
+  const abonoLine = tieneAbono
+    ? `<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span><br><strong>Comprobante:</strong> ${ref}<br>`
+    : '';
+  document.getElementById('form-body').innerHTML=`
+    <div class="success-wrap">
+      <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+      <div class="s-title">¡Cita doble reservada!</div>
+      <div class="s-sub">Le mandamos la confirmación a los 2 correos.</div>
+      <div class="s-detail">
+        <strong>Servicio:</strong> ${curSvc.name}<br>
+        <strong>Fecha:</strong> ${dayStr}<br>
+        <strong>Hora:</strong> ${horaDisplay}<br>
+        <strong>${nombre}</strong> y <strong>${nombre2}</strong>, cada quien con su profesional elegido<br>
+        ${abonoLine}
+        <strong>Total del combo:</strong> <span style="color:#D95F2B;font-weight:600;">$${precioTotal.toFixed(2)}</span><br>
+      </div>
+      <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
+      <button class="btn-main" style="background:#2E2B2B;color:#C9A96E;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+    </div>`;
 }
 
 function openOv(id){document.getElementById(id).classList.add('open');}
