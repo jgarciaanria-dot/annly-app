@@ -5167,6 +5167,14 @@ function openModal(id,catDefault='Básicos'){
         </div>
       </div>
     </div>
+
+    <div style="background:#F9F7F3;border:0.5px solid #E8DFC8;border-radius:10px;padding:14px;margin-bottom:.75rem;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;cursor:pointer;">
+        <input type="checkbox" id="m-doble" ${s&&s.esDoble?'checked':''} style="width:16px;height:16px;accent-color:var(--gold);">
+        Es para 2 personas (cada una con su propio profesional)
+      </label>
+      <p style="font-size:11px;color:var(--ink-soft);margin:6px 0 0;">Al reservarlo en el sitio público, pide también los datos del acompañante y un profesional para cada quien. Las 2 citas quedan amarradas: se reprograman, cancelan y completan siempre juntas.</p>
+    </div>
     <button class="btn-save" onclick="guardar()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios</button>`;
   document.getElementById('ov-modal').classList.add('open');
 }
@@ -5258,6 +5266,7 @@ function guardar(){
   const durMin=parseInt(document.getElementById('m-durmin').value)||60;
   const desc=document.getElementById('m-desc').value.trim();
   const esEval = editId ? (SERVICES.find(s=>s.id===editId)?.esEval || false) : false;
+  const esDoble=document.getElementById('m-doble').checked;
   const requiereAbono=document.getElementById('m-abono').checked;
   const abonoMonto=requiereAbono?parseFloat(document.getElementById('m-abono-monto').value)||10:null;
   const abonoTipo=requiereAbono?document.getElementById('m-abono-tipo').value:'noreembolsable';
@@ -5268,10 +5277,10 @@ function guardar(){
 
   if(editId){
     const idx=SERVICES.findIndex(s=>s.id===editId);
-    if(idx>-1) SERVICES[idx]={...SERVICES[idx],name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,esEval,requiereAbono,abonoMonto,abonoTipo,imagenUrl};
+    if(idx>-1) SERVICES[idx]={...SERVICES[idx],name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,esEval,esDoble,requiereAbono,abonoMonto,abonoTipo,imagenUrl};
   } else {
     const newId=uuidNuevo();
-    SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,requiereAbono,abonoMonto,abonoTipo,desc,includes,imagenUrl});
+    SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,esDoble,requiereAbono,abonoMonto,abonoTipo,desc,includes,imagenUrl});
   }
   saveServices(); persistirOrdenCategorias(); closeModal(); renderAdmin();
 }
@@ -9484,6 +9493,7 @@ async function abrirDetalleCita(id){
     fila('Duración', '~' + (c.duracion || 60) + ' min', {icon:'ti-clock'}) +
     fila('Profesional', escCat(c.empleadoNombre || 'Sin asignar'), {icon:'ti-user-check'}) +
     (c.nota ? fila('Nota', escCat(c.nota), {icon:'ti-notes'}) : '') +
+    '<div id="cd-doble"></div>' +
     titulo('Pago', 'ti-cash');
   html += fila('Precio del servicio', r.precio == null ? 'A consultar' : fmtDinero(r.precio), {icon:'ti-tag', tone:'money'});
   if (c.completadaEn && c.precioCobrado != null && (r.precio == null || Math.abs(Number(c.precioCobrado) - r.precio) >= 0.005)){
@@ -9527,6 +9537,19 @@ async function abrirDetalleCita(id){
   if (puedeCompletar) html += `<button class="btn-save" style="margin-top:14px;" onclick="cerrarModalFin('ov-cita-detalle');abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar cita</button>`;
   elFin('cd-body').innerHTML = html;
   elFin('ov-cita-detalle').classList.add('open');
+
+  // Cita doble: mostrar con quién comparte la reserva
+  try {
+    const pareja = await Sheets.getCitaPareja(c.id);
+    const contD = elFin('cd-doble');
+    if (pareja && contD){
+      const citaPareja = (typeof CITAS_CACHE !== 'undefined' ? CITAS_CACHE : []).find(x => String(x.id) === String(pareja.id));
+      const nombreProf = citaPareja && citaPareja.empleadoNombre;
+      contD.innerHTML = `<div style="background:#F3EDFB;border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--ink);line-height:1.5;">
+        <i class="ti ti-users" style="font-size:13px;color:#7C4DA0;"></i> Cita doble — junto con <strong>${escCat(pareja.clienteNombre || 'su acompañante')}</strong>${nombreProf ? ' (con ' + escCat(nombreProf) + ')' : ''}. Reprogramar, cancelar o completar afecta a las 2 citas juntas.
+      </div>`;
+    }
+  } catch(e){}
 
   // Saldo actual del certificado aplicado a esta cita
   if (c.certificadoCodigo){
