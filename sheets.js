@@ -1153,7 +1153,10 @@ const Sheets = {
         s.includes || [],
 
       imagenUrl:
-        s.imagen_url || null
+        s.imagen_url || null,
+
+      esDoble:
+        s.es_doble || false
 
     }));
   },
@@ -1229,7 +1232,10 @@ const Sheets = {
         s.includes || [],
 
       imagen_url:
-        s.imagenUrl || null
+        s.imagenUrl || null,
+
+      es_doble:
+        s.esDoble || false
 
     });
 
@@ -1807,7 +1813,13 @@ const Sheets = {
           cita.citaId,
 
         estado:
-          'confirmada'
+          'confirmada',
+
+        ...(
+          cita.grupoCitaId
+            ? { grupo_cita_id: cita.grupoCitaId, grupo_principal: !!cita.grupoPrincipal }
+            : {}
+        )
 
     });
 
@@ -1841,6 +1853,37 @@ const Sheets = {
     return data.id;
   },
 
+  // Cita doble: guarda las 2 citas (una por profesional/clienta) amarradas con el mismo
+  // grupo_cita_id. citaPrincipal lleva el abono/comprobante de la reserva. Si la segunda
+  // falla, se deshace la primera para no dejar una cita huérfana a medias.
+  async guardarCitaDoble(citaPrincipal, citaSecundaria) {
+    await window.AnnlyReady;
+    const grupoCitaId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+      ? window.crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    const idPrincipal = await this.guardarCita({ ...citaPrincipal, grupoCitaId, grupoPrincipal: true });
+    try {
+      const idSecundaria = await this.guardarCita({ ...citaSecundaria, grupoCitaId, grupoPrincipal: false });
+      return { idPrincipal, idSecundaria, grupoCitaId };
+    } catch (e) {
+      await sbClient.from('appointments').delete().eq('id', idPrincipal);
+      throw e;
+    }
+  },
+
+  // Trae la cita pareja de una cita doble (o null si no tiene)
+  async getCitaPareja(citaId) {
+    await window.AnnlyReady;
+    const { data: actual } = await sbClient.from('appointments').select('grupo_cita_id')
+      .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
+    if (!actual || !actual.grupo_cita_id) return null;
+    const { data: pareja } = await sbClient.from('appointments').select('id, cliente_nombre, employee_id')
+      .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', actual.grupo_cita_id).neq('id', citaId).maybeSingle();
+    return pareja ? { id: pareja.id, clienteNombre: pareja.cliente_nombre, employeeId: pareja.employee_id } : null;
+  },
 
   async reprogramarCita(
     id,
@@ -1850,20 +1893,16 @@ const Sheets = {
 
     await window.AnnlyReady;
 
+    // Si es parte de una cita doble, se reprograman las 2 juntas — nunca por separado.
+    const { data: actual } = await sbClient.from('appointments').select('grupo_cita_id')
+      .eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
 
+    const base = sbClient.from('appointments').update({ fecha: fechaISO, hora }).eq('business_id', BUSINESS_ID);
     const {
       error
-    } = await sbClient
-      .from('appointments')
-      .update({
-        fecha: fechaISO,
-        hora: hora
-      })
-      .eq('id', id)
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
+    } = (actual && actual.grupo_cita_id)
+      ? await base.eq('grupo_cita_id', actual.grupo_cita_id)
+      : await base.eq('id', id);
 
 
     if (error) {
@@ -1880,19 +1919,32 @@ const Sheets = {
 
   async cancelarCita(id, motivo, detalle) {
     await window.AnnlyReady;
+
+    // Si es parte de una cita doble, se cancelan las 2 juntas — siempre, sin excepción.
+    const { data: actual } = await sbClient.from('appointments').select('grupo_cita_id')
+      .eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
+    let ids = [id];
+    if (actual && actual.grupo_cita_id) {
+      const { data: pareja } = await sbClient.from('appointments').select('id')
+        .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', actual.grupo_cita_id);
+      if (pareja && pareja.length) ids = pareja.map(p => p.id);
+    }
+
     const base = { estado: 'cancelada' };
     const conMotivo = motivo ? { ...base, cancelacion_motivo: motivo, cancelada_en: new Date().toISOString() } : base;
-    let { error } = await sbClient.from('appointments').update(conMotivo).eq('id', id).eq('business_id', BUSINESS_ID);
+    let { error } = await sbClient.from('appointments').update(conMotivo).in('id', ids).eq('business_id', BUSINESS_ID);
     if (error && motivo) {
       // Si las columnas del motivo aún no existen, se cancela igual (el motivo queda en la bitácora)
-      ({ error } = await sbClient.from('appointments').update(base).eq('id', id).eq('business_id', BUSINESS_ID));
+      ({ error } = await sbClient.from('appointments').update(base).in('id', ids).eq('business_id', BUSINESS_ID));
     }
     if (error) {
       console.error('Error cancelando la cita:', error);
       throw error;
     }
     if (motivo) {
-      await this.registrarAccion({ entidad: 'cita', entidadId: id, accion: 'cancelada', motivo, monto: null, detalle });
+      for (const cid of ids) {
+        await this.registrarAccion({ entidad: 'cita', entidadId: cid, accion: 'cancelada', motivo, monto: null, detalle });
+      }
     }
   },
 
@@ -3565,7 +3617,7 @@ const Sheets = {
     // Comisión: se calcula y se congela en la cita al momento de completarla
     // (si luego cambia el % del profesional o del servicio, no altera lo ya generado)
     const { data: citaActual } = await sbClient.from('appointments')
-      .select('employee_id, servicio_nombre')
+      .select('employee_id, servicio_nombre, grupo_cita_id')
       .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
     const empleadoFinal = (datos.cambiarEmpleado && datos.empleadoId) ? datos.empleadoId : (citaActual && citaActual.employee_id);
     let comisionPct = 0, comisionMonto = 0;
@@ -3631,6 +3683,31 @@ const Sheets = {
         metodo: datos.propina.metodo, fecha: datos.fecha,
         clienteNombre: datos.cliente || null, servicioNombre: datos.concepto || (citaActual && citaActual.servicio_nombre) || null
       });
+    }
+
+    // Cita doble: al completar una, se completa también la pareja — con su propio precio
+    // y su propia comisión, sin el ajuste que se le haya hecho a esta. El dinero (finance_payments)
+    // solo se registra en la que el admin está completando, para no duplicar el cobro.
+    if (citaActual && citaActual.grupo_cita_id) {
+      try {
+        const { data: pareja } = await sbClient.from('appointments')
+          .select('id, employee_id, servicio_nombre, precio_total, completada_en')
+          .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', citaActual.grupo_cita_id).neq('id', citaId).maybeSingle();
+        if (pareja && !pareja.completada_en) {
+          const precioPareja = Number(pareja.precio_total || 0);
+          let pctPareja = 0, montoPareja = 0;
+          if (pareja.employee_id) {
+            pctPareja = await this.getComisionAplicable(pareja.employee_id, pareja.servicio_nombre);
+            montoPareja = Math.round(precioPareja * pctPareja) / 100;
+          }
+          await sbClient.from('appointments').update({
+            completada_en: new Date().toISOString(), precio_cobrado: precioPareja,
+            comision_pct: pctPareja, comision_monto: montoPareja
+          }).eq('id', pareja.id);
+        }
+      } catch (eDoble) {
+        console.error('No se pudo completar automáticamente la pareja de la cita doble:', eDoble);
+      }
     }
   },
 
