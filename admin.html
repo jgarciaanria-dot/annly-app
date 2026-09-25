@@ -4643,7 +4643,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=37"></script>
+<script src="sheets.js?v=38"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -6265,20 +6265,22 @@ function renderCitas(){
 
   // Activas: vigentes (aún no han pasado). Sin el módulo Finanzas se cuenta desde el inicio del día de hoy.
   // Activas: línea de tiempo (21 sep, luego 22 sep...); lo recién reservado lleva la etiqueta NUEVA
-  const activas = base.filter(c => !c.completadaEn && (finOn ? c._ini >= ahora : c.fechaISO >= hoyISO))
+  const activas = base.filter(c => c.estado !== 'cancelada' && !c.completadaEn && (finOn ? c._ini >= ahora : c.fechaISO >= hoyISO))
     .sort((a,b) => a._ini - b._ini);
   const porCompletar = finOn
-    ? base.filter(c => !c.completadaEn && c._ini < ahora && c._ini >= hace90).sort((a,b) => b._ini - a._ini)
+    ? base.filter(c => c.estado !== 'cancelada' && !c.completadaEn && c._ini < ahora && c._ini >= hace90).sort((a,b) => b._ini - a._ini)
     : [];
   const completadas = finOn
     ? base.filter(c => c.completadaEn && c._ini >= hace90).sort((a,b) => b._ini - a._ini)
     : [];
+  const canceladas = base.filter(c => c.estado === 'cancelada' && c._ini >= hace90).sort((a,b) => b._ini - a._ini);
 
   const vistas = [{ k:'activas', t:'Activas', n:activas.length }];
   if (finOn){
     vistas.push({ k:'porcompletar', t:'Por completar', n:porCompletar.length });
     vistas.push({ k:'completadas', t:'Completadas', n:completadas.length });
   }
+  vistas.push({ k:'canceladas', t:'Canceladas', n:canceladas.length });
   vistas.push({ k:'resumen', t:'Resumen', n:null });   // disponible en todos los planes
   document.getElementById('citas-vistas').innerHTML = vistas.map(v =>
     `<div class="cat-pill${VISTA_CITAS === v.k ? ' sel' : ''}" onclick="cambiarVistaCitas('${v.k}')">${v.t}${v.n == null ? '' : ` <span style="opacity:.65;margin-left:2px;">${v.n}</span>`}</div>`).join('');
@@ -6305,6 +6307,10 @@ function renderCitas(){
     cont.innerHTML = filtroFecha + (completadas.length
       ? nota('Citas ya cobradas (últimos 90 días). Abre el detalle para ver el desglose y los cobros.') + htmlCitasAgrupadas(completadas)
       : vacio('Todavía no hay citas completadas'));
+  } else if (VISTA_CITAS === 'canceladas'){
+    cont.innerHTML = filtroFecha + (canceladas.length
+      ? nota('Citas canceladas (últimos 90 días), con el motivo que se dejó al cancelarlas.') + htmlCitasAgrupadas(canceladas)
+      : vacio('No hay citas canceladas'));
   } else if (VISTA_CITAS === 'resumen'){
     cont.innerHTML = htmlResumenCitas(baseProf);
   } else {
@@ -9421,15 +9427,25 @@ function htmlCardCita(c){
   const nombreEsc = (c.nombre || '').replace(/'/g, "\\'");
   const btnStyle = 'width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;';
   const precio = c.precioEsConsultar ? 'A consultar' : (c.precioTotal != null ? '$' + parseFloat(c.precioTotal).toFixed(2) : '');
-  const acciones = `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">
+  const esCancelada = c.estado === 'cancelada';
+  const acciones = esCancelada
+    ? `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">
+        <button class="btn-ico" style="${btnStyle}" onclick="abrirDetalleCita('${c.id}')"><i class="ti ti-file-description"></i> Detalle</button>
+      </div>`
+    : `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">
         <button class="btn-ico" style="${btnStyle}" onclick="abrirDetalleCita('${c.id}')"><i class="ti ti-file-description"></i> Detalle</button>
         ${c.completadaEn ? '' : `
         ${puedeCompletar ? `<button class="btn-ico" style="${btnStyle}color:#159A61;border-color:#BFE3D0;" onclick="abrirCompletarCita('${c.id}')"><i class="ti ti-circle-check"></i> Completar</button>` : ''}
         <button class="btn-ico" style="${btnStyle}" onclick="abrirModalReprogramar('${c.id}','${c.fechaISO}','${c.horaISO}','${nombreEsc}',${c.duracion || 60},${c.empleadoId ? `'${c.empleadoId}'` : 'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
         <button class="btn-ico del" style="${btnStyle}" onclick="cancelarCitaAdmin('${c.id}','${nombreEsc}')"><i class="ti ti-x"></i> Cancelar</button>`}
       </div>`;
-  const insignia = c.completadaEn
-    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#E9F6EF;color:#159A61;"><i class="ti ti-circle-check" style="font-size:11px;"></i> Completada</span>'
+  const insignia = esCancelada
+    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#FBEDEE;color:#E11D2E;"><i class="ti ti-x" style="font-size:11px;"></i> Cancelada</span>'
+    : (c.completadaEn
+      ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#E9F6EF;color:#159A61;"><i class="ti ti-circle-check" style="font-size:11px;"></i> Completada</span>'
+      : '');
+  const motivoLine = (esCancelada && c.cancelacionMotivo)
+    ? `<p style="font-size:11.5px;color:var(--ink-soft);margin:5px 0 0;"><i class="ti ti-message-circle" style="font-size:11px;"></i> ${escCat(c.cancelacionMotivo)}</p>`
     : '';
   return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow-sm);">
     <div style="display:flex;align-items:center;gap:12px;">
@@ -9451,6 +9467,7 @@ function htmlCardCita(c){
           ${insignia}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;">${chipsPagoCita(c)}</div>
+        ${motivoLine}
       </div>
     </div>
     ${acciones}
