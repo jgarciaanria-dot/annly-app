@@ -4643,7 +4643,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=39"></script>
+<script src="sheets.js?v=40"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -7738,6 +7738,27 @@ function rangoFinanzas(){
   return { desde:isoLocal(r.desde), hasta:isoLocal(r.hasta) };
 }
 
+// ---------- Periodo en revisión en "Cierre de periodos" ----------
+// 'desde|hasta' del periodo elegido; null = el último periodo ya terminado según la configuración
+let FIN_CIERRE_SEL = null;
+FIN.historialCierres = [];
+function rangoCierreSel(){
+  if (FIN_CIERRE_SEL){ const [desde, hasta] = FIN_CIERRE_SEL.split('|'); return { desde, hasta }; }
+  const r = rangoPeriodoCierre(FIN.ajustes, -1);
+  return { desde:isoLocal(r.desde), hasta:isoLocal(r.hasta) };
+}
+// Comisiones usa el periodo de la barra superior; Cierre de periodos usa su propio selector
+function rangoComisionesVista(){ return FIN_VISTA === 'ajustes' ? rangoCierreSel() : rangoFinanzas(); }
+function comisionesVigentes(){
+  const r = rangoComisionesVista();
+  return !!(FIN.comisiones && FIN.comisiones.desde === r.desde && FIN.comisiones.hasta === r.hasta);
+}
+function cambiarPeriodoCierre(v){
+  FIN_CIERRE_SEL = v || null;
+  FIN.comisiones = null;
+  renderFinanzas();
+}
+
 function etiquetaPeriodoCierre(offset){
   const r = rangoPeriodoCierre(FIN.ajustes, offset);
   return fechaCortaFin(isoLocal(r.desde)) + ' – ' + fechaCortaFin(isoLocal(r.hasta));
@@ -7850,8 +7871,17 @@ function renderFinanzas(){
   else if (FIN_VISTA === 'movimientos') cont.innerHTML = htmlMovimientosFin();
   else if (FIN_VISTA === 'ventas') cont.innerHTML = htmlVentasFin();
   else if (FIN_VISTA === 'gastos') cont.innerHTML = htmlGastosFin();
-  else if (FIN_VISTA === 'comisiones') { cont.innerHTML = FIN.comisiones ? htmlComisionesFin() : '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>'; if (!FIN.comisiones) cargarComisionesFin(); }
-  else if (FIN_VISTA === 'ajustes') { cont.innerHTML = htmlCierresFin(); faCambio(); if (!FIN.comisiones) cargarComisionesFin(); }
+  else if (FIN_VISTA === 'comisiones') {
+    const ok = comisionesVigentes();
+    cont.innerHTML = ok ? htmlComisionesFin() : '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>';
+    if (!ok) cargarComisionesFin();
+  }
+  else if (FIN_VISTA === 'ajustes') {
+    const ok = comisionesVigentes();
+    if (!ok) FIN.comisiones = null;
+    cont.innerHTML = htmlCierresFin(); faCambio();
+    if (!ok) cargarComisionesFin();
+  }
 }
 
 // Periodo anterior comparable: mismo largo, justo antes. Si el periodo actual sigue en curso, se compara
@@ -8371,27 +8401,38 @@ async function anularGastoFin(id){
 
 // ---------- Comisiones (comisión generada, propinas pendientes, adelantos) ----------
 async function cargarComisionesFin(){
-  const { desde, hasta } = rangoFinanzas();
+  const { desde, hasta } = rangoComisionesVista();
+  let resultado;
   try {
     const empleados = FIN.empleados.length ? FIN.empleados : (await Sheets.getEmpleados()).filter(e => e.activo);
-    const [porEmpleado, propinasPendientes, propinasProgramadas, cierreNegocio, elegibilidad] = await Promise.all([
-      Promise.all(empleados.map(async e => ({
-        id: e.id, nombre: e.nombre, fotoUrl: e.fotoUrl,
-        generado: await Sheets.getComisionGeneradaPeriodo(e.id, desde, hasta),
-        propinasGeneradas: await Sheets.getPropinasGeneradasPeriodo(e.id, desde, hasta),
-        adelantos: await Sheets.getAdelantosPeriodo(e.id, desde, hasta),
-        cierre: await Sheets.getCierreProfesional(e.id, desde, hasta)
-      }))),
+    const [porEmpleado, propinasPendientes, propinasProgramadas, cierreNegocio, elegibilidad, historial] = await Promise.all([
+      Promise.all(empleados.map(async e => {
+        const [generado, propinasGeneradas, adelantos, cierre] = await Promise.all([
+          Sheets.getComisionGeneradaPeriodo(e.id, desde, hasta),
+          Sheets.getPropinasGeneradasPeriodo(e.id, desde, hasta),
+          Sheets.getAdelantosPeriodo(e.id, desde, hasta),
+          Sheets.getCierreProfesional(e.id, desde, hasta)
+        ]);
+        // Solo hace falta revisar si se puede cerrar cuando aún no está cerrado
+        const elegibilidad = cierre ? null : await Sheets.getElegibilidadCierreProfesional(e.id, desde, hasta);
+        return { id: e.id, nombre: e.nombre, fotoUrl: e.fotoUrl, generado, propinasGeneradas, adelantos, cierre, elegibilidad };
+      })),
       Sheets.getPropinas(null, 'pendiente'),
       Sheets.getPropinas(null, 'programada_cierre'),
       Sheets.getCierreNegocio(desde, hasta),
-      Sheets.getCierreNegocioElegibilidad(desde, hasta)
+      Sheets.getCierreNegocioElegibilidad(desde, hasta),
+      Sheets.getHistorialCierres()
     ]);
-    FIN.comisiones = { porEmpleado, propinasPendientes, propinasProgramadas, cierreNegocio, elegibilidad, desde, hasta };
+    FIN.historialCierres = historial;
+    resultado = { porEmpleado, propinasPendientes, propinasProgramadas, cierreNegocio, elegibilidad, desde, hasta };
   } catch(e){
     console.error('Error cargando comisiones:', e);
-    FIN.comisiones = { porEmpleado:[], propinasPendientes:[], propinasProgramadas:[], cierreNegocio:null, elegibilidad:{listo:false,faltantes:[]}, desde, hasta, error:true };
+    resultado = { porEmpleado:[], propinasPendientes:[], propinasProgramadas:[], cierreNegocio:null, elegibilidad:{listo:false,faltantes:[],periodoTerminado:false}, desde, hasta, error:true };
   }
+  // Si mientras cargaba se cambió de vista o de periodo, este resultado ya no aplica
+  const r = rangoComisionesVista();
+  if (r.desde !== desde || r.hasta !== hasta) return;
+  FIN.comisiones = resultado;
   if (FIN_VISTA === 'comisiones') elFin('fin-contenido').innerHTML = htmlComisionesFin();
   else if (FIN_VISTA === 'ajustes') { elFin('fin-contenido').innerHTML = htmlCierresFin(); faCambio(); }
 }
@@ -8462,10 +8503,84 @@ function htmlComisionesFin(){
     ${empleadosHtml}`;
 }
 
-// ---------- Cierre de periodos: config de periodicidad + cierre por profesional + cierre general ----------
+// ---------- Cierre de periodos: selector de periodo + cierre general + cierre por profesional + config ----------
+const CHIP_CIERRE = {
+  cerrado: 'background:#E9F6EF;color:#159A61;',
+  parcial: 'background:#FFF4E0;color:#B7791F;',
+  abierto: 'background:var(--bg);color:var(--ink-soft);border:1px solid var(--line);',
+  curso:   'background:#EEF3FB;color:#3A6AB0;'
+};
+function chipCierre(tipo, texto){
+  return `<span style="display:inline-block;${CHIP_CIERRE[tipo]}border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;">${texto}</span>`;
+}
+
+// Estado de un rango: en curso / abierto / parcial (n de m) / cerrado
+function estadoPeriodoCierre(desde, hasta){
+  const hoy = isoLocal(new Date());
+  const h = (FIN.historialCierres || []).find(x => x.desde === desde && x.hasta === hasta);
+  const totalEquipo = FIN.empleados.length || 0;
+  if (h && h.general) return { tipo:'cerrado', texto:'Cerrado' };
+  if (h && h.profesionales.length) return { tipo:'parcial', texto:`Parcial (${h.profesionales.length}${totalEquipo ? '/' + totalEquipo : ''})` };
+  if (hoy < hasta) return { tipo:'curso', texto:'En curso' };
+  return { tipo:'abierto', texto:'Sin cerrar' };
+}
+
+// Opciones: los últimos 8 periodos de la configuración actual + cualquier rango con cierres guardados
+function opcionesPeriodoCierre(){
+  const mapa = {};
+  for (let off = 0; off >= -7; off--){
+    const r = rangoPeriodoCierre(FIN.ajustes, off);
+    const d = isoLocal(r.desde), h = isoLocal(r.hasta);
+    mapa[d + '|' + h] = { desde:d, hasta:h };
+  }
+  (FIN.historialCierres || []).forEach(x => { mapa[x.desde + '|' + x.hasta] = { desde:x.desde, hasta:x.hasta }; });
+  return Object.values(mapa).sort((a, b) => b.desde.localeCompare(a.desde));
+}
+
+function htmlSelectorPeriodoCierre(){
+  const sel = rangoCierreSel();
+  const clave = sel.desde + '|' + sel.hasta;
+  const opciones = opcionesPeriodoCierre().map(o => {
+    const est = estadoPeriodoCierre(o.desde, o.hasta);
+    const k = o.desde + '|' + o.hasta;
+    return `<option value="${k}"${k === clave ? ' selected' : ''}>${fechaCortaFin(o.desde)} – ${fechaCortaFin(o.hasta)} · ${est.texto}</option>`;
+  }).join('');
+  const est = estadoPeriodoCierre(sel.desde, sel.hasta);
+  const nota = est.tipo === 'curso'
+    ? `Este periodo sigue en curso. Se puede cerrar a partir del ${fechaCortaFin(sel.hasta)}.`
+    : est.tipo === 'cerrado'
+      ? 'Periodo cerrado. Las citas con fecha en este rango ya no se pueden completar.'
+      : 'Cada profesional se cierra por separado. El cierre general se habilita cuando todo el equipo está cerrado.';
+  return `<div class="adm-sec" style="margin-bottom:14px;">
+    <div class="adm-sec-hdr" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <span class="adm-sec-title">Periodo a cerrar</span>${chipCierre(est.tipo, est.texto)}
+    </div>
+    <div style="padding:0 1rem 1rem;">
+      <select class="fi" onchange="cambiarPeriodoCierre(this.value)">${opciones}</select>
+      <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.55;margin:8px 0 0;">${nota}</p>
+    </div>
+  </div>`;
+}
+
+// Caja con los motivos por los que un profesional aún no se puede cerrar
+function htmlMotivosCierre(elig){
+  if (!elig || elig.listo) return '';
+  const citas = (elig.citasPendientes || []).slice(0, 5).map(c => `
+    <div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;">
+      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fechaCortaFin(c.fecha)}${c.hora ? ' · ' + escCat(c.hora) : ''} · ${escCat(c.cliente)}${c.servicio ? ' — ' + escCat(c.servicio) : ''}</span>
+      <span style="flex-shrink:0;font-weight:600;color:${c.atrasada ? '#C2695A' : 'var(--ink-soft)'};">${c.atrasada ? 'Atrasada' : 'Por atender'}</span>
+    </div>`).join('');
+  const mas = (elig.citasPendientes || []).length > 5 ? `<div style="color:var(--ink-soft);padding-top:3px;">y ${elig.citasPendientes.length - 5} más…</div>` : '';
+  return `<div style="background:#FFF4E0;border-radius:10px;padding:9px 12px;font-size:11.5px;line-height:1.55;color:var(--ink);margin-top:4px;">
+    <div style="font-weight:700;margin-bottom:4px;"><i class="ti ti-alert-triangle" style="font-size:13px;color:#B7791F;"></i> Aún no se puede cerrar</div>
+    ${elig.motivos.map(m => `<div>• ${escCat(m)}</div>`).join('')}
+    ${citas ? `<div style="border-top:1px solid rgba(183,121,31,.25);margin-top:6px;padding-top:6px;">${citas}${mas}</div>` : ''}
+  </div>`;
+}
+
 function htmlCierresFin(){
   const a = FIN.ajustes;
-  const ajustesHtml = `<div class="adm-sec" style="margin-bottom:14px;"><div class="adm-sec-hdr"><span class="adm-sec-title">Configuración del periodo</span></div>
+  const ajustesHtml = `<div class="adm-sec" style="margin-top:6px;"><div class="adm-sec-hdr"><span class="adm-sec-title">Configuración del periodo</span></div>
     <div style="padding:0 1rem 1rem;">
       <p style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Define cada cuánto liquidas a tu equipo. El Resumen y el cierre de comisiones usan este periodo.</p>
       <div class="fg"><label class="flbl">Cierre</label>
@@ -8482,18 +8597,25 @@ function htmlCierresFin(){
       <button class="btn-save" onclick="guardarAjustesFin()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar periodo</button>
     </div></div>`;
 
+  const selectorHtml = htmlSelectorPeriodoCierre();
   const C = FIN.comisiones;
-  if (!C) return ajustesHtml + '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando el cierre del periodo...</p>';
-  if (C.error) return ajustesHtml + '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;">No se pudo cargar el cierre del periodo.</p>';
+  if (!C) return selectorHtml + '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando el cierre del periodo...</p>' + ajustesHtml;
+  if (C.error) return selectorHtml + '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;">No se pudo cargar el cierre del periodo.</p>' + ajustesHtml;
 
+  let notaNegocio = '';
+  if (!C.elegibilidad.listo){
+    notaNegocio = !C.elegibilidad.periodoTerminado
+      ? `Se habilita a partir del ${fechaCortaFin(C.hasta)}, cuando termine el periodo y todo el equipo esté cerrado.`
+      : `Falta cerrar: ${escCat(C.elegibilidad.faltantes.join(', ') || 'ningún profesional activo')}`;
+  }
   const negocioHtml = C.cierreNegocio
     ? `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
-        <span style="display:inline-block;background:#E9F6EF;color:#159A61;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;">Cierre general enviado</span>
+        ${chipCierre('cerrado', 'Cierre general enviado')}
         <p style="font-size:12px;color:var(--ink-soft);margin-top:8px;">Ingresos: ${fmtDinero(C.cierreNegocio.ingresosTotal)} · Comisiones pagadas: ${fmtDinero(C.cierreNegocio.comisionesTotal)}</p>
       </div>`
     : `<div class="adm-sec" style="margin-bottom:14px;padding:1rem;">
         <button class="btn-save" style="width:100%;" ${C.elegibilidad.listo ? '' : 'disabled'} onclick="cerrarNegocioFin()"><i class="ti ti-building-store" style="font-size:16px;"></i> Cierre general del negocio</button>
-        ${C.elegibilidad.listo ? '' : `<p style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Falta cerrar: ${escCat(C.elegibilidad.faltantes.join(', ') || 'ningún profesional activo')}</p>`}
+        ${notaNegocio ? `<p style="font-size:11px;color:var(--ink-soft);margin-top:8px;">${notaNegocio}</p>` : ''}
       </div>`;
 
   const empleadosHtml = C.porEmpleado.length ? C.porEmpleado.map(e => {
@@ -8505,7 +8627,7 @@ function htmlCierresFin(){
           <img src="${e.fotoUrl || ''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);"/>
           <div style="flex:1;min-width:0;">
             <div style="font-size:13.5px;font-weight:800;color:var(--ink);">${escCat(e.nombre)}</div>
-            <span style="display:inline-block;background:#E9F6EF;color:#159A61;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;margin-top:2px;">Periodo cerrado</span>
+            <div style="margin-top:2px;">${chipCierre('cerrado', 'Periodo cerrado')}</div>
           </div>
         </div>
         <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:6px;">
@@ -8518,22 +8640,44 @@ function htmlCierresFin(){
         </div>
       </div>`;
     }
+    const listo = !!(e.elegibilidad && e.elegibilidad.listo);
     return `<div class="adm-sec" style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;gap:10px;padding:14px 1rem 8px;">
         <img src="${e.fotoUrl || ''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg);"/>
-        <div style="font-size:13.5px;font-weight:800;color:var(--ink);">${escCat(e.nombre)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13.5px;font-weight:800;color:var(--ink);">${escCat(e.nombre)}</div>
+          <div style="margin-top:2px;">${listo ? chipCierre('abierto', 'Listo para cerrar') : chipCierre('parcial', 'Pendiente')}</div>
+        </div>
       </div>
       <div style="padding:0 1rem 14px;display:flex;flex-direction:column;gap:6px;">
         <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Comisión generada</span><strong>${fmtDinero(e.generado)}</strong></div>
         <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Propinas</span><strong>${fmtDinero(e.propinasGeneradas)}</strong></div>
         <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink-soft);">Adelantos</span><strong style="color:#E11D2E;">−${fmtDinero(e.adelantos)}</strong></div>
         <div style="display:flex;justify-content:space-between;font-size:13.5px;border-top:1px solid var(--line);padding-top:6px;"><span style="font-weight:700;">Neto a pagar</span><strong style="color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong></div>
-        <button class="btn-save" style="margin-top:6px;" onclick='cerrarPeriodoFin(${JSON.stringify(e.id)}, ${JSON.stringify(e.nombre)}, ${JSON.stringify(resumenObj)})'><i class="ti ti-lock" style="font-size:16px;"></i> Cerrar periodo</button>
+        ${htmlMotivosCierre(e.elegibilidad)}
+        <button class="btn-save" style="margin-top:6px;" ${listo ? '' : 'disabled'} onclick='cerrarPeriodoFin(${JSON.stringify(e.id)}, ${JSON.stringify(e.nombre)}, ${JSON.stringify(resumenObj)})'><i class="ti ti-lock" style="font-size:16px;"></i> Cerrar periodo</button>
       </div>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
 
-  return ajustesHtml + negocioHtml + `<div class="adm-sec-hdr" style="padding:0 0 10px;"><span class="adm-sec-title">Cierre por profesional</span></div>` + empleadosHtml;
+  return selectorHtml + negocioHtml + `<div class="adm-sec-hdr" style="padding:0 0 10px;"><span class="adm-sec-title">Cierre por profesional</span></div>` + empleadosHtml + ajustesHtml;
+}
+
+// ---- Bloqueo: una cita con fecha de atención dentro de un periodo cerrado no se completa ----
+// Devuelve true si hay que detener el flujo (muestra el aviso en msgEl o con alert).
+async function bloqueoPeriodoCerrado(empleadoIds, fechaISO, msgEl){
+  if (typeof Sheets.getCierreQueCubre !== 'function') return false;
+  const avisar = t => { if (msgEl) msgEl.textContent = t; else alert(t); };
+  try {
+    const cierre = await Sheets.getCierreQueCubre(empleadoIds, fechaISO);
+    if (!cierre) return false;
+    avisar(`El ${fechaCortaFin(fechaISO)} pertenece a un periodo ya cerrado (${fechaCortaFin(cierre.desde)} – ${fechaCortaFin(cierre.hasta)}). Esta cita no se puede completar.`);
+    return true;
+  } catch(e){
+    console.error(e);
+    avisar('No se pudo verificar si el periodo de esta cita está cerrado. Inténtalo de nuevo.');
+    return true;
+  }
 }
 
 // ---- Propinas: pagar al contado ----
@@ -8584,10 +8728,12 @@ async function programarPropinaCierreFin(id){
 
 // ---- Cerrar periodo (por profesional) ----
 async function cerrarPeriodoFin(employeeId, nombre, resumenObj){
+  if (!FIN.comisiones) return;
   const neto = Math.round((resumenObj.generado - resumenObj.adelantos) * 100) / 100;
   const ok = await pedirConfirmacion({
     titulo: 'Cerrar periodo — ' + nombre,
     mensajeHtml: `
+      <span style="font-size:12px;color:var(--ink-soft);">Del ${fechaCortaFin(FIN.comisiones.desde)} al ${fechaCortaFin(FIN.comisiones.hasta)}</span><br>
       Comisión: <strong>${fmtDinero(resumenObj.generado)}</strong><br>
       Propinas: <strong>${fmtDinero(resumenObj.propinasGeneradas)}</strong><br>
       Adelantos: <strong style="color:#E11D2E;">−${fmtDinero(resumenObj.adelantos)}</strong><br>
@@ -8597,7 +8743,7 @@ async function cerrarPeriodoFin(employeeId, nombre, resumenObj){
   });
   if (!ok) return;
   try {
-    const { desde, hasta } = rangoFinanzas();
+    const { desde, hasta } = FIN.comisiones;
     await Sheets.cerrarPeriodoProfesional({ employeeId, desdeISO: desde, hastaISO: hasta });
     await cargarComisionesFin();
   } catch(e){
@@ -8617,7 +8763,7 @@ async function cerrarNegocioFin(){
   });
   if (!ok) return;
   try {
-    const { desde, hasta } = rangoFinanzas();
+    const { desde, hasta } = C;
     await Sheets.cerrarNegocio({ desdeISO: desde, hastaISO: hasta });
     await cargarComisionesFin();
   } catch(e){
@@ -8767,6 +8913,7 @@ async function guardarAjustesFin(){
   msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Guardando...';
   try {
     await Sheets.guardarAjustesFinanzas({ periodo: elFin('fa-periodo').value, semanaInicia: parseInt(elFin('fa-dia').value) });
+    FIN_CIERRE_SEL = null;
     msg.style.color = '#4A9D6E'; msg.textContent = '¡Periodo guardado!';
     await loadFinanzas();
   } catch(e){
@@ -9142,6 +9289,9 @@ function calcularCompletar(precio, ctx){
 async function abrirCompletarCita(id){
   const c = (typeof CITAS_CACHE !== 'undefined' ? CITAS_CACHE : []).find(x => String(x.id) === String(id));
   if (!c) return;
+  // Fecha de atención dentro de un periodo cerrado: no se completa (sin excepción)
+  const idsPeriodo = c.grupoCitaId ? CITAS_CACHE.filter(x => x.grupoCitaId === c.grupoCitaId).map(x => x.empleadoId) : [c.empleadoId];
+  if (await bloqueoPeriodoCerrado(idsPeriodo, c.fechaISO)) return;
   // Cita doble: se completan las 2 juntas, con un solo cobro del combo
   if (c.grupoCitaId){
     const par = CITAS_CACHE.filter(x => x.grupoCitaId === c.grupoCitaId);
@@ -9398,6 +9548,7 @@ async function confirmarCompletarCita(){
   if (r.certUsado > 0) pagos.push({ metodo:'certificado', monto:r.certUsado, referencia:c.certificadoCodigo || null });
   if (r.certExtraUsado > 0) pagos.push({ metodo:'certificado', monto:r.certExtraUsado, referencia:COMPLETANDO.certExtra.codigo + ' (durante la atención)' });
   v.lineas.forEach(l => pagos.push(l));
+  if (await bloqueoPeriodoCerrado([empleadoElegido, c.empleadoId], c.fechaISO, msg)) return;
   const btn = elFin('fc-btn');
   btn.disabled = true;
   try {
@@ -10348,6 +10499,7 @@ async function guardarAgregarCita(){
   const precioConocido = precio > 0 ? precio : 0;
   const fechaTexto = AC.dia + ' de ' + MESES[AC.m] + ' ' + AC.y;
   const fechaIso = fechaISO(AC.y, AC.m, AC.dia);
+  if (cobrar && await bloqueoPeriodoCerrado([empleadoId], fechaIso, msg)) return;
 
   const btn = elFin('ac-btn');
   btn.disabled = true;
