@@ -3289,28 +3289,22 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    // Se toma la fila que trae el horario completo (aunque hubiera filas viejas sin él)
-    const {
-      data
-    } = await sbClient
-      .from('employee_schedules')
-      .select(
-        'horario_estructurado'
-      )
-      .eq(
-        'employee_id',
-        empleadoId
-      )
-      .not(
-        'horario_estructurado',
-        'is',
-        null
-      )
-      .limit(1);
-
-    return (data && data.length)
-      ? data[0].horario_estructurado
-      : null;
+    // Se toma la fila que trae el horario completo (aunque hubiera filas viejas sin él).
+    // Con sucursal: el de esa sucursal. Sin sucursal: primero el de la Principal.
+    let q = sbClient.from('employee_schedules')
+      .select('horario_estructurado, location_id, locations(is_main)')
+      .eq('employee_id', empleadoId)
+      .not('horario_estructurado', 'is', null);
+    if (arguments[1]) q = q.eq('location_id', arguments[1]);
+    let { data, error } = await q;
+    if (error) {
+      // Respaldo si la relación con locations no está disponible
+      ({ data } = await sbClient.from('employee_schedules').select('horario_estructurado')
+        .eq('employee_id', empleadoId).not('horario_estructurado', 'is', null).limit(1));
+    }
+    if (!data || !data.length) return null;
+    const principal = data.find(r => r.locations && r.locations.is_main);
+    return (principal || data[0]).horario_estructurado;
   },
 
 
@@ -4374,23 +4368,30 @@ const Sheets = {
       .order('is_main', { ascending: false }).order('orden', { ascending: true }).order('created_at', { ascending: true });
     if (error) throw error;
     const sucursales = data || [];
-    let enlaces = [];
+    let enlaces = [], servicios = [];
     if (sucursales.length) {
-      const { data: el, error: errEl } = await sbClient.from('employee_locations')
-        .select('employee_id, location_id, is_primary').in('location_id', sucursales.map(s => s.id));
-      if (errEl) throw errEl;
-      enlaces = el || [];
+      const ids = sucursales.map(s => s.id);
+      const [elRes, lsRes] = await Promise.all([
+        sbClient.from('employee_locations').select('employee_id, location_id, is_primary').in('location_id', ids),
+        sbClient.from('location_services').select('location_id, service_id').in('location_id', ids)
+      ]);
+      if (elRes.error) throw elRes.error;
+      enlaces = elRes.data || [];
+      // Si la tabla aún no existe (SQL 3.1 sin correr) se sigue sin servicios por sucursal
+      if (lsRes.error) console.error('Servicios por sucursal no disponibles:', lsRes.error);
+      else servicios = lsRes.data || [];
     }
     return sucursales.map(s => ({
       id: s.id, nombre: s.name, direccion: s.address || '', telefono: s.phone || '', correo: s.email || '',
       slug: s.slug || '', esPrincipal: !!s.is_main, activa: !!s.is_active, orden: s.orden || 0,
       horario: s.horario_estructurado || null,
-      empleados: enlaces.filter(e => e.location_id === s.id).map(e => e.employee_id)
+      empleados: enlaces.filter(e => e.location_id === s.id).map(e => e.employee_id),
+      servicios: servicios.filter(x => x.location_id === s.id).map(x => x.service_id)
     }));
   },
 
   // Crea o edita una sucursal. Devuelve su id. La Principal no se puede desactivar.
-  async guardarSucursal({ id, nombre, direccion, telefono, correo, activa }) {
+  async guardarSucursal({ id, nombre, direccion, telefono, correo, activa, horario, horarioTexto }) {
     await window.AnnlyReady;
     const nom = (nombre || '').trim();
     if (!nom) throw new Error('Escribe el nombre de la sucursal.');
@@ -4418,12 +4419,21 @@ const Sheets = {
       email: (correo || '').trim() || null, slug, updated_at: new Date().toISOString()
     };
     if (!(actual && actual.is_main)) fila.is_active = activa !== false;
+    if (horario) fila.horario_estructurado = horario;
 
     if (id) {
       const { data, error } = await sbClient.from('locations').update(fila)
         .eq('id', id).eq('business_id', BUSINESS_ID).select('id');
       if (error) throw error;
       if (!data || !data.length) throw new Error('No se pudo guardar la sucursal (sin permisos).');
+      // La Principal y el horario del Perfil son el mismo: se mantienen iguales
+      if (actual && actual.is_main && horario) {
+        const cambios = { horario_estructurado: horario };
+        if (horarioTexto) cambios.horario_texto = horarioTexto;
+        const { error: errB } = await sbClient.from('businesses').update(cambios).eq('id', BUSINESS_ID);
+        if (errB) throw errB;
+        if (window.ANNLY_BUSINESS) { window.ANNLY_BUSINESS.horario_estructurado = horario; if (horarioTexto) window.ANNLY_BUSINESS.horario_texto = horarioTexto; }
+      }
       return id;
     }
     const { data, error } = await sbClient.from('locations')
@@ -4479,6 +4489,90 @@ const Sheets = {
       );
       if (errIns) throw errIns;
     }
+  },
+
+  // Deja a la sucursal con exactamente estos servicios
+  async guardarServiciosDeSucursal(locationId, serviceIds) {
+    await window.AnnlyReady;
+    const deseados = [...new Set((serviceIds || []).filter(Boolean))];
+    const { data: actuales, error } = await sbClient.from('location_services').select('service_id').eq('location_id', locationId);
+    if (error) throw error;
+    const actualesIds = (actuales || []).map(a => a.service_id);
+    const quitar = actualesIds.filter(x => !deseados.includes(x));
+    const agregar = deseados.filter(x => !actualesIds.includes(x));
+    if (quitar.length) {
+      const { error: e1 } = await sbClient.from('location_services').delete().eq('location_id', locationId).in('service_id', quitar);
+      if (e1) throw e1;
+    }
+    if (agregar.length) {
+      const { error: e2 } = await sbClient.from('location_services').insert(agregar.map(x => ({ location_id: locationId, service_id: x })));
+      if (e2) throw e2;
+    }
+  },
+
+  // Deja a un servicio disponible en exactamente estas sucursales (solo sucursales de este negocio)
+  async guardarSucursalesDeServicio(serviceId, locationIds) {
+    await window.AnnlyReady;
+    const { data: sucs, error: errS } = await sbClient.from('locations').select('id').eq('business_id', BUSINESS_ID);
+    if (errS) throw errS;
+    const delNegocio = (sucs || []).map(x => x.id);
+    const deseadas = [...new Set((locationIds || []).filter(l => delNegocio.includes(l)))];
+    const { data: actuales, error } = await sbClient.from('location_services').select('location_id')
+      .eq('service_id', serviceId).in('location_id', delNegocio);
+    if (error) throw error;
+    const actualesIds = (actuales || []).map(a => a.location_id);
+    const quitar = actualesIds.filter(x => !deseadas.includes(x));
+    const agregar = deseadas.filter(x => !actualesIds.includes(x));
+    if (quitar.length) {
+      const { error: e1 } = await sbClient.from('location_services').delete().eq('service_id', serviceId).in('location_id', quitar);
+      if (e1) throw e1;
+    }
+    if (agregar.length) {
+      const { error: e2 } = await sbClient.from('location_services').insert(agregar.map(l => ({ location_id: l, service_id: serviceId })));
+      if (e2) throw e2;
+    }
+  },
+
+  // El horario del Perfil es el de la sucursal Principal: al guardar el Perfil se copia ahí
+  async sincronizarHorarioPrincipal(horario) {
+    await window.AnnlyReady;
+    if (!horario) return;
+    const { error } = await sbClient.from('locations').update({ horario_estructurado: horario, updated_at: new Date().toISOString() })
+      .eq('business_id', BUSINESS_ID).eq('is_main', true);
+    if (error) throw error;
+  },
+
+  // Horarios propios de un profesional, por sucursal: { location_id: horario }
+  async getEmpleadoHorarios(empleadoId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('employee_schedules')
+      .select('location_id, horario_estructurado').eq('employee_id', empleadoId).not('horario_estructurado', 'is', null);
+    if (error) throw error;
+    const mapa = {};
+    (data || []).forEach(r => { if (r.location_id && !mapa[r.location_id]) mapa[r.location_id] = r.horario_estructurado; });
+    return mapa;
+  },
+
+  // Horario propio del profesional en una sucursal (null = usa el de la sucursal)
+  async guardarEmpleadoHorarioSucursal(empleadoId, locationId, horario) {
+    await window.AnnlyReady;
+    const { error: errDel } = await sbClient.from('employee_schedules').delete()
+      .eq('employee_id', empleadoId).eq('location_id', locationId);
+    if (errDel) throw errDel;
+    if (!horario) return;
+    const { error } = await sbClient.from('employee_schedules')
+      .insert([{ employee_id: empleadoId, location_id: locationId, horario_estructurado: horario }]);
+    if (error) throw error;
+  },
+
+  // Borra horarios propios de sucursales donde el profesional ya no atiende (y filas viejas sin sucursal)
+  async limpiarHorariosEmpleado(empleadoId, locationIdsVigentes) {
+    await window.AnnlyReady;
+    const vigentes = (locationIdsVigentes || []).filter(Boolean);
+    let q = sbClient.from('employee_schedules').delete().eq('employee_id', empleadoId);
+    if (vigentes.length) q = q.or('location_id.is.null,location_id.not.in.(' + vigentes.join(',') + ')');
+    const { error } = await q;
+    if (error) throw error;
   },
 
   // Sucursales donde atiende un profesional (ids)
