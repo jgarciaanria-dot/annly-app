@@ -4551,7 +4551,8 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 
       <div class="fg">
         <label class="flbl">Horario propio (opcional)</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;"><input type="checkbox" id="me-horario-propio" onchange="toggleHorarioPropioEmpleado(this)"/> Usa un horario distinto al del negocio</label>
+        <div id="me-hor-tabs" class="cats" style="margin-bottom:10px;display:none;"></div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;"><input type="checkbox" id="me-horario-propio" onchange="toggleHorarioPropioEmpleado(this)"/> <span id="me-horario-propio-txt">Usa un horario distinto al del negocio</span></label>
         <div id="me-horario-bloques" style="display:none;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
           <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 2px;">Define las horas de cada día. Marca <strong>No trabaja</strong> en los días libres (por ejemplo, si solo atiende martes, jueves y viernes).</p>
           <div class="hor-emp-bloque" data-bloque="lun" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -4629,6 +4630,17 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       </div>
       <label id="ms-activa-wrap" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-bottom:1rem;"><input type="checkbox" id="ms-activa" checked/> Activa (visible para agendar)</label>
       <div class="fg">
+        <label class="flbl">Horario de la sucursal</label>
+        <div id="ms-horario" style="display:flex;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+        </div>
+        <p id="ms-horario-nota" style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">Los profesionales de esta sucursal atienden en este horario, salvo los que tengan horario propio.</p>
+      </div>
+      <div class="fg">
+        <label class="flbl">Servicios que se ofrecen aquí</label>
+        <div id="ms-servicios" style="display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:240px;overflow-y:auto;"></div>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">En la agenda de esta sucursal solo aparecen los servicios marcados que además realiza alguno de sus profesionales.</p>
+      </div>
+      <div class="fg">
         <label class="flbl">Profesionales que atienden aquí</label>
         <div id="ms-profesionales" style="display:flex;flex-direction:column;gap:6px;"></div>
         <button type="button" onclick="crearProfesionalDesdeSucursal()" style="width:100%;margin-top:8px;padding:9px 12px;border:1.5px dashed #D9C9EE;border-radius:10px;background:transparent;color:#7C3AED;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="ti ti-user-plus"></i> Crear profesional nuevo para esta sucursal</button>
@@ -4694,7 +4706,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=43"></script>
+<script src="sheets.js?v=44"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -5185,6 +5197,10 @@ function openModal(id,catDefault='Básicos'){
       </div>
       <button type="button" class="btn-add-incl" id="btn-nueva-cat-modal" onclick="mostrarNuevaCatModal()" style="margin-top:8px;display:${sinCats?'none':'flex'};"><i class="ti ti-plus" style="font-size:12px;"></i> Agregar categoría</button>
     </div>
+    <div class="fg" id="m-sucursales-wrap" style="display:none;"><label class="flbl">Disponible en</label>
+      <div class="cats" id="m-sucursales"></div>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Sucursales donde se ofrece este servicio.</p>
+    </div>
     <div class="frow">
       <div class="fg"><label class="flbl">Precio ($)</label><input class="fi" id="m-price" type="number" min="0" step="0.01" value="${s?s.price:0}" placeholder="0 = consultar"/></div>
       <div class="fg"><label class="flbl">Texto de precio</label><input class="fi" id="m-precio-texto" value="${s&&s.precioTexto?s.precioTexto:''}" placeholder="ej: desde $25"/></div>
@@ -5228,6 +5244,7 @@ function openModal(id,catDefault='Básicos'){
     </div>
     <button class="btn-save" onclick="guardar()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios</button>`;
   document.getElementById('ov-modal').classList.add('open');
+  pintarSucursalesServicioModal(s ? s.id : null);
 }
 
 function toggleAbono(val){
@@ -5333,7 +5350,39 @@ function guardar(){
     const newId=uuidNuevo();
     SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,esDoble,requiereAbono,abonoMonto,abonoTipo,desc,includes,imagenUrl});
   }
-  saveServices(); persistirOrdenCategorias(); closeModal(); renderAdmin();
+  // Sucursales elegidas (solo si hay más de una; con una sola, la base lo asigna sola)
+  const idServicio = editId || SERVICES[SERVICES.length - 1].id;
+  const sucElegidas = SUC_SERVICIO_SEL ? [...SUC_SERVICIO_SEL] : null;
+  if (sucElegidas && !sucElegidas.length){ alert('Elige al menos una sucursal donde se ofrece el servicio.'); return; }
+  Sheets.guardarServicios(SERVICES)
+    .then(() => (sucElegidas && typeof Sheets.guardarSucursalesDeServicio === 'function') ? Sheets.guardarSucursalesDeServicio(idServicio, sucElegidas) : null)
+    .then(() => { SUCURSALES = []; })
+    .catch(e => console.error('Error guardando en Supabase:', e));
+  persistirOrdenCategorias(); closeModal(); renderAdmin();
+}
+
+// Sucursales donde se ofrece el servicio abierto en el modal (null = no aplica, hay una sola)
+let SUC_SERVICIO_SEL = null;
+async function pintarSucursalesServicioModal(servicioId){
+  SUC_SERVICIO_SEL = null;
+  const wrap = document.getElementById('m-sucursales-wrap');
+  if (!wrap || typeof Sheets.getSucursales !== 'function') return;
+  if (!SUCURSALES.length){ try { SUCURSALES = await Sheets.getSucursales(); } catch(e){ return; } }
+  const visibles = SUCURSALES.filter(x => x.activa);
+  if (visibles.length < 2 || !document.getElementById('m-sucursales')) { wrap.style.display = 'none'; return; }
+  SUC_SERVICIO_SEL = new Set(servicioId ? visibles.filter(x => (x.servicios || []).includes(servicioId)).map(x => x.id) : visibles.map(x => x.id));
+  const pintar = () => {
+    document.getElementById('m-sucursales').innerHTML = visibles.map(x =>
+      `<div class="cat-pill${SUC_SERVICIO_SEL.has(x.id) ? ' sel' : ''}" onclick="toggleSucursalServicioModal('${x.id}')"><i class="ti ti-map-pin" style="font-size:12px;"></i> ${escCat(x.nombre)}</div>`).join('');
+  };
+  window._pintarSucServicio = pintar;
+  pintar();
+  wrap.style.display = 'block';
+}
+function toggleSucursalServicioModal(id){
+  if (!SUC_SERVICIO_SEL) return;
+  if (SUC_SERVICIO_SEL.has(id)) SUC_SERVICIO_SEL.delete(id); else SUC_SERVICIO_SEL.add(id);
+  if (window._pintarSucServicio) window._pintarSucServicio();
 }
 
 function closeModal(){document.getElementById('ov-modal').classList.remove('open');}
@@ -5768,6 +5817,13 @@ function openModalSucursal(id){
         <span>${escCat(e.nombre)}${e.activo ? '' : ' <span style="font-size:11px;color:var(--ink-soft);">(inactivo)</span>'}</span>
       </label>`).join('')
     : '<p style="font-size:12px;color:var(--ink-soft);">Todavía no tienes profesionales. Agrégalos en Equipo.</p>';
+  // Horario: el de la sucursal; una nueva arranca con el del negocio
+  pintarHorarioSucursalModal((s && s.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || HOR_DEFAULT);
+  document.getElementById('ms-horario-nota').textContent = (s && s.esPrincipal)
+    ? 'Es el mismo horario del Perfil del negocio. Los profesionales atienden en este horario, salvo los que tengan horario propio.'
+    : 'Los profesionales de esta sucursal atienden en este horario, salvo los que tengan horario propio.';
+  // Servicios: una sucursal nueva arranca con todos marcados
+  pintarServiciosSucursalModal(s ? (s.servicios || []) : SERVICES.map(x => x.id));
   document.getElementById('ms-btn-guardar').disabled = false;
   document.getElementById('ov-modal-sucursal').classList.add('open');
 }
@@ -5776,14 +5832,106 @@ function closeModalSucursal(){
   document.getElementById('ov-modal-sucursal').classList.remove('open');
 }
 
+// Editor de horario de la sucursal (mismo formato que el Perfil: lv / sab / dom)
+const MS_BLOQUES_HOR = [['lv','Lun-Vie'],['sab','Sábado'],['dom','Domingo']];
+function pintarHorarioSucursalModal(horario){
+  const h = horario || HOR_DEFAULT;
+  document.getElementById('ms-horario').innerHTML = MS_BLOQUES_HOR.map(([k, nom]) => {
+    const d = h[k] || HOR_DEFAULT[k];
+    return `<div class="mshor-bloque" data-bloque="${k}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:12.5px;font-weight:600;width:64px;flex-shrink:0;">${nom}</span>
+      <input type="time" class="fi mshor-abre" value="${d.abre || ''}"${d.cerrado ? ' disabled' : ''} style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+      <span style="font-size:12px;color:var(--ink-soft);">a</span>
+      <input type="time" class="fi mshor-cierra" value="${d.cierra || ''}"${d.cerrado ? ' disabled' : ''} style="flex:1;min-width:100px;padding:8px 10px;font-size:12.5px;"/>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;"><input type="checkbox" class="mshor-cerrado"${d.cerrado ? ' checked' : ''} onchange="this.closest('.mshor-bloque').querySelectorAll('input[type=time]').forEach(i => i.disabled = this.checked)"/> Cerrado</label>
+    </div>`;
+  }).join('');
+}
+function leerHorarioSucursalModal(){
+  const r = {};
+  document.querySelectorAll('#ms-horario .mshor-bloque').forEach(b => {
+    const cerrado = b.querySelector('.mshor-cerrado').checked;
+    r[b.dataset.bloque] = { abre: cerrado ? '' : b.querySelector('.mshor-abre').value, cierra: cerrado ? '' : b.querySelector('.mshor-cierra').value, cerrado };
+  });
+  return r;
+}
+function validarHorarioSucursalModal(h){
+  for (const [k, nom] of MS_BLOQUES_HOR){
+    const d = h[k];
+    if (!d || d.cerrado) continue;
+    if (!d.abre || !d.cierra) return 'Falta la hora de apertura o de cierre (' + nom + ').';
+    if (d.abre >= d.cierra) return 'La hora de cierre debe ser después de la de apertura (' + nom + ').';
+  }
+  if (MS_BLOQUES_HOR.every(([k]) => h[k] && h[k].cerrado)) return 'La sucursal debe abrir al menos un día.';
+  return '';
+}
+
+// Servicios por categoría, con marcar la categoría completa
+function pintarServiciosSucursalModal(marcados){
+  const cont = document.getElementById('ms-servicios');
+  if (!SERVICES.length){ cont.innerHTML = '<p style="font-size:12px;color:var(--ink-soft);">Todavía no tienes servicios creados.</p>'; return; }
+  const grupos = categoriasActuales().map(c => ({ nombre:c, svcs:SERVICES.filter(x => x.cat === c) })).filter(g => g.svcs.length);
+  const sinCat = SERVICES.filter(x => !x.cat);
+  if (sinCat.length) grupos.push({ nombre:'Sin categoría', svcs:sinCat });
+  cont.innerHTML = grupos.map((g, gi) => `
+    <div style="margin-bottom:4px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink);">
+        <input type="checkbox" class="ms-cat-chk" data-g="${gi}" onchange="document.querySelectorAll('.ms-svc-chk[data-g=&quot;${gi}&quot;]').forEach(c => c.checked = this.checked); this.indeterminate = false;"/>
+        ${escCat(g.nombre)} <span style="font-weight:500;color:var(--ink-soft);font-size:11px;">(${g.svcs.length})</span>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:5px;margin:5px 0 0 24px;">
+        ${g.svcs.map(x => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
+          <input type="checkbox" class="ms-svc-chk" data-g="${gi}" value="${x.id}"${marcados.includes(x.id) ? ' checked' : ''} onchange="estadoCatSucursalModal(${gi})"/> ${escCat(x.name)}${x.active === false ? ' <span style="font-size:10.5px;color:var(--ink-soft);">(inactivo)</span>' : ''}
+        </label>`).join('')}
+      </div>
+    </div>`).join('');
+  grupos.forEach((g, gi) => estadoCatSucursalModal(gi));
+}
+function estadoCatSucursalModal(gi){
+  const hijos = [...document.querySelectorAll('.ms-svc-chk[data-g="' + gi + '"]')];
+  const cab = document.querySelector('.ms-cat-chk[data-g="' + gi + '"]');
+  if (!cab) return;
+  const n = hijos.filter(c => c.checked).length;
+  cab.checked = hijos.length > 0 && n === hijos.length;
+  cab.indeterminate = n > 0 && n < hijos.length;
+}
+
+// Lee y valida lo que se guarda de la sucursal (común a Guardar y a Crear profesional nuevo)
+function leerModalSucursal(){
+  const s = editSucursalId ? SUCURSALES.find(x => x.id === editSucursalId) : null;
+  const nombre = document.getElementById('ms-nombre').value.trim();
+  if (!nombre) return { error:'Escribe el nombre de la sucursal.' };
+  const horario = leerHorarioSucursalModal();
+  const errH = validarHorarioSucursalModal(horario);
+  if (errH) return { error: errH };
+  return {
+    s, nombre, horario,
+    activa: (s && s.esPrincipal) ? true : document.getElementById('ms-activa').checked,
+    profesionales: [...document.querySelectorAll('.ms-prof:checked')].map(i => i.value),
+    servicios: [...document.querySelectorAll('.ms-svc-chk:checked')].map(i => i.value),
+    datos: {
+      id: editSucursalId, nombre,
+      direccion: document.getElementById('ms-direccion').value,
+      telefono: document.getElementById('ms-telefono').value,
+      correo: document.getElementById('ms-correo').value,
+      horario, horarioTexto: armarHorarioTexto(horario)
+    }
+  };
+}
+
+async function guardarTodoSucursal(m){
+  const id = await Sheets.guardarSucursal({ ...m.datos, activa: m.activa });
+  await Sheets.asignarProfesionalesSucursal(id, m.profesionales);
+  if (typeof Sheets.guardarServiciosDeSucursal === 'function') await Sheets.guardarServiciosDeSucursal(id, m.servicios);
+  return id;
+}
+
 async function guardarSucursalModal(){
   const msg = document.getElementById('ms-msg');
   msg.textContent = '';
-  const s = editSucursalId ? SUCURSALES.find(x => x.id === editSucursalId) : null;
-  const nombre = document.getElementById('ms-nombre').value.trim();
-  if (!nombre){ msg.textContent = 'Escribe el nombre de la sucursal.'; return; }
-  const activa = (s && s.esPrincipal) ? true : document.getElementById('ms-activa').checked;
-  const profesionales = [...document.querySelectorAll('.ms-prof:checked')].map(i => i.value);
+  const m = leerModalSucursal();
+  if (m.error){ msg.textContent = m.error; return; }
+  const { s, activa } = m;
 
   // Reactivar o crear una sucursal activa cuenta contra el límite del plan
   const sumaActiva = activa && !(s && s.activa);
@@ -5804,14 +5952,7 @@ async function guardarSucursalModal(){
   const btn = document.getElementById('ms-btn-guardar');
   btn.disabled = true;
   try {
-    const id = await Sheets.guardarSucursal({
-      id: editSucursalId, nombre,
-      direccion: document.getElementById('ms-direccion').value,
-      telefono: document.getElementById('ms-telefono').value,
-      correo: document.getElementById('ms-correo').value,
-      activa
-    });
-    await Sheets.asignarProfesionalesSucursal(id, profesionales);
+    await guardarTodoSucursal(m);
     closeModalSucursal();
     await loadSucursales();
   } catch(e){
@@ -5833,10 +5974,9 @@ async function crearProfesionalDesdeSucursal(){
     msg.innerHTML = `Tu plan incluye ${limite} profesional${limite===1?'':'es'} y ya están todos ocupados. ${htmlAmpliarEquipo(false)}`;
     return;
   }
-  const nombre = document.getElementById('ms-nombre').value.trim();
-  if (!nombre){ msg.textContent = 'Escribe primero el nombre de la sucursal.'; return; }
-  const s = editSucursalId ? SUCURSALES.find(x => x.id === editSucursalId) : null;
-  const activa = (s && s.esPrincipal) ? true : document.getElementById('ms-activa').checked;
+  const m = leerModalSucursal();
+  if (m.error){ msg.textContent = m.error; return; }
+  const { s, activa } = m;
   if (activa && !(s && s.activa) && sucursalesActivas() >= limiteSucursalesDelPlan()){
     msg.innerHTML = 'Llegaste al límite de sucursales activas de tu plan. ' + htmlAmpliarSucursales();
     return;
@@ -5844,14 +5984,7 @@ async function crearProfesionalDesdeSucursal(){
   const btn = document.getElementById('ms-btn-guardar');
   btn.disabled = true;
   try {
-    const id = await Sheets.guardarSucursal({
-      id: editSucursalId, nombre,
-      direccion: document.getElementById('ms-direccion').value,
-      telefono: document.getElementById('ms-telefono').value,
-      correo: document.getElementById('ms-correo').value,
-      activa
-    });
-    await Sheets.asignarProfesionalesSucursal(id, [...document.querySelectorAll('.ms-prof:checked')].map(i => i.value));
+    const id = await guardarTodoSucursal(m);
     SUCURSALES = await Sheets.getSucursales();
     closeModalSucursal();
     EMPLEADO_SUCURSAL_PRESELECT = id;
@@ -7476,12 +7609,29 @@ async function resumenAtiendeEquipo(){
   for (const e of EQUIPO){
     const el = document.getElementById('eq-atiende-' + e.id);
     if (!el) continue;
-    let ids = [], horario = null;
+    let ids = [], horario = null, horarios = null;
     try { ids = await Sheets.getEmpleadoServicios(e.id); } catch(err){ ids = []; }
-    try { horario = await Sheets.getEmpleadoHorario(e.id); } catch(err){ horario = null; }
-    const sucs = SUCURSALES.filter(x => x.empleados.includes(e.id)).map(x => escCat(x.nombre));
-    const lineaSuc = SUCURSALES.length > 1 ? '<br><i class="ti ti-map-pin" style="font-size:11px;"></i> ' + (sucs.length ? sucs.join(' · ') : '<span style="color:#B08900;font-weight:600;">Sin sucursal</span>') : '';
-    el.innerHTML = textoAtiende(ids) + '<br>' + textoHorarioPropio(horario) + lineaSuc;
+    const suyas = SUCURSALES.filter(x => x.empleados.includes(e.id));
+    if (SUCURSALES.length > 1 && typeof Sheets.getEmpleadoHorarios === 'function'){
+      try { horarios = await Sheets.getEmpleadoHorarios(e.id); } catch(err){ horarios = {}; }
+    } else {
+      try { horario = await Sheets.getEmpleadoHorario(e.id); } catch(err){ horario = null; }
+    }
+    let lineaSuc = '', lineaHor = textoHorarioPropio(horario);
+    if (horarios){
+      // Por sucursal: 📍 Principal (horario de la sucursal) · Costa del Este (propio: Jue)
+      lineaHor = '';
+      lineaSuc = '<i class="ti ti-map-pin" style="font-size:11px;"></i> ' + (suyas.length
+        ? suyas.map(x => {
+            const h = horarios[x.id];
+            if (!h) return escCat(x.nombre);
+            const d = horarioPorDia(h);
+            const dias = DIAS_HOR.filter(k => !d[k].cerrado).map(k => NOMBRES_DIA_HOR[k].slice(0,3));
+            return escCat(x.nombre) + ' (propio: ' + (dias.length ? dias.join(', ') : 'sin días') + ')';
+          }).join(' · ')
+        : '<span style="color:#B08900;font-weight:600;">Sin sucursal</span>');
+    }
+    el.innerHTML = textoAtiende(ids) + '<br>' + (lineaHor ? lineaHor + (lineaSuc ? '<br>' : '') : '') + lineaSuc;
   }
 }
 
@@ -7514,7 +7664,7 @@ async function openModalEmpleado(id){
   document.getElementById('me-sucursales-wrap').style.display = sucVisibles.length ? 'block' : 'none';
   document.getElementById('me-sucursales').innerHTML = sucVisibles.map(x => `
     <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);padding:6px 11px;border:1px solid var(--line);border-radius:999px;cursor:pointer;">
-      <input type="checkbox" class="me-suc-chk" value="${x.id}"${sucMarcadas.includes(x.id) ? ' checked' : ''}/> ${escCat(x.nombre)}${x.activa ? '' : ' <span style="font-size:10.5px;color:var(--ink-soft);">(inactiva)</span>'}
+      <input type="checkbox" class="me-suc-chk" value="${x.id}"${sucMarcadas.includes(x.id) ? ' checked' : ''} onchange="renderTabsHorarioEmpleado()"/> ${escCat(x.nombre)}${x.activa ? '' : ' <span style="font-size:10.5px;color:var(--ink-soft);">(inactiva)</span>'}
     </label>`).join('');
 
   // Servicios que hace, y la comisión particular que tenga cada uno (si tiene)
@@ -7545,11 +7695,22 @@ async function openModalEmpleado(id){
     grupos.forEach((g, gi) => actualizarEstadoCategoriaEmpleado(gi));
   }
 
-  // Horario propio
-  const horarioPropio = e ? await Sheets.getEmpleadoHorario(e.id) : null;
-  document.getElementById('me-horario-propio').checked = !!horarioPropio;
-  document.getElementById('me-horario-bloques').style.display = horarioPropio ? 'flex' : 'none';
-  cargarHorarioEmpleadoModal(horarioPropio || HOR_DEFAULT_EMPLEADO);
+  // Horario propio: uno por cada sucursal donde atiende (si no hay sucursales, el esquema anterior)
+  ME_HOR = null; ME_HOR_TAB = null;
+  if (sucVisibles.length && typeof Sheets.getEmpleadoHorarios === 'function'){
+    let mapa = {};
+    if (e){ try { mapa = await Sheets.getEmpleadoHorarios(e.id); } catch(err){ console.error(err); } }
+    ME_HOR = {};
+    sucVisibles.forEach(x => { ME_HOR[x.id] = { propio: !!mapa[x.id], horario: mapa[x.id] || null }; });
+    renderTabsHorarioEmpleado();
+  } else {
+    const horarioPropio = e ? await Sheets.getEmpleadoHorario(e.id) : null;
+    document.getElementById('me-hor-tabs').style.display = 'none';
+    document.getElementById('me-horario-propio-txt').textContent = 'Usa un horario distinto al del negocio';
+    document.getElementById('me-horario-propio').checked = !!horarioPropio;
+    document.getElementById('me-horario-bloques').style.display = horarioPropio ? 'flex' : 'none';
+    cargarHorarioEmpleadoModal(horarioPropio || HOR_DEFAULT_EMPLEADO);
+  }
 
   document.getElementById('ov-modal-empleado').classList.add('open');
 }
@@ -7578,6 +7739,72 @@ function closeModalEmpleado(){
 
 function toggleHorarioPropioEmpleado(checkbox){
   document.getElementById('me-horario-bloques').style.display = checkbox.checked ? 'flex' : 'none';
+  // Al activar el horario propio en una sucursal, se parte del horario de esa sucursal
+  if (checkbox.checked && ME_HOR && ME_HOR_TAB && ME_HOR[ME_HOR_TAB] && !ME_HOR[ME_HOR_TAB].horario){
+    cargarHorarioEmpleadoModal(horarioBaseSucursal(ME_HOR_TAB));
+  }
+}
+
+// ---- Horario del profesional por sucursal (pestañas) ----
+let ME_HOR = null;      // { location_id: { propio, horario } }
+let ME_HOR_TAB = null;  // sucursal que se está editando
+function horarioBaseSucursal(locId){
+  const x = SUCURSALES.find(y => y.id === locId);
+  return (x && x.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || HOR_DEFAULT_EMPLEADO;
+}
+// Pasa lo que está en pantalla a la pestaña actual
+function guardarTabHorarioEmpleado(){
+  if (!ME_HOR || !ME_HOR_TAB || !ME_HOR[ME_HOR_TAB]) return;
+  const propio = document.getElementById('me-horario-propio').checked;
+  ME_HOR[ME_HOR_TAB] = { propio, horario: propio ? leerHorarioEmpleadoModal() : ME_HOR[ME_HOR_TAB].horario };
+}
+function cargarTabHorarioEmpleado(locId){
+  ME_HOR_TAB = locId;
+  const x = SUCURSALES.find(y => y.id === locId);
+  const st = ME_HOR[locId] || { propio:false, horario:null };
+  document.getElementById('me-horario-propio-txt').textContent = 'Usa un horario distinto al de ' + (x ? x.nombre : 'la sucursal');
+  document.getElementById('me-horario-propio').checked = st.propio;
+  document.getElementById('me-horario-bloques').style.display = st.propio ? 'flex' : 'none';
+  cargarHorarioEmpleadoModal(st.horario || horarioBaseSucursal(locId));
+}
+function cambiarTabHorarioEmpleado(locId){
+  guardarTabHorarioEmpleado();
+  cargarTabHorarioEmpleado(locId);
+  renderTabsHorarioEmpleado(true);
+}
+// Una pestaña por cada sucursal marcada en "Atiende en"
+function renderTabsHorarioEmpleado(soloPintar){
+  if (!ME_HOR) return;
+  if (!soloPintar) guardarTabHorarioEmpleado();
+  const marcadas = [...document.querySelectorAll('.me-suc-chk:checked')].map(c => c.value);
+  marcadas.forEach(id => { if (!ME_HOR[id]) ME_HOR[id] = { propio:false, horario:null }; });
+  const tabs = document.getElementById('me-hor-tabs');
+  if (!marcadas.length){
+    tabs.style.display = 'none';
+    document.getElementById('me-horario-propio').checked = false;
+    document.getElementById('me-horario-bloques').style.display = 'none';
+    ME_HOR_TAB = null;
+    return;
+  }
+  if (!marcadas.includes(ME_HOR_TAB)){ if (!soloPintar) cargarTabHorarioEmpleado(marcadas[0]); else ME_HOR_TAB = marcadas[0]; }
+  tabs.style.display = marcadas.length > 1 ? 'flex' : 'none';
+  tabs.innerHTML = marcadas.map(id => {
+    const x = SUCURSALES.find(y => y.id === id);
+    const st = ME_HOR[id];
+    return `<div class="cat-pill${id === ME_HOR_TAB ? ' sel' : ''}" onclick="cambiarTabHorarioEmpleado('${id}')"><i class="ti ti-map-pin" style="font-size:12px;"></i> ${escCat(x ? x.nombre : 'Sucursal')}${st && st.propio ? ' · propio' : ''}</div>`;
+  }).join('');
+}
+
+// Valida un horario por día (mismo criterio que el editor)
+function validarHorarioEmpleadoDatos(h, nombreSucursal){
+  const d = horarioPorDia(h);
+  for (const clave of DIAS_HOR){
+    if (d[clave].cerrado) continue;
+    const sufijo = nombreSucursal ? ' en ' + nombreSucursal : '';
+    if (!d[clave].abre || !d[clave].cierra) return 'Falta la hora de inicio o de cierre del ' + NOMBRES_DIA_HOR[clave].toLowerCase() + sufijo + '.';
+    if (d[clave].abre >= d[clave].cierra) return 'En el ' + NOMBRES_DIA_HOR[clave].toLowerCase() + sufijo + ', la hora de cierre debe ser después de la de inicio.';
+  }
+  return '';
 }
 
 function toggleHorEmpBloque(checkbox){
@@ -7676,7 +7903,17 @@ async function guardarEmpleadoModal(){
     comisionGlobal: comisionGlobalVal !== '' ? Number(comisionGlobalVal) : null
   };
 
-  if (document.getElementById('me-horario-propio').checked){
+  if (ME_HOR){
+    guardarTabHorarioEmpleado();
+    const marcadasH = [...document.querySelectorAll('.me-suc-chk:checked')].map(c => c.value);
+    for (const id of marcadasH){
+      const st = ME_HOR[id];
+      if (!st || !st.propio) continue;
+      const x = SUCURSALES.find(y => y.id === id);
+      const errH = validarHorarioEmpleadoDatos(st.horario, marcadasH.length > 1 && x ? x.nombre : '');
+      if (errH){ msgEl.textContent = errH; if (id !== ME_HOR_TAB) cambiarTabHorarioEmpleado(id); return; }
+    }
+  } else if (document.getElementById('me-horario-propio').checked){
     const errHorario0 = validarHorarioEmpleadoModal();
     if (errHorario0){ msgEl.textContent = errHorario0; return; }
   }
@@ -7698,13 +7935,22 @@ async function guardarEmpleadoModal(){
     });
     await Sheets.guardarEmpleadoServicios(empleadoId, serviciosMarcados);
 
-    const usaHorarioPropio = document.getElementById('me-horario-propio').checked;
-    if (usaHorarioPropio){
-      const errHorario = validarHorarioEmpleadoModal();
-      if (errHorario){ msgEl.textContent = errHorario; return; }
-      await Sheets.guardarEmpleadoHorario(empleadoId, leerHorarioEmpleadoModal());
+    if (ME_HOR && hayChkSuc){
+      // Un horario propio por sucursal; donde no tiene, usa el de la sucursal
+      for (const id of sucursalesElegidas){
+        const st = ME_HOR[id];
+        await Sheets.guardarEmpleadoHorarioSucursal(empleadoId, id, st && st.propio ? st.horario : null);
+      }
+      await Sheets.limpiarHorariosEmpleado(empleadoId, sucursalesElegidas);
     } else {
-      await Sheets.eliminarEmpleadoHorario(empleadoId);
+      const usaHorarioPropio = document.getElementById('me-horario-propio').checked;
+      if (usaHorarioPropio){
+        const errHorario = validarHorarioEmpleadoModal();
+        if (errHorario){ msgEl.textContent = errHorario; return; }
+        await Sheets.guardarEmpleadoHorario(empleadoId, leerHorarioEmpleadoModal());
+      } else {
+        await Sheets.eliminarEmpleadoHorario(empleadoId);
+      }
     }
 
     closeModalEmpleado();
@@ -8056,6 +8302,9 @@ async function guardarPerfil(){
 
   try {
     await Sheets.actualizarPerfil(datos);
+    if (typeof Sheets.sincronizarHorarioPrincipal === 'function'){
+      try { await Sheets.sincronizarHorarioPrincipal(horarioEstructurado); SUCURSALES = []; } catch(e){ console.error('No se pudo copiar el horario a la sucursal Principal:', e); }
+    }
     const titleEl = document.getElementById('adm-hdr-title');
     if(titleEl && datos.nombre) titleEl.textContent = datos.nombre;
     msgEl.style.color = '#4A9D6E';
