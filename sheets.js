@@ -4215,14 +4215,17 @@ const Sheets = {
 
     const detalle = await this._detalleCierreProfesional(employeeId, desdeISO, hastaISO);
     const comisionTotal = Math.round((detalle.citas.reduce((s, c) => s + c.comisionMonto, 0) + detalle.ventas.reduce((s, v) => s + v.comisionMonto, 0)) * 100) / 100;
+    // Propinas: solo las programadas para el corte se pagan aquí (y suman al neto).
+    // Las pagadas al contado ya se entregaron: se informan aparte, no se vuelven a pagar.
     const propinasResueltas = detalle.propinas.filter(p => p.estado === 'programada_cierre');
-    const propinasTotal = Math.round(detalle.propinas.reduce((s, p) => s + p.monto, 0) * 100) / 100;
+    const propinasTotal = Math.round(propinasResueltas.reduce((s, p) => s + p.monto, 0) * 100) / 100;
+    const propinasContado = Math.round(detalle.propinas.filter(p => p.estado === 'pagada_contado').reduce((s, p) => s + p.monto, 0) * 100) / 100;
     const adelantosTotal = Math.round(detalle.adelantos.reduce((s, a) => s + a.monto, 0) * 100) / 100;
-    const netoPagado = Math.round((comisionTotal - adelantosTotal) * 100) / 100;
+    const netoPagado = Math.round((comisionTotal + propinasTotal - adelantosTotal) * 100) / 100;
 
     const resultado = await this.enviarComprobanteCierre('cierre_profesional', {
       employeeId, periodo: { desde: desdeISO, hasta: hastaISO },
-      resumen: { comisionTotal, propinasTotal, adelantosTotal, netoPagado }, detalle
+      resumen: { comisionTotal, propinasTotal, propinasContado, adelantosTotal, netoPagado }, detalle
     });
 
     const { data: cierre, error } = await sbClient.from('cierres_profesional').insert([{
