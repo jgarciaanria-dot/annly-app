@@ -4643,7 +4643,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=38"></script>
+<script src="sheets.js?v=39"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -6214,6 +6214,29 @@ function citaInicio(c){
   return new Date(y || 1970, (m || 1) - 1, d || 1, hh || 0, mm || 0);
 }
 
+// Cita doble: las 2 citas amarradas (mismo grupoCitaId) se muestran como UNA sola entrada.
+// Se busca la pareja en TODAS las citas (no solo en las filtradas), para que un filtro por
+// profesional o por nombre no deje a la mitad de la pareja fuera.
+function construirCitaDoble(par, ini){
+  const principal = par.find(x => x.grupoPrincipal) || par[0];
+  const otra = par.find(x => x.id !== principal.id);
+  const total = par.reduce((s, x) => s + (Number(x.precioTotal) || 0), 0);
+  return { ...principal, _ini: ini, esDoble:true, principal, otra, comboTotal: Math.round(total*100)/100 };
+}
+
+function colapsarDobles(lista, todas){
+  const vistos = new Set();
+  const out = [];
+  lista.forEach(c => {
+    if (!c.grupoCitaId){ out.push(c); return; }
+    if (vistos.has(c.grupoCitaId)) return;
+    vistos.add(c.grupoCitaId);
+    const par = todas.filter(x => x.grupoCitaId === c.grupoCitaId);
+    out.push(par.length === 2 ? construirCitaDoble(par, c._ini) : c);
+  });
+  return out;
+}
+
 function htmlCitasAgrupadas(lista){
   const hoyISO = isoLocal(new Date());
   const grupos = [], idx = {};
@@ -6265,15 +6288,16 @@ function renderCitas(){
 
   // Activas: vigentes (aún no han pasado). Sin el módulo Finanzas se cuenta desde el inicio del día de hoy.
   // Activas: línea de tiempo (21 sep, luego 22 sep...); lo recién reservado lleva la etiqueta NUEVA
-  const activas = base.filter(c => c.estado !== 'cancelada' && !c.completadaEn && (finOn ? c._ini >= ahora : c.fechaISO >= hoyISO))
-    .sort((a,b) => a._ini - b._ini);
+  // Una cita doble (2 citas amarradas) se muestra como UNA sola tarjeta en cada lista
+  const activas = colapsarDobles(base.filter(c => c.estado !== 'cancelada' && !c.completadaEn && (finOn ? c._ini >= ahora : c.fechaISO >= hoyISO))
+    .sort((a,b) => a._ini - b._ini), citas);
   const porCompletar = finOn
-    ? base.filter(c => c.estado !== 'cancelada' && !c.completadaEn && c._ini < ahora && c._ini >= hace90).sort((a,b) => b._ini - a._ini)
+    ? colapsarDobles(base.filter(c => c.estado !== 'cancelada' && !c.completadaEn && c._ini < ahora && c._ini >= hace90).sort((a,b) => b._ini - a._ini), citas)
     : [];
   const completadas = finOn
-    ? base.filter(c => c.completadaEn && c._ini >= hace90).sort((a,b) => b._ini - a._ini)
+    ? colapsarDobles(base.filter(c => c.completadaEn && c._ini >= hace90).sort((a,b) => b._ini - a._ini), citas)
     : [];
-  const canceladas = base.filter(c => c.estado === 'cancelada' && c._ini >= hace90).sort((a,b) => b._ini - a._ini);
+  const canceladas = colapsarDobles(base.filter(c => c.estado === 'cancelada' && c._ini >= hace90).sort((a,b) => b._ini - a._ini), citas);
 
   const vistas = [{ k:'activas', t:'Activas', n:activas.length }];
   if (finOn){
@@ -6573,6 +6597,20 @@ function genSlots(){
     return [];
   }
 
+  // Cita doble: las horas son el cruce (intersección) del horario de los 2 profesionales
+  if (rpEmpleadoId2) {
+    const base2 = rpEmpleadoHorarioCache2 || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+    const cfg2 = (base2 && base2[bloqueDelDia(dow, base2)]) || null;
+    if (cfg2 && cfg2.cerrado) return [];
+    if (cfg2 && cfg2.abre && cfg2.cierra) {
+      const ini = Math.max(hIni*60+mIni, timeToMin(cfg2.abre));
+      const fin = Math.min(hFin*60+mFin, timeToMin(cfg2.cierra));
+      if (ini > fin) return [];
+      hIni = Math.floor(ini/60); mIni = ini % 60;
+      hFin = Math.floor(fin/60); mFin = fin % 60;
+    }
+  }
+
   const slots=[];
   let h=hIni,m=mIni;
   while(h<hFin||(h===hFin&&m===mFin)){
@@ -6598,13 +6636,17 @@ function isBlocked(slotKey,citas,durSvc){
 let reprogramarCitaId = null;
 let rpEmpleadoId = null;
 let rpEmpleadoHorarioCache = null;
+// Cita doble: el 2do profesional (el nuevo horario debe estar libre para los 2)
+let rpEmpleadoId2 = null;
+let rpEmpleadoHorarioCache2 = null;
 let rpCalY, rpCalM, rpSelectedDay = null, rpSelTime = null;
 let rpBloqueosCache = { dias: [], horas: {} };
 let rpDurMin = 60;
 
-async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duracionMin, empleadoId){
+async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duracionMin, empleadoId, empleadoId2){
   reprogramarCitaId = id;
   rpEmpleadoId = empleadoId || null;
+  rpEmpleadoId2 = empleadoId2 || null;
   rpDurMin = duracionMin || 60;
   document.getElementById('modal-reprogramar-title').textContent = 'Reprogramar — ' + nombre;
   const [y,m] = fechaISOStr.split('-');
@@ -6615,6 +6657,7 @@ async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duraci
 
   try { rpBloqueosCache = await Sheets.getBloqueos(); } catch(e){ rpBloqueosCache = {dias:[],horas:{}}; }
   rpEmpleadoHorarioCache = rpEmpleadoId ? await Sheets.getEmpleadoHorario(rpEmpleadoId).catch(() => null) : null;
+  rpEmpleadoHorarioCache2 = rpEmpleadoId2 ? await Sheets.getEmpleadoHorario(rpEmpleadoId2).catch(() => null) : null;
 
   renderCalAdmin();
   document.getElementById('ov-modal-reprogramar').classList.add('open');
@@ -6635,10 +6678,14 @@ function chMoAdmin(d){
 }
 
 function diaCerrado(dow){
-  const h = rpEmpleadoHorarioCache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
-  if (!h) return dow===0;
-  const bloque = h[bloqueDelDia(dow, h)];
-  return !bloque || !!bloque.cerrado;
+  const cerradoPara = (cache) => {
+    const h = cache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+    if (!h) return dow===0;
+    const bloque = h[bloqueDelDia(dow, h)];
+    return !bloque || !!bloque.cerrado;
+  };
+  // Cita doble: el día se cierra si CUALQUIERA de los 2 profesionales no trabaja ese día
+  return cerradoPara(rpEmpleadoHorarioCache) || (rpEmpleadoId2 ? cerradoPara(rpEmpleadoHorarioCache2) : false);
 }
 
 function renderCalAdmin(){
@@ -6674,6 +6721,9 @@ async function selDayAdmin(d){
   const fechaStr = d + ' de ' + MESES[rpCalM] + ' ' + rpCalY;
   let ocupadas = [];
   try { ocupadas = await Sheets.getHorasOcupadas(fechaStr, rpEmpleadoId); } catch(e){ ocupadas = []; }
+  if (rpEmpleadoId2){
+    try { ocupadas = ocupadas.concat(await Sheets.getHorasOcupadas(fechaStr, rpEmpleadoId2)); } catch(e){}
+  }
   renderTimesAdmin(ocupadas);
 }
 
@@ -6713,15 +6763,21 @@ async function cancelarCitaAdmin(id, nombre){
   const c = (CITAS_CACHE || []).find(x => x.id === id);
   const cert = c ? Number(c.certificadoMonto) || 0 : 0;
   const abono = c ? Number(c.abonoMonto) || 0 : 0;
+  // Cita doble: se cancelan las 2 citas juntas
+  const parDoble = (c && c.grupoCitaId) ? (CITAS_CACHE || []).filter(x => x.grupoCitaId === c.grupoCitaId) : [];
+  const esDoble = parDoble.length === 2;
+  const avisoDoble = esDoble ? '<strong>Cita doble:</strong> se cancelan las 2 citas juntas (no se puede cancelar solo una).<br>' : '';
   const avisoDinero = (cert > 0 || abono > 0)
     ? `<strong>Ojo:</strong> esta cita tiene ${cert > 0 ? 'un certificado aplicado de $' + cert.toFixed(2) : ''}${cert > 0 && abono > 0 ? ' y ' : ''}${abono > 0 ? 'un abono de $' + abono.toFixed(2) : ''}. Por ahora <strong>no se devuelven solos</strong>: revísalo tú y anota en el motivo qué hiciste.<br>`
     : '';
   const motivo = await pedirMotivo({
     titulo: 'Cancelar cita',
-    resumenHtml: c
-      ? `<strong>${escCat(c.nombre || nombre)}</strong><br>${escCat(c.servicio || '')} · ${escCat(c.fecha || '')} · ${escCat(c.hora || '')}${c.empleadoNombre ? ' · ' + escCat(c.empleadoNombre) : ''}`
-      : `<strong>${escCat(nombre)}</strong>`,
-    avisoHtml: avisoDinero + 'Se avisará al cliente de la cancelación (si dejó correo). Queda registrado quién la canceló y por qué.',
+    resumenHtml: esDoble
+      ? `<strong>${escCat(parDoble.map(x => x.nombre).join(' y '))}</strong><br>${escCat(c.servicio || '')} · ${escCat(c.fecha || '')} · ${escCat(c.hora || '')} · ${escCat(parDoble.map(x => x.empleadoNombre).filter(Boolean).join(' y '))}`
+      : (c
+        ? `<strong>${escCat(c.nombre || nombre)}</strong><br>${escCat(c.servicio || '')} · ${escCat(c.fecha || '')} · ${escCat(c.hora || '')}${c.empleadoNombre ? ' · ' + escCat(c.empleadoNombre) : ''}`
+        : `<strong>${escCat(nombre)}</strong>`),
+    avisoHtml: avisoDoble + avisoDinero + 'Se avisará al cliente de la cancelación (si dejó correo). Queda registrado quién la canceló y por qué.',
     etiqueta: 'Motivo de la cancelación (obligatorio)',
     placeholder: 'Ej: el cliente avisó que no puede asistir, cancelamos por una emergencia',
     textoBoton: 'Cancelar cita'
@@ -9086,6 +9142,11 @@ function calcularCompletar(precio, ctx){
 async function abrirCompletarCita(id){
   const c = (typeof CITAS_CACHE !== 'undefined' ? CITAS_CACHE : []).find(x => String(x.id) === String(id));
   if (!c) return;
+  // Cita doble: se completan las 2 juntas, con un solo cobro del combo
+  if (c.grupoCitaId){
+    const par = CITAS_CACHE.filter(x => x.grupoCitaId === c.grupoCitaId);
+    if (par.length === 2) return abrirCompletarCitaDoble(par);
+  }
   // Profesionales activos (para elegir quién realizó el servicio: de ahí salen las comisiones)
   if (!FIN.empleados.length){
     try {
@@ -9369,6 +9430,135 @@ async function confirmarCompletarCita(){
   }
 }
 
+// ---------- Completar una CITA DOBLE (2 citas amarradas, un solo cobro por el combo) ----------
+let COMPLETANDO_D = null;
+
+async function abrirCompletarCitaDoble(par){
+  const principal = par.find(x => x.grupoPrincipal) || par[0];
+  const otra = par.find(x => x.id !== principal.id);
+  const combo = Math.round(par.reduce((sum, x) => sum + (Number(x.precioTotal) || 0), 0)*100)/100;
+  COMPLETANDO = null;
+  COMPLETANDO_D = { grupoCitaId: principal.grupoCitaId, principal, otra, combo,
+    abono: Number(principal.abonoMonto) || 0, descontable: principal.abonoTipo === 'descontable' };
+  elFin('fc-body').innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.7;">
+      <strong>${escCat(principal.servicio)}</strong> · ${escCat(principal.fecha)}<br>
+      ${escCat(principal.nombre)}${principal.empleadoNombre ? ' · ' + escCat(principal.empleadoNombre) : ''}<br>
+      ${escCat(otra.nombre)}${otra.empleadoNombre ? ' · ' + escCat(otra.empleadoNombre) : ''}
+    </div>
+    <div style="background:#F3EDFB;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11.5px;line-height:1.5;color:var(--ink);">
+      <i class="ti ti-users" style="font-size:13px;color:#7C4DA0;"></i> Cita doble: se completan las 2 citas juntas, con un solo cobro. Cada profesional cobra su comisión sobre la mitad del combo.
+    </div>
+    <div class="fg"><label class="flbl">Precio final del combo ($)</label>
+      <input class="fi" id="fc-precio" type="number" step="0.01" min="0" value="${combo > 0 ? combo.toFixed(2) : ''}" oninput="fcdRecalcular()"/>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Puedes ajustarlo si hubo un descuento en el local; se reparte a la mitad entre las 2 citas.</p>
+    </div>
+    <div class="fg" id="fc-ajuste-wrap" style="display:none;">
+      <label class="flbl" id="fc-ajuste-lbl"></label>
+      <input class="fi" id="fc-ajuste" placeholder="Ej: Tratamiento adicional de espalda"/>
+    </div>
+    <div class="fg"><label class="flbl">Ventas adicionales (opcional)</label>
+      <p style="font-size:11px;color:var(--ink-soft);margin:0 0 6px;line-height:1.5;">Tratamientos, productos u otros que compraron en la visita. Se suman al cobro y quedan registrados con su detalle.</p>
+      <div id="fc-extras"></div>
+    </div>
+    <div id="fc-desglose" style="background:#FAFAF8;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.9;"></div>
+    <div class="fg"><label class="flbl">Cobro de hoy</label><div id="fc-pagos"></div></div>
+    ${moduloDisponible('PROPINAS') ? `
+    <div class="fg"><label class="flbl">Propina (opcional)</label>
+      <div style="display:flex;gap:8px;">
+        <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-shrink:0;">
+          <button type="button" id="fc-propina-modo-pct" onclick="fcPropinaModo('pct')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:#fff;color:var(--ink-soft);">%</button>
+          <button type="button" id="fc-propina-modo-monto" onclick="fcPropinaModo('monto')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:var(--annly-lilac);color:var(--annly-purple-dark);">$</button>
+        </div>
+        <input class="fi" id="fc-propina-valor" type="number" step="0.01" min="0" placeholder="0" style="flex:1;" oninput="fcPropinaRecalcular()"/>
+        <select class="fi" id="fc-propina-metodo" style="flex:1;">${METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('')}</select>
+      </div>
+      <p id="fc-propina-calc" style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el cobro de hoy. El certificado nunca cubre propina.</p>
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:2px;">Se reparte mitad y mitad entre los 2 profesionales. Queda pendiente en Finanzas → Comisiones y propinas.</p>
+    </div>` : ''}
+    <p id="fc-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+    <button class="btn-save" id="fc-btn" onclick="confirmarCompletarCitaDoble()"><i class="ti ti-circle-check" style="font-size:17px;"></i> Completar las 2 citas y registrar cobro</button>`;
+  PAGO_ED['fc-pagos'] = null;
+  extrasIniciar('fc-extras', 'fcdRecalcular');
+  fcdRecalcular(true);
+  if (elFin('fc-propina-valor')){ elFin('fc-propina-valor').value = ''; fcPropinaModo('monto'); }
+  elFin('ov-fin-completar').classList.add('open');
+}
+
+function fcdRecalcular(inicial){
+  const D = COMPLETANDO_D;
+  if (!D) return;
+  const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
+  const dif = Math.round((precio - D.combo)*100)/100;
+  const wrapAj = elFin('fc-ajuste-wrap');
+  if (wrapAj){
+    if (Math.abs(dif) >= 0.005 && precio > 0){
+      wrapAj.style.display = 'block';
+      elFin('fc-ajuste-lbl').textContent = dif > 0
+        ? 'Costo adicional durante el servicio: +' + fmtDinero(dif) + ' — ¿Qué se hizo? (obligatorio)'
+        : 'Descuento: −' + fmtDinero(-dif) + ' — Motivo (opcional)';
+    } else wrapAj.style.display = 'none';
+  }
+  const r = calcularCompletar(precio, { cert:0, abono:D.abono, descontable:D.descontable, certExtra:0 });
+  const linea = (t, v, color) => `<div style="display:flex;justify-content:space-between;"><span>${t}</span><strong style="color:${color||'var(--ink)'};">${v}</strong></div>`;
+  let html = linea('Precio del combo (2 personas)', fmtDinero(precio));
+  if (D.abono > 0){
+    html += D.descontable
+      ? linea('Abono ya pagado (' + METODOS_PAGO[metodoDeAbono(D.principal.metodoPago)] + ')', '−' + fmtDinero(r.abonoDescontado), '#159A61')
+      : linea('Abono no reembolsable ya pagado (aparte)', fmtDinero(D.abono), 'var(--ink-soft)');
+  }
+  const extras = extrasTotal('fc-extras');
+  if (extras > 0) html += linea('Ventas adicionales', '+' + fmtDinero(extras));
+  const totalHoy = Math.round((r.porCobrar + extras)*100)/100;
+  html += `<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${linea('Por cobrar hoy', fmtDinero(totalHoy), '#7C3AED')}</div>`;
+  elFin('fc-desglose').innerHTML = html;
+  if (inicial || !PAGO_ED['fc-pagos']) pagoIniciar('fc-pagos', totalHoy);
+  else pagoSetEsperado('fc-pagos', totalHoy);
+  fcPropinaRecalcular();
+}
+
+async function confirmarCompletarCitaDoble(){
+  const D = COMPLETANDO_D;
+  if (!D) return;
+  const msg = elFin('fc-msg');
+  msg.textContent = '';
+  const precio = Math.round((parseFloat(elFin('fc-precio').value) || 0)*100)/100;
+  if (!(precio > 0)){ msg.textContent = 'Ingresa el precio final del combo.'; return; }
+  const dif = Math.round((precio - D.combo)*100)/100;
+  const hayAjuste = Math.abs(dif) >= 0.005;
+  const ajusteDetalle = (hayAjuste && elFin('fc-ajuste')) ? elFin('fc-ajuste').value.trim() : '';
+  if (hayAjuste && dif > 0 && !ajusteDetalle){
+    msg.textContent = 'Describe qué se hizo por el costo adicional de ' + fmtDinero(dif) + '.';
+    return;
+  }
+  const ex = extrasValidar('fc-extras');
+  if (!ex.ok){ msg.textContent = ex.msg; return; }
+  const v = pagoValidar('fc-pagos');
+  if (!v.ok){ msg.textContent = v.msg; return; }
+  if (typeof Sheets.completarCitaDoble !== 'function'){
+    msg.textContent = 'Falta actualizar la página para completar citas dobles. Recarga con Ctrl+Shift+R e inténtalo de nuevo.';
+    return;
+  }
+  const btn = elFin('fc-btn');
+  btn.disabled = true;
+  try {
+    const propinaMonto = fcPropinaMonto();
+    await Sheets.completarCitaDoble({
+      grupoCitaId: D.grupoCitaId, precioCombo: precio, pagos: v.lineas,
+      fecha: D.principal.fechaISO, concepto: D.principal.servicio,
+      extras: ex.items, ajusteDetalle,
+      propina: propinaMonto > 0 ? { monto: propinaMonto, metodo: elFin('fc-propina-metodo').value } : null
+    });
+    cerrarModalFin('ov-fin-completar');
+    COMPLETANDO_D = null;
+    loadCitas();
+  } catch(e){
+    console.error(e);
+    msg.textContent = 'No se pudo completar la cita doble.' + (e && e.message ? ' (' + e.message + ')' : '');
+    btn.disabled = false;
+  }
+}
+
 // ---------- Tarjeta de cita (con Completar / Completada) ----------
 const PALETA_CAT_CITAS = {
   'VIP': {bg:'#F3EDFB', fg:'#7C4DA0'},
@@ -9420,7 +9610,74 @@ function chipsPagoCita(c){
   return out.join('');
 }
 
+// Tarjeta de una cita doble: una sola tarjeta con las 2 personas, sus 2 profesionales y el combo completo
+function htmlCardCitaDoble(c){
+  const p = c.principal, o = c.otra;
+  const cat = PALETA_CAT_CITAS[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
+  const [horaNum, ampm] = c.hora.split(' ');
+  const esCancelada = p.estado === 'cancelada';
+  const completada = !!(p.completadaEn && o.completadaEn);
+  const puedeCompletar = moduloDisponible('FINANZAS') && !completada && !esCancelada && c.fechaISO <= isoLocal(new Date());
+  const btnStyle = 'width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;';
+  const esc1 = s => String(s || '').replace(/'/g, "\\'");
+  const primero = n => String(n || '').trim().split(/\s+/)[0];
+  const nombresEsc = esc1(p.nombre + ' y ' + o.nombre);
+  const abono = Number(p.abonoMonto) || 0;
+  const descontable = p.abonoTipo === 'descontable';
+  const porCobrar = Math.max(0, Math.round((c.comboTotal - (descontable ? abono : 0))*100)/100);
+  const chip = (txt, bg, fg) => `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:${bg};color:${fg};">${txt}</span>`;
+  const chips = [chip('<i class="ti ti-users" style="font-size:11px;margin-right:4px;"></i>Cita doble', '#F3EDFB', '#7C4DA0')];
+  if (abono > 0) chips.push(chip('Abono ' + fmtDinero(abono) + (p.metodoPago ? ' · ' + metodoAbonoTexto(p.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
+  if (completada){
+    chips.push(chip('Cobrada ' + fmtDinero((Number(p.precioCobrado)||0) + (Number(o.precioCobrado)||0)), '#E9F6EF', '#159A61'));
+    if (p.comisionMonto != null && o.comisionMonto != null) chips.push(chip('Comisiones ' + fmtDinero((Number(p.comisionMonto)||0) + (Number(o.comisionMonto)||0)), '#F3EDFB', '#7C4DA0'));
+  } else if (!esCancelada){
+    chips.push(porCobrar > 0 ? chip('Por cobrar ' + fmtDinero(porCobrar), '#FBF6E4', '#B08900') : chip('Pagada por anticipado', '#E9F6EF', '#159A61'));
+  }
+  const insignia = esCancelada
+    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#FBEDEE;color:#E11D2E;"><i class="ti ti-x" style="font-size:11px;"></i> Cancelada</span>'
+    : (completada ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#E9F6EF;color:#159A61;"><i class="ti ti-circle-check" style="font-size:11px;"></i> Completada</span>' : '');
+  const persona = x => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${escCat(x.nombre)}${x.empleadoNombre ? ' · <strong style="color:var(--ink);font-weight:600;">' + escCat(x.empleadoNombre) + '</strong>' : ''}</span>`;
+  const btnDetalle = (x) => `<button class="btn-ico" style="${btnStyle}" onclick="abrirDetalleCita('${x.id}')"><i class="ti ti-file-description"></i> Detalle ${escCat(primero(x.nombre))}</button>`;
+  const acciones = (esCancelada || completada)
+    ? `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">${btnDetalle(p)}${btnDetalle(o)}</div>`
+    : `<div style="display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;">
+        ${btnDetalle(p)}
+        ${puedeCompletar ? `<button class="btn-ico" style="${btnStyle}color:#159A61;border-color:#BFE3D0;" onclick="abrirCompletarCita('${p.id}')"><i class="ti ti-circle-check"></i> Completar</button>` : ''}
+        <button class="btn-ico" style="${btnStyle}" onclick="abrirModalReprogramar('${p.id}','${c.fechaISO}','${c.horaISO}','${nombresEsc}',${c.duracion || 60},${p.empleadoId ? `'${p.empleadoId}'` : 'null'},${o.empleadoId ? `'${o.empleadoId}'` : 'null'})"><i class="ti ti-calendar-time"></i> Reprogramar</button>
+        <button class="btn-ico del" style="${btnStyle}" onclick="cancelarCitaAdmin('${p.id}','${nombresEsc}')"><i class="ti ti-x"></i> Cancelar</button>
+      </div>`;
+  const motivoLine = (esCancelada && p.cancelacionMotivo)
+    ? `<p style="font-size:11.5px;color:var(--ink-soft);margin:5px 0 0;"><i class="ti ti-message-circle" style="font-size:11px;"></i> ${escCat(p.cancelacionMotivo)}</p>` : '';
+  return `<div style="background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow-sm);">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="text-align:center;min-width:52px;">
+        <div style="font-size:16px;font-weight:700;color:var(--gold-dark);line-height:1.1;">${horaNum}</div>
+        <div style="font-size:10px;color:var(--ink-soft);font-weight:600;">${ampm||''}</div>
+        <div style="font-size:9.5px;color:#C7C0B3;margin-top:2px;"><i class="ti ti-clock" style="font-size:9px;"></i> ~${c.duracion}m</div>
+      </div>
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--charcoal2);"><i class="ti ti-users" style="font-size:17px;"></i></div>
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${escCat(p.nombre)} + ${escCat(o.nombre)}</p>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
+            <span style="width:5px;height:5px;border-radius:50%;background:${cat.fg};"></span>${c.categoria||'Servicio'}
+          </span>
+          <span style="font-size:12px;font-weight:700;color:var(--ink);">${fmtDinero(c.comboTotal)}</span>
+          ${insignia}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;margin-top:6px;">${persona(p)}${persona(o)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;">${chips.join('')}</div>
+        ${motivoLine}
+      </div>
+    </div>
+    ${acciones}
+  </div>`;
+}
+
 function htmlCardCita(c){
+  if (c.esDoble) return htmlCardCitaDoble(c);
   const cat = PALETA_CAT_CITAS[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
   const [horaNum, ampm] = c.hora.split(' ');
   const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.fechaISO <= isoLocal(new Date());
