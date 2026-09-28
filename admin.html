@@ -7984,6 +7984,7 @@ function tarjetaComparacion(ingresos){
 function htmlResumenFin(){
   const cobrosServicios = sumaFin(FIN.pagos);
   const ventaCert = sumaFin(FIN.pagosCert);
+  const certsVendidos = new Set(FIN.pagosCert.map(p => p.certificateId).filter(Boolean)).size;
   const ingresos = cobrosServicios + ventaCert;
   const gastos = sumaFin(FIN.gastos);
   const resultado = ingresos - gastos;
@@ -8097,10 +8098,15 @@ function htmlResumenFin(){
 
   return `
     <div class="fin-summary-grid">
-      ${kpi('Ingreso real',
-        '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(resultado) + '</span>',
-        'Ingresos ' + fmtDinero(ingresos) + '<br>menos gastos ' + fmtDinero(gastos),
-        resultado,'income')}
+      ${kpi(FIN_PERIODO === 'actual' ? 'Ingresos del periodo actual' : 'Ingresos del periodo',
+        '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(cobrosServicios) + '</span>',
+        'Servicios y ventas en el local<br>cobrados en el periodo',
+        cobrosServicios,'income')}
+
+      ${kpi('Ventas en certificados',
+        '<span class="fin-gift-icon"><i class="ti ti-gift" aria-hidden="true"></i><span class="fin-gift-fallback">🎁</span></span><span>' + fmtDinero(ventaCert) + '</span>',
+        certsVendidos + ' vendido' + (certsVendidos === 1 ? '' : 's') + ' en el periodo<br>Es ingreso desde que se cobra.',
+        ventaCert,'certificates')}
 
       ${kpi('Gastos',
         '<i class="ti ti-trending-down fin-card-icon"></i><span>' + fmtDinero(gastos) + '</span>',
@@ -8108,11 +8114,6 @@ function htmlResumenFin(){
         gastos,'expense')}
 
       ${tarjetaComparacion(ingresos)}
-
-      ${kpi('Certificados por canjear',
-        '<span class="fin-gift-icon"><i class="ti ti-gift" aria-hidden="true"></i><span class="fin-gift-fallback">🎁</span></span><span>' + fmtDinero(FIN.certPorCanjear) + '</span>',
-        'Servicios pendientes de canje<br>El dinero ya contó como ingreso al venderse.',
-        FIN.certPorCanjear,'certificates')}
     </div>
 
     <div class="fin-mini-summary">
@@ -8120,7 +8121,10 @@ function htmlResumenFin(){
       <span class="fin-mini-result"><strong>${fmtDinero(resultado)}</strong> después de gastos</span>
       <span class="fin-mini-sep"></span>
       <span class="fin-mini-label">Ingresos</span>
-      <span class="fin-mini-result">${fmtDinero(ingresos)}</span>
+      <span class="fin-mini-result">${fmtDinero(cobrosServicios)}</span>
+      <span class="fin-mini-sep"></span>
+      <span class="fin-mini-label">Certificados</span>
+      <span class="fin-mini-result">${fmtDinero(ventaCert)}</span>
       <span class="fin-mini-sep"></span>
       <span class="fin-mini-label">Gastos</span>
       <span class="fin-mini-result">${fmtDinero(gastos)}</span>
