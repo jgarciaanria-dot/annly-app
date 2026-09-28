@@ -8099,9 +8099,9 @@ function htmlResumenFin(){
   return `
     <div class="fin-summary-grid">
       ${kpi(FIN_PERIODO === 'actual' ? 'Ingresos del periodo actual' : 'Ingresos del periodo',
-        '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(cobrosServicios) + '</span>',
-        'Servicios y ventas en el local<br>cobrados en el periodo',
-        cobrosServicios,'income')}
+        '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(ingresos) + '</span>',
+        'Citas ' + fmtDinero(serviciosAgenda) + ' · Local ' + fmtDinero(local + adicionales) + '<br>Certificados ' + fmtDinero(ventaCert),
+        ingresos,'income')}
 
       ${kpi('Ventas en certificados',
         '<span class="fin-gift-icon"><i class="ti ti-gift" aria-hidden="true"></i><span class="fin-gift-fallback">🎁</span></span><span>' + fmtDinero(ventaCert) + '</span>',
@@ -8121,10 +8121,7 @@ function htmlResumenFin(){
       <span class="fin-mini-result"><strong>${fmtDinero(resultado)}</strong> después de gastos</span>
       <span class="fin-mini-sep"></span>
       <span class="fin-mini-label">Ingresos</span>
-      <span class="fin-mini-result">${fmtDinero(cobrosServicios)}</span>
-      <span class="fin-mini-sep"></span>
-      <span class="fin-mini-label">Certificados</span>
-      <span class="fin-mini-result">${fmtDinero(ventaCert)}</span>
+      <span class="fin-mini-result">${fmtDinero(ingresos)}</span>
       <span class="fin-mini-sep"></span>
       <span class="fin-mini-label">Gastos</span>
       <span class="fin-mini-result">${fmtDinero(gastos)}</span>
