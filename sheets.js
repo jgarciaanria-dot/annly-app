@@ -1720,7 +1720,13 @@ const Sheets = {
           c.cancelacion_motivo || '',
 
         canceladaEn:
-          c.cancelada_en || null
+          c.cancelada_en || null,
+
+        grupoCitaId:
+          c.grupo_cita_id || null,
+
+        grupoPrincipal:
+          !!c.grupo_principal
 
       }));
   },
@@ -3624,6 +3630,9 @@ const Sheets = {
     const { data: citaActual } = await sbClient.from('appointments')
       .select('employee_id, servicio_nombre, grupo_cita_id')
       .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
+    if (citaActual && citaActual.grupo_cita_id) {
+      throw new Error('Esta cita es parte de una cita doble: se completa desde la tarjeta doble (completarCitaDoble).');
+    }
     const empleadoFinal = (datos.cambiarEmpleado && datos.empleadoId) ? datos.empleadoId : (citaActual && citaActual.employee_id);
     let comisionPct = 0, comisionMonto = 0;
     if (empleadoFinal) {
@@ -3690,30 +3699,134 @@ const Sheets = {
       });
     }
 
-    // Cita doble: al completar una, se completa también la pareja — con su propio precio
-    // y su propia comisión, sin el ajuste que se le haya hecho a esta. El dinero (finance_payments)
-    // solo se registra en la que el admin está completando, para no duplicar el cobro.
-    if (citaActual && citaActual.grupo_cita_id) {
-      try {
-        const { data: pareja } = await sbClient.from('appointments')
-          .select('id, employee_id, servicio_nombre, precio_total, completada_en')
-          .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', citaActual.grupo_cita_id).neq('id', citaId).maybeSingle();
-        if (pareja && !pareja.completada_en) {
-          const precioPareja = Number(pareja.precio_total || 0);
-          let pctPareja = 0, montoPareja = 0;
-          if (pareja.employee_id) {
-            pctPareja = await this.getComisionAplicable(pareja.employee_id, pareja.servicio_nombre);
-            montoPareja = Math.round(precioPareja * pctPareja) / 100;
-          }
-          await sbClient.from('appointments').update({
-            completada_en: new Date().toISOString(), precio_cobrado: precioPareja,
-            comision_pct: pctPareja, comision_monto: montoPareja
-          }).eq('id', pareja.id);
+  },
+
+  // Cita doble: se completan las 2 juntas, con UN solo cobro por el combo. El precio final del
+  // combo se reparte a la mitad en cada cita (cada profesional cobra su comisión sobre su mitad) y
+  // el cobro se asigna a las 2 citas para que cada una cuadre sola: primero se cubre lo que le falta
+  // a la principal (la que lleva el abono) y el resto va a la otra. La propina se reparte mitad y mitad.
+  // datos: { grupoCitaId, precioCombo, pagos:[{metodo,monto,referencia}], fecha, extras, ajusteDetalle, propina:{monto,metodo} }
+  async completarCitaDoble(datos) {
+    await window.AnnlyReady;
+
+    const { data: par, error: errPar } = await sbClient.from('appointments')
+      .select('id, employee_id, servicio_nombre, cliente_nombre, completada_en, grupo_principal, abono_monto, abono_tipo, metodo_pago, comprobante')
+      .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', datos.grupoCitaId);
+    if (errPar) throw errPar;
+    if (!par || par.length !== 2) throw new Error('No se encontraron las 2 citas de esta reserva doble.');
+    if (par.some(p => p.completada_en)) throw new Error('Esta cita doble ya fue completada.');
+
+    const principal = par.find(p => p.grupo_principal) || par[0];
+    const otra = par.find(p => p.id !== principal.id);
+
+    const total = Math.round(Number(datos.precioCombo || 0) * 100) / 100;
+    const mitadP = Math.round(total * 100 / 2) / 100;
+    const mitadO = Math.round((total - mitadP) * 100) / 100;
+
+    const abono = Number(principal.abono_monto || 0);
+    const descontable = principal.abono_tipo === 'descontable';
+    const extras = (datos.extras || []).filter(x => x.monto > 0 && x.descripcion);
+    const extrasTotal = Math.round(extras.reduce((s, x) => s + x.monto, 0) * 100) / 100;
+
+    // Lo que le toca cobrar hoy a cada cita (el abono descontable ya cubre parte de la principal)
+    const abonoDescontado = descontable ? Math.min(abono, mitadP) : 0;
+    let debeP = Math.round((mitadP + extrasTotal - abonoDescontado) * 100) / 100;
+    if (debeP < 0) debeP = 0;
+    const debeO = mitadO;
+
+    // Se reparte el cobro de hoy: primero lo que falta de la principal, el resto a la otra
+    const lineasP = [], lineasO = [];
+    let faltaP = debeP;
+    for (const l of (datos.pagos || [])) {
+      let restante = Math.round(Number(l.monto) * 100) / 100;
+      if (!(restante > 0)) continue;
+      if (faltaP > 0) {
+        const aP = Math.min(restante, faltaP);
+        lineasP.push({ ...l, monto: aP });
+        faltaP = Math.round((faltaP - aP) * 100) / 100;
+        restante = Math.round((restante - aP) * 100) / 100;
+      }
+      if (restante > 0) lineasO.push({ ...l, monto: restante });
+    }
+
+    const ahora = new Date().toISOString();
+    const marcar = async (cita, mitad) => {
+      const pct = cita.employee_id ? await this.getComisionAplicable(cita.employee_id, cita.servicio_nombre) : 0;
+      const monto = Math.round(mitad * pct) / 100;
+      const fila = { completada_en: ahora, precio_cobrado: mitad, comision_pct: pct, comision_monto: monto };
+      if (datos.ajusteDetalle) fila.ajuste_detalle = datos.ajusteDetalle;
+      const { data: ok, error } = await sbClient.from('appointments').update(fila)
+        .eq('id', cita.id).eq('business_id', BUSINESS_ID).is('completada_en', null).select('id');
+      if (error) throw error;
+      if (!ok || !ok.length) throw new Error('Una de las 2 citas ya estaba completada.');
+    };
+    const revertir = (ids) => sbClient.from('appointments')
+      .update({ completada_en: null, precio_cobrado: null, comision_pct: null, comision_monto: null, ajuste_detalle: null })
+      .in('id', ids);
+
+    await marcar(principal, mitadP);
+    try { await marcar(otra, mitadO); }
+    catch (e) { await revertir([principal.id]); throw e; }
+
+    const ids = [principal.id, otra.id];
+    let extrasIds = [];
+    try {
+      if (extras.length) {
+        const { data: insertados, error: errEx } = await sbClient.from('appointment_extras').insert(
+          extras.map(x => ({
+            business_id: BUSINESS_ID, appointment_id: principal.id, descripcion: x.descripcion,
+            monto: x.monto, fecha: datos.fecha, employee_id: principal.employee_id || null,
+            cliente_nombre: principal.cliente_nombre || null
+          }))
+        ).select('id');
+        if (errEx) throw errEx;
+        extrasIds = (insertados || []).map(r => r.id);
+      }
+
+      const filas = [];
+      // El abono ya pagado por la reserva se registra en la principal, igual que en una cita normal
+      if (abono > 0) {
+        filas.push({
+          business_id: BUSINESS_ID, origen: 'agenda', appointment_id: principal.id,
+          metodo: principal.metodo_pago === 'yappy' ? 'yappy' : 'transferencia', monto: abono,
+          referencia: principal.comprobante || null, fecha: datos.fecha, concepto: datos.concepto || null,
+          cliente_nombre: principal.cliente_nombre || null, employee_id: principal.employee_id || null
+        });
+      }
+      const filaPago = (cita, l) => ({
+        business_id: BUSINESS_ID, origen: 'agenda', appointment_id: cita.id,
+        metodo: l.metodo, monto: l.monto, referencia: l.referencia || null,
+        fecha: datos.fecha, concepto: datos.concepto || null,
+        cliente_nombre: cita.cliente_nombre || null, employee_id: cita.employee_id || null
+      });
+      lineasP.forEach(l => filas.push(filaPago(principal, l)));
+      lineasO.forEach(l => filas.push(filaPago(otra, l)));
+      if (filas.length) {
+        const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
+        if (errPagos) throw errPagos;
+      }
+    } catch (e) {
+      if (extrasIds.length) await sbClient.from('appointment_extras').delete().in('id', extrasIds);
+      await revertir(ids);
+      throw e;
+    }
+
+    // Propina: se reparte mitad y mitad entre los 2 profesionales
+    if (datos.propina && datos.propina.monto > 0) {
+      const montoP = Math.round(datos.propina.monto * 100 / 2) / 100;
+      const montoO = Math.round((datos.propina.monto - montoP) * 100) / 100;
+      for (const [cita, monto] of [[principal, montoP], [otra, montoO]]) {
+        if (monto > 0 && cita.employee_id) {
+          await this.registrarPropina({
+            employeeId: cita.employee_id, appointmentId: cita.id, monto,
+            metodo: datos.propina.metodo, fecha: datos.fecha,
+            clienteNombre: cita.cliente_nombre || null, servicioNombre: cita.servicio_nombre || datos.concepto || null
+          });
         }
-      } catch (eDoble) {
-        console.error('No se pudo completar automáticamente la pareja de la cita doble:', eDoble);
       }
     }
+
+    return { principalId: principal.id, otraId: otra.id };
   },
 
   // Cobros registrados de una cita (para su detalle / trazabilidad)
