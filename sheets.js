@@ -4357,6 +4357,178 @@ const Sheets = {
   },
 
   // ---------------------------------------------------------------
+  // SUCURSALES
+  // Un negocio tiene siempre una sucursal Principal (la crea la base de datos).
+  // Las adicionales se habilitan con el módulo por cantidad SUCURSAL_ADICIONAL.
+  // Una sucursal no se borra: se desactiva (queda su historial de citas y ventas).
+  // ---------------------------------------------------------------
+  _slugSucursal(texto) {
+    return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'sucursal';
+  },
+
+  async getSucursales() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('locations').select('*')
+      .eq('business_id', BUSINESS_ID)
+      .order('is_main', { ascending: false }).order('orden', { ascending: true }).order('created_at', { ascending: true });
+    if (error) throw error;
+    const sucursales = data || [];
+    let enlaces = [];
+    if (sucursales.length) {
+      const { data: el, error: errEl } = await sbClient.from('employee_locations')
+        .select('employee_id, location_id, is_primary').in('location_id', sucursales.map(s => s.id));
+      if (errEl) throw errEl;
+      enlaces = el || [];
+    }
+    return sucursales.map(s => ({
+      id: s.id, nombre: s.name, direccion: s.address || '', telefono: s.phone || '', correo: s.email || '',
+      slug: s.slug || '', esPrincipal: !!s.is_main, activa: !!s.is_active, orden: s.orden || 0,
+      horario: s.horario_estructurado || null,
+      empleados: enlaces.filter(e => e.location_id === s.id).map(e => e.employee_id)
+    }));
+  },
+
+  // Crea o edita una sucursal. Devuelve su id. La Principal no se puede desactivar.
+  async guardarSucursal({ id, nombre, direccion, telefono, correo, activa }) {
+    await window.AnnlyReady;
+    const nom = (nombre || '').trim();
+    if (!nom) throw new Error('Escribe el nombre de la sucursal.');
+
+    const { data: todas, error: errT } = await sbClient.from('locations').select('id, name, slug, is_main')
+      .eq('business_id', BUSINESS_ID);
+    if (errT) throw errT;
+    const otras = (todas || []).filter(s => s.id !== id);
+    if (otras.some(s => (s.name || '').trim().toLowerCase() === nom.toLowerCase())) {
+      throw new Error('Ya tienes una sucursal con ese nombre.');
+    }
+    const actual = id ? (todas || []).find(s => s.id === id) : null;
+    if (actual && actual.is_main && activa === false) throw new Error('La sucursal principal no se puede desactivar.');
+
+    // Identificador para el link público (?s=...), único dentro del negocio
+    let slug = actual && actual.is_main ? (actual.slug || 'principal') : this._slugSucursal(nom);
+    if (!(actual && actual.is_main)) {
+      const usados = new Set(otras.map(s => s.slug).filter(Boolean));
+      const base = slug; let n = 2;
+      while (usados.has(slug)) slug = base + '-' + (n++);
+    }
+
+    const fila = {
+      name: nom, address: (direccion || '').trim() || null, phone: (telefono || '').trim() || null,
+      email: (correo || '').trim() || null, slug, updated_at: new Date().toISOString()
+    };
+    if (!(actual && actual.is_main)) fila.is_active = activa !== false;
+
+    if (id) {
+      const { data, error } = await sbClient.from('locations').update(fila)
+        .eq('id', id).eq('business_id', BUSINESS_ID).select('id');
+      if (error) throw error;
+      if (!data || !data.length) throw new Error('No se pudo guardar la sucursal (sin permisos).');
+      return id;
+    }
+    const { data, error } = await sbClient.from('locations')
+      .insert([{ ...fila, business_id: BUSINESS_ID, is_main: false, orden: (todas || []).length }])
+      .select('id').single();
+    if (error) throw error;
+    return data.id;
+  },
+
+  // Citas pendientes (hoy en adelante, sin completar ni cancelar) en una sucursal
+  async contarCitasFuturasSucursal(locationId) {
+    await window.AnnlyReady;
+    const hoy = this._hoyISO();
+    const { count, error } = await sbClient.from('appointments').select('id', { count: 'exact', head: true })
+      .eq('business_id', BUSINESS_ID).eq('location_id', locationId)
+      .or('estado.is.null,estado.neq.cancelada').is('completada_en', null).gte('fecha', hoy);
+    if (error) throw error;
+    return count || 0;
+  },
+
+  // Deja a la sucursal con exactamente estos profesionales. Un profesional nunca
+  // se queda sin sucursal: si esta era la única que tenía, no se le puede quitar.
+  async asignarProfesionalesSucursal(locationId, employeeIds) {
+    await window.AnnlyReady;
+    const deseados = [...new Set((employeeIds || []).filter(Boolean))];
+    const { data: actuales, error } = await sbClient.from('employee_locations')
+      .select('id, employee_id').eq('location_id', locationId);
+    if (error) throw error;
+    const actualesIds = (actuales || []).map(a => a.employee_id);
+    const quitar = (actuales || []).filter(a => !deseados.includes(a.employee_id));
+    const agregar = deseados.filter(e => !actualesIds.includes(e));
+
+    if (quitar.length) {
+      const { data: otrosEnlaces, error: errO } = await sbClient.from('employee_locations')
+        .select('employee_id, location_id').in('employee_id', quitar.map(q => q.employee_id)).neq('location_id', locationId);
+      if (errO) throw errO;
+      const conOtra = new Set((otrosEnlaces || []).map(o => o.employee_id));
+      const sinSucursal = quitar.filter(q => !conOtra.has(q.employee_id));
+      if (sinSucursal.length) {
+        const { data: emps } = await sbClient.from('employees').select('id, nombre').in('id', sinSucursal.map(s => s.employee_id));
+        const nombres = (emps || []).map(e => e.nombre).join(', ');
+        throw new Error(`${nombres || 'Un profesional'} quedaría sin ninguna sucursal. Asígnalo primero a otra sucursal.`);
+      }
+      const { error: errDel } = await sbClient.from('employee_locations').delete().in('id', quitar.map(q => q.id));
+      if (errDel) throw errDel;
+    }
+
+    if (agregar.length) {
+      const { data: yaTienen } = await sbClient.from('employee_locations').select('employee_id').in('employee_id', agregar);
+      const conAlguna = new Set((yaTienen || []).map(y => y.employee_id));
+      const { error: errIns } = await sbClient.from('employee_locations').insert(
+        agregar.map(e => ({ employee_id: e, location_id: locationId, is_primary: !conAlguna.has(e) }))
+      );
+      if (errIns) throw errIns;
+    }
+  },
+
+  // Sucursales adicionales contratadas (mismo esquema que Profesional adicional)
+  async getSucursalesExtra(subscriptionId) {
+    await window.AnnlyReady;
+    const vacio = { cantidad: 0, totalMensual: 0, pendientes: [] };
+    if (!subscriptionId) return vacio;
+    const hoyISO = this._hoyISO();
+    const { data, error } = await sbClient.from('subscription_items')
+      .select('id, quantity, unit_price, created_at, cancela_el')
+      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
+      .eq('item_code', 'SUCURSAL_ADICIONAL').eq('is_active', true)
+      .order('created_at', { ascending: true });
+    if (error) { console.error('Error leyendo sucursales adicionales:', error); return vacio; }
+    const vigentes = (data || []).filter(r => !r.cancela_el || r.cancela_el >= hoyISO);
+    return {
+      cantidad: vigentes.reduce((s, r) => s + (r.quantity || 1), 0),
+      totalMensual: vigentes.reduce((s, r) => s + (Number(r.unit_price) || 0) * (r.quantity || 1), 0),
+      pendientes: vigentes.filter(r => r.cancela_el).map(r => r.cancela_el).sort()
+    };
+  },
+
+  async agregarSucursalExtra(subscriptionId, precio) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('subscription_items').insert([{
+      subscription_id: subscriptionId, item_type: 'addon', item_code: 'SUCURSAL_ADICIONAL',
+      description: 'Sucursal adicional', quantity: 1, unit_price: precio, is_active: true
+    }]);
+    if (error) throw error;
+  },
+
+  // Da de baja UNA sucursal adicional al terminar su mes ya pagado. Devuelve la fecha de baja.
+  async quitarSucursalExtra(subscriptionId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('subscription_items')
+      .select('id, created_at')
+      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
+      .eq('item_code', 'SUCURSAL_ADICIONAL').eq('is_active', true).is('cancela_el', null)
+      .order('created_at', { ascending: true }).limit(1);
+    if (error || !data || !data.length) throw error || new Error('No hay sucursales adicionales para quitar.');
+    const corte = new Date(data[0].created_at);
+    const ahora = new Date();
+    while (corte <= ahora) corte.setMonth(corte.getMonth() + 1);
+    const fecha = corte.getFullYear() + '-' + String(corte.getMonth() + 1).padStart(2, '0') + '-' + String(corte.getDate()).padStart(2, '0');
+    const { error: errUpd } = await sbClient.from('subscription_items').update({ cancela_el: fecha }).eq('id', data[0].id);
+    if (errUpd) throw errUpd;
+    return fecha;
+  },
+
+  // ---------------------------------------------------------------
   // PROFESIONAL ADICIONAL (módulo por cantidad)
   // Cada extra es una fila (quantity 1) con su propio precio y su propio ciclo de cobro.
   // ---------------------------------------------------------------
