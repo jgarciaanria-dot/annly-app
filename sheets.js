@@ -3628,12 +3628,14 @@ const Sheets = {
     // Comisión: se calcula y se congela en la cita al momento de completarla
     // (si luego cambia el % del profesional o del servicio, no altera lo ya generado)
     const { data: citaActual } = await sbClient.from('appointments')
-      .select('employee_id, servicio_nombre, grupo_cita_id')
+      .select('employee_id, servicio_nombre, grupo_cita_id, fecha')
       .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
     if (citaActual && citaActual.grupo_cita_id) {
       throw new Error('Esta cita es parte de una cita doble: se completa desde la tarjeta doble (completarCitaDoble).');
     }
     const empleadoFinal = (datos.cambiarEmpleado && datos.empleadoId) ? datos.empleadoId : (citaActual && citaActual.employee_id);
+    // Una cita cuya fecha de atención cae en un periodo ya cerrado no se puede completar (sin excepción)
+    await this.validarFechaAbierta([citaActual && citaActual.employee_id, empleadoFinal], (citaActual && citaActual.fecha) || datos.fecha);
     let comisionPct = 0, comisionMonto = 0;
     if (empleadoFinal) {
       comisionPct = await this.getComisionAplicable(empleadoFinal, citaActual && citaActual.servicio_nombre);
@@ -3710,11 +3712,12 @@ const Sheets = {
     await window.AnnlyReady;
 
     const { data: par, error: errPar } = await sbClient.from('appointments')
-      .select('id, employee_id, servicio_nombre, cliente_nombre, completada_en, grupo_principal, abono_monto, abono_tipo, metodo_pago, comprobante')
+      .select('id, employee_id, servicio_nombre, cliente_nombre, completada_en, grupo_principal, abono_monto, abono_tipo, metodo_pago, comprobante, fecha')
       .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', datos.grupoCitaId);
     if (errPar) throw errPar;
     if (!par || par.length !== 2) throw new Error('No se encontraron las 2 citas de esta reserva doble.');
     if (par.some(p => p.completada_en)) throw new Error('Esta cita doble ya fue completada.');
+    await this.validarFechaAbierta(par.map(p => p.employee_id), par[0].fecha || datos.fecha);
 
     const principal = par.find(p => p.grupo_principal) || par[0];
     const otra = par.find(p => p.id !== principal.id);
@@ -4045,7 +4048,103 @@ const Sheets = {
 
   // =======================================================
   // CIERRE DE PERIODO
+  // Reglas: no se cierra antes de que termine el rango (hoy >= hasta); no se cierra si al
+  // profesional le quedan citas sin completar (atrasadas o futuras) o propinas sin decidir en ese
+  // rango; una cita con fecha dentro de un periodo cerrado ya no se puede completar. La pertenencia
+  // de una cita a un periodo siempre se mide por su fecha de atención (appointments.fecha).
   // =======================================================
+
+  // Fecha de hoy (hora local del navegador) en formato YYYY-MM-DD
+  _hoyISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  },
+
+  // Cierres de un profesional que se cruzan con el rango (evita cierres encimados si se cambió
+  // de quincenal a semanal o viceversa)
+  async _cierresQueSeCruzan(employeeId, desdeISO, hastaISO) {
+    const { data, error } = await sbClient.from('cierres_profesional').select('id, periodo_desde, periodo_hasta')
+      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
+      .lte('periodo_desde', hastaISO).gte('periodo_hasta', desdeISO);
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Cierre (de cualquiera de esos profesionales) que cubre la fecha de atención dada, o null
+  async getCierreQueCubre(employeeIds, fechaISO) {
+    await window.AnnlyReady;
+    const ids = [...new Set((employeeIds || []).filter(Boolean))];
+    if (!ids.length || !fechaISO) return null;
+    const { data, error } = await sbClient.from('cierres_profesional').select('id, employee_id, periodo_desde, periodo_hasta')
+      .eq('business_id', BUSINESS_ID).in('employee_id', ids)
+      .lte('periodo_desde', fechaISO).gte('periodo_hasta', fechaISO).limit(1);
+    if (error) throw error;
+    const c = data && data[0];
+    return c ? { id: c.id, employeeId: c.employee_id, desde: c.periodo_desde, hasta: c.periodo_hasta } : null;
+  },
+
+  // Lanza error si la fecha de atención pertenece a un periodo ya cerrado
+  async validarFechaAbierta(employeeIds, fechaISO) {
+    const c = await this.getCierreQueCubre(employeeIds, fechaISO);
+    if (c) throw new Error(`La fecha ${fechaISO} pertenece a un periodo ya cerrado (${c.desde} al ${c.hasta}). Esta cita no se puede completar.`);
+  },
+
+  // ¿Se puede cerrar este periodo para este profesional? Devuelve los motivos si no.
+  async getElegibilidadCierreProfesional(employeeId, desdeISO, hastaISO) {
+    await window.AnnlyReady;
+    const hoy = this._hoyISO();
+    const periodoTerminado = hoy >= hastaISO;
+    const [citasRes, propinas, cruces] = await Promise.all([
+      sbClient.from('appointments').select('id, fecha, hora, cliente_nombre, servicio_nombre')
+        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
+        .or('estado.is.null,estado.neq.cancelada').is('completada_en', null)
+        .gte('fecha', desdeISO).lte('fecha', hastaISO)
+        .order('fecha', { ascending: true }).order('hora', { ascending: true }),
+      this.getPropinasPendientesPeriodo(employeeId, desdeISO, hastaISO),
+      this._cierresQueSeCruzan(employeeId, desdeISO, hastaISO)
+    ]);
+    if (citasRes.error) throw citasRes.error;
+    const citasPendientes = (citasRes.data || []).map(c => ({
+      id: c.id, fecha: c.fecha, hora: c.hora || '', cliente: c.cliente_nombre || '', servicio: c.servicio_nombre || '',
+      atrasada: c.fecha < hoy
+    }));
+    const cruce = cruces.find(c => !(c.periodo_desde === desdeISO && c.periodo_hasta === hastaISO)) || null;
+
+    const motivos = [];
+    if (!periodoTerminado) motivos.push(`El periodo termina el ${hastaISO}; se puede cerrar desde ese día.`);
+    if (citasPendientes.length) {
+      const atrasadas = citasPendientes.filter(c => c.atrasada).length;
+      const futuras = citasPendientes.length - atrasadas;
+      const partes = [];
+      if (atrasadas) partes.push(`${atrasadas} atrasada${atrasadas === 1 ? '' : 's'}`);
+      if (futuras) partes.push(`${futuras} por atender`);
+      motivos.push(`Tiene ${citasPendientes.length} cita${citasPendientes.length === 1 ? '' : 's'} sin completar (${partes.join(', ')}). Complétalas o cancélalas desde Citas.`);
+    }
+    if (propinas.length) motivos.push(`Tiene ${propinas.length} propina${propinas.length === 1 ? '' : 's'} sin decidir. Resuélvelas en Comisiones y propinas.`);
+    if (cruce) motivos.push(`Este rango se cruza con un cierre ya hecho (${cruce.periodo_desde} al ${cruce.periodo_hasta}).`);
+
+    return { listo: motivos.length === 0, periodoTerminado, citasPendientes, propinasPendientes: propinas.length, motivos };
+  },
+
+  // Todos los rangos que tienen algún cierre (por profesional y/o general), del más reciente al más viejo
+  async getHistorialCierres() {
+    await window.AnnlyReady;
+    const [prof, neg] = await Promise.all([
+      sbClient.from('cierres_profesional').select('periodo_desde, periodo_hasta, employee_id').eq('business_id', BUSINESS_ID),
+      sbClient.from('cierres_negocio').select('periodo_desde, periodo_hasta').eq('business_id', BUSINESS_ID)
+    ]);
+    if (prof.error) throw prof.error;
+    if (neg.error) throw neg.error;
+    const mapa = {};
+    const entrada = (d, h) => {
+      const k = d + '|' + h;
+      if (!mapa[k]) mapa[k] = { desde: d, hasta: h, profesionales: [], general: false };
+      return mapa[k];
+    };
+    (prof.data || []).forEach(c => entrada(c.periodo_desde, c.periodo_hasta).profesionales.push(c.employee_id));
+    (neg.data || []).forEach(c => { entrada(c.periodo_desde, c.periodo_hasta).general = true; });
+    return Object.values(mapa).sort((a, b) => b.desde.localeCompare(a.desde));
+  },
 
   // Cierre ya existente para un profesional en ese rango exacto (o null si no se ha cerrado)
   async getCierreProfesional(employeeId, desdeISO, hastaISO) {
@@ -4108,8 +4207,8 @@ const Sheets = {
     const yaExiste = await this.getCierreProfesional(employeeId, desdeISO, hastaISO);
     if (yaExiste) throw new Error('Este periodo ya está cerrado para este profesional.');
 
-    const sinDecidir = await this.getPropinasPendientesPeriodo(employeeId, desdeISO, hastaISO);
-    if (sinDecidir.length) throw new Error(`Hay ${sinDecidir.length} propina(s) sin decidir en este periodo. Resuélvelas antes de cerrar.`);
+    const elig = await this.getElegibilidadCierreProfesional(employeeId, desdeISO, hastaISO);
+    if (!elig.listo) throw new Error(elig.motivos.join(' '));
 
     const { data: emp } = await sbClient.from('employees').select('nombre, correo').eq('id', employeeId).maybeSingle();
     if (!emp || !emp.correo) throw new Error('Este profesional no tiene correo registrado en su ficha — agrégaselo antes de cerrar.');
@@ -4146,13 +4245,14 @@ const Sheets = {
   // ¿Ya se puede hacer el cierre general de este periodo? (todos los profesionales activos cerrados)
   async getCierreNegocioElegibilidad(desdeISO, hastaISO) {
     await window.AnnlyReady;
+    const periodoTerminado = this._hoyISO() >= hastaISO;
     const empleados = (await this.getEmpleados()).filter(e => e.activo);
     const faltantes = [];
     for (const e of empleados) {
       const c = await this.getCierreProfesional(e.id, desdeISO, hastaISO);
       if (!c) faltantes.push(e.nombre);
     }
-    return { listo: faltantes.length === 0 && empleados.length > 0, faltantes };
+    return { listo: periodoTerminado && faltantes.length === 0 && empleados.length > 0, faltantes, periodoTerminado };
   },
 
   async getCierreNegocio(desdeISO, hastaISO) {
@@ -4172,6 +4272,7 @@ const Sheets = {
     if (yaExiste) throw new Error('Este periodo ya tiene un cierre general.');
 
     const elig = await this.getCierreNegocioElegibilidad(desdeISO, hastaISO);
+    if (!elig.periodoTerminado) throw new Error(`El periodo termina el ${hastaISO}; el cierre general se puede hacer desde ese día.`);
     if (!elig.listo) throw new Error('Faltan por cerrar: ' + (elig.faltantes.join(', ') || 'no hay profesionales activos'));
 
     const [pagos, cierresProf] = await Promise.all([
