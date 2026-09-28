@@ -4481,6 +4481,37 @@ const Sheets = {
     }
   },
 
+  // Sucursales donde atiende un profesional (ids)
+  async getSucursalesDeEmpleado(employeeId) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('employee_locations').select('location_id').eq('employee_id', employeeId);
+    if (error) throw error;
+    return (data || []).map(r => r.location_id);
+  },
+
+  // Deja al profesional en exactamente estas sucursales (mínimo una)
+  async asignarSucursalesEmpleado(employeeId, locationIds) {
+    await window.AnnlyReady;
+    const deseadas = [...new Set((locationIds || []).filter(Boolean))];
+    if (!deseadas.length) throw new Error('El profesional debe atender al menos en una sucursal.');
+    const { data: actuales, error } = await sbClient.from('employee_locations')
+      .select('id, location_id').eq('employee_id', employeeId);
+    if (error) throw error;
+    const quitar = (actuales || []).filter(a => !deseadas.includes(a.location_id));
+    const actualesIds = (actuales || []).map(a => a.location_id);
+    const agregar = deseadas.filter(l => !actualesIds.includes(l));
+    if (agregar.length) {
+      const { error: errIns } = await sbClient.from('employee_locations').insert(
+        agregar.map((l, i) => ({ employee_id: employeeId, location_id: l, is_primary: !actualesIds.length && i === 0 }))
+      );
+      if (errIns) throw errIns;
+    }
+    if (quitar.length) {
+      const { error: errDel } = await sbClient.from('employee_locations').delete().in('id', quitar.map(q => q.id));
+      if (errDel) throw errDel;
+    }
+  },
+
   // Sucursales adicionales contratadas (mismo esquema que Profesional adicional)
   async getSucursalesExtra(subscriptionId) {
     await window.AnnlyReady;
