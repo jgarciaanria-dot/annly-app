@@ -1645,6 +1645,9 @@ const Sheets = {
         empleadoId:
           c.employee_id,
 
+        locationId:
+          c.location_id || null,
+
         empleadoNombre:
           mapaEmpleados[
             c.employee_id
@@ -3543,8 +3546,20 @@ const Sheets = {
 
     // Comisión: se calcula y se congela en la venta al momento de registrarla
     // (si luego cambia el % del profesional o del servicio, no altera lo ya generado)
+    // v.comision: { modo:'pct'|'monto', valor } la decide el negocio en cada venta;
+    // null = sin comisión. (Sin el dato, se usa el % del profesional, como antes.)
     let comisionPct = 0, comisionMonto = 0;
-    if (v.empleadoId) {
+    if (v.empleadoId && v.comision && Number(v.comision.valor) > 0) {
+      const montoVenta = Number(v.monto || 0);
+      if (v.comision.modo === 'pct') {
+        comisionPct = Number(v.comision.valor);
+        comisionMonto = Math.round(montoVenta * comisionPct) / 100;
+      } else {
+        comisionMonto = Math.round(Number(v.comision.valor) * 100) / 100;
+        comisionPct = montoVenta > 0 ? Math.round(comisionMonto / montoVenta * 10000) / 100 : 0;
+      }
+      if (comisionMonto > montoVenta) throw new Error('La comisión no puede ser mayor que el monto de la venta.');
+    } else if (v.empleadoId && v.comision === undefined) {
       comisionPct = await this.getComisionAplicable(v.empleadoId, v.servicio);
       comisionMonto = Math.round(Number(v.monto || 0) * comisionPct) / 100;
     }
@@ -3552,7 +3567,8 @@ const Sheets = {
     const { data: venta, error } = await sbClient.from('local_sales').insert([{
       business_id: BUSINESS_ID, fecha: v.fecha, cliente_nombre: v.cliente || null,
       servicio_nombre: v.servicio, employee_id: v.empleadoId || null, monto: v.monto,
-      comision_pct: comisionPct, comision_monto: comisionMonto
+      comision_pct: comisionPct, comision_monto: comisionMonto,
+      ...(v.locationId ? { location_id: v.locationId } : {})
     }]).select('id').single();
     if (error) throw error;
 
@@ -3560,7 +3576,8 @@ const Sheets = {
       business_id: BUSINESS_ID, origen: 'local', local_sale_id: venta.id,
       metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
       fecha: v.fecha, concepto: v.servicio, cliente_nombre: v.cliente || null,
-      employee_id: v.empleadoId || null
+      employee_id: v.empleadoId || null,
+      ...(v.locationId ? { location_id: v.locationId } : {})
     }));
     if (filas.length) {
       const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
