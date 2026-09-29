@@ -135,7 +135,7 @@ let BLOQUEOS={dias:[], horas:{}};
 
 async function loadBloqueos(){
   try {
-    BLOQUEOS = await Sheets.getBloqueos();
+    BLOQUEOS = await Sheets.getBloqueos(SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : null);
     if(!BLOQUEOS.dias) BLOQUEOS.dias=[];
     if(!BLOQUEOS.horas) BLOQUEOS.horas={};
   } catch(e){ BLOQUEOS={dias:[], horas:{}}; }
@@ -277,13 +277,181 @@ window.AnnlyReady.then(() => {
       document.getElementById('marcas-strip').style.display = 'block';
     }
   }
-  loadServices().then(() => { renderServices(); });
-  loadBloqueos();
+  Promise.all([loadServices(), cargarSucursalesSitio()]).then(() => { iniciarSucursalSitio(); });
   loadPromo();
   loadRuletaConfig();
   loadCertificadosModulo();
   try{Sheets.initSheet();}catch(e){}
 });
+
+
+// ===== SUCURSALES (sitio público) =====
+// Con más de una sucursal activa, el cliente elige dónde reservar (o llega directo con ?s=slug).
+// La sucursal define: servicios visibles, profesionales, horario, bloqueos, dirección y WhatsApp.
+let SUCURSALES_PUB = [];
+let SUCURSAL_ACTUAL = null;
+let SERVICES_TODOS = [];
+let EMPLEADOS_SERVICIOS = null; // [{ id, servicios:[] }] profesionales activos ([] = hace todos)
+
+function escSuc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function horarioBaseSitio(){
+  return (SUCURSAL_ACTUAL && SUCURSAL_ACTUAL.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+}
+
+// Horario propio del profesional en la sucursal elegida (null = usa el de la sucursal)
+function horarioPropioSitio(empleadoId){
+  return Sheets.getEmpleadoHorario(empleadoId, SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : undefined);
+}
+
+async function cargarSucursalesSitio(){
+  try {
+    const [sucs, emps] = await Promise.all([
+      Sheets.getSucursales(),
+      Sheets.getEmpleadosActivosServicios().catch(() => null)
+    ]);
+    SUCURSALES_PUB = (sucs || []).filter(x => x.activa);
+    EMPLEADOS_SERVICIOS = emps;
+  } catch(e){
+    console.error('Sucursales no disponibles, se muestra el negocio completo:', e);
+    SUCURSALES_PUB = [];
+  }
+}
+
+// Un servicio aparece si está activado en la sucursal y alguno de sus profesionales lo realiza
+function serviciosDeSucursal(lista){
+  if (!SUCURSAL_ACTUAL) return lista;
+  const ofrecidos = Array.isArray(SUCURSAL_ACTUAL.servicios) ? new Set(SUCURSAL_ACTUAL.servicios) : null;
+  const hayEquipo = Array.isArray(EMPLEADOS_SERVICIOS) && EMPLEADOS_SERVICIOS.length > 0;
+  const equipo = hayEquipo ? EMPLEADOS_SERVICIOS.filter(e => (SUCURSAL_ACTUAL.empleados || []).includes(e.id)) : [];
+  return lista.filter(svc => {
+    if (ofrecidos && !ofrecidos.has(svc.id)) return false;
+    if (!hayEquipo) return true; // negocio sin profesionales cargados: se reserva sin elegir
+    const n = equipo.filter(e => !e.servicios.length || e.servicios.includes(svc.id)).length;
+    return svc.esDoble ? n >= 2 : n >= 1;
+  });
+}
+
+function iniciarSucursalSitio(){
+  SERVICES_TODOS = SERVICES.slice();
+  if (SUCURSALES_PUB.length <= 1){
+    // Una sola sucursal: igual que siempre, pero con su horario y sus datos
+    if (SUCURSALES_PUB.length === 1) aplicarSucursalSitio(SUCURSALES_PUB[0], false);
+    else { renderServices(); loadBloqueos(); }
+    return;
+  }
+  const b = window.ANNLY_BUSINESS || {};
+  const param = new URLSearchParams(window.location.search).get('s');
+  let guardada = null;
+  try { guardada = sessionStorage.getItem('annly_suc_' + (b.slug || '')); } catch(e){}
+  const buscar = slug => slug ? SUCURSALES_PUB.find(x => x.slug === slug || (slug === 'principal' && x.esPrincipal)) : null;
+  const elegida = buscar(param) || buscar(guardada);
+  if (elegida) aplicarSucursalSitio(elegida, true);
+  else abrirSelectorSucursal(false);
+}
+
+function telefonoWhatsApp(t){
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.length === 8) d = '507' + d; // número de Panamá sin código de país
+  return d;
+}
+
+function formatHora12Sitio(hhmm){
+  if (!hhmm) return '';
+  const [hStr, mStr] = hhmm.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return m === '00' ? `${h}${ampm}` : `${h}:${m}${ampm}`;
+}
+function textoHorarioSitio(h){
+  if (!h || !h.lv) return null;
+  const etiqueta = { lv:'Lun-Vie', sab:'Sáb', dom:'Domingo' };
+  return ['lv','sab','dom'].map(k => {
+    const d = h[k] || { cerrado:true };
+    return etiqueta[k] + ' ' + (d.cerrado ? 'Cerrado' : formatHora12Sitio(d.abre) + '-' + formatHora12Sitio(d.cierra));
+  }).join(' | ');
+}
+
+function aplicarSucursalSitio(suc, conSelector){
+  SUCURSAL_ACTUAL = suc;
+  window.ANNLY_SUCURSAL_ID = suc.id;
+  const b = window.ANNLY_BUSINESS || {};
+
+  // Catálogo de la sucursal
+  SERVICES = serviciosDeSucursal(SERVICES_TODOS);
+  renderServices();
+  loadBloqueos();
+
+  // Dirección, horario y WhatsApp de la sucursal (con los del negocio como respaldo)
+  const dirEl = document.getElementById('footer-direccion');
+  if (dirEl) dirEl.textContent = suc.direccion || b.direccion || '';
+  const horEl = document.getElementById('footer-horario');
+  const horTxt = textoHorarioSitio(suc.horario) || b.horario_texto || 'Consulta disponibilidad';
+  if (horEl) horEl.innerHTML = escSuc(horTxt).replace(/\|/g, '<br>');
+  const waLink = document.getElementById('wa-float-link');
+  const wa = suc.telefono ? telefonoWhatsApp(suc.telefono) : (b.whatsapp || '');
+  if (waLink){
+    if (wa){ waLink.href = 'https://wa.me/' + wa; waLink.style.display = ''; }
+    else waLink.style.display = 'none';
+  }
+
+  // Indicador "📍 Sucursal · Cambiar" debajo del encabezado (solo con varias sucursales)
+  let chip = document.getElementById('suc-chip');
+  if (conSelector){
+    if (!chip){
+      chip = document.createElement('div');
+      chip.id = 'suc-chip';
+      chip.style.cssText = 'display:flex;justify-content:center;padding:12px 1rem 0;';
+      const lista = document.getElementById('serviceList');
+      lista.parentNode.insertBefore(chip, document.getElementById('cert-link-wrap') || lista);
+    }
+    chip.innerHTML = `<button type="button" onclick="abrirSelectorSucursal(true)" style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;border:1px solid rgba(var(--gold-rgb),.45);background:rgba(var(--gold-rgb),.1);color:var(--gold-dark);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">
+        <i class="ti ti-map-pin" aria-hidden="true"></i> ${escSuc(suc.nombre)}${suc.direccion ? `<span style="font-weight:400;opacity:.8;">· ${escSuc(suc.direccion)}</span>` : ''}
+        <span style="text-decoration:underline;margin-left:4px;">Cambiar</span>
+      </button>`;
+    // El link queda listo para compartir y la elección se recuerda en esta visita
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('s', suc.slug || 'principal');
+      window.history.replaceState(null, '', url.toString());
+      sessionStorage.setItem('annly_suc_' + (b.slug || ''), suc.slug || 'principal');
+    } catch(e){}
+  } else if (chip) chip.remove();
+}
+
+function abrirSelectorSucursal(puedeCerrar){
+  let ov = document.getElementById('ov-sucursal');
+  if (!ov){
+    ov = document.createElement('div');
+    ov.className = 'ov';
+    ov.id = 'ov-sucursal';
+    document.body.appendChild(ov);
+  }
+  const tarjetas = SUCURSALES_PUB.map(x => `
+    <div class="eval-card" style="cursor:pointer;margin-bottom:10px;${SUCURSAL_ACTUAL && SUCURSAL_ACTUAL.id === x.id ? 'border-color:var(--gold);' : ''}" onclick="elegirSucursalSitio('${x.id}')">
+      <div class="eval-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+      <div style="flex:1;min-width:0;">
+        <div class="eval-name">${escSuc(x.nombre)}</div>
+        <div class="eval-sub">${escSuc(x.direccion || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.direccion) || '')}</div>
+      </div>
+      <div class="eval-right"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:16px;color:var(--gold-dark);"></i></div>
+    </div>`).join('');
+  ov.innerHTML = `<div class="panel">
+    <div class="phdr"><span class="ptitle">¿En qué sucursal quieres tu cita?</span>${puedeCerrar ? `<button class="pclose" onclick="closeOv('ov-sucursal')">×</button>` : ''}</div>
+    <div class="pbody">${tarjetas}</div>
+  </div>`;
+  if (!puedeCerrar) document.getElementById('serviceList').innerHTML = '';
+  openOv('ov-sucursal');
+}
+
+function elegirSucursalSitio(id){
+  const suc = SUCURSALES_PUB.find(x => x.id === id);
+  if (!suc) return;
+  closeOv('ov-sucursal');
+  aplicarSucursalSitio(suc, true);
+}
 
 // ===== CERTIFICADOS DE REGALO (sitio público) =====
 let CERT_MODULO_DISPONIBLE = false;
@@ -655,7 +823,8 @@ async function openCal(){
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
   document.getElementById('cal-svc-info').innerHTML=`
     <span class="svc-pill-name">${curSvc.name}</span>
-    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${fmtDur(curSvc.dur)}</span></div>`;
+    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${fmtDur(curSvc.dur)}</span></div>`
+    + (SUCURSAL_ACTUAL && SUCURSALES_PUB.length > 1 ? `<div style="width:100%;font-size:11px;opacity:.85;margin-top:4px;"><i class="ti ti-map-pin" aria-hidden="true"></i> ${escSuc(SUCURSAL_ACTUAL.nombre)}${SUCURSAL_ACTUAL.direccion ? ' · ' + escSuc(SUCURSAL_ACTUAL.direccion) : ''}</div>` : '');
   document.getElementById('timeSec').style.display='none';
   document.getElementById('btnContinue').disabled=true;
 
@@ -664,10 +833,13 @@ async function openCal(){
 
   // Qué empleados hacen este servicio (si hay 0 o 1, no se pregunta nada)
   try { empleadosDelServicio = await Sheets.getEmpleadosParaServicio(curSvc.id); } catch(e){ empleadosDelServicio = []; }
+  if (SUCURSAL_ACTUAL && Array.isArray(SUCURSAL_ACTUAL.empleados)) {
+    empleadosDelServicio = empleadosDelServicio.filter(e => SUCURSAL_ACTUAL.empleados.includes(e.id));
+  }
   // Con varios profesionales ("Cualquiera disponible") se necesita el horario de cada uno
   horariosEmpleadosCache = {};
   if (empleadosDelServicio.length > 1) {
-    const hs = await Promise.all(empleadosDelServicio.map(e => Sheets.getEmpleadoHorario(e.id).catch(() => null)));
+    const hs = await Promise.all(empleadosDelServicio.map(e => horarioPropioSitio(e.id).catch(() => null)));
     empleadosDelServicio.forEach((e, i) => { horariosEmpleadosCache[e.id] = hs[i]; });
   }
   if (curSvc.esDoble) {
@@ -680,7 +852,7 @@ async function openCal(){
     empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
     empleadoHorarioCache = null;
     if (empleadosDelServicio.length === 1) {
-      try { empleadoHorarioCache = await Sheets.getEmpleadoHorario(empleadoSeleccionado); } catch(e){ empleadoHorarioCache = null; }
+      try { empleadoHorarioCache = await horarioPropioSitio(empleadoSeleccionado); } catch(e){ empleadoHorarioCache = null; }
     }
   }
   renderSelectorEmpleado();
@@ -788,8 +960,8 @@ function renderSelectorEmpleadoDoble(){
 }
 
 async function elegirEmpleadoDoble(cual, id){
-  if (cual===1){ empleadoSeleccionado=id; try{ empleadoHorarioCache=await Sheets.getEmpleadoHorario(id);}catch(e){ empleadoHorarioCache=null; } }
-  else { empleadoSeleccionado2=id; try{ empleadoHorarioCache2=await Sheets.getEmpleadoHorario(id);}catch(e){ empleadoHorarioCache2=null; } }
+  if (cual===1){ empleadoSeleccionado=id; try{ empleadoHorarioCache=await horarioPropioSitio(id);}catch(e){ empleadoHorarioCache=null; } }
+  else { empleadoSeleccionado2=id; try{ empleadoHorarioCache2=await horarioPropioSitio(id);}catch(e){ empleadoHorarioCache2=null; } }
   renderSelectorEmpleadoDoble();
   renderCal();
   if (selectedDay) selDay2(selectedDay);
@@ -799,7 +971,7 @@ async function elegirEmpleado(id){
   if (id === null){ modoCualquiera = true; empleadoSeleccionado = null; empleadoHorarioCache = null; }
   else {
     modoCualquiera = false; empleadoSeleccionado = id;
-    try { empleadoHorarioCache = await Sheets.getEmpleadoHorario(id); } catch(e){ empleadoHorarioCache = null; }
+    try { empleadoHorarioCache = await horarioPropioSitio(id); } catch(e){ empleadoHorarioCache = null; }
   }
   renderSelectorEmpleado();
   renderCal();
@@ -821,7 +993,7 @@ function cfgDia(h, dow){
 }
 
 function horarioDeEmpleado(id){
-  return horariosEmpleadosCache[id] || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  return horariosEmpleadosCache[id] || horarioBaseSitio() || null;
 }
 
 // ¿Este profesional trabaja a esa hora? (según su propio horario o, si no tiene, el del negocio)
@@ -841,7 +1013,7 @@ function diaCerrado(dow){
   if (modoCualquiera && empleadosDelServicio.length > 1) {
     return empleadosDelServicio.every(e => !!cfgDia(horarioDeEmpleado(e.id), dow).cerrado);
   }
-  const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null);
+  const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : (horarioBaseSitio() || null);
   if (!h) return dow===0; // si no hay horario configurado todavía, solo domingo cerrado por defecto
   const bloque = h[bloqueDelDia(dow, h)];
   return !bloque || !!bloque.cerrado;
@@ -900,7 +1072,7 @@ function genSlots(){
     hIni = Math.floor(minAbre/60); mIni = minAbre % 60;
     hFin = Math.floor(maxCierra/60); mFin = maxCierra % 60;
   } else {
-    const horarioBase=(!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+    const horarioBase=(!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : horarioBaseSitio();
     const bloqueCfg=(horarioBase && horarioBase[bloqueDelDia(dow, horarioBase)]) || null;
     if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
       [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
