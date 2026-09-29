@@ -3508,6 +3508,10 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
           <button type="button" id="citas-buscar-x" onclick="limpiarBusquedaCitas()" title="Borrar búsqueda" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;font-size:16px;color:var(--ink-soft);cursor:pointer;"><i class="ti ti-x"></i></button>
         </div>
       </div>
+      <div id="citas-filtro-suc-wrap" style="display:none;padding:.85rem 1rem 0;">
+        <label class="flbl">Filtrar por sucursal</label>
+        <select class="fi" id="citas-filtro-suc" onchange="filtrarCitasPorSucursal(this.value)"></select>
+      </div>
       <div id="citas-filtro-wrap" style="display:none;padding:.85rem 1rem 0;">
         <label class="flbl">Filtrar por profesional</label>
         <select class="fi" id="citas-filtro-prof" onchange="filtrarCitasPorProfesional(this.value)"></select>
@@ -4258,6 +4262,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
           <div class="annly-section-title">Servicio</div>
         </div>
 
+        <div class="fg annly-field" id="ac-sucursal-wrap" style="display:none;"><label class="flbl">Sucursal <span class="annly-required">*</span></label><select class="fi" id="ac-sucursal" onchange="acSucursalCambio()"></select></div>
         <div class="fg annly-field"><label class="flbl">Servicio <span class="annly-required">*</span></label><select class="fi" id="ac-servicio" onchange="acServicioCambio()"></select></div>
         <div class="fg annly-field" id="ac-prof-wrap" style="display:none;"><label class="flbl">Profesional <span class="annly-optional">Para su comisión</span></label><select class="fi" id="ac-prof" onchange="acProfesionalCambio()"></select></div>
       </div>
@@ -4344,33 +4349,34 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <div class="ov" id="ov-fin-venta">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-title">Registrar venta en el local</span>
+      <span class="modal-title">Registrar venta</span>
       <button class="modal-close" onclick="cerrarModalFin('ov-fin-venta')">×</button>
     </div>
     <div class="modal-body">
+      <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;">Para productos y otros cargos. Si es un servicio, usa <a href="#" onclick="event.preventDefault();cerrarModalFin('ov-fin-venta');abrirModalAgregarCita({ enLocal:true });" style="color:#7C3AED;font-weight:700;">Registrar cita en el local</a>.</p>
+      <div class="fg" id="fv-sucursal-wrap" style="display:none;"><label class="flbl">Sucursal</label><select class="fi" id="fv-sucursal"></select></div>
       <div class="frow">
         <div class="fg"><label class="flbl">Fecha</label><input class="fi" type="date" id="fv-fecha"/></div>
         <div class="fg"><label class="flbl">Cliente (opcional)</label><input class="fi" id="fv-cliente"/></div>
       </div>
-      <div class="fg"><label class="flbl">Servicio o producto</label>
-        <input class="fi" id="fv-servicio" list="fv-servicios-dl" oninput="fvServicioCambio()" placeholder="Ej: Limpieza facial"/>
-        <datalist id="fv-servicios-dl"></datalist>
-      </div>
       <div class="frow">
-        <div class="fg"><label class="flbl">Profesional (para su comisión)</label><select class="fi" id="fv-prof"></select></div>
+        <div class="fg" style="flex:2;"><label class="flbl">Producto o concepto</label><input class="fi" id="fv-servicio" placeholder="Ej: Shampoo reparador 500 ml"/></div>
         <div class="fg"><label class="flbl">Monto ($)</label><input class="fi" type="number" step="0.01" min="0" id="fv-monto" oninput="fvMontoCambio()"/></div>
       </div>
       <div class="fg"><label class="flbl">¿Cómo pagó?</label><div id="fv-pagos"></div></div>
-      <div class="fg"><label class="flbl">Propina para el profesional (opcional)</label>
-        <div style="display:flex;gap:8px;">
-          <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-shrink:0;">
-            <button type="button" id="fv-propina-modo-pct" onclick="fvPropinaModo('pct')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:#fff;color:var(--ink-soft);">%</button>
-            <button type="button" id="fv-propina-modo-monto" onclick="fvPropinaModo('monto')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:var(--annly-lilac);color:var(--annly-purple-dark);">$</button>
+      <div class="fg"><label class="flbl">Vendido por (opcional)</label><select class="fi" id="fv-prof" onchange="fvComisionVisibilidad()"></select></div>
+      <div class="fg" id="fv-comision-wrap" style="display:none;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink);margin-bottom:8px;"><input type="checkbox" id="fv-comision-on" onchange="fvComisionVisibilidad()"/> Dar comisión al profesional por esta venta</label>
+        <div id="fv-comision-campos" style="display:none;">
+          <div style="display:flex;gap:8px;">
+            <div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-shrink:0;">
+              <button type="button" id="fv-comision-modo-pct" onclick="fvComisionModo('pct')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:var(--annly-lilac);color:var(--annly-purple-dark);">%</button>
+              <button type="button" id="fv-comision-modo-monto" onclick="fvComisionModo('monto')" style="border:none;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;background:#fff;color:var(--ink-soft);">$</button>
+            </div>
+            <input class="fi" id="fv-comision-valor" type="number" step="0.01" min="0" placeholder="Ej: 10" style="flex:1;" oninput="fvComisionRecalcular()"/>
           </div>
-          <input class="fi" id="fv-propina-valor" type="number" step="0.01" min="0" placeholder="0" style="flex:1;" oninput="fvPropinaRecalcular()"/>
-          <select class="fi" id="fv-propina-metodo" style="flex:1;"></select>
+          <p id="fv-comision-calc" style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Se suma a las comisiones del profesional y entra en su cierre de periodo.</p>
         </div>
-        <p id="fv-propina-calc" style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Solo si vino incluida en el pago. Queda pendiente de liquidar en Finanzas → Comisiones.</p>
       </div>
       <p id="fv-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" id="fv-btn" onclick="guardarVentaLocal()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar venta</button>
@@ -4706,7 +4712,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=45"></script>
+<script src="sheets.js?v=46"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -5775,7 +5781,7 @@ function renderSucursales(){
         <div class="svc-meta" style="margin-top:2px;">${profes.length ? 'Profesionales: ' + profes.map(escCat).join(', ') : '<span style="color:#B08900;font-weight:600;">Sin profesionales asignados</span>'}</div>
       </div>
       <div class="svc-actions">
-        ${s.activa ? `<button class="btn-ico" onclick="copiarLinkSucursal('${s.id}', this)" title="Copiar link de esta sucursal"><i class="ti ti-link"></i></button>` : ''}
+        ${s.activa ? `<button class="btn-add" style="font-size:11.5px;white-space:nowrap;" onclick="copiarLinkSucursal('${s.id}', this)" title="Copiar el link de reservas de esta sucursal"><i class="ti ti-link"></i> <span>Link ${escCat(s.nombre)}</span></button>` : ''}
         <button class="btn-ico" onclick="openModalSucursal('${s.id}')" title="Editar"><i class="ti ti-edit"></i></button>
       </div>
     </div>`;
@@ -5787,8 +5793,11 @@ function copiarLinkSucursal(id, btn){
   if (!s) return;
   navigator.clipboard.writeText(linkSucursal(s)).then(() => {
     if (!btn) return;
-    const ico = btn.querySelector('i');
-    if (ico){ ico.className = 'ti ti-check'; setTimeout(() => { ico.className = 'ti ti-link'; }, 1600); }
+    const ico = btn.querySelector('i'), txt = btn.querySelector('span');
+    const antes = txt ? txt.textContent : '';
+    if (ico) ico.className = 'ti ti-check';
+    if (txt) txt.textContent = '¡Copiado!';
+    setTimeout(() => { if (ico) ico.className = 'ti ti-link'; if (txt) txt.textContent = antes; }, 1600);
   });
 }
 
@@ -6684,6 +6693,43 @@ function filtrarCitasPorProfesional(id){
   loadCitas();
 }
 
+// ---- Sucursal en Citas (solo con más de una sucursal) ----
+let FILTRO_CITAS_SUC='';
+function hayVariasSucursales(){ return SUCURSALES.filter(x => x.activa).length > 1 || SUCURSALES.length > 1; }
+function nombreSucursal(id){
+  const x = SUCURSALES.find(y => y.id === id);
+  if (x) return x.nombre;
+  const pr = SUCURSALES.find(y => y.esPrincipal);
+  return !id && pr ? pr.nombre : '';
+}
+function citaEnFiltroSucursal(c){
+  if (!FILTRO_CITAS_SUC) return true;
+  const pr = SUCURSALES.find(y => y.esPrincipal);
+  return (c.locationId || (pr && pr.id)) === FILTRO_CITAS_SUC;
+}
+function chipSucursalCita(c){
+  if (!hayVariasSucursales()) return '';
+  const n = nombreSucursal(c.locationId);
+  return n ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:#EEF3FB;color:#3A6AB0;"><i class="ti ti-map-pin" style="font-size:11px;"></i>${escCat(n)}</span>` : '';
+}
+async function poblarFiltroSucursales(){
+  const wrap = document.getElementById('citas-filtro-suc-wrap');
+  const sel = document.getElementById('citas-filtro-suc');
+  if (!wrap || !sel) return;
+  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){
+    try { SUCURSALES = await Sheets.getSucursales(); } catch(e){}
+  }
+  if (!hayVariasSucursales()){ wrap.style.display = 'none'; FILTRO_CITAS_SUC = ''; return; }
+  if (FILTRO_CITAS_SUC && !SUCURSALES.some(x => x.id === FILTRO_CITAS_SUC)) FILTRO_CITAS_SUC = '';
+  wrap.style.display = 'block';
+  sel.innerHTML = '<option value="">Todas las sucursales</option>' + SUCURSALES.map(x => `<option value="${x.id}">${escCat(x.nombre)}${x.activa ? '' : ' (inactiva)'}</option>`).join('');
+  sel.value = FILTRO_CITAS_SUC;
+}
+function filtrarCitasPorSucursal(id){
+  FILTRO_CITAS_SUC = id || '';
+  renderCitas();
+}
+
 // Vistas de la lista de citas: Activas (vigentes), Por completar (ya pasaron y falta el cobro) y Completadas
 let VISTA_CITAS = 'activas';
 
@@ -6741,6 +6787,7 @@ async function loadCitas(){
   try { citas = await Sheets.getCitas(); }
   catch(e){ cont.innerHTML = '<p style="font-size:12px;color:#E05555;text-align:center;padding:1rem;">Error al cargar citas.</p>'; return; }
   CITAS_CACHE = citas;
+  await poblarFiltroSucursales();
   await poblarFiltroProfesionales();
   renderCitas();
 }
@@ -6764,6 +6811,7 @@ function renderCitas(){
   // Solo el profesional (lo usa el Resumen, que tiene su propio selector de rangos)
   const baseProf = citas
     .filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF)
+    .filter(citaEnFiltroSucursal)
     .filter(c => citaCoincide(c, BUSQUEDA_CITAS))
     .map(c => ({ ...c, _ini: citaInicio(c) }));
   // Para las listas: profesional + filtro de fechas
@@ -6933,7 +6981,7 @@ function cambiarFechaResumen(){
 }
 
 function renderResumenCitasVista(){
-  const base = CITAS_CACHE.filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF);
+  const base = CITAS_CACHE.filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF).filter(citaEnFiltroSucursal);
   document.getElementById('lista-citas').innerHTML = htmlResumenCitas(base);
 }
 
@@ -8945,15 +8993,22 @@ function htmlVentasFin(){
         <div style="font-size:11.5px;color:var(--ink-soft);margin:2px 0 6px;">${fechaCortaFin(v.fecha)}${v.cliente ? ' · ' + escCat(v.cliente) : ''}${FIN.equipo[v.empleadoId] ? ' · ' + escCat(FIN.equipo[v.empleadoId]) : ''}</div>
         <div>${chips}</div>
       </div>
-      <div style="font-size:14px;font-weight:800;color:#159A61;">${fmtDinero(v.monto)}</div>
-      <button class="btn-ico del" style="width:auto;padding:0 10px;gap:5px;font-size:11px;font-weight:700;color:#C2695A;" onclick="anularVentaFin('${v.id}')" title="Anular venta"><i class="ti ti-ban"></i> Anular</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
+        <div style="font-size:14px;font-weight:800;color:#159A61;">${fmtDinero(v.monto)}</div>
+        <button type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 12px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;color:#C2695A;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" onclick="anularVentaFin('${v.id}')" title="Anular venta"><i class="ti ti-ban" style="font-size:13px;"></i> Anular</button>
+      </div>
     </div>`;
   }).join('');
 
   const total = sumaFin(FIN.ventas.filter(v => !v.anulada)) + sumaFin(FIN.extras);
   return `<div class="adm-sec">
-    <div class="adm-sec-hdr"><span class="adm-sec-title">Ventas en el local${items.length ? ' · ' + fmtDinero(total) : ''}</span><button class="btn-add" onclick="abrirModalVenta()"><i class="ti ti-plus"></i> Registrar venta</button></div>
-    <p style="font-size:11.5px;color:var(--ink-soft);padding:0 1rem;margin:0 0 4px;line-height:1.5;">Productos y servicios vendidos en el negocio: los que registras aquí sin cita y los que agregas al completar una cita (con la etiqueta "Vendido en una cita"). Los servicios de las citas se registran desde <strong>Citas → Completar</strong>.</p>
+    <div class="adm-sec-hdr" style="flex-wrap:wrap;gap:8px;"><span class="adm-sec-title">Ventas en el local${items.length ? ' · ' + fmtDinero(total) : ''}</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-add" onclick="abrirModalAgregarCita({ enLocal:true })"><i class="ti ti-calendar-check"></i> Registrar cita en el local</button>
+        <button class="btn-add" onclick="abrirModalVenta()"><i class="ti ti-shopping-bag"></i> Registrar venta</button>
+      </div>
+    </div>
+    <p style="font-size:11.5px;color:var(--ink-soft);padding:0 1rem;margin:0 0 4px;line-height:1.5;">Productos y otros cargos vendidos en el negocio: los que registras aquí y los que agregas al completar una cita (con la etiqueta "Vendido en una cita"). Un <strong>servicio</strong> atendido sin cita previa se registra con <strong>Registrar cita en el local</strong>: ocupa la agenda del profesional y calcula su comisión.</p>
     <div style="padding:0 1rem 1rem;">${filas || '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">No hay ventas en el local en este periodo.</p>'}</div>
   </div>`;
 }
@@ -9001,8 +9056,10 @@ function htmlGastosFin(){
         <div style="font-size:13px;font-weight:700;color:#000;">${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</div>
         <div style="font-size:11.5px;color:#000;margin-top:2px;">${detalle}</div>
       </div>
-      <div style="font-size:14px;font-weight:800;color:#E11D2E;">−${fmtDinero(g.monto)}</div>
-      <button class="btn-add" style="font-size:11px;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban"></i> Anular</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
+        <div style="font-size:14px;font-weight:800;color:#E11D2E;">−${fmtDinero(g.monto)}</div>
+        <button type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 12px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;color:#C2695A;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban" style="font-size:13px;"></i> Anular</button>
+      </div>
     </div>`;
   }).join('');
   return `<div class="adm-sec">
@@ -9513,7 +9570,7 @@ function renderDetalleAdelantos(){
         <div style="font-size:12.5px;font-weight:700;${a.anulado ? 'color:#E11D2E;text-decoration:line-through;text-decoration-color:#E11D2E;' : 'color:#000;'}">${fmtDinero(a.monto)}${a.nota ? ' · ' + escCat(a.nota) : ''}</div>
         <div style="font-size:11px;color:#000;">${fechaCortaFin(a.fecha)}${a.anulado ? ' · Anulado: ' + escCat(a.anuladoMotivo) : ''}</div>
       </div>
-      ${a.anulado ? '' : `<button class="btn-add" style="font-size:11px;" onclick="anularAdelantoFin('${a.id}')">Anular</button>`}
+      ${a.anulado ? '' : `<button type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 12px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;color:#C2695A;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" onclick="anularAdelantoFin('${a.id}')" title="Anular adelanto"><i class="ti ti-ban" style="font-size:13px;"></i> Anular</button>`}
     </div>`).join('') : '<p style="font-size:12px;color:var(--ink-soft);text-align:center;padding:1rem;">No hay adelantos en este periodo.</p>';
 }
 
@@ -9754,38 +9811,65 @@ function resolverMotivo(valor){
 }
 
 // ---------- Registrar venta en el local ----------
-function abrirModalVenta(){
+async function abrirModalVenta(){
   elFin('fv-fecha').value = isoLocal(new Date());
   elFin('fv-cliente').value = '';
   elFin('fv-servicio').value = '';
   elFin('fv-monto').value = '';
-  if (elFin('fv-propina-valor')){
-    elFin('fv-propina-metodo').innerHTML = METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('');
-    elFin('fv-propina-valor').value = ''; fvPropinaModo('monto');
-  }
   elFin('fv-msg').textContent = '';
-  elFin('fv-servicios-dl').innerHTML = (typeof SERVICES !== 'undefined' ? SERVICES : []).filter(s => s.active).map(s => `<option value="${escCat(s.name)}"></option>`).join('');
-  // El profesional es obligatorio cuando el negocio tiene equipo: las comisiones dependen de él
-  elFin('fv-prof').innerHTML = FIN.empleados.length
-    ? (FIN.empleados.length > 1 ? '<option value="">Elige el profesional…</option>' : '') + FIN.empleados.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('')
-    : '<option value="">Sin profesionales</option>';
+  elFin('fv-comision-on').checked = false;
+  elFin('fv-comision-valor').value = '';
+  fvComisionModo('pct');
+  elFin('fv-prof').innerHTML = '<option value="">Nadie en particular</option>' + FIN.empleados.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
+  // Sucursal (solo con más de una)
+  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){ try { SUCURSALES = await Sheets.getSucursales(); } catch(e){} }
+  const activas = SUCURSALES.filter(x => x.activa);
+  elFin('fv-sucursal-wrap').style.display = activas.length > 1 ? 'block' : 'none';
+  elFin('fv-sucursal').innerHTML = activas.map(x => `<option value="${x.id}">${escCat(x.nombre)}</option>`).join('');
+  const pref = FILTRO_CITAS_SUC && activas.some(x => x.id === FILTRO_CITAS_SUC) ? FILTRO_CITAS_SUC : ((activas.find(x => x.esPrincipal) || activas[0] || {}).id || '');
+  if (pref) elFin('fv-sucursal').value = pref;
+  fvComisionVisibilidad();
   pagoIniciar('fv-pagos', 0);
   elFin('ov-fin-venta').classList.add('open');
 }
 
-function fvServicioCambio(){
-  const nombre = elFin('fv-servicio').value.trim().toLowerCase();
-  const svc = (typeof SERVICES !== 'undefined' ? SERVICES : []).find(s => (s.name||'').toLowerCase() === nombre);
-  if (svc && svc.price > 0 && !elFin('fv-monto').value){
-    elFin('fv-monto').value = svc.price;
-    fvMontoCambio();
-  }
+// Comisión de la venta: la decide el negocio (opcional), en % del monto o en $
+let FV_COMISION_MODO = 'pct';
+function fvComisionModo(modo){
+  FV_COMISION_MODO = modo;
+  const bPct = elFin('fv-comision-modo-pct'), bMonto = elFin('fv-comision-modo-monto');
+  bPct.style.background = modo === 'pct' ? 'var(--annly-lilac)' : '#fff';
+  bPct.style.color = modo === 'pct' ? 'var(--annly-purple-dark)' : 'var(--ink-soft)';
+  bMonto.style.background = modo === 'monto' ? 'var(--annly-lilac)' : '#fff';
+  bMonto.style.color = modo === 'monto' ? 'var(--annly-purple-dark)' : 'var(--ink-soft)';
+  elFin('fv-comision-valor').placeholder = modo === 'pct' ? 'Ej: 10' : '0.00';
+  fvComisionRecalcular();
+}
+function fvComisionVisibilidad(){
+  const hayProf = !!elFin('fv-prof').value;
+  elFin('fv-comision-wrap').style.display = hayProf ? 'block' : 'none';
+  if (!hayProf) elFin('fv-comision-on').checked = false;
+  elFin('fv-comision-campos').style.display = elFin('fv-comision-on').checked ? 'block' : 'none';
+  fvComisionRecalcular();
+}
+function fvComisionMonto(){
+  const valor = parseFloat(elFin('fv-comision-valor').value) || 0;
+  const monto = Math.round((parseFloat(elFin('fv-monto').value) || 0)*100)/100;
+  return Math.round((FV_COMISION_MODO === 'pct' ? monto * valor / 100 : valor) * 100) / 100;
+}
+function fvComisionRecalcular(){
+  const p = elFin('fv-comision-calc');
+  if (!p) return;
+  const valor = parseFloat(elFin('fv-comision-valor').value) || 0;
+  p.textContent = valor > 0
+    ? 'Comisión: ' + fmtDinero(fvComisionMonto()) + (FV_COMISION_MODO === 'pct' ? ' (' + valor + '% de la venta)' : '') + '. Se suma a sus comisiones y entra en su cierre de periodo.'
+    : 'Se suma a las comisiones del profesional y entra en su cierre de periodo.';
 }
 
 function fvMontoCambio(){
   const monto = parseFloat(elFin('fv-monto').value) || 0;
   pagoSetEsperado('fv-pagos', Math.round(monto*100)/100);
-  fvPropinaRecalcular();
+  fvComisionRecalcular();
 }
 
 // Propina de "Venta en el local": % del monto de la venta, o monto fijo
@@ -9826,21 +9910,28 @@ async function guardarVentaLocal(){
   const servicio = elFin('fv-servicio').value.trim();
   const monto = Math.round((parseFloat(elFin('fv-monto').value) || 0)*100)/100;
   const fecha = elFin('fv-fecha').value;
-  if (!servicio){ msg.textContent = 'Escribe el servicio o producto.'; return; }
+  if (!servicio){ msg.textContent = 'Escribe el producto o concepto.'; return; }
   if (!(monto > 0)){ msg.textContent = 'Ingresa el monto de la venta.'; return; }
   if (!fecha){ msg.textContent = 'Elige la fecha.'; return; }
-  if (FIN.empleados.length && !elFin('fv-prof').value){ msg.textContent = 'Elige el profesional que realizó la venta (sus comisiones dependen de esto).'; return; }
+  const empleadoId = elFin('fv-prof').value || null;
+  let comision = null;
+  if (empleadoId && elFin('fv-comision-on').checked){
+    const valor = parseFloat(elFin('fv-comision-valor').value) || 0;
+    if (!(valor > 0)){ msg.textContent = 'Indica la comisión (en % o en $) o desmarca la casilla.'; return; }
+    if (FV_COMISION_MODO === 'pct' && valor > 100){ msg.textContent = 'La comisión en % no puede pasar de 100.'; return; }
+    if (fvComisionMonto() > monto){ msg.textContent = 'La comisión no puede ser mayor que el monto de la venta.'; return; }
+    comision = { modo: FV_COMISION_MODO, valor };
+  }
   const v = pagoValidar('fv-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
-  const propinaMonto = fvPropinaMonto();
+  const locationId = elFin('fv-sucursal-wrap').style.display !== 'none' ? (elFin('fv-sucursal').value || null) : null;
   const btn = elFin('fv-btn');
   btn.disabled = true;
   try {
     await Sheets.registrarVentaLocal({
-      fecha, servicio, monto,
+      fecha, servicio, monto, locationId,
       cliente: elFin('fv-cliente').value.trim(),
-      empleadoId: elFin('fv-prof').value || null,
-      propina: propinaMonto > 0 ? { monto: propinaMonto, metodo: elFin('fv-propina-metodo').value } : null
+      empleadoId, comision, propina: null
     }, v.lineas);
     cerrarModalFin('ov-fin-venta');
     await loadFinanzas();
@@ -10418,6 +10509,7 @@ function htmlCardCitaDoble(c){
   const porCobrar = Math.max(0, Math.round((c.comboTotal - (descontable ? abono : 0))*100)/100);
   const chip = (txt, bg, fg) => `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:${bg};color:${fg};">${txt}</span>`;
   const chips = [chip('<i class="ti ti-users" style="font-size:11px;margin-right:4px;"></i>Cita doble', '#F3EDFB', '#7C4DA0')];
+  if (chipSucursalCita(c)) chips.push(chipSucursalCita(c));
   if (abono > 0) chips.push(chip('Abono ' + fmtDinero(abono) + (p.metodoPago ? ' · ' + metodoAbonoTexto(p.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
   if (completada){
     chips.push(chip('Cobrada ' + fmtDinero((Number(p.precioCobrado)||0) + (Number(o.precioCobrado)||0)), '#E9F6EF', '#159A61'));
@@ -10512,6 +10604,7 @@ function htmlCardCita(c){
           </span>
           <span style="font-size:12px;font-weight:700;color:var(--ink);">${precio}</span>
           ${c.empleadoNombre ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${c.empleadoNombre}</span>` : ''}
+          ${chipSucursalCita(c)}
           ${insignia}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;">${chipsPagoCita(c)}</div>
@@ -10557,6 +10650,7 @@ async function abrirDetalleCita(id){
     fila('Fecha y hora', escCat(c.fecha) + ' · ' + escCat(c.hora), {icon:'ti-calendar-event'}) +
     fila('Duración', '~' + (c.duracion || 60) + ' min', {icon:'ti-clock'}) +
     fila('Profesional', escCat(c.empleadoNombre || 'Sin asignar'), {icon:'ti-user-check'}) +
+    (hayVariasSucursales() ? fila('Sucursal', escCat(nombreSucursal(c.locationId) || '—'), {icon:'ti-map-pin'}) : '') +
     (c.nota ? fila('Nota', escCat(c.nota), {icon:'ti-notes'}) : '') +
     '<div id="cd-doble"></div>' +
     titulo('Pago', 'ti-cash');
@@ -10729,19 +10823,28 @@ function acNuevoEstado(){
            bloqueos:{ dias:[], horas:{} }, ocupadas:{}, empAsignado:null, cert:null, horariosEmp:{} };
 }
 
-async function abrirModalAgregarCita(){
+async function abrirModalAgregarCita(opts){
   AC = acNuevoEstado();
+  // Desde Finanzas: "Registrar cita en el local" (cliente que llegó sin cita y ya se atendió o se atiende ahora)
+  const enLocal = !!(opts && opts.enLocal);
+  const tEl = document.querySelector('#ov-agregar-cita .modal-title');
+  const sEl = document.querySelector('#ov-agregar-cita .annly-modal-subtitle');
+  if (tEl) tEl.textContent = enLocal ? 'Registrar cita en el local' : 'Agregar cita';
+  if (sEl) sEl.textContent = enLocal ? 'Cliente sin cita previa: se valida la agenda del profesional y se cobra al momento' : 'Registra una reserva directamente desde el panel';
+  // Sucursal: se elige primero (solo con más de una); define servicios, profesionales, horario y bloqueos
+  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){ try { SUCURSALES = await Sheets.getSucursales(); } catch(e){} }
+  const sucActivas = SUCURSALES.filter(x => x.activa);
+  const sucPref = (FILTRO_CITAS_SUC && sucActivas.find(x => x.id === FILTRO_CITAS_SUC)) || sucActivas.find(x => x.esPrincipal) || sucActivas[0] || null;
+  AC.suc = sucPref;
+  elFin('ac-sucursal-wrap').style.display = sucActivas.length > 1 ? 'block' : 'none';
+  elFin('ac-sucursal').innerHTML = sucActivas.map(x => `<option value="${x.id}">${escCat(x.nombre)}</option>`).join('');
+  if (sucPref) elFin('ac-sucursal').value = sucPref.id;
   ['ac-nombre','ac-tel','ac-correo','ac-nota','ac-precio'].forEach(id => { elFin(id).value = ''; });
   elFin('ac-msg').textContent = '';
   elFin('ac-prof-wrap').style.display = 'none';
   elFin('ac-hora-sec').style.display = 'none';
 
-  const activos = SERVICES.filter(s => s.active);
-  const cats = [...new Set(activos.map(s => s.cat).filter(Boolean))];
-  const opcion = s => `<option value="${s.id}">${escCat(s.name)}</option>`;
-  elFin('ac-servicio').innerHTML = '<option value="">Elige un servicio…</option>' +
-    cats.map(c => `<optgroup label="${escCat(c)}">${activos.filter(s => s.cat === c).map(opcion).join('')}</optgroup>`).join('') +
-    activos.filter(s => !s.cat).map(opcion).join('');
+  acPintarServicios();
 
   try { if (!CLIENTAS.length) CLIENTAS = await Sheets.getClientas(); } catch(e){}
   elFin('ac-clientes-dl').innerHTML = CLIENTAS.map(c => `<option value="${escCat(c.nombre)}"></option>`).join('');
@@ -10757,9 +10860,32 @@ async function abrirModalAgregarCita(){
   extrasIniciar('ac-extras', 'acRecalcularCobro');
   acToggleCompletar();
 
-  try { AC.bloqueos = await Sheets.getBloqueos(); } catch(e){ AC.bloqueos = { dias:[], horas:{} }; }
+  try { AC.bloqueos = await Sheets.getBloqueos(AC.suc && sucActivas.length > 1 ? AC.suc.id : undefined); } catch(e){ AC.bloqueos = { dias:[], horas:{} }; }
   acRenderCal();
   elFin('ov-agregar-cita').classList.add('open');
+}
+
+// Servicios activos que se ofrecen en la sucursal elegida
+function acPintarServicios(){
+  const ofrecidos = AC.suc && Array.isArray(AC.suc.servicios) ? AC.suc.servicios : null;
+  const activos = SERVICES.filter(s => s.active && (!ofrecidos || ofrecidos.includes(s.id)));
+  const cats = [...new Set(activos.map(s => s.cat).filter(Boolean))];
+  const opcion = s => `<option value="${s.id}">${escCat(s.name)}</option>`;
+  elFin('ac-servicio').innerHTML = '<option value="">Elige un servicio…</option>' +
+    cats.map(c => `<optgroup label="${escCat(c)}">${activos.filter(s => s.cat === c).map(opcion).join('')}</optgroup>`).join('') +
+    activos.filter(s => !s.cat).map(opcion).join('');
+}
+
+async function acSucursalCambio(){
+  AC.suc = SUCURSALES.find(x => x.id === elFin('ac-sucursal').value) || null;
+  acPintarServicios();
+  try { AC.bloqueos = await Sheets.getBloqueos(AC.suc ? AC.suc.id : undefined); } catch(e){ AC.bloqueos = { dias:[], horas:{} }; }
+  await acServicioCambio();
+}
+
+// Horario base: el de la sucursal elegida (o el del negocio)
+function acHorarioBase(){
+  return (AC && AC.suc && AC.suc.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
 }
 
 function cerrarAgregarCita(){ elFin('ov-agregar-cita').classList.remove('open'); }
@@ -10774,6 +10900,7 @@ function acClienteCambio(){
 }
 
 async function acServicioCambio(){
+  elFin('ac-msg').textContent = '';
   const id = elFin('ac-servicio').value;
   AC.svc = SERVICES.find(s => s.id === id) || null;
   AC.dia = null; AC.hora = null; AC.empAsignado = null; AC.ocupadas = {};
@@ -10794,6 +10921,8 @@ async function acServicioCambio(){
   acPrecioCambio();
 
   try { AC.emps = await Sheets.getEmpleadosParaServicio(AC.svc.id); } catch(e){ AC.emps = []; }
+  // Solo los profesionales que atienden en la sucursal elegida
+  if (AC.suc && SUCURSALES.filter(x => x.activa).length > 1) AC.emps = AC.emps.filter(e => (AC.suc.empleados || []).includes(e.id));
   AC.horariosEmp = {};
   // En el local SIEMPRE se elige un profesional: las comisiones dependen de saber quién atendió.
   AC.modoCualquiera = false;
@@ -10805,13 +10934,16 @@ async function acServicioCambio(){
     elFin('ac-prof-wrap').style.display = 'block';
   } else if (AC.emps.length === 1){
     AC.empId = AC.emps[0].id;
-    AC.horarioEmp = await Sheets.getEmpleadoHorario(AC.empId).catch(() => null);
+    AC.horarioEmp = await Sheets.getEmpleadoHorario(AC.empId, AC.suc ? AC.suc.id : undefined).catch(() => null);
     elFin('ac-prof').innerHTML = `<option value="${AC.empId}">${escCat(AC.emps[0].nombre)}</option>`;
     elFin('ac-prof').disabled = true;
     elFin('ac-prof-wrap').style.display = 'block';
   } else {
     AC.empId = null; AC.horarioEmp = null;
     elFin('ac-prof-wrap').style.display = 'none';
+    if (AC.suc && SUCURSALES.filter(x => x.activa).length > 1){
+      elFin('ac-msg').textContent = 'Ningún profesional de ' + AC.suc.nombre + ' realiza este servicio. Asígnalo en Equipo o en Sucursales.';
+    }
   }
   acRenderCal();
   acActualizarBoton();
@@ -10825,7 +10957,7 @@ async function acProfesionalCambio(){
   if (!val){ AC.empId = null; AC.horarioEmp = null; }
   else {
     AC.empId = val;
-    AC.horarioEmp = await Sheets.getEmpleadoHorario(val).catch(() => null);
+    AC.horarioEmp = await Sheets.getEmpleadoHorario(val, AC.suc ? AC.suc.id : undefined).catch(() => null);
   }
   acRenderCal();
   acActualizarBoton();
@@ -10843,7 +10975,7 @@ function acCambiarMes(d){
 
 // Horario de un profesional (el suyo o, si no tiene, el del negocio) y si trabaja a esa hora
 function acHorarioDe(id){
-  return AC.horariosEmp[id] || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  return AC.horariosEmp[id] || acHorarioBase();
 }
 function acCfgDia(h, dow){
   if (!h) return dow === 0 ? { cerrado:true } : { abre:'8:00', cierra:'16:00', cerrado:false };
@@ -10859,7 +10991,7 @@ function acTrabajaEn(id, dow, key){
 function acDiaCerrado(dow){
   // "Cualquiera disponible": cerrado solo si ningún profesional trabaja ese día
   if (AC.modoCualquiera && AC.emps.length > 1) return AC.emps.every(e => !!acCfgDia(acHorarioDe(e.id), dow).cerrado);
-  const h = (!AC.modoCualquiera && AC.horarioEmp) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  const h = (!AC.modoCualquiera && AC.horarioEmp) || acHorarioBase();
   if (!h) return dow === 0;
   const bloque = h[bloqueDelDia(dow, h)];
   return !bloque || !!bloque.cerrado;
@@ -10906,7 +11038,7 @@ function acGenSlots(){
     hIni = Math.floor(minAbre/60); mIni = minAbre % 60;
     hFin = Math.floor(maxCierra/60); mFin = maxCierra % 60;
   } else {
-    const base = (!AC.modoCualquiera && AC.horarioEmp) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+    const base = (!AC.modoCualquiera && AC.horarioEmp) || acHorarioBase();
     const cfg = (base && base[bloqueDelDia(dow, base)]) || null;
     if (cfg && !cfg.cerrado && cfg.abre && cfg.cierra){
       [hIni, mIni] = cfg.abre.split(':').map(Number);
@@ -11156,7 +11288,8 @@ async function guardarAgregarCita(){
       certificadoCodigo: (certUsado > 0 || M.certPorAplicar) ? AC.cert.codigo : null,
       certificadoMonto: certUsado > 0 ? certUsado : null,
       certificadoSaldoRestante: certUsado > 0 ? saldoTrasCert(AC.cert, certUsado) : null,
-      citaId: 'cita-' + Date.now(), empleadoId
+      citaId: 'cita-' + Date.now(), empleadoId,
+      locationId: AC.suc ? AC.suc.id : null
     });
   } catch(e){
     console.error(e);
