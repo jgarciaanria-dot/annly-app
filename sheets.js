@@ -1393,20 +1393,13 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    const {
-      data: fechas
-    } = await sbClient
-      .from('blocked_dates')
-      .select('fecha,motivo')
-      .eq('business_id', BUSINESS_ID);
-
-
-    const {
-      data: horas
-    } = await sbClient
-      .from('blocked_hours')
-      .select('fecha,hora')
-      .eq('business_id', BUSINESS_ID);
+    // Con sucursal (sitio público): solo los bloqueos de esa sucursal
+    const locationId = arguments[0] || null;
+    let qF = sbClient.from('blocked_dates').select('fecha,motivo').eq('business_id', BUSINESS_ID);
+    let qH = sbClient.from('blocked_hours').select('fecha,hora').eq('business_id', BUSINESS_ID);
+    if (locationId) { qF = qF.eq('location_id', locationId); qH = qH.eq('location_id', locationId); }
+    const { data: fechas } = await qF;
+    const { data: horas } = await qH;
 
 
     const horasObj = {};
@@ -1798,6 +1791,9 @@ const Sheets = {
 
         metodo_pago:
           cita.metodoPago,
+
+        // Sucursal donde se reservó (sin dato, la base asigna la Principal)
+        ...((cita.locationId || window.ANNLY_SUCURSAL_ID) ? { location_id: cita.locationId || window.ANNLY_SUCURSAL_ID } : {}),
 
         cupon_aplicado:
           cita.cuponUsado,
@@ -4368,7 +4364,7 @@ const Sheets = {
       .order('is_main', { ascending: false }).order('orden', { ascending: true }).order('created_at', { ascending: true });
     if (error) throw error;
     const sucursales = data || [];
-    let enlaces = [], servicios = [];
+    let enlaces = [], servicios = [], serviciosDisponibles = false;
     if (sucursales.length) {
       const ids = sucursales.map(s => s.id);
       const [elRes, lsRes] = await Promise.all([
@@ -4379,14 +4375,14 @@ const Sheets = {
       enlaces = elRes.data || [];
       // Si la tabla aún no existe (SQL 3.1 sin correr) se sigue sin servicios por sucursal
       if (lsRes.error) console.error('Servicios por sucursal no disponibles:', lsRes.error);
-      else servicios = lsRes.data || [];
+      else { servicios = lsRes.data || []; serviciosDisponibles = true; }
     }
     return sucursales.map(s => ({
       id: s.id, nombre: s.name, direccion: s.address || '', telefono: s.phone || '', correo: s.email || '',
       slug: s.slug || '', esPrincipal: !!s.is_main, activa: !!s.is_active, orden: s.orden || 0,
       horario: s.horario_estructurado || null,
       empleados: enlaces.filter(e => e.location_id === s.id).map(e => e.employee_id),
-      servicios: servicios.filter(x => x.location_id === s.id).map(x => x.service_id)
+      servicios: serviciosDisponibles ? servicios.filter(x => x.location_id === s.id).map(x => x.service_id) : null
     }));
   },
 
@@ -4489,6 +4485,17 @@ const Sheets = {
       );
       if (errIns) throw errIns;
     }
+  },
+
+  // Profesionales activos y los servicios que realiza cada uno ([] = hace todos)
+  async getEmpleadosActivosServicios() {
+    await window.AnnlyReady;
+    const { data: emps, error } = await sbClient.from('employees').select('id').eq('business_id', BUSINESS_ID).eq('activo', true);
+    if (error) throw error;
+    const ids = (emps || []).map(e => e.id);
+    if (!ids.length) return [];
+    const { data: asign } = await sbClient.from('employee_services').select('employee_id, service_id').in('employee_id', ids);
+    return ids.map(id => ({ id, servicios: (asign || []).filter(a => a.employee_id === id).map(a => a.service_id) }));
   },
 
   // Deja a la sucursal con exactamente estos servicios
