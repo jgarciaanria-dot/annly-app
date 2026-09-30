@@ -8,6 +8,11 @@ const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Annly Pedidos (producto aparte en Vercel). Mientras no exista el dominio, se puede
+// definir window.ANNLY_PEDIDOS_URL antes de cargar sheets.js con la URL de Vercel.
+const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || 'https://pedidos.annly.app').replace(/\/$/, '');
+
+
 // =========================================================
 // CONTEXTO MULTI-TENANT
 // =========================================================
@@ -587,10 +592,10 @@ async resetPassword(email) {
     representanteLegal,
     ruc,
     whatsapp,
-    colorPrimario,
-    colorSecundario
+        colorPrimario,
+    colorSecundario,
+    tipoNegocio
   }) {
-
     // 1. Crear usuario en Supabase Auth
 
     const {
@@ -644,14 +649,30 @@ async resetPassword(email) {
         categoria,
         representanteLegal,
         ruc,
-        whatsapp,
+                whatsapp,
         colorPrimario,
-        colorSecundario
+        colorSecundario,
+        tipoNegocio
       }
     );
   },
 
+  // -------------------------------------------------------
+  // ANNLY PEDIDOS: link al panel con la sesión actual.
+  // Cada dominio guarda su propia sesión, así que se pasa en el hash
+  // (nunca viaja al servidor) y el panel de Pedidos la toma con setSession.
+  // -------------------------------------------------------
+  async urlPanelPedidos() {
+    const { data } = await sbClient.auth.getSession();
+    const ses = data && data.session;
+    if (!ses) return ANNLY_PEDIDOS_URL + '/admin';
+    return ANNLY_PEDIDOS_URL + '/admin#annly_at=' + encodeURIComponent(ses.access_token) +
+      '&annly_rt=' + encodeURIComponent(ses.refresh_token);
+  },
 
+  async irAPanelPedidos() {
+    window.location.replace(await this.urlPanelPedidos());
+  },
   // -------------------------------------------------------
   // ¿YA HAY UN NEGOCIO REGISTRADO CON ESTE WHATSAPP?
   // Aviso suave en el registro; no bloquea (un mismo dueño puede
@@ -748,11 +769,12 @@ async resetPassword(email) {
       representanteLegal,
       ruc,
       whatsapp,
-      colorPrimario,
-      colorSecundario
+            colorPrimario,
+      colorSecundario,
+      tipoNegocio
     }
   ) {
-
+    const esPedidos = tipoNegocio === 'pedidos';
     // Generar slug único
 
     const base =
@@ -842,9 +864,10 @@ async resetPassword(email) {
 
         activo: true,
 
-        owner_user_id:
-          userId
-
+                owner_user_id:
+          userId,
+        tipo_negocio:
+          esPedidos ? 'pedidos' : 'citas'
       }])
       .select()
       .single();
@@ -855,8 +878,12 @@ async resetPassword(email) {
     }
 
 
+        // Annly Pedidos: configuración inicial (tiempo mínimo, vencimiento de pago, etc.)
+    if (esPedidos) {
+      const { error: cfgError } = await sbClient.from('order_settings').insert([{ business_id: negocio.id }]);
+      if (cfgError) console.error('No se pudo crear la configuración de pedidos:', cfgError);
+    }
     // Crear business_features
-
     await sbClient
       .from('business_features')
       .insert([{
@@ -885,9 +912,9 @@ async resetPassword(email) {
     const {
       data: planBasic
     } = await sbClient
-      .from('plans')
+            .from('plans')
       .select('id')
-      .eq('code', 'BASIC')
+      .eq('code', esPedidos ? 'PEDIDOS_BASIC' : 'BASIC')
       .maybeSingle();
 
     if (planBasic) {
