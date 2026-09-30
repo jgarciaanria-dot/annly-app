@@ -2976,6 +2976,9 @@ img{max-width:100%;}
 
 </style>
 
+<style>
+body.modo-tienda [id^="panel-"],body.modo-tienda .adm-sidebar .adm-tab,body.modo-tienda #adm-plan-chip{display:none!important;}
+</style>
 <style id="annly-modern-visual-pass">
 /* =========================================================
    ANNLY — MODERN ADMIN VISUAL PASS
@@ -4864,7 +4867,8 @@ function renderSelectorNegocios(){
       .replace(/>/g,'&gt;')
       .replace(/"/g,'&quot;');
 
-    return `<option value="${b.id}"${selected}>${nombre}</option>`;
+    const tipo = b.tipo_negocio === 'pedidos' ? ' · Tienda' : '';
+    return `<option value="${b.id}"${selected}>${nombre}${tipo}</option>`;
   }).join('');
 
   wrap.classList.add('visible');
@@ -4887,10 +4891,9 @@ async function cambiarNegocioDesdeSelector(businessId){
     if (select) select.disabled = false;
   }
 
-  // Platform Admin eligió un negocio de pedidos: se ofrece abrir su panel
-  if (esNegocioPedidos()){
-    if (confirm('Este es un negocio de Annly Pedidos. ¿Abrir su panel de pedidos?')){ await window.AnnlyAuth.irAPanelPedidos(); return; }
-  }
+  // Platform Admin eligió una tienda: aviso con acceso a su panel (no un panel de citas vacío)
+  aplicarModoTienda();
+  if (esNegocioPedidos()){ actualizarContextoNegocioUI(); renderSelectorNegocios(); return; }
   await recargarPanelPorNegocio();
 }
 
@@ -4923,10 +4926,34 @@ async function recargarPanelPorNegocio(){
 // Un negocio de Annly Pedidos se administra en su propio panel
 function esNegocioPedidos(){ return !!(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.tipo_negocio === 'pedidos'); }
 
+// Platform Admin con una tienda seleccionada: en vez de un panel de citas vacío,
+// se muestra un aviso con el acceso a su panel de tiendas.
+function aplicarModoTienda(){
+  const activo = esNegocioPedidos();
+  document.body.classList.toggle('modo-tienda', activo);
+  let aviso = document.getElementById('aviso-tienda');
+  if (!activo){ if (aviso) aviso.remove(); return; }
+  if (!aviso){
+    aviso = document.createElement('div');
+    aviso.id = 'aviso-tienda';
+    const cont = document.querySelector('.adm-content-inner');
+    cont.insertBefore(aviso, cont.firstChild);
+  }
+  const n = window.ANNLY_BUSINESS || {};
+  aviso.innerHTML = `<div style="max-width:520px;margin:8vh auto;background:#fff;border:1px solid var(--line);border-radius:20px;padding:30px 28px;text-align:center;">
+    <div style="width:58px;height:58px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent,#7C3AED);font-size:26px;"><i class="ti ti-shopping-bag"></i></div>
+    <div style="font-size:19px;font-weight:800;color:var(--ink);">${String(n.nombre || 'Este negocio').replace(/</g,'&lt;')} es una tienda</div>
+    <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:8px 0 18px;">Su catálogo, pedidos, inventario y entregas se administran en el panel de tiendas.</p>
+    <button type="button" class="btn-save" style="width:auto;padding:12px 22px;display:inline-flex;gap:8px;align-items:center;" onclick="window.AnnlyAuth.irAPanelPedidos()"><i class="ti ti-external-link"></i> Abrir panel de la tienda</button>
+  </div>`;
+}
+
 async function arrancarPanelAdmin(){
   if (esNegocioPedidos() && !window.ANNLY_PLATFORM_ADMIN){ await window.AnnlyAuth.irAPanelPedidos(); return; }
   actualizarContextoNegocioUI();
   renderSelectorNegocios();
+  aplicarModoTienda();
+  if (esNegocioPedidos()) return;
 
   renderPlan();
   await loadServices();
