@@ -361,6 +361,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .suc-tab .n{min-width:20px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#F1EFF5;color:var(--ink-soft);text-align:center;}
 .suc-tab.sel .n{background:#F3EEFC;color:#7C3AED;}
 .suc-tab.inactiva{opacity:.6;}
+.fin-suc-tabs{padding:0;margin:0 0 14px;background:transparent;}
+.fin-suc-nota{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:12px;border-radius:12px;background:#F6F2FD;border:1px solid #E6DCF8;color:#5B21B6;font-size:12.5px;line-height:1.5;}
+.fin-suc-nota i{font-size:17px;margin-top:1px;}
 .bloq-suc-wrap{margin:2px 0 12px;}
 .bloq-suc-lbl{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px;}
 .bloq-suc-chips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -3778,6 +3781,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
           <div class="fin-page-sub">Controla los ingresos, gastos y movimientos de tu negocio</div>
         </div>
       </div>
+      <div id="fin-suc-tabs" class="suc-tabs fin-suc-tabs" style="display:none;"></div>
       <div class="fin-tabs">
         <div class="fin-tab fin-sub sel" data-v="resumen" onclick="finSub('resumen')">Resumen</div>
         <div class="fin-tab fin-sub" data-v="movimientos" onclick="finSub('movimientos')">Movimientos</div>
@@ -4440,6 +4444,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <div class="fg"><label class="flbl">Pagado con</label><select class="fi" id="fg-metodo"></select></div>
       </div>
       <div class="fg"><label class="flbl">Referencia / comprobante (opcional)</label><input class="fi" id="fg-ref"/></div>
+      <div class="fg" id="fg-sucursal-wrap" style="display:none;"><label class="flbl">Sucursal</label><select class="fi" id="fg-sucursal"></select></div>
       <p id="fg-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" id="fg-btn" onclick="guardarGasto()"><i class="ti ti-check" style="font-size:17px;"></i> Registrar gasto</button>
     </div>
@@ -4751,7 +4756,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=49"></script>
+<script src="sheets.js?v=50"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -4999,6 +5004,8 @@ function resetEstadoNegocio(){
   // Finanzas
   FIN = { pagos:[], pagosCert:[], pagosCanje:[], previo:null, cortesiasPeriodo:0, certEmitidos:{total:0,venta:0,regalo:0,cortesia:0}, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, comisiones:null, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
   FIN_PERIODO = 'actual'; FIN_VISTA = 'resumen'; FIN_FILTRO_MOV = 'todos'; FIN_CIERRE_SEL = null;
+  FIN_SUC = '';
+  const finTabs = document.getElementById('fin-suc-tabs'); if (finTabs){ finTabs.innerHTML = ''; finTabs.style.display = 'none'; }
   PROPINA_CONTADO_ID = null; ADELANTO_EMPLEADO = null;
   ADELANTO_DETALLE = { empleadoId:null, nombre:'', lista:[] };
   Object.keys(PAGO_ED).forEach(k => delete PAGO_ED[k]);
@@ -8876,6 +8883,60 @@ function finSub(v){
 }
 
 // ---------- Carga ----------
+// ---- Finanzas por sede ----
+// FIN_SUC = '' → todas las sedes. Filas sin sede (anteriores) se tratan como de la Principal.
+let FIN_SUC = '';
+function claveSucFin(){ return 'annly_fin_suc_' + BUSINESS_ID; }
+function idPrincipalFin(){ const p = SUCURSALES.find(x => x.esPrincipal) || SUCURSALES[0]; return p ? p.id : null; }
+function enSedeFin(x){ return !FIN_SUC || (x.locationId || idPrincipalFin()) === FIN_SUC; }
+function certEnSedeFin(){ return !FIN_SUC || FIN_SUC === idPrincipalFin(); }
+
+async function prepararSucursalesFin(){
+  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){
+    try { SUCURSALES = await Sheets.getSucursales(); } catch(e){}
+  }
+  if (!hayVariasSucursales()){ FIN_SUC = ''; return; }
+  if (!FIN_SUC){ try { FIN_SUC = sessionStorage.getItem(claveSucFin()) || ''; } catch(e){} }
+  if (FIN_SUC && !SUCURSALES.some(x => x.id === FIN_SUC)) FIN_SUC = '';
+}
+
+function renderTabsSucursalFin(){
+  const tabs = document.getElementById('fin-suc-tabs');
+  if (!tabs) return;
+  if (!hayVariasSucursales()){ tabs.style.display = 'none'; tabs.innerHTML = ''; return; }
+  const lista = SUCURSALES.slice().sort((x, y) => (y.esPrincipal ? 1 : 0) - (x.esPrincipal ? 1 : 0));
+  const tab = (id, icono, txt, extra) =>
+    `<button type="button" class="suc-tab${FIN_SUC === id ? ' sel' : ''}${extra || ''}" onclick="cambiarSucursalFin('${id}')"><i class="ti ti-${icono}"></i>${txt}</button>`;
+  tabs.style.display = 'flex';
+  tabs.innerHTML = tab('', 'building-store', 'Todas') +
+    lista.map(x => tab(x.id, 'map-pin', escCat(x.nombre), x.activa ? '' : ' inactiva')).join('');
+}
+
+function cambiarSucursalFin(id){
+  FIN_SUC = id || '';
+  try { sessionStorage.setItem(claveSucFin(), FIN_SUC); } catch(e){}
+  renderTabsSucursalFin();
+  loadFinanzas();
+}
+
+// Select de sede en los formularios de Finanzas (solo con más de una sede activa)
+async function prepararSelectSucursalFin(selId){
+  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){ try { SUCURSALES = await Sheets.getSucursales(); } catch(e){} }
+  const activas = SUCURSALES.filter(x => x.activa);
+  const wrap = elFin(selId + '-wrap'), sel = elFin(selId);
+  if (!wrap || !sel) return;
+  wrap.style.display = activas.length > 1 ? 'block' : 'none';
+  sel.innerHTML = activas.map(x => `<option value="${x.id}">${escCat(x.nombre)}</option>`).join('');
+  const pref = (FIN_SUC && activas.some(x => x.id === FIN_SUC)) ? FIN_SUC
+    : ((activas.find(x => x.esPrincipal) || activas[0] || {}).id || '');
+  if (pref) sel.value = pref;
+}
+function sucursalElegidaFin(selId){
+  const wrap = elFin(selId + '-wrap');
+  if (wrap && wrap.style.display !== 'none') return elFin(selId).value || null;
+  return idPrincipalFin();
+}
+
 async function loadFinanzas(){
   const cont = elFin('fin-contenido');
   if (!cont) return;
@@ -8884,13 +8945,19 @@ async function loadFinanzas(){
   try { FIN.ajustes = await Sheets.getAjustesFinanzas(); } catch(e){ console.error(e); }
   actualizarSelectorPeriodo();
   const { desde, hasta } = rangoFinanzas();
+  await prepararSucursalesFin();
+  renderTabsSucursalFin();
   try {
-    const [pagos, gastos, ventas, empleados] = await Promise.all([
+    const [pagosTodos, gastosTodos, ventasTodas, empleados] = await Promise.all([
       Sheets.getPagosFinanzas(desde, hasta),
       Sheets.getGastosFinanzas(desde, hasta),
       Sheets.getVentasLocales(desde, hasta),
       Sheets.getEmpleados()
     ]);
+    // Filtro por sede (pestañas de arriba). Los certificados vendidos son globales y cuentan en la Principal.
+    const pagos = pagosTodos.filter(p => p.origen === 'certificado' ? certEnSedeFin() : enSedeFin(p));
+    const gastos = gastosTodos.filter(enSedeFin);
+    const ventas = ventasTodas.filter(enSedeFin);
     // Ingresos = dinero recibido: servicios y ventas pagados con dinero + certificados vendidos.
     // Un servicio pagado CON un certificado no es dinero nuevo (ya contó al venderse el certificado).
     FIN.pagos = pagos.filter(p => p.origen !== 'certificado' && p.metodo !== 'certificado');
@@ -8905,12 +8972,16 @@ async function loadFinanzas(){
     cont.innerHTML = '<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;line-height:1.6;">No se pudieron cargar las finanzas.<br>Revisa que ya corriste el SQL de Finanzas en Supabase.</p>';
     return;
   }
-  try { FIN.extras = await Sheets.getExtrasFinanzas(desde, hasta); } catch(e){ FIN.extras = []; }
+  try { FIN.extras = (await Sheets.getExtrasFinanzas(desde, hasta)).filter(enSedeFin); } catch(e){ FIN.extras = []; }
   // Ingresos del periodo anterior (para la tarjeta de comparación)
   FIN.previo = null;
   const prev = rangoPrevioComparable(desde, hasta);
   if (prev){
-    try { FIN.previo = { ...prev, ingresos: ingresosDeCobros(await Sheets.getPagosFinanzas(prev.desde, prev.hasta)) }; }
+    try {
+      const pPrev = (await Sheets.getPagosFinanzas(prev.desde, prev.hasta))
+        .filter(p => p.origen === 'certificado' ? certEnSedeFin() : enSedeFin(p));
+      FIN.previo = { ...prev, ingresos: ingresosDeCobros(pPrev) };
+    }
     catch(e){ console.error('No se pudo leer el periodo anterior:', e); FIN.previo = null; }
   }
   try {
@@ -8928,6 +8999,12 @@ async function loadFinanzas(){
       cortesia: emitidosPeriodo.filter(c => String(c.tipo || '').toLowerCase() === 'cortesia').length
     };
 
+    if (!certEnSedeFin()){
+      FIN.certEmitidos = {total:0,venta:0,regalo:0,cortesia:0};
+      FIN.certPorCanjear = 0; FIN.cortesiasPeriodo = 0;
+      throw { silencioso: true };
+    }
+
     FIN.certPorCanjear = certs
       .filter(c => estadoCertificado(c).texto === 'Activo')
       .reduce((s,c) => s + c.saldoRestante, 0);
@@ -8939,7 +9016,7 @@ async function loadFinanzas(){
   } catch(e){
     FIN.certPorCanjear = 0;
     FIN.certEmitidos = {total:0,venta:0,regalo:0,cortesia:0};
-    console.error('No se pudieron cargar los certificados de Finanzas:', e);
+    if (!(e && e.silencioso)) console.error('No se pudieron cargar los certificados de Finanzas:', e);
   }
   renderFinanzas();
 }
@@ -8950,6 +9027,11 @@ function renderFinanzas(){
   document.querySelectorAll('.fin-sub').forEach(b => b.classList.toggle('sel', b.dataset.v === FIN_VISTA));
   const barra = elFin('fin-barra-periodo');
   if (barra) barra.style.display = FIN_VISTA === 'ajustes' ? 'none' : 'block';
+  renderTabsSucursalFin();
+  if (FIN_SUC && (FIN_VISTA === 'comisiones' || FIN_VISTA === 'ajustes')){
+    cont.innerHTML = `<div class="fin-suc-nota"><i class="ti ti-info-circle"></i><div>Las comisiones y el cierre <strong>por sede</strong> se activan en el siguiente paso. Por ahora se calculan con todas las sedes juntas: entra a la pestaña <strong>Todas</strong>.</div></div>`;
+    return;
+  }
   if (FIN_VISTA === 'resumen'){ cont.innerHTML = htmlResumenFin(); animarNumerosFin(cont); }
   else if (FIN_VISTA === 'movimientos') cont.innerHTML = htmlMovimientosFin();
   else if (FIN_VISTA === 'ventas') cont.innerHTML = htmlVentasFin();
@@ -10223,13 +10305,8 @@ async function abrirModalVenta(){
   elFin('fv-comision-valor').value = '';
   fvComisionModo('pct');
   elFin('fv-prof').innerHTML = '<option value="">Nadie en particular</option>' + FIN.empleados.map(e => `<option value="${e.id}">${escCat(e.nombre)}</option>`).join('');
-  // Sucursal (solo con más de una)
-  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){ try { SUCURSALES = await Sheets.getSucursales(); } catch(e){} }
-  const activas = SUCURSALES.filter(x => x.activa);
-  elFin('fv-sucursal-wrap').style.display = activas.length > 1 ? 'block' : 'none';
-  elFin('fv-sucursal').innerHTML = activas.map(x => `<option value="${x.id}">${escCat(x.nombre)}</option>`).join('');
-  const pref = FILTRO_CITAS_SUC && activas.some(x => x.id === FILTRO_CITAS_SUC) ? FILTRO_CITAS_SUC : ((activas.find(x => x.esPrincipal) || activas[0] || {}).id || '');
-  if (pref) elFin('fv-sucursal').value = pref;
+  // Sucursal (solo con más de una); viene marcada la sede de la pestaña de Finanzas
+  await prepararSelectSucursalFin('fv-sucursal');
   fvComisionVisibilidad();
   pagoIniciar('fv-pagos', 0);
   elFin('ov-fin-venta').classList.add('open');
@@ -10326,7 +10403,7 @@ async function guardarVentaLocal(){
   }
   const v = pagoValidar('fv-pagos');
   if (!v.ok){ msg.textContent = v.msg; return; }
-  const locationId = elFin('fv-sucursal-wrap').style.display !== 'none' ? (elFin('fv-sucursal').value || null) : null;
+  const locationId = sucursalElegidaFin('fv-sucursal');
   const btn = elFin('fv-btn');
   btn.disabled = true;
   try {
@@ -10345,7 +10422,7 @@ async function guardarVentaLocal(){
 }
 
 // ---------- Registrar gasto ----------
-function abrirModalGasto(){
+async function abrirModalGasto(){
   elFin('fg-fecha').value = isoLocal(new Date());
   elFin('fg-categoria').innerHTML = CATEGORIAS_GASTO.map(c => `<option>${c}</option>`).join('');
   elFin('fg-descripcion').value = '';
@@ -10353,6 +10430,7 @@ function abrirModalGasto(){
   elFin('fg-metodo').innerHTML = METODOS_COBRO.map(m => `<option value="${m}">${METODOS_PAGO[m]}</option>`).join('');
   elFin('fg-ref').value = '';
   elFin('fg-msg').textContent = '';
+  prepararSelectSucursalFin('fg-sucursal');
   elFin('ov-fin-gasto').classList.add('open');
 }
 
@@ -10371,7 +10449,8 @@ async function guardarGasto(){
       categoria: elFin('fg-categoria').value,
       descripcion: elFin('fg-descripcion').value.trim(),
       metodo: elFin('fg-metodo').value,
-      referencia: elFin('fg-ref').value.trim()
+      referencia: elFin('fg-ref').value.trim(),
+      locationId: sucursalElegidaFin('fg-sucursal')
     });
     cerrarModalFin('ov-fin-gasto');
     await loadFinanzas();
