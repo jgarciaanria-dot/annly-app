@@ -1424,7 +1424,11 @@ const Sheets = {
     const locationId = arguments[0] || null;
     let qF = sbClient.from('blocked_dates').select('fecha,motivo').eq('business_id', BUSINESS_ID);
     let qH = sbClient.from('blocked_hours').select('fecha,hora').eq('business_id', BUSINESS_ID);
-    if (locationId) { qF = qF.eq('location_id', locationId); qH = qH.eq('location_id', locationId); }
+    // Filas sin sucursal (anteriores a sucursales) aplican a todas por compatibilidad
+    if (locationId) {
+      const f = 'location_id.eq.' + locationId + ',location_id.is.null';
+      qF = qF.or(f); qH = qH.or(f);
+    }
     const { data: fechas } = await qF;
     const { data: horas } = await qH;
 
@@ -1451,6 +1455,45 @@ const Sheets = {
       horas:
         horasObj
     };
+  },
+
+
+  // Panel admin: todos los bloqueos del negocio con su sucursal (filas planas)
+  async getBloqueosDetalle() {
+    await window.AnnlyReady;
+    const [rF, rH] = await Promise.all([
+      sbClient.from('blocked_dates').select('fecha,motivo,location_id').eq('business_id', BUSINESS_ID),
+      sbClient.from('blocked_hours').select('fecha,hora,location_id').eq('business_id', BUSINESS_ID)
+    ]);
+    if (rF.error) throw rF.error;
+    if (rH.error) throw rH.error;
+    return {
+      dias: (rF.data || []).map(f => ({ fecha: f.fecha, motivo: f.motivo, locationId: f.location_id || null })),
+      horas: (rH.data || []).map(h => ({ fecha: h.fecha, hora: h.hora, locationId: h.location_id || null }))
+    };
+  },
+
+  // Reemplaza todos los bloqueos del negocio; cada fila lleva su sucursal
+  async guardarBloqueosDetalle(bloqueos) {
+    await window.AnnlyReady;
+    const dias = (bloqueos.dias || []).map(d => ({
+      business_id: BUSINESS_ID, fecha: d.fecha, motivo: d.motivo || 'No disponible', location_id: d.locationId || null
+    }));
+    const horas = (bloqueos.horas || []).map(h => ({
+      business_id: BUSINESS_ID, fecha: h.fecha, hora: h.hora, location_id: h.locationId || null
+    }));
+    const d1 = await sbClient.from('blocked_dates').delete().eq('business_id', BUSINESS_ID);
+    if (d1.error) throw d1.error;
+    const d2 = await sbClient.from('blocked_hours').delete().eq('business_id', BUSINESS_ID);
+    if (d2.error) throw d2.error;
+    if (dias.length) {
+      const { error } = await sbClient.from('blocked_dates').insert(dias);
+      if (error) throw error;
+    }
+    if (horas.length) {
+      const { error } = await sbClient.from('blocked_hours').insert(horas);
+      if (error) throw error;
+    }
   },
 
 
