@@ -364,6 +364,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .fin-suc-tabs{padding:0;margin:0 0 14px;background:transparent;}
 .fin-suc-nota{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:12px;border-radius:12px;background:#F6F2FD;border:1px solid #E6DCF8;color:#5B21B6;font-size:12.5px;line-height:1.5;}
 .fin-suc-nota i{font-size:17px;margin-top:1px;}
+.fin-estado-btns{display:flex;gap:6px;margin-top:6px;}
+.fin-estado-btns .btn-add{flex:1;justify-content:center;font-size:11.5px;padding:9px 8px;}
+.fin-estado-btns .btn-add:last-child{flex:0 0 auto;}
+.fin-estado-btns .btn-add[disabled]{opacity:.6;cursor:wait;}
 .fin-suc-elegir{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
 .fin-suc-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s,box-shadow .15s;}
 .fin-suc-card:hover{border-color:#C9B6EE;box-shadow:0 8px 20px -16px #5B21B6;}
@@ -4763,7 +4767,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=51"></script>
+<script src="sheets.js?v=52"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -9861,6 +9865,10 @@ function htmlCierresFin(){
         <div style="display:flex;justify-content:space-between;font-size:13.5px;border-top:1px solid var(--line);padding-top:6px;"><span style="font-weight:700;">Neto a pagar</span><strong style="color:${neto < 0 ? '#E11D2E' : '#159A61'};">${fmtDinero(neto)}</strong></div>
         ${htmlMotivosCierre(e.elegibilidad)}
         <button class="btn-save" style="margin-top:6px;" ${listo ? '' : 'disabled'} onclick='cerrarPeriodoFin(${JSON.stringify(e.id)}, ${JSON.stringify(e.nombre)}, ${JSON.stringify(resumenObj)})'><i class="ti ti-lock" style="font-size:16px;"></i> Cerrar periodo</button>
+        <div class="fin-estado-btns">
+          <button class="btn-add" onclick='estadoALaFechaFin(${JSON.stringify(e.id)}, ${JSON.stringify(e.nombre)}, true)'><i class="ti ti-mail"></i> Enviar estado a la fecha</button>
+          <button class="btn-add" onclick='estadoALaFechaFin(${JSON.stringify(e.id)}, ${JSON.stringify(e.nombre)}, false)' title="Descargar sin enviar"><i class="ti ti-file-download"></i> Descargar</button>
+        </div>
       </div>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--ink-soft);padding:1rem;text-align:center;">No hay profesionales activos.</p>';
@@ -9977,6 +9985,42 @@ async function cerrarNegocioFin(){
     console.error(e);
     alert('No se pudo hacer el cierre general.' + (e && e.message ? ' (' + e.message + ')' : ''));
   }
+}
+
+// ---- Estado parcial a la fecha (no es comprobante, no congela nada, se puede repetir) ----
+async function estadoALaFechaFin(employeeId, nombre, enviar){
+  const C = FIN.comisiones;
+  if (!C) return;
+  const sede = nombreSedeFin();
+  if (enviar){
+    const ok = await pedirConfirmacion({
+      titulo: 'Enviar estado a la fecha — ' + nombre + (sede ? ' · ' + sede : ''),
+      mensajeHtml: `Se le enviará a ${escCat(nombre)} un PDF con lo que lleva desde el ${fechaCortaFin(C.desde)} hasta hoy${sede ? ' en <strong>' + escCat(sede) + '</strong>' : ''}: comisiones, propinas y adelantos.<p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">Es informativo: <strong>no es un comprobante de pago</strong> y no cierra el periodo. Lo puedes enviar las veces que lo pida.</p>`,
+      textoBoton: 'Enviar estado'
+    });
+    if (!ok) return;
+  }
+  const btns = document.querySelectorAll('.fin-estado-btns .btn-add');
+  btns.forEach(b => b.disabled = true);
+  try {
+    const r = await Sheets.estadoProfesionalALaFecha({ employeeId, desdeISO: C.desde, hastaISO: C.hasta, locationId: sedeCierreFin(), enviar });
+    if (!enviar) descargarPdfBase64(r.pdfBase64, r.archivo || `estado-${nombre}-${C.desde}-${r.hasta}.pdf`);
+    else alert('Estado enviado a ' + (r.enviadoA || nombre) + '.');
+  } catch(e){
+    console.error(e);
+    alert('No se pudo generar el estado.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
+  btns.forEach(b => b.disabled = false);
+}
+
+function descargarPdfBase64(pdfBase64, nombreArchivo){
+  if (!pdfBase64){ alert('No se recibió el PDF.'); return; }
+  const bytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 // ---- Descargar el PDF guardado de un cierre ya hecho ----
