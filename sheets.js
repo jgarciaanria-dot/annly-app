@@ -4356,6 +4356,35 @@ const Sheets = {
     return cierre.id;
   },
 
+  // Estado PARCIAL a la fecha de un profesional (en una sede): no congela nada y se puede pedir
+  // cuantas veces se quiera. Va desde el inicio del periodo hasta hoy (o hasta el fin si ya terminó).
+  // enviar=true lo manda al correo del profesional; siempre devuelve el PDF para descargarlo.
+  async estadoProfesionalALaFecha({ employeeId, desdeISO, hastaISO, locationId, enviar }) {
+    await window.AnnlyReady;
+    const hoy = this._hoyISO();
+    const hasta = hoy < hastaISO ? hoy : hastaISO;
+    if (hasta < desdeISO) throw new Error('Este periodo todavía no empieza.');
+
+    const detalle = await this._detalleCierreProfesional(employeeId, desdeISO, hasta, locationId);
+    const r2 = n => Math.round(n * 100) / 100;
+    const comisionTotal = r2(detalle.citas.reduce((s, c) => s + c.comisionMonto, 0) + detalle.ventas.reduce((s, v) => s + v.comisionMonto, 0));
+    const propinasTotal = r2(detalle.propinas.filter(p => p.estado === 'programada_cierre').reduce((s, p) => s + p.monto, 0));
+    const propinasContado = r2(detalle.propinas.filter(p => p.estado === 'pagada_contado').reduce((s, p) => s + p.monto, 0));
+    const adelantosTotal = r2(detalle.adelantos.reduce((s, a) => s + a.monto, 0));
+    const netoPagado = r2(comisionTotal + propinasTotal - adelantosTotal);
+    const sucursal = await this._datosSedeComprobante(locationId);
+
+    const resultado = await this.enviarComprobanteCierre('estado_profesional', {
+      employeeId, periodo: { desde: desdeISO, hasta }, sucursal, enviar: !!enviar,
+      resumen: { comisionTotal, propinasTotal, propinasContado, adelantosTotal, netoPagado }, detalle
+    });
+    if (enviar) {
+      await this.registrarAccion({ entidad: 'estado_profesional', entidadId: employeeId, accion: 'enviado',
+        motivo: `Estado a la fecha ${desdeISO} al ${hasta}`, monto: netoPagado, detalle: { locationId: locationId || null, enviadoA: resultado.enviadoA || null } });
+    }
+    return { pdfBase64: resultado.pdfBase64, archivo: resultado.archivo, enviadoA: resultado.enviadoA || null, hasta };
+  },
+
   // ¿Ya se puede hacer el cierre general de este periodo? (todos los profesionales activos cerrados)
   // Profesionales activos que atienden en una sede (sin sede: todos los activos)
   async _empleadosDeSede(locationId) {
