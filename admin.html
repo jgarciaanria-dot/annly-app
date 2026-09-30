@@ -4712,7 +4712,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=46"></script>
+<script src="sheets.js?v=47"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -4887,6 +4887,10 @@ async function cambiarNegocioDesdeSelector(businessId){
     if (select) select.disabled = false;
   }
 
+  // Platform Admin eligió un negocio de pedidos: se ofrece abrir su panel
+  if (esNegocioPedidos()){
+    if (confirm('Este es un negocio de Annly Pedidos. ¿Abrir su panel de pedidos?')){ await window.AnnlyAuth.irAPanelPedidos(); return; }
+  }
   await recargarPanelPorNegocio();
 }
 
@@ -4916,7 +4920,11 @@ async function recargarPanelPorNegocio(){
   await renderPlan();
 }
 
+// Un negocio de Annly Pedidos se administra en su propio panel
+function esNegocioPedidos(){ return !!(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.tipo_negocio === 'pedidos'); }
+
 async function arrancarPanelAdmin(){
+  if (esNegocioPedidos() && !window.ANNLY_PLATFORM_ADMIN){ await window.AnnlyAuth.irAPanelPedidos(); return; }
   actualizarContextoNegocioUI();
   renderSelectorNegocios();
 
