@@ -315,6 +315,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 }
 .step-sub{font-size:15px;color:#7B768A;line-height:1.55;margin-bottom:1.9rem;max-width:450px;}
 
+/* Tipo de negocio (Citas o Pedidos) */
+.tipo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tipo-opt{display:flex;align-items:flex-start;gap:10px;padding:13px 14px;border:1.5px solid #E4D8F7;border-radius:14px;background:#fff;cursor:pointer;transition:border-color .2s,box-shadow .2s;color:#9791A4;}
+.tipo-opt strong{display:block;font-size:13.5px;color:#211B33;margin-bottom:2px;}
+.tipo-opt span{font-size:11.5px;color:#7B768A;line-height:1.4;}
+.tipo-opt.sel{border-color:var(--violet);box-shadow:0 8px 20px -14px rgba(124,58,237,.8);color:var(--violet);background:#FBF8FF;}
+@media(max-width:520px){.tipo-grid{grid-template-columns:1fr;}}
 .step-panel{display:none;animation:fadeIn .35s ease;}
 .step-panel.active{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
@@ -1326,6 +1333,18 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
         <h2 class="step-title">Comencemos ✦</h2>
         <p class="step-sub">Cuéntanos sobre tu negocio para crear tu cuenta gratis por 14 días, sin tarjeta de crédito.</p>
 
+        <div class="fg"><label class="flbl">¿Qué ofrece tu negocio?</label>
+          <div class="tipo-grid">
+            <div class="tipo-opt sel" id="tipo-citas" onclick="selTipo('citas')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>
+              <div><strong>Citas y servicios</strong><span>Salón, spa, barbería, estudio</span></div>
+            </div>
+            <div class="tipo-opt" id="tipo-pedidos" onclick="selTipo('pedidos')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 01-8 0"/></svg>
+              <div><strong>Venta de productos por pedido</strong><span>Floristería, pastelería, regalos</span></div>
+            </div>
+          </div>
+        </div>
         <div class="fg"><label class="flbl">Nombre del negocio</label>
           <div class="finput"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5M4 9v11h16V9M4 9h16M9 21v-6h6v6"/></svg><input id="r-nombre" placeholder="Nombre de tu negocio"/></div>
         </div>
@@ -1433,6 +1452,16 @@ const PALETAS = [
   { nombre:'Lavanda Suave', primario:'#B39DDB', secundario:'#5E3A87' }
 ];
 let paletaSel = 0;
+let tipoNegocio = 'citas';
+
+function selTipo(t){
+  tipoNegocio = t;
+  document.getElementById('tipo-citas').classList.toggle('sel', t === 'citas');
+  document.getElementById('tipo-pedidos').classList.toggle('sel', t === 'pedidos');
+  document.getElementById('r-categoria').placeholder = t === 'pedidos'
+    ? 'Ej: Floristería, Pastelería, Regalos, Repostería...'
+    : 'Ej: Spa, Barbería, Salón de belleza, Estética, Tatuajes...';
+}
 
 function renderPaletas(){
   const grid = document.getElementById('palette-grid');
@@ -1484,13 +1513,22 @@ function togglePw(){
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
-function mostrarExito(slug){
+function mostrarExito(slug, tipo){
   document.getElementById('steps-wrap').style.display = 'none';
   for(let i=1;i<=3;i++) document.getElementById('step-'+i).classList.remove('active');
   document.getElementById('step-listo').classList.add('active');
   const url = 'annly.app/' + slug;
   document.getElementById('link-agenda').textContent = url;
-  document.getElementById('btn-ir-panel').href = 'admin.html';
+  const btn = document.getElementById('btn-ir-panel');
+  if (tipo === 'pedidos'){
+    // Negocio de pedidos: su panel vive en Annly Pedidos (se le pasa la sesión)
+    document.querySelector('#step-listo .step-title').textContent = 'Tu tienda ya está en línea ✦';
+    document.querySelector('#step-listo .step-sub').textContent = 'Este es el link de tu tienda — guárdalo, es el que vas a compartir con tus clientes para que te hagan pedidos.';
+    btn.href = '#';
+    btn.onclick = (e) => { e.preventDefault(); window.AnnlyAuth.irAPanelPedidos(); };
+  } else {
+    btn.href = 'admin.html';
+  }
 }
 
 function copiarLinkAgenda(){
@@ -1527,7 +1565,8 @@ async function registrarConGoogle(){
     await window.AnnlyAuth.iniciarRegistroConGoogle({
       nombreNegocio: nombre, categoria, representanteLegal, ruc, whatsapp,
       colorPrimario: PALETAS[paletaSel].primario,
-      colorSecundario: PALETAS[paletaSel].secundario
+      colorSecundario: PALETAS[paletaSel].secundario,
+      tipoNegocio
     });
     // A partir de aquí la página se va a Google; no hay más que hacer en este clic.
   } catch(e){
@@ -1546,7 +1585,7 @@ async function registrarConGoogle(){
     try {
       const datos = JSON.parse(pendiente);
       const negocio = await window.AnnlyAuth.completarRegistroTrasOAuth(datos);
-      mostrarExito(negocio.slug);
+      mostrarExito(negocio.slug, negocio.tipo_negocio);
     } catch(e){
       console.error(e);
       document.getElementById('msg-3').className = 'msg err';
@@ -1581,9 +1620,10 @@ async function registrarNegocio(){
     const negocio = await window.AnnlyAuth.registrar({
       email, password: pass, nombreNegocio: nombre, categoria, representanteLegal, ruc, whatsapp,
       colorPrimario: PALETAS[paletaSel].primario,
-      colorSecundario: PALETAS[paletaSel].secundario
+      colorSecundario: PALETAS[paletaSel].secundario,
+      tipoNegocio
     });
-    mostrarExito(negocio.slug);
+    mostrarExito(negocio.slug, negocio.tipo_negocio);
   } catch(e){
     console.error(e);
     msgEl.className = 'msg err';
