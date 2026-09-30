@@ -2006,6 +2006,140 @@ const Sheets = {
   },
 
 
+  // Caso sugerido al cancelar, según las horas que faltan para la cita y la política del negocio
+  // → { caso: 'a_tiempo'|'tarde'|'no_show', horasFaltan, horasAviso }
+  async sugerirCasoCancelacion(fechaISO, hora) {
+    const aj = await this.getAjustesFinanzas();
+    const [h, m] = String(hora || '0:00').split(':').map(n => parseInt(n, 10) || 0);
+    const inicio = new Date(fechaISO + 'T00:00:00');
+    inicio.setHours(h, m, 0, 0);
+    const horasFaltan = (inicio.getTime() - Date.now()) / 3600000;
+    const caso = horasFaltan < 0 ? 'no_show' : (horasFaltan >= aj.horasAviso ? 'a_tiempo' : 'tarde');
+    return { caso, horasFaltan, horasAviso: aj.horasAviso, creditoVigencia: aj.creditoVigencia };
+  },
+
+  async _codigoCertificadoUnico(prefijo = 'CERT') {
+    for (let i = 0; i < 6; i++) {
+      const codigo = prefijo + '-' + Math.random().toString(16).slice(2, 6).toUpperCase() + Math.random().toString(16).slice(2, 4).toUpperCase();
+      const { data: existe } = await sbClient.from('gift_certificates').select('id').eq('business_id', BUSINESS_ID).eq('codigo', codigo).maybeSingle();
+      if (!existe) return codigo;
+    }
+    throw new Error('No se pudo generar un código único.');
+  },
+
+  // Cancela aplicando la política (documento "Reglas de negocio para políticas", sección 3):
+  // opciones = { caso: 'a_tiempo'|'tarde'|'no_show'|'negocio', abonoDestino?: 'credito'|'reembolso' (solo 'negocio'), reembolsoMetodo? }
+  //  - Certificado: siempre se devuelve al saldo lo descontado (la Cortesía se pierde si no se presentó).
+  //  - Abono: a_tiempo → crédito · tarde/no_show → penalidad · negocio → crédito o reembolso.
+  //  - Crédito y penalidad entran como ingreso hoy; el reembolso queda en la bitácora.
+  async cancelarConPolitica(id, motivo, opciones, detalle) {
+    await window.AnnlyReady;
+    const caso = opciones && opciones.caso;
+    if (!['a_tiempo', 'tarde', 'no_show', 'negocio'].includes(caso)) throw new Error('Elige el caso de la cancelación.');
+    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la cancelación.');
+
+    const { data: actual, error: errA } = await sbClient.from('appointments').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
+    if (errA) throw errA;
+    if (!actual) throw new Error('La cita no existe.');
+    if (actual.estado === 'cancelada') throw new Error('Esta cita ya estaba cancelada.');
+    if (actual.completada_en) throw new Error('Esta cita ya fue completada; no se puede cancelar.');
+    let filas = [actual];
+    if (actual.grupo_cita_id) {
+      const { data: par } = await sbClient.from('appointments').select('*').eq('business_id', BUSINESS_ID).eq('grupo_cita_id', actual.grupo_cita_id);
+      if (par && par.length) filas = par;
+    }
+    const principal = filas.find(f => f.grupo_principal) || filas[0];
+    const aj = await this.getAjustesFinanzas();
+    const hoy = this._hoyISO();
+    const r2 = n => Math.round(n * 100) / 100;
+
+    // 1) Certificados: se devuelve al saldo lo que se había descontado en cada cita
+    const devuelto = {};
+    for (const f of filas) {
+      const monto = Number(f.certificado_monto || 0);
+      if (!f.certificado_codigo || !(monto > 0)) continue;
+      const { data: cert } = await sbClient.from('gift_certificates').select('*')
+        .eq('business_id', BUSINESS_ID).eq('codigo', String(f.certificado_codigo).toUpperCase()).maybeSingle();
+      if (!cert) continue;
+      if (cert.tipo === 'cortesia' && caso === 'no_show') continue; // la cortesía se pierde si no se presentó
+      const nuevo = r2(Math.min(Number(cert.monto_inicial), Number(cert.saldo_restante) + monto));
+      const cambios = { saldo_restante: nuevo };
+      if (cert.estado !== 'cancelado' && cert.estado !== 'pendiente_pago') cambios.estado = 'activo';
+      const { error: errC } = await sbClient.from('gift_certificates').update(cambios).eq('id', cert.id);
+      if (errC) throw errC;
+      const filaCanje = { certificate_id: cert.id, business_id: BUSINESS_ID, appointment_id: f.id, monto_aplicado: -monto, saldo_despues: nuevo };
+      let { error: errR } = await sbClient.from('gift_certificate_redemptions').insert([filaCanje]);
+      if (errR) console.error('No se pudo registrar la devolución en el historial del certificado:', errR);
+      devuelto[f.id] = monto;
+    }
+
+    // 2) Abono (en citas dobles vive en la cita principal)
+    const abono = r2(Number(principal.abono_monto || 0));
+    const metodoAbono = principal.metodo_pago === 'yappy' ? 'yappy' : 'transferencia';
+    let destino = null, creditoCodigo = null, creditoVence = null;
+    if (abono > 0) {
+      destino = caso === 'a_tiempo' ? 'credito' : (caso === 'negocio' ? (opciones.abonoDestino === 'reembolso' ? 'reembolso' : 'credito') : 'penalidad');
+      const concepto = principal.servicio_nombre || 'servicio';
+
+      if (destino === 'credito') {
+        creditoCodigo = await this._codigoCertificadoUnico('CRED');
+        const vence = new Date(hoy + 'T00:00:00'); vence.setDate(vence.getDate() + (aj.creditoVigencia || 30));
+        creditoVence = vence.getFullYear() + '-' + String(vence.getMonth() + 1).padStart(2, '0') + '-' + String(vence.getDate()).padStart(2, '0');
+        const { data: cred, error: errCred } = await sbClient.from('gift_certificates').insert([{
+          business_id: BUSINESS_ID, codigo: creditoCodigo, tipo: 'credito', estado: 'activo',
+          monto_inicial: abono, saldo_restante: abono,
+          comprador_nombre: principal.cliente_nombre || null, comprador_telefono: principal.cliente_telefono || null, comprador_correo: principal.cliente_correo || null,
+          destinatario_nombre: principal.cliente_nombre || null, destinatario_telefono: principal.cliente_telefono || null, destinatario_correo: principal.cliente_correo || null,
+          nota: `Saldo a favor por la cita cancelada del ${this._fmtFechaCorta(principal.fecha)} (${concepto})`,
+          fecha_vencimiento: creditoVence
+        }]).select('id').single();
+        if (errCred) throw errCred;
+        const { error: errP } = await sbClient.from('finance_payments').insert([{
+          business_id: BUSINESS_ID, origen: 'credito', estado: 'confirmado', metodo: metodoAbono, monto: abono, fecha: hoy,
+          concepto: `Saldo a favor por cancelación — ${concepto}`, cliente_nombre: principal.cliente_nombre || null,
+          employee_id: principal.employee_id || null, referencia: creditoCodigo, location_id: principal.location_id || null
+        }]);
+        if (errP) console.error('Se creó el crédito, pero no se pudo registrar en Finanzas:', errP);
+      } else if (destino === 'penalidad') {
+        const { error: errP } = await sbClient.from('finance_payments').insert([{
+          business_id: BUSINESS_ID, origen: 'penalidad', estado: 'confirmado', metodo: metodoAbono, monto: abono, fecha: hoy,
+          concepto: `Penalidad por ${caso === 'no_show' ? 'no presentarse' : 'cancelación tardía'} — ${concepto}`,
+          cliente_nombre: principal.cliente_nombre || null, employee_id: principal.employee_id || null,
+          referencia: principal.comprobante || null, location_id: principal.location_id || null
+        }]);
+        if (errP) throw errP;
+      }
+      // reembolso: no es ingreso; queda en la bitácora (abajo)
+    }
+
+    // 3) La cita (y su pareja) queda cancelada con lo que pasó — el correo de cancelación lo lee de aquí
+    const ahora = new Date().toISOString();
+    for (const f of filas) {
+      const base = { estado: 'cancelada' };
+      const completo = {
+        ...base, cancelacion_motivo: motivo.trim(), cancelada_en: ahora, cancelacion_caso: caso,
+        certificado_devuelto: devuelto[f.id] || 0,
+        ...(f.id === principal.id && abono > 0 ? {
+          abono_destino: destino, credito_codigo: creditoCodigo, credito_vence: creditoVence,
+          reembolso_metodo: destino === 'reembolso' ? (opciones.reembolsoMetodo || metodoAbono) : null
+        } : {})
+      };
+      let { error } = await sbClient.from('appointments').update(completo).eq('id', f.id).eq('business_id', BUSINESS_ID);
+      if (error) {
+        console.error('Faltan columnas de cancelación (¿corriste el SQL?). Se cancela igual:', error);
+        ({ error } = await sbClient.from('appointments').update(base).eq('id', f.id).eq('business_id', BUSINESS_ID));
+      }
+      if (error) throw error;
+      await this.registrarAccion({ entidad: 'cita', entidadId: f.id, accion: 'cancelada', motivo: motivo.trim(), monto: f.id === principal.id ? abono : null,
+        detalle: { ...(detalle || {}), caso, abonoDestino: destino, creditoCodigo, certificadoDevuelto: devuelto[f.id] || 0 } });
+    }
+    if (destino === 'reembolso') {
+      await this.registrarAccion({ entidad: 'reembolso', entidadId: principal.id, accion: 'reembolso_abono', motivo: motivo.trim(), monto: abono,
+        detalle: { metodo: opciones.reembolsoMetodo || metodoAbono, cliente: principal.cliente_nombre } });
+    }
+    return { caso, abono, destino, creditoCodigo, creditoVence, certificadoDevuelto: Object.values(devuelto).reduce((a, b) => a + b, 0) };
+  },
+
   async cancelarCita(id, motivo, detalle) {
     await window.AnnlyReady;
 
@@ -3512,8 +3646,22 @@ const Sheets = {
     const { data } = await sbClient.from('finance_settings').select('*').eq('business_id', BUSINESS_ID).maybeSingle();
     return {
       periodo: (data && data.periodo_cierre) || 'quincenal',
-      semanaInicia: (data && data.semana_inicia != null) ? data.semana_inicia : 1
+      semanaInicia: (data && data.semana_inicia != null) ? data.semana_inicia : 1,
+      // Política de cancelación (configurable por negocio)
+      horasAviso: (data && data.horas_aviso_cancelacion != null) ? Number(data.horas_aviso_cancelacion) : 24,
+      creditoVigencia: (data && data.credito_vigencia_dias != null) ? Number(data.credito_vigencia_dias) : 30
     };
+  },
+
+  async guardarPoliticaCancelacion({ horasAviso, creditoVigencia }) {
+    await window.AnnlyReady;
+    const h = Math.max(0, Math.min(168, parseInt(horasAviso, 10) || 0));
+    const d = Math.max(1, Math.min(365, parseInt(creditoVigencia, 10) || 30));
+    const { error } = await sbClient.from('finance_settings').upsert({
+      business_id: BUSINESS_ID, horas_aviso_cancelacion: h, credito_vigencia_dias: d,
+      actualizado_en: new Date().toISOString()
+    }, { onConflict: 'business_id' });
+    if (error) throw error;
   },
 
   async guardarAjustesFinanzas({ periodo, semanaInicia }) {
@@ -3593,6 +3741,13 @@ const Sheets = {
   async anularGasto(id, motivo, detalle) {
     await window.AnnlyReady;
     if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
+    {
+      const { data: g } = await sbClient.from('finance_expenses').select('fecha, location_id').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
+      if (g) {
+        const st = await this.estadoCierreMovimiento({ tipo: 'gasto', fecha: g.fecha, locationId: g.location_id });
+        if (st.cerrado) throw new Error('Este gasto es de un periodo ya cerrado: regístrale un ajuste en vez de anularlo.');
+      }
+    }
     const { data: filas, error } = await sbClient.from('finance_expenses')
       .update({ anulado: true, anulado_motivo: motivo.trim(), anulado_en: new Date().toISOString() })
       .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulado', false)
@@ -3619,7 +3774,8 @@ const Sheets = {
       id: v.id, fecha: v.fecha, cliente: v.cliente_nombre, servicio: v.servicio_nombre,
       empleadoId: v.employee_id, monto: Number(v.monto), creadoEn: v.creado_en,
       anulada: !!v.anulada, motivoAnulacion: v.anulada_motivo || '', anuladaEn: v.anulada_en || null,
-      locationId: v.location_id || null
+      locationId: v.location_id || null,
+      comisionMonto: Number(v.comision_monto || 0)
     }));
   },
 
@@ -3683,11 +3839,121 @@ const Sheets = {
     return venta.id;
   },
 
+  async _idPrincipal() {
+    const { data } = await sbClient.from('locations').select('id').eq('business_id', BUSINESS_ID).eq('is_main', true).limit(1);
+    return data && data[0] ? data[0].id : null;
+  },
+
+  _fmtFechaCorta(iso) {
+    if (!iso) return '';
+    const [y, m, d] = String(iso).split('-');
+    return `${d}/${m}/${y}`;
+  },
+
+  // ¿La fecha de un movimiento cae en un periodo ya cerrado de su sede?
+  // tipo 'venta': cierra el periodo del profesional que la hizo o el cierre general de la sede.
+  // tipo 'gasto': solo el cierre general de la sede.
+  async estadoCierreMovimiento({ tipo, fecha, employeeId, locationId }) {
+    await window.AnnlyReady;
+    const loc = locationId || await this._idPrincipal();
+    if (tipo === 'venta' && employeeId) {
+      const c = await this.getCierreQueCubre([employeeId], fecha, loc);
+      if (c) return { cerrado: true, por: 'profesional', desde: c.desde, hasta: c.hasta };
+    }
+    const { data, error } = await this._enSede(sbClient.from('cierres_negocio').select('periodo_desde, periodo_hasta')
+      .eq('business_id', BUSINESS_ID).lte('periodo_desde', fecha).gte('periodo_hasta', fecha), loc).limit(1);
+    if (error) throw error;
+    if (data && data[0]) return { cerrado: true, por: 'negocio', desde: data[0].periodo_desde, hasta: data[0].periodo_hasta };
+    return { cerrado: false };
+  },
+
+  // Ajustes ya hechos (para marcar en las listas lo que ya se ajustó): Set de 'venta:<id>' / 'gasto:<id>'
+  async getAjustesHechos() {
+    await window.AnnlyReady;
+    const [g, p] = await Promise.all([
+      sbClient.from('finance_expenses').select('ajuste_de').eq('business_id', BUSINESS_ID).not('ajuste_de', 'is', null),
+      sbClient.from('finance_payments').select('ajuste_de').eq('business_id', BUSINESS_ID).not('ajuste_de', 'is', null)
+    ]);
+    const set = new Set();
+    [...((g && g.data) || []), ...((p && p.data) || [])].forEach(r => set.add(r.ajuste_de));
+    return set;
+  },
+
+  // Corrige un movimiento de un periodo cerrado sin tocar el pasado: crea un movimiento con fecha de hoy.
+  // - venta: un gasto "Ajuste / devolución" por el monto de la venta y, si ya generó comisión,
+  //          un adelanto por esa comisión que se descuenta en el siguiente cierre del profesional.
+  // - gasto: un ingreso de origen "ajuste" por el monto del gasto.
+  async registrarAjuste({ tipo, id, motivo }) {
+    await window.AnnlyReady;
+    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo del ajuste.');
+    const hoy = this._hoyISO();
+    const ref = tipo + ':' + id;
+
+    if (tipo === 'venta') {
+      const { data: v, error } = await sbClient.from('local_sales').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
+      if (error) throw error;
+      if (!v) throw new Error('La venta no existe.');
+      if (v.anulada) throw new Error('La venta ya está anulada.');
+      const { data: ya } = await sbClient.from('finance_expenses').select('id').eq('business_id', BUSINESS_ID).eq('ajuste_de', ref).limit(1);
+      if (ya && ya.length) throw new Error('Esta venta ya tiene un ajuste registrado.');
+      const { data: pagos } = await sbClient.from('finance_payments').select('metodo').eq('local_sale_id', id).limit(1);
+      const metodo = (pagos && pagos[0] && pagos[0].metodo && pagos[0].metodo !== 'certificado') ? pagos[0].metodo : 'efectivo';
+
+      const { error: errG } = await sbClient.from('finance_expenses').insert([{
+        business_id: BUSINESS_ID, fecha: hoy, categoria: 'Ajuste / devolución',
+        descripcion: `Devolución de la venta del ${this._fmtFechaCorta(v.fecha)} — ${v.servicio_nombre || 'venta'}${v.cliente_nombre ? ' (' + v.cliente_nombre + ')' : ''}`,
+        monto: Number(v.monto), metodo, referencia: motivo.trim().slice(0, 120),
+        location_id: v.location_id || null, ajuste_de: ref
+      }]);
+      if (errG) throw errG;
+
+      const comision = Number(v.comision_monto || 0);
+      if (v.employee_id && comision > 0) {
+        const { error: errA } = await sbClient.from('adelantos').insert([{
+          business_id: BUSINESS_ID, employee_id: v.employee_id, monto: comision, fecha: hoy,
+          nota: `Ajuste venta del ${this._fmtFechaCorta(v.fecha)} (comisión ya pagada)`,
+          location_id: v.location_id || null
+        }]);
+        if (errA) console.error('El ajuste se registró, pero no se pudo descontar la comisión:', errA);
+      }
+      await this.registrarAccion({ entidad: 'ajuste', entidadId: id, accion: 'ajuste_venta', motivo: motivo.trim(), monto: Number(v.monto),
+        detalle: { venta: v.servicio_nombre, fechaVenta: v.fecha, comisionDescontada: comision } });
+      return { comisionDescontada: comision };
+    }
+
+    if (tipo === 'gasto') {
+      const { data: g, error } = await sbClient.from('finance_expenses').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
+      if (error) throw error;
+      if (!g) throw new Error('El gasto no existe.');
+      if (g.anulado) throw new Error('El gasto ya está anulado.');
+      const { data: ya } = await sbClient.from('finance_payments').select('id').eq('business_id', BUSINESS_ID).eq('ajuste_de', ref).limit(1);
+      if (ya && ya.length) throw new Error('Este gasto ya tiene un ajuste registrado.');
+      const { error: errP } = await sbClient.from('finance_payments').insert([{
+        business_id: BUSINESS_ID, origen: 'ajuste', estado: 'confirmado', metodo: g.metodo || 'efectivo',
+        monto: Number(g.monto), fecha: hoy, referencia: motivo.trim().slice(0, 120),
+        concepto: `Ajuste del gasto del ${this._fmtFechaCorta(g.fecha)} — ${g.categoria}`,
+        location_id: g.location_id || null, ajuste_de: ref
+      }]);
+      if (errP) throw errP;
+      await this.registrarAccion({ entidad: 'ajuste', entidadId: id, accion: 'ajuste_gasto', motivo: motivo.trim(), monto: Number(g.monto),
+        detalle: { categoria: g.categoria, fechaGasto: g.fecha } });
+      return {};
+    }
+    throw new Error('Tipo de ajuste desconocido.');
+  },
+
   // Anula una venta en el local (devolución, error de captura...): no se borra, queda en
   // el historial con su motivo, y sus pagos dejan de contar en los ingresos.
   async anularVentaLocal(id, motivo, detalle) {
     await window.AnnlyReady;
     if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
+    {
+      const { data: v } = await sbClient.from('local_sales').select('fecha, employee_id, location_id').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
+      if (v) {
+        const st = await this.estadoCierreMovimiento({ tipo: 'venta', fecha: v.fecha, employeeId: v.employee_id, locationId: v.location_id });
+        if (st.cerrado) throw new Error('Esta venta es de un periodo ya cerrado: regístrale un ajuste en vez de anularla.');
+      }
+    }
 
     // 1) Los pagos de la venta dejan de contar como ingreso
     const { error: errPagos } = await sbClient.from('finance_payments')
