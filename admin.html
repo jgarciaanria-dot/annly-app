@@ -352,6 +352,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .bloq-item{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:#FDF4F2;border:1px solid #F5D8D2;border-radius:var(--radius);margin-bottom:8px;font-size:13px;}
 .bloq-item-del{width:27px;height:27px;border-radius:8px;border:none;background:#fff;color:#C2695A;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
 .bloq-item-del:hover{background:#FCE8E4;}
+.suc-tabs{display:flex;gap:2px;padding:.4rem 1rem 0;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;}
+.suc-tabs::-webkit-scrollbar{display:none;}
+.suc-tab{flex-shrink:0;display:inline-flex;align-items:center;gap:7px;padding:11px 14px 10px;border:0;border-bottom:2.5px solid transparent;background:transparent;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;transition:color .15s,border-color .15s;margin-bottom:-1px;}
+.suc-tab:hover{color:var(--ink);}
+.suc-tab i{font-size:15px;}
+.suc-tab.sel{color:#5B21B6;border-bottom-color:#7C3AED;}
+.suc-tab .n{min-width:20px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#F1EFF5;color:var(--ink-soft);text-align:center;}
+.suc-tab.sel .n{background:#F3EEFC;color:#7C3AED;}
+.suc-tab.inactiva{opacity:.6;}
 .bloq-suc-wrap{margin:2px 0 12px;}
 .bloq-suc-lbl{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px;}
 .bloq-suc-chips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -3525,6 +3534,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
     </div>
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Citas</span></div>
+      <div id="citas-suc-tabs" class="suc-tabs" style="display:none;"></div>
       <div id="citas-vistas" class="cats" style="padding:.85rem 1rem 0;"></div>
       <div id="citas-buscar-wrap" style="padding:.85rem 1rem 0;">
         <label class="flbl">Buscar cliente</label>
@@ -3532,10 +3542,6 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
           <input class="fi" id="citas-buscar" type="text" placeholder="Nombre, teléfono o correo" oninput="buscarCitasInput(this.value)" autocomplete="off" style="padding-right:38px;"/>
           <button type="button" id="citas-buscar-x" onclick="limpiarBusquedaCitas()" title="Borrar búsqueda" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;font-size:16px;color:var(--ink-soft);cursor:pointer;"><i class="ti ti-x"></i></button>
         </div>
-      </div>
-      <div id="citas-filtro-suc-wrap" style="display:none;padding:.85rem 1rem 0;">
-        <label class="flbl">Filtrar por sucursal</label>
-        <select class="fi" id="citas-filtro-suc" onchange="filtrarCitasPorSucursal(this.value)"></select>
       </div>
       <div id="citas-filtro-wrap" style="display:none;padding:.85rem 1rem 0;">
         <label class="flbl">Filtrar por profesional</label>
@@ -4972,8 +4978,8 @@ function resetEstadoNegocio(){
   const inpBusq = document.getElementById('citas-buscar'); if (inpBusq) inpBusq.value = '';
   const btnX = document.getElementById('citas-buscar-x'); if (btnX) btnX.style.display = 'none';
   const selProf = document.getElementById('citas-filtro-prof'); if (selProf) selProf.innerHTML = '';
-  const selSuc = document.getElementById('citas-filtro-suc'); if (selSuc) selSuc.innerHTML = '';
-  ['citas-filtro-wrap','citas-filtro-suc-wrap'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  const sucTabs = document.getElementById('citas-suc-tabs'); if (sucTabs){ sucTabs.innerHTML = ''; sucTabs.style.display = 'none'; }
+  const wrapProf = document.getElementById('citas-filtro-wrap'); if (wrapProf) wrapProf.style.display = 'none';
 
   // Reprogramar
   reprogramarCitaId = null; rpEmpleadoId = null; rpEmpleadoHorarioCache = null;
@@ -6866,22 +6872,44 @@ function chipSucursalCita(c){
   const n = nombreSucursal(c.locationId);
   return n ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:#EEF3FB;color:#3A6AB0;"><i class="ti ti-map-pin" style="font-size:11px;"></i>${escCat(n)}</span>` : '';
 }
+// Pestañas por sucursal en Citas (Todas · Principal · Costa del Este...)
+function claveSucCitas(){ return 'annly_citas_suc_' + BUSINESS_ID; }
 async function poblarFiltroSucursales(){
-  const wrap = document.getElementById('citas-filtro-suc-wrap');
-  const sel = document.getElementById('citas-filtro-suc');
-  if (!wrap || !sel) return;
   if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){
     try { SUCURSALES = await Sheets.getSucursales(); } catch(e){}
   }
-  if (!hayVariasSucursales()){ wrap.style.display = 'none'; FILTRO_CITAS_SUC = ''; return; }
+  const tabs = document.getElementById('citas-suc-tabs');
+  if (!hayVariasSucursales()){
+    FILTRO_CITAS_SUC = '';
+    if (tabs){ tabs.style.display = 'none'; tabs.innerHTML = ''; }
+    return;
+  }
+  // Recuerda la última sucursal vista en este negocio
+  if (!FILTRO_CITAS_SUC){
+    try { FILTRO_CITAS_SUC = sessionStorage.getItem(claveSucCitas()) || ''; } catch(e){}
+  }
   if (FILTRO_CITAS_SUC && !SUCURSALES.some(x => x.id === FILTRO_CITAS_SUC)) FILTRO_CITAS_SUC = '';
-  wrap.style.display = 'block';
-  sel.innerHTML = '<option value="">Todas las sucursales</option>' + SUCURSALES.map(x => `<option value="${x.id}">${escCat(x.nombre)}${x.activa ? '' : ' (inactiva)'}</option>`).join('');
-  sel.value = FILTRO_CITAS_SUC;
 }
 function filtrarCitasPorSucursal(id){
   FILTRO_CITAS_SUC = id || '';
+  try { sessionStorage.setItem(claveSucCitas(), FILTRO_CITAS_SUC); } catch(e){}
   renderCitas();
+}
+// n = citas activas por sucursal (mismo criterio que la vista Activas)
+function renderTabsSucursalCitas(conteo){
+  const tabs = document.getElementById('citas-suc-tabs');
+  if (!tabs) return;
+  if (!hayVariasSucursales()){ tabs.style.display = 'none'; tabs.innerHTML = ''; return; }
+  const total = Object.values(conteo).reduce((p, q) => p + q, 0);
+  const lista = SUCURSALES.slice().sort((x, y) => (y.esPrincipal ? 1 : 0) - (x.esPrincipal ? 1 : 0))
+    .filter(x => x.activa || conteo[x.id]);
+  const tab = (id, icono, txt, n, extra) =>
+    `<button type="button" class="suc-tab${FILTRO_CITAS_SUC === id ? ' sel' : ''}${extra || ''}" onclick="filtrarCitasPorSucursal('${id}')"><i class="ti ti-${icono}"></i>${txt}<span class="n">${n}</span></button>`;
+  tabs.style.display = 'flex';
+  tabs.innerHTML = tab('', 'building-store', 'Todas', total) +
+    lista.map(x => tab(x.id, 'map-pin', escCat(x.nombre), conteo[x.id] || 0, x.activa ? '' : ' inactiva')).join('');
+  const sel = tabs.querySelector('.suc-tab.sel');
+  if (sel && sel.scrollIntoView) sel.scrollIntoView({ block:'nearest', inline:'nearest' });
 }
 
 // Vistas de la lista de citas: Activas (vigentes), Por completar (ya pasaron y falta el cobro) y Completadas
@@ -6984,6 +7012,19 @@ function renderCitas(){
     ? colapsarDobles(base.filter(c => c.completadaEn && c._ini >= hace90).sort((a,b) => b._ini - a._ini), citas)
     : [];
   const canceladas = colapsarDobles(base.filter(c => c.estado === 'cancelada' && c._ini >= hace90).sort((a,b) => b._ini - a._ini), citas);
+
+  // Conteo de activas por sucursal (respeta profesional y búsqueda, no el filtro de sucursal)
+  if (hayVariasSucursales()){
+    const pr = SUCURSALES.find(y => y.esPrincipal);
+    const conteo = {};
+    colapsarDobles(citas
+      .filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF)
+      .filter(c => citaCoincide(c, BUSQUEDA_CITAS))
+      .map(c => ({ ...c, _ini: citaInicio(c) }))
+      .filter(c => c.estado !== 'cancelada' && !c.completadaEn && (finOn ? c._ini >= ahora : c.fechaISO >= hoyISO)), citas)
+      .forEach(c => { const k = c.locationId || (pr && pr.id) || ''; conteo[k] = (conteo[k] || 0) + 1; });
+    renderTabsSucursalCitas(conteo);
+  } else renderTabsSucursalCitas({});
 
   const vistas = [{ k:'activas', t:'Activas', n:activas.length }];
   if (finOn){
