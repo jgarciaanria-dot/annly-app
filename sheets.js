@@ -1575,9 +1575,13 @@ const Sheets = {
   // CITAS
   // =======================================================
 
+  // opts (opcional, lo usa Reprogramar en el panel):
+  //   excluirIds: citas que no cuentan como ocupadas (la misma cita que se está moviendo)
+  //   locationId: sin profesional, solo cuenta lo ocupado en esa sucursal
   async getHorasOcupadas(
     fechaStr,
-    empleadoId
+    empleadoId,
+    opts
   ) {
 
     await window.AnnlyReady;
@@ -1596,7 +1600,7 @@ const Sheets = {
       sbClient
         .from('appointments')
         .select(
-          'hora, duracion_min'
+          'id, hora, duracion_min, location_id'
         )
         .eq(
           'business_id',
@@ -1626,8 +1630,13 @@ const Sheets = {
       data
     } = await query;
 
+    const o = opts || {};
+    const excluir = (o.excluirIds || []).map(String);
+
 
     return (data || [])
+      .filter(c => !excluir.includes(String(c.id)))
+      .filter(c => empleadoId || !o.locationId || !c.location_id || c.location_id === o.locationId)
       .map(c => ({
 
         hora:
