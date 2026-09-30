@@ -323,6 +323,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 .tipo-opt.sel{border-color:var(--violet);box-shadow:0 8px 20px -14px rgba(124,58,237,.8);color:var(--violet);background:#FBF8FF;}
 @media(max-width:520px){.tipo-grid{grid-template-columns:1fr;}}
 .step-panel{display:none;animation:fadeIn .35s ease;}
+/* Sesión ya iniciada en este navegador */
+.sesion-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#F7F4FC;border:1.5px solid #E4D8F7;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#4B4560;margin-bottom:16px;}
+.sesion-bar b{color:#211B33;word-break:break-all;}
+.sesion-bar .acc{display:flex;gap:6px;margin-left:auto;}
+.sesion-bar button{border:1px solid #E4D8F7;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;color:var(--violet);font-family:inherit;}
+.sesion-bar button.salir{color:#B4432F;border-color:#F3C9C4;}
+.link-salir{display:block;text-align:center;margin-top:12px;font-size:12.5px;color:#B4432F;background:none;border:none;cursor:pointer;font-weight:600;font-family:inherit;width:100%;}
 .step-panel.active{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
 
@@ -1308,6 +1315,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
         <div class="mobile-logo">Annly<span>.</span></div>
         <div class="mobile-tagline">Tu negocio. Tu agenda.<br><em>Así de fácil.</em> <i>✦</i></div>
       </div>
+      <div class="sesion-bar" id="sesion-bar" hidden>
+        <span>Sesión iniciada como <b id="sesion-email"></b></span>
+        <span class="acc">
+          <button type="button" onclick="irAMiPanel()">Ir a mi panel</button>
+          <button type="button" class="salir" onclick="cerrarSesionRegistro()">Cerrar sesión</button>
+        </span>
+      </div>
       <div class="steps-wrap" id="steps-wrap">
         <div class="steps">
           <div class="step-item">
@@ -1430,6 +1444,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
         <div class="btn-row">
           <a class="btn-grad" id="btn-ir-panel" href="admin.html" style="text-decoration:none;">Entrar a mi panel<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
+        <button type="button" class="link-salir" onclick="cerrarSesionRegistro()">Cerrar sesión</button>
       </div>
 
       <p class="foot">¿Ya tienes cuenta? <a href="admin.html">Inicia sesión</a></p>
@@ -1574,6 +1589,31 @@ async function registrarConGoogle(){
     msgEl.textContent = 'No se pudo iniciar sesión con Google. Intenta de nuevo.';
   }
 }
+
+// ---- Sesión ya iniciada: se muestra con quién, y se puede ir al panel o cerrarla ----
+async function cerrarSesionRegistro(){
+  try {
+    sessionStorage.removeItem('annly_registro_pendiente');
+    sessionStorage.removeItem('annly_selected_business_id');
+    await sbClient.auth.signOut();
+  } catch(e){ console.error(e); }
+  window.location.href = 'registro.html';
+}
+async function irAMiPanel(){
+  if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.tipo_negocio === 'pedidos') { await window.AnnlyAuth.irAPanelPedidos(); return; }
+  window.location.href = 'admin.html';
+}
+(async function mostrarSesionActiva(){
+  if (sessionStorage.getItem('annly_registro_pendiente')) return; // regreso de Google: se completa el registro
+  await window.AnnlyReady;
+  try {
+    const { data } = await sbClient.auth.getSession();
+    const ses = data && data.session;
+    if (!ses) return;
+    document.getElementById('sesion-email').textContent = ses.user.email || 'tu cuenta';
+    document.getElementById('sesion-bar').hidden = false;
+  } catch(e){ console.error(e); }
+})();
 
 // Si volvemos de Google con un registro pendiente guardado, terminamos de crear el negocio.
 (async function completarSiVuelveDeGoogle(){
