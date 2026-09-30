@@ -277,6 +277,11 @@ window.AnnlyReady.then(() => {
       document.getElementById('marcas-strip').style.display = 'block';
     }
   }
+  // annly.app/slug de un negocio de pedidos: se envía a su tienda en Annly Pedidos
+  if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.tipo_negocio === 'pedidos') {
+    window.location.replace(ANNLY_PEDIDOS_URL + '/' + encodeURIComponent(window.ANNLY_BUSINESS.slug) + window.location.search);
+    return;
+  }
   Promise.all([loadServices(), cargarSucursalesSitio()]).then(() => { iniciarSucursalSitio(); });
   loadPromo();
   loadRuletaConfig();
@@ -444,6 +449,24 @@ function abrirSelectorSucursal(puedeCerrar){
   </div>`;
   if (!puedeCerrar) document.getElementById('serviceList').innerHTML = '';
   openOv('ov-sucursal');
+}
+
+// Sucursal para los correos (solo si el negocio tiene más de una)
+function datosSucursalCorreo(){
+  if (!SUCURSAL_ACTUAL || SUCURSALES_PUB.length < 2) return {};
+  const b = window.ANNLY_BUSINESS || {};
+  const dir = SUCURSAL_ACTUAL.direccion || b.direccion || '';
+  return {
+    sucursal: SUCURSAL_ACTUAL.nombre,
+    sucursalDireccion: dir,
+    sucursalTelefono: SUCURSAL_ACTUAL.telefono || '',
+    sucursalMapsUrl: dir ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(dir + ', Panamá') : ''
+  };
+}
+
+function lineaSucursalResumen(){
+  if (!SUCURSAL_ACTUAL || SUCURSALES_PUB.length < 2) return '';
+  return `<strong>Sucursal:</strong> ${escSuc(SUCURSAL_ACTUAL.nombre)}${SUCURSAL_ACTUAL.direccion ? ' · ' + escSuc(SUCURSAL_ACTUAL.direccion) : ''}<br>`;
 }
 
 function elegirSucursalSitio(id){
@@ -1620,8 +1643,8 @@ async function finalizarCita(dayStr, ref){
   let certFallo=false;
   if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e); certFallo=true;} }
   const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
-  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
-  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre, telefonoCliente:tel, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre, telefonoCliente:tel, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
   await new Promise(r=>setTimeout(r,900));
   const precioStr=esConsultar?'Por confirmar':(curSvc.precioTexto&&curSvc.precioTexto.toLowerCase().includes('desde')?'Desde $'+precio.toFixed(2):'$'+precio.toFixed(2));
   const restanteTexto = noFijo
@@ -1650,7 +1673,7 @@ async function finalizarCita(dayStr, ref){
       <div class="s-sub">Pronto nos pondremos en contacto contigo para confirmar los detalles.</div>
       <div class="s-detail">
         <strong>Servicio:</strong> ${curSvc.name}<br>
-        <strong>Fecha:</strong> ${dayStr}<br>
+        ${lineaSucursalResumen()}<strong>Fecha:</strong> ${dayStr}<br>
         <strong>Hora:</strong> ${selTime ? (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})() : selTime}<br>
         <strong>Duración aprox.:</strong> ${fmtDur(curSvc.dur)}<br>
         <strong>Precio total:</strong> <span style="color:#D95F2B;font-weight:600;">${precioStr}</span><br>
@@ -1736,9 +1759,9 @@ async function finalizarCitaDoble(dayStr, ref){
   try{ await Sheets.upsertClienteDesdeReserva(nombre2, tel2, correo2); }catch(e){}
 
   const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
-  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name+' (con '+nombre2+')', fecha:dayStr, hora:horaDisplay});
-  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo2, nombreCliente:nombre2, servicio:curSvc.name+' (con '+nombre+')', fecha:dayStr, hora:horaDisplay});
-  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre+' y '+nombre2, telefonoCliente:tel+' / '+tel2, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay});
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name+' (con '+nombre2+')', fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo2, nombreCliente:nombre2, servicio:curSvc.name+' (con '+nombre+')', fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre+' y '+nombre2, telefonoCliente:tel+' / '+tel2, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
 
   await new Promise(r=>setTimeout(r,900));
 
@@ -1753,7 +1776,7 @@ async function finalizarCitaDoble(dayStr, ref){
       <div class="s-detail">
         <strong>Servicio:</strong> ${curSvc.name}<br>
         <strong>Fecha:</strong> ${dayStr}<br>
-        <strong>Hora:</strong> ${horaDisplay}<br>
+        ${lineaSucursalResumen()}<strong>Hora:</strong> ${horaDisplay}<br>
         <strong>${nombre}</strong> y <strong>${nombre2}</strong>, cada quien con su profesional elegido<br>
         ${abonoLine}
         <strong>Total del combo:</strong> <span style="color:#D95F2B;font-weight:600;">$${precioTotal.toFixed(2)}</span><br>
