@@ -364,6 +364,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .fin-suc-tabs{padding:0;margin:0 0 14px;background:transparent;}
 .fin-suc-nota{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:12px;border-radius:12px;background:#F6F2FD;border:1px solid #E6DCF8;color:#5B21B6;font-size:12.5px;line-height:1.5;}
 .fin-suc-nota i{font-size:17px;margin-top:1px;}
+.fin-chip-ajuste{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:#EEF3FB;color:#3A6AB0;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.cx-casos{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.cx-caso{display:flex;flex-direction:column;gap:3px;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s,background .15s;}
+.cx-caso strong{font-size:12.5px;color:var(--ink);}
+.cx-caso span{font-size:11px;color:var(--ink-soft);line-height:1.4;}
+.cx-caso.sel{border-color:#7C3AED;background:#F7F3FE;}
+.cx-caso .cx-sug{display:inline-block;margin-top:3px;font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#7C3AED;}
+.cx-opc{display:flex;gap:8px;flex-wrap:wrap;}
+.cx-opc label{display:flex;align-items:center;gap:6px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:12px;cursor:pointer;}
+.cx-efecto{margin-top:12px;border-radius:12px;padding:11px 14px;font-size:12px;line-height:1.65;background:#F6F2FD;border:1px solid #E6DCF8;color:#3B2A63;}
+.cx-efecto:empty{display:none;}
+@media (max-width:420px){.cx-casos{grid-template-columns:1fr;}}
 .fin-estado-btns{display:flex;gap:6px;margin-top:6px;}
 .fin-estado-btns .btn-add{flex:1;justify-content:center;font-size:11.5px;padding:9px 8px;}
 .fin-estado-btns .btn-add:last-child{flex:0 0 auto;}
@@ -4528,6 +4540,39 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 </div>
 
+<div class="ov" id="ov-cancelar">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="cx-titulo">Cancelar cita</span>
+      <button class="modal-close" onclick="cerrarModalCancelar()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="cx-resumen" style="background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.6;margin-bottom:12px;"></div>
+      <label class="flbl">¿Qué pasó?</label>
+      <div class="cx-casos" id="cx-casos"></div>
+      <div id="cx-negocio" style="display:none;margin-top:10px;">
+        <label class="flbl">El cliente prefiere</label>
+        <div class="cx-opc">
+          <label><input type="radio" name="cx-destino" value="credito" checked onchange="cxRender()"/><span>Saldo a favor</span></label>
+          <label><input type="radio" name="cx-destino" value="reembolso" onchange="cxRender()"/><span>Que le devuelvan el dinero</span></label>
+        </div>
+        <div class="fg" id="cx-reemb-wrap" style="display:none;margin-top:8px;"><label class="flbl">Se le devuelve por</label>
+          <select class="fi" id="cx-reemb-metodo"><option value="yappy">Yappy</option><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option></select>
+        </div>
+      </div>
+      <div id="cx-efecto" class="cx-efecto"></div>
+      <div class="fg" style="margin-top:12px;"><label class="flbl">Motivo de la cancelación (obligatorio)</label>
+        <textarea class="fi" id="cx-motivo" rows="2" maxlength="300" style="resize:vertical;" placeholder="Ej: el cliente avisó que no puede asistir"></textarea>
+      </div>
+      <p id="cx-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-save" id="cx-btn" style="flex:1;background:#C2695A;box-shadow:none;" onclick="confirmarCancelacion()"><i class="ti ti-x" style="font-size:17px;"></i> Cancelar cita</button>
+        <button class="btn-add" style="padding:0 18px;" onclick="cerrarModalCancelar()">Volver</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-motivo">
   <div class="modal">
     <div class="modal-hdr">
@@ -4767,7 +4812,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=52"></script>
+<script src="sheets.js?v=53"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -7537,36 +7582,101 @@ async function guardarReprogramacion(){
   } catch(e){ alert('No se pudo reprogramar la cita.'); }
 }
 
+// ---- Cancelar cita con la política de cancelación (4 casos) ----
+let CX = null;
+const CASOS_CX = {
+  a_tiempo: { t:'Canceló a tiempo', d:'Avisó con la anticipación mínima o más' },
+  tarde:    { t:'Canceló tarde', d:'Avisó con menos anticipación de la mínima' },
+  no_show:  { t:'No se presentó', d:'No llegó y no avisó' },
+  negocio:  { t:'Cancela el negocio', d:'La cancelamos nosotros' }
+};
+
 async function cancelarCitaAdmin(id, nombre){
   const c = (CITAS_CACHE || []).find(x => x.id === id);
-  const cert = c ? Number(c.certificadoMonto) || 0 : 0;
-  const abono = c ? Number(c.abonoMonto) || 0 : 0;
-  // Cita doble: se cancelan las 2 citas juntas
-  const parDoble = (c && c.grupoCitaId) ? (CITAS_CACHE || []).filter(x => x.grupoCitaId === c.grupoCitaId) : [];
+  if (!c){ alert('No se encontró la cita.'); return; }
+  const parDoble = c.grupoCitaId ? (CITAS_CACHE || []).filter(x => x.grupoCitaId === c.grupoCitaId) : [];
   const esDoble = parDoble.length === 2;
-  const avisoDoble = esDoble ? '<strong>Cita doble:</strong> se cancelan las 2 citas juntas (no se puede cancelar solo una).<br>' : '';
-  const avisoDinero = (cert > 0 || abono > 0)
-    ? `<strong>Ojo:</strong> esta cita tiene ${cert > 0 ? 'un certificado aplicado de $' + cert.toFixed(2) : ''}${cert > 0 && abono > 0 ? ' y ' : ''}${abono > 0 ? 'un abono de $' + abono.toFixed(2) : ''}. Por ahora <strong>no se devuelven solos</strong>: revísalo tú y anota en el motivo qué hiciste.<br>`
-    : '';
-  const motivo = await pedirMotivo({
-    titulo: 'Cancelar cita',
-    resumenHtml: esDoble
-      ? `<strong>${escCat(parDoble.map(x => x.nombre).join(' y '))}</strong><br>${escCat(c.servicio || '')} · ${escCat(c.fecha || '')} · ${escCat(c.hora || '')} · ${escCat(parDoble.map(x => x.empleadoNombre).filter(Boolean).join(' y '))}`
-      : (c
-        ? `<strong>${escCat(c.nombre || nombre)}</strong><br>${escCat(c.servicio || '')} · ${escCat(c.fecha || '')} · ${escCat(c.hora || '')}${c.empleadoNombre ? ' · ' + escCat(c.empleadoNombre) : ''}`
-        : `<strong>${escCat(nombre)}</strong>`),
-    avisoHtml: avisoDoble + avisoDinero + 'Se avisará al cliente de la cancelación (si dejó correo). Queda registrado quién la canceló y por qué.',
-    etiqueta: 'Motivo de la cancelación (obligatorio)',
-    placeholder: 'Ej: el cliente avisó que no puede asistir, cancelamos por una emergencia',
-    textoBoton: 'Cancelar cita'
+  const principal = esDoble ? (parDoble.find(x => x.grupoPrincipal) || parDoble[0]) : c;
+  const abono = Number(principal.abonoMonto) || 0;
+  const certs = (esDoble ? parDoble : [c]).filter(x => x.certificadoCodigo && Number(x.certificadoMonto) > 0)
+    .map(x => ({ codigo: x.certificadoCodigo, monto: Number(x.certificadoMonto) }));
+  let sug = { caso:'a_tiempo', horasFaltan:null, horasAviso:24, creditoVigencia:30 };
+  try { sug = await Sheets.sugerirCasoCancelacion(c.fechaISO, c.horaISO || c.hora24 || ''); } catch(e){ console.error(e); }
+  CX = { id, c, esDoble, parDoble, abono, certs, sug, caso: sug.caso };
+
+  elFin('cx-titulo').textContent = esDoble ? 'Cancelar cita doble' : 'Cancelar cita';
+  const quien = esDoble ? parDoble.map(x => x.nombre).join(' y ') : (c.nombre || nombre);
+  const faltan = sug.horasFaltan == null ? '' : (sug.horasFaltan < 0
+    ? '<br><span style="color:#C2695A;">La hora de la cita ya pasó.</span>'
+    : `<br><span style="color:var(--ink-soft);">Faltan ${sug.horasFaltan >= 48 ? Math.floor(sug.horasFaltan/24) + ' días' : Math.max(0, Math.floor(sug.horasFaltan)) + ' h'} · aviso mínimo: ${sug.horasAviso} h</span>`);
+  elFin('cx-resumen').innerHTML = `<strong>${escCat(quien)}</strong><br>${escCat(c.servicio || '')} · ${escCat(c.fecha || '')} · ${escCat(c.hora || '')}${c.empleadoNombre ? ' · ' + escCat(c.empleadoNombre) : ''}`
+    + (esDoble ? '<br><strong>Cita doble:</strong> se cancelan las 2 juntas.' : '')
+    + (abono > 0 ? `<br>Abono pagado: <strong>${fmtDinero(abono)}</strong>` : '')
+    + (certs.length ? `<br>Certificado aplicado: <strong>${certs.map(x => fmtDinero(x.monto) + ' (' + escCat(x.codigo) + ')').join(', ')}</strong>` : '')
+    + faltan;
+  document.querySelector('input[name="cx-destino"][value="credito"]').checked = true;
+  elFin('cx-reemb-metodo').value = principal.metodoPago === 'yappy' ? 'yappy' : 'transferencia';
+  elFin('cx-motivo').value = '';
+  elFin('cx-msg').textContent = '';
+  cxRender();
+  elFin('ov-cancelar').classList.add('open');
+}
+
+function cxElegir(caso){ if (CX){ CX.caso = caso; cxRender(); } }
+
+function cxRender(){
+  if (!CX) return;
+  elFin('cx-casos').innerHTML = Object.keys(CASOS_CX).map(k => `
+    <button type="button" class="cx-caso${CX.caso === k ? ' sel' : ''}" onclick="cxElegir('${k}')">
+      <strong>${CASOS_CX[k].t}</strong><span>${CASOS_CX[k].d}</span>
+      ${CX.sug.caso === k ? '<span class="cx-sug">Sugerido</span>' : ''}
+    </button>`).join('');
+  const esNeg = CX.caso === 'negocio';
+  elFin('cx-negocio').style.display = (esNeg && CX.abono > 0) ? 'block' : 'none';
+  const destinoNeg = (document.querySelector('input[name="cx-destino"]:checked') || {}).value || 'credito';
+  elFin('cx-reemb-wrap').style.display = (esNeg && destinoNeg === 'reembolso') ? 'block' : 'none';
+
+  const lineas = [];
+  if (CX.abono > 0){
+    const destino = CX.caso === 'a_tiempo' ? 'credito' : (esNeg ? destinoNeg : 'penalidad');
+    if (destino === 'credito') lineas.push(`<strong>Abono:</strong> ${fmtDinero(CX.abono)} queda como <strong>saldo a favor</strong> con un código que le llega por correo, válido ${CX.sug.creditoVigencia} días. Entra como ingreso hoy.`);
+    else if (destino === 'penalidad') lineas.push(`<strong>Abono:</strong> ${fmtDinero(CX.abono)} <strong>no se devuelve</strong> y entra como ingreso "Penalidad por cancelación".`);
+    else lineas.push(`<strong>Abono:</strong> se le <strong>devuelven</strong> ${fmtDinero(CX.abono)}. No es ingreso; queda en la bitácora. Recuerda hacer la devolución.`);
+  } else lineas.push('<strong>Abono:</strong> esta cita no tiene abono.');
+  CX.certs.forEach(x => {
+    lineas.push(CX.caso === 'no_show'
+      ? `<strong>Certificado ${escCat(x.codigo)}:</strong> se le devuelven ${fmtDinero(x.monto)} al saldo (si es de cortesía, se pierde por no presentarse).`
+      : `<strong>Certificado ${escCat(x.codigo)}:</strong> se le devuelven ${fmtDinero(x.monto)} al saldo.`);
   });
-  if (!motivo) return;
+  lineas.push('Se le avisa al cliente por correo (si dejó correo), con lo que pasó con su abono y su certificado.');
+  elFin('cx-efecto').innerHTML = lineas.join('<br>');
+}
+
+function cerrarModalCancelar(){ elFin('ov-cancelar').classList.remove('open'); CX = null; }
+
+async function confirmarCancelacion(){
+  if (!CX) return;
+  const motivo = elFin('cx-motivo').value.trim();
+  const msg = elFin('cx-msg');
+  if (motivo.length < 3){ msg.textContent = 'Escribe el motivo (mínimo 3 letras).'; return; }
+  const btn = elFin('cx-btn');
+  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Cancelando...';
+  const c = CX.c;
   try {
-    await Sheets.cancelarCita(id, motivo, c ? { cliente: c.nombre, servicio: c.servicio, fecha: c.fecha, hora: c.hora, profesional: c.empleadoNombre || null, certificado: cert, abono } : null);
-    if (c) Sheets.enviarCorreo('cita_cancelada', {nombreCliente:c.nombre, servicio:c.servicio, fecha:c.fecha, hora:c.hora});
+    const r = await Sheets.cancelarConPolitica(CX.id, motivo, {
+      caso: CX.caso,
+      abonoDestino: (document.querySelector('input[name="cx-destino"]:checked') || {}).value || 'credito',
+      reembolsoMetodo: elFin('cx-reemb-metodo').value
+    }, { cliente: c.nombre, servicio: c.servicio, fecha: c.fecha, hora: c.hora, profesional: c.empleadoNombre || null });
+    cerrarModalCancelar();
     loadCitas();
+    if (r && r.creditoCodigo) alert(`Cita cancelada. Se creó el saldo a favor ${r.creditoCodigo} por ${fmtDinero(r.abono)}.`);
+  } catch(e){
+    console.error(e);
+    msg.style.color = '#C2695A';
+    msg.textContent = 'No se pudo cancelar.' + (e && e.message ? ' (' + e.message + ')' : '');
   }
-  catch(e){ console.error(e); alert('No se pudo cancelar la cita.'); }
+  btn.disabled = false;
 }
 
 function horaAMin(horaStr){
@@ -8993,6 +9103,7 @@ async function loadFinanzas(){
     return;
   }
   try { FIN.extras = (await Sheets.getExtrasFinanzas(desde, hasta)).filter(enSedeFin); } catch(e){ FIN.extras = []; }
+  try { FIN.ajustados = await Sheets.getAjustesHechos(); } catch(e){ FIN.ajustados = new Set(); }
   // Ingresos del periodo anterior (para la tarjeta de comparación)
   FIN.previo = null;
   const prev = rangoPrevioComparable(desde, hasta);
@@ -9167,6 +9278,12 @@ function tarjetaComparacion(ingresos){
     ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>antes: ' + fmtDinero(anterior) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
 }
 
+// Ingresos que no son servicios ni ventas: penalidades, saldos a favor por cancelación y ajustes
+const ORIGENES_OTROS = ['penalidad', 'credito', 'ajuste'];
+function textoOrigenFin(o){
+  return ({ local:'En el local', agenda:'Agenda', penalidad:'Penalidad por cancelación', credito:'Saldo a favor', ajuste:'Ajuste' })[o] || '';
+}
+
 // ---------- Resumen ----------
 function htmlResumenFin(){
   const cobrosServicios = sumaFin(FIN.pagos);
@@ -9176,7 +9293,8 @@ function htmlResumenFin(){
   const gastos = sumaFin(FIN.gastos);
   const resultado = ingresos - gastos;
   const agenda = sumaFin(FIN.pagos.filter(p => p.origen === 'agenda'));
-  const local = cobrosServicios - agenda;
+  const otros = sumaFin(FIN.pagos.filter(p => ORIGENES_OTROS.includes(p.origen)));
+  const local = cobrosServicios - agenda - otros;
   const adicionales = Math.min(agenda, sumaFin(FIN.extras));
   const serviciosAgenda = agenda - adicionales;
   const canjeados = sumaFin(FIN.pagosCanje);
@@ -9287,7 +9405,7 @@ function htmlResumenFin(){
     <div class="fin-summary-grid">
       ${kpi(FIN_PERIODO === 'actual' ? 'Ingresos del periodo actual' : 'Ingresos del periodo',
         '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(ingresos) + '</span>',
-        'Citas ' + fmtDinero(serviciosAgenda) + ' · Local ' + fmtDinero(local + adicionales) + '<br>Certificados ' + fmtDinero(ventaCert),
+        'Citas ' + fmtDinero(serviciosAgenda) + ' · Local ' + fmtDinero(local + adicionales) + '<br>Certificados ' + fmtDinero(ventaCert) + (otros > 0 ? ' · Otros ' + fmtDinero(otros) : ''),
         ingresos,'income')}
 
       ${kpi('Ventas en certificados',
@@ -9398,7 +9516,7 @@ function bloquesDeCobros(){
         sub:[cliente].filter(Boolean).join(' · '), monto:g.ventaCert.reduce((s,p) => s + p.monto, 0), lineas:g.ventaCert.map(lineaDe) });
       return;
     }
-    const origen = ref.origen === 'local' ? 'En el local' : 'Agenda';
+    const origen = textoOrigenFin(ref.origen);
     const extras = g.k.startsWith('a:') ? FIN.extras.filter(x => 'a:' + x.appointmentId === g.k) : [];
     const lineas = g.dinero.map(lineaDe);
     g.canje.forEach(p => lineas.push({ texto:'Certificado ' + fmtDinero(p.monto) + (p.referencia ? ' · ' + p.referencia : '') + ' (no es dinero nuevo)', gris:true }));
@@ -9414,7 +9532,7 @@ function bloquesDeCobros(){
   sueltos.forEach(({ p, esCanje, esVentaCert }) => {
     bloques.push({ tipo: esVentaCert ? 'certificado' : (esCanje ? 'canje' : 'ingreso'), fecha:p.fecha, creado:p.creadoEn,
       titulo: esVentaCert ? 'Venta de ' + (p.concepto || 'certificado') : (p.concepto || 'Cobro'),
-      sub:[p.cliente, FIN.equipo[p.empleadoId], p.origen === 'local' ? 'En el local' : (p.origen === 'agenda' ? 'Agenda' : '')].filter(Boolean).join(' · '),
+      sub:[p.cliente, FIN.equipo[p.empleadoId], textoOrigenFin(p.origen)].filter(Boolean).join(' · '),
       monto:p.monto, lineas:[lineaDe(p)], conCert:esCanje });
   });
   return bloques;
@@ -9501,7 +9619,9 @@ function htmlVentasFin(){
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
         <div style="font-size:14px;font-weight:800;color:#159A61;">${fmtDinero(v.monto)}</div>
-        <button type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 12px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;color:#C2695A;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" onclick="anularVentaFin('${v.id}')" title="Anular venta"><i class="ti ti-ban" style="font-size:13px;"></i> Anular</button>
+        ${FIN.ajustados && FIN.ajustados.has('venta:' + v.id)
+          ? '<span class="fin-chip-ajuste"><i class="ti ti-arrows-exchange"></i> Ajustada</span>'
+          : `<button type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 12px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;color:#C2695A;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" onclick="anularVentaFin('${v.id}')" title="Anular venta"><i class="ti ti-ban" style="font-size:13px;"></i> Anular</button>`}
       </div>
     </div>`;
   }).join('');
@@ -9524,6 +9644,7 @@ function htmlVentasFin(){
 async function anularVentaFin(id){
   const v = FIN.ventas.find(x => x.id === id);
   if (!v) return;
+  if (await ajusteSiPeriodoCerrado('venta', v)) return;
   const motivo = await pedirMotivo({
     titulo: 'Anular venta',
     resumenHtml: `<strong>${escCat(v.servicio)}</strong><br>${fmtDinero(v.monto)} · ${fechaCortaFin(v.fecha)}${v.cliente ? ' · ' + escCat(v.cliente) : ''}${FIN.equipo[v.empleadoId] ? ' · ' + escCat(FIN.equipo[v.empleadoId]) : ''}`,
@@ -9540,6 +9661,47 @@ async function anularVentaFin(id){
     console.error(e);
     alert('No se pudo anular la venta.' + (e && e.message ? ' (' + e.message + ')' : ''));
   }
+}
+
+// ---- Periodo cerrado: en vez de anular, se registra un ajuste con fecha de hoy ----
+// Devuelve true si el movimiento era de un periodo cerrado (y ya se manejó el ajuste o se canceló).
+async function ajusteSiPeriodoCerrado(tipo, x){
+  let st;
+  try {
+    st = await Sheets.estadoCierreMovimiento({ tipo, fecha: x.fecha, employeeId: x.empleadoId || null, locationId: x.locationId || null });
+  } catch(e){
+    console.error(e);
+    alert('No se pudo verificar si el periodo está cerrado. Inténtalo de nuevo.');
+    return true;
+  }
+  if (!st.cerrado) return false;
+  if (FIN.ajustados && FIN.ajustados.has(tipo + ':' + x.id)){ alert('Este movimiento ya tiene un ajuste registrado.'); return true; }
+
+  const rango = `${fechaCortaFin(st.desde)} – ${fechaCortaFin(st.hasta)}`;
+  const esVenta = tipo === 'venta';
+  const comision = esVenta ? Number(x.comisionMonto || 0) : 0;
+  const motivo = await pedirMotivo({
+    titulo: esVenta ? 'Registrar ajuste de la venta' : 'Registrar ajuste del gasto',
+    resumenHtml: esVenta
+      ? `<strong>${escCat(x.servicio)}</strong><br>${fmtDinero(x.monto)} · ${fechaCortaFin(x.fecha)}${x.cliente ? ' · ' + escCat(x.cliente) : ''}`
+      : `<strong>${escCat(x.categoria)}${x.descripcion ? ' — ' + escCat(x.descripcion) : ''}</strong><br>${fmtDinero(x.monto)} · ${fechaCortaFin(x.fecha)}`,
+    avisoHtml: `Este movimiento es del periodo <strong>${rango}</strong>, que ya está cerrado${st.por === 'profesional' ? ' para el profesional' : ''}. No se puede anular; se corrige con un ajuste <strong>con fecha de hoy</strong>:<br>`
+      + (esVenta
+        ? `• Se registra un gasto "Ajuste / devolución" por ${fmtDinero(x.monto)}.` + (comision > 0 ? `<br>• La comisión ya pagada (${fmtDinero(comision)}) se descuenta en el próximo cierre del profesional.` : '')
+        : `• Se registra un ingreso de ajuste por ${fmtDinero(x.monto)}.`),
+    etiqueta: 'Motivo del ajuste (obligatorio)',
+    placeholder: esVenta ? 'Ej: devolución del cliente' : 'Ej: el gasto se registró dos veces',
+    textoBoton: 'Registrar ajuste'
+  });
+  if (!motivo) return true;
+  try {
+    await Sheets.registrarAjuste({ tipo, id: x.id, motivo });
+    await loadFinanzas();
+  } catch(e){
+    console.error(e);
+    alert('No se pudo registrar el ajuste.' + (e && e.message ? ' (' + e.message + ')' : ''));
+  }
+  return true;
 }
 
 // ---------- Gastos ----------
@@ -9564,7 +9726,9 @@ function htmlGastosFin(){
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
         <div style="font-size:14px;font-weight:800;color:#E11D2E;">−${fmtDinero(g.monto)}</div>
-        <button type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 12px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;color:#C2695A;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban" style="font-size:13px;"></i> Anular</button>
+        ${FIN.ajustados && FIN.ajustados.has('gasto:' + g.id)
+          ? '<span class="fin-chip-ajuste"><i class="ti ti-arrows-exchange"></i> Ajustado</span>'
+          : `<button type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 12px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;color:#C2695A;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;" onclick="anularGastoFin('${g.id}')" title="Anular gasto"><i class="ti ti-ban" style="font-size:13px;"></i> Anular</button>`}
       </div>
     </div>`;
   }).join('');
@@ -9578,6 +9742,7 @@ function htmlGastosFin(){
 async function anularGastoFin(id){
   const g = FIN.gastosTodos.find(x => x.id === id);
   if (!g) return;
+  if (await ajusteSiPeriodoCerrado('gasto', g)) return;
   const motivo = await pedirMotivo({
     titulo: 'Anular gasto',
     resumenHtml: `<strong>${escCat(g.categoria)}${g.descripcion ? ' — ' + escCat(g.descripcion) : ''}</strong><br>${fmtDinero(g.monto)} · ${fechaCortaFin(g.fecha)} · ${METODOS_PAGO[g.metodo]||g.metodo}`,
@@ -9803,6 +9968,16 @@ function htmlCierresFin(){
       </div>
       <p id="fa-msg" style="font-size:12px;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" onclick="guardarAjustesFin()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar periodo</button>
+    </div></div>
+    <div class="adm-sec" style="margin-top:6px;"><div class="adm-sec-hdr"><span class="adm-sec-title">Política de cancelación</span></div>
+    <div style="padding:0 1rem 1rem;">
+      <p style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;">Si el cliente cancela con esta anticipación o más, su abono queda como saldo a favor. Con menos aviso, o si no se presenta, el abono no se devuelve. El certificado siempre se le devuelve al saldo.</p>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Aviso mínimo (horas)</label><input class="fi" type="number" min="0" max="168" id="fa-horas-aviso" value="${a.horasAviso != null ? a.horasAviso : 24}"/></div>
+        <div class="fg"><label class="flbl">Vigencia del saldo a favor (días)</label><input class="fi" type="number" min="1" max="365" id="fa-credito-dias" value="${a.creditoVigencia != null ? a.creditoVigencia : 30}"/></div>
+      </div>
+      <p id="fa-pol-msg" style="font-size:12px;min-height:16px;margin-bottom:6px;"></p>
+      <button class="btn-save" onclick="guardarPoliticaFin()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar política</button>
     </div></div>`;
 
   const selectorHtml = htmlSelectorPeriodoCierre();
@@ -10171,6 +10346,19 @@ async function guardarAjustesFin(){
   } catch(e){
     console.error(e);
     msg.style.color = '#C2695A'; msg.textContent = 'No se pudo guardar.';
+  }
+}
+
+async function guardarPoliticaFin(){
+  const msg = elFin('fa-pol-msg');
+  msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Guardando...';
+  try {
+    await Sheets.guardarPoliticaCancelacion({ horasAviso: elFin('fa-horas-aviso').value, creditoVigencia: elFin('fa-credito-dias').value });
+    FIN.ajustes = await Sheets.getAjustesFinanzas();
+    msg.style.color = '#4A9D6E'; msg.textContent = '¡Política guardada!';
+  } catch(e){
+    console.error(e);
+    msg.style.color = '#C2695A'; msg.textContent = 'No se pudo guardar.' + (e && e.message ? ' (' + e.message + ')' : '');
   }
 }
 
@@ -11339,7 +11527,7 @@ async function abrirDetalleCita(id){
 
 
 // ---------- Emisión de certificado: cómo pagó el comprador / cortesía ----------
-function tipoCertTexto(t){ return t === 'regalo' ? 'Regalo' : (t === 'cortesia' ? 'Cortesía (un solo uso)' : 'Venta'); }
+function tipoCertTexto(t){ return ({ regalo:'Regalo', cortesia:'Cortesía (un solo uso)', credito:'Saldo a favor', migrado:'Migrado' })[t] || 'Venta'; }
 
 function certTipoActual(){
   const r = document.querySelector('input[name="cert-tipo"]:checked');
