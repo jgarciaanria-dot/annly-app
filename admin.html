@@ -106,6 +106,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .login-oauth-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s;}
 .login-oauth-btn:hover{border-color:#D8CCEF;background:#FBF8FE;}
 .login-oauth-btn img{width:16px;height:16px;}
+.login-oauth{grid-template-columns:1fr 1fr;}
+.login-oauth-btn.is-soon{cursor:not-allowed;color:var(--ink-soft);background:#FAF9FC;}
+.login-oauth-btn.is-soon:hover{border-color:var(--line);background:#FAF9FC;}
+.login-oauth-btn.is-soon svg{opacity:.55;}
+.soon-pill{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#F3EEFC;color:#7C3AED;}
+@media (max-width:340px){.login-oauth{grid-template-columns:1fr;}}
 
 .login-foot-tag{display:flex;align-items:center;gap:10px;margin-top:1.2rem;font-size:11px;color:var(--ink-soft);}
 .login-foot-tag::before,.login-foot-tag::after{content:'';flex:1;height:1px;background:var(--line);}
@@ -3425,6 +3431,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="login-divider">o continúa con</div>
       <div class="login-oauth">
         <button type="button" class="login-oauth-btn" onclick="loginConGoogle()"><img src="https://www.google.com/favicon.ico" alt=""/> Google</button>
+        <button type="button" class="login-oauth-btn is-soon" disabled aria-disabled="true" title="Próximamente"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M16.7 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.6 0-3.1.9-3.9 2.3-1.7 2.9-.4 7.1 1.2 9.4.8 1.1 1.7 2.4 3 2.3 1.2-.1 1.7-.7 3.1-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.9-2.2.9-1.2 1.3-2.5 1.3-2.6-.1 0-2.8-1.1-2.8-3.9zM14.5 6c.6-.8 1.1-1.9 1-3-.9 0-2 .6-2.6 1.3-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.6-1.2z"/></svg> Apple <span class="soon-pill">Próximamente</span></button>
       </div>
       <p class="login-signup">¿Aún no tienes una cuenta? <a href="registro.html">Regístrate aquí <i class="ti ti-arrow-right" style="font-size:11px;"></i></a></p>
     </div>
@@ -4897,30 +4904,93 @@ async function cambiarNegocioDesdeSelector(businessId){
   await recargarPanelPorNegocio();
 }
 
+// Cada cambio de negocio sube la época; una carga vieja que termine tarde se descarta
+let EPOCA_NEGOCIO = 0;
+
+// Limpia TODO el estado en memoria que pertenece al negocio anterior
+// (sucursales, clientes, equipo, filtros, Finanzas, caches de reprogramar, etc.)
+function resetEstadoNegocio(){
+  // Catálogo y bloqueos
+  SERVICES = []; categoriasRender = []; catsModal = []; editId = null;
+  SUC_SERVICIO_SEL = null;
+  BLOQUEOS = { dias:[], horas:{} };
+
+  // Plan / módulos
+  SUSCRIPCION_ACTUAL = null; CATALOGO_MODULOS = []; FEATURES_DEL_PLAN = []; MODULOS_ACTIVOS = [];
+  FEATURES_FUNCIONALES = []; MODULOS_FUNCIONALES = []; UPGRADE_PLAN_SELECCIONADO = null;
+
+  // Sucursales
+  SUCURSALES = []; editSucursalId = null; EMPLEADO_SUCURSAL_PRESELECT = null;
+  EXTRAS_SUC = { cantidad: 0, totalMensual: 0, pendientes: [] };
+
+  // Promo / Ruleta / Certificados
+  PROMO = { activa:false };
+  RULETA_CONFIG = { activa:false, premios:[] };
+  CERTIFICADOS = []; CITAS_CACHE = []; GUARDANDO_CERTIFICADO = false;
+
+  // Citas: filtros, vista y búsqueda
+  FILTRO_CITAS_PROF = ''; FILTRO_CITAS_SUC = '';
+  VISTA_CITAS = 'activas';
+  BUSQUEDA_CITAS = ''; clearTimeout(_timerBusquedaCitas);
+  FILTRO_CITAS_FECHA = { tipo:'todas', desde:'', hasta:'' };
+  RESUMEN_CITAS = { tipo:'semana', desde:'', hasta:'' };
+  const inpBusq = document.getElementById('citas-buscar'); if (inpBusq) inpBusq.value = '';
+  const btnX = document.getElementById('citas-buscar-x'); if (btnX) btnX.style.display = 'none';
+  const selProf = document.getElementById('citas-filtro-prof'); if (selProf) selProf.innerHTML = '';
+  const selSuc = document.getElementById('citas-filtro-suc'); if (selSuc) selSuc.innerHTML = '';
+  ['citas-filtro-wrap','citas-filtro-suc-wrap'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  // Reprogramar
+  reprogramarCitaId = null; rpEmpleadoId = null; rpEmpleadoHorarioCache = null;
+  rpBloqueosCache = { dias: [], horas: {} }; rpDurMin = 60;
+  horasSeleccionadas = [];
+
+  // Clientes y equipo
+  CLIENTAS = []; clientaSeleccionadaParaReserva = null; editClientaIdx = null;
+  EQUIPO = []; editEmpleadoId = null;
+  EXTRAS_PROF = { cantidad: 0, totalMensual: 0, pendientes: [] };
+  ME_HOR = null; ME_HOR_TAB = null;
+
+  // Perfil
+  pfPaletaSel = null; pfFooterTextoSel = 'oscuro';
+
+  // Finanzas
+  FIN = { pagos:[], pagosCert:[], pagosCanje:[], previo:null, cortesiasPeriodo:0, certEmitidos:{total:0,venta:0,regalo:0,cortesia:0}, gastos:[], gastosTodos:[], ventas:[], extras:[], empleados:[], equipo:{}, certPorCanjear:0, comisiones:null, ajustes:{ periodo:'quincenal', semanaInicia:1 } };
+  FIN_PERIODO = 'actual'; FIN_VISTA = 'resumen'; FIN_FILTRO_MOV = 'todos'; FIN_CIERRE_SEL = null;
+  PROPINA_CONTADO_ID = null; ADELANTO_EMPLEADO = null;
+  ADELANTO_DETALLE = { empleadoId:null, nombre:'', lista:[] };
+  Object.keys(PAGO_ED).forEach(k => delete PAGO_ED[k]);
+  Object.keys(EXTRAS_ED).forEach(k => delete EXTRAS_ED[k]);
+  COMPLETANDO = null; COMPLETANDO_D = null; AC = null;
+  const finCont = document.getElementById('fin-contenido'); if (finCont) finCont.innerHTML = '';
+
+  // Cualquier modal abierto era del negocio anterior
+  document.querySelectorAll('.ov.open').forEach(o => o.classList.remove('open'));
+}
+
 async function recargarPanelPorNegocio(){
+  const epoca = ++EPOCA_NEGOCIO;
+  resetEstadoNegocio();
   actualizarContextoNegocioUI();
   renderSelectorNegocios();
 
-  SERVICES = [];
-  BLOQUEOS = {dias:[], horas:{}};
+  const activeTab = document.querySelector('.adm-tab.active');
+  const tabActual = activeTab ? activeTab.id.replace('tab-','') : 'servicios';
+
+  // Primero el plan: el gating de pestañas depende del negocio nuevo
+  await renderPlan();
+  if (epoca !== EPOCA_NEGOCIO) return;
 
   await loadServices();
+  if (epoca !== EPOCA_NEGOCIO) return;
   renderAdmin();
+
   await loadBloqueos();
+  if (epoca !== EPOCA_NEGOCIO) return;
 
-  const activeTab = document.querySelector('.adm-tab.active');
-  const tabActual = activeTab
-    ? activeTab.id.replace('tab-','')
-    : 'servicios';
-
-  if (tabActual === 'citas') await loadCitas();
-  if (tabActual === 'promo') await loadPromo();
-  if (tabActual === 'ruleta') await loadRuleta();
-  if (tabActual === 'certificados') await loadCertificados();
-  if (tabActual === 'clientas') await loadClientas();
-  if (tabActual === 'equipo') await loadEquipo();
-  if (tabActual === 'perfil') await loadPerfil();
-  await renderPlan();
+  // Recarga la pestaña visible con la misma lógica de switchTab
+  // (incluye Finanzas, Sucursales y Bloqueos respetando el gating)
+  switchTab(tabActual);
 }
 
 // Un negocio de Annly Pedidos se administra en su propio panel
@@ -5248,7 +5318,7 @@ function openModal(id,catDefault='Básicos'){
     </div>
     <div class="frow">
       <div class="fg"><label class="flbl">Duración (texto)</label><input class="fi" id="m-dur" value="${s?s.dur:''}"/></div>
-      <div class="fg"><label class="flbl">Duración (minutos)</label><input class="fi" id="m-durmin" type="number" min="15" step="15" value="${s?s.durMin:60}"/></div>
+      <div class="fg"><label class="flbl">Duración (minutos)</label><input class="fi" id="m-durmin" type="number" min="15" step="15" value="${s && s.durMin ? s.durMin : 60}"/></div>
     </div>
     <div class="fg"><label class="flbl">Descripción</label><textarea class="fi" id="m-desc" rows="3" style="resize:vertical;">${s?s.desc:''}</textarea></div>
     <div class="fg">
