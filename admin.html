@@ -352,6 +352,21 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .bloq-item{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:#FDF4F2;border:1px solid #F5D8D2;border-radius:var(--radius);margin-bottom:8px;font-size:13px;}
 .bloq-item-del{width:27px;height:27px;border-radius:8px;border:none;background:#fff;color:#C2695A;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
 .bloq-item-del:hover{background:#FCE8E4;}
+.bloq-suc-wrap{margin:2px 0 12px;}
+.bloq-suc-lbl{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px;}
+.bloq-suc-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.bloq-suc-chip{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;transition:all .15s;font-family:inherit;}
+.bloq-suc-chip:hover{border-color:#D8CCEF;}
+.bloq-suc-chip.sel{background:#F3EEFC;border-color:#7C3AED;color:#5B21B6;}
+.bloq-suc-chip.todas{border-style:dashed;}
+.bloq-suc-chip i{font-size:13px;}
+.bloq-item-main{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.bloq-item-sucs{display:flex;flex-wrap:wrap;gap:4px;}
+.bloq-suc-pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:#EEF3FB;color:#3A6AB0;}
+.bloq-suc-pill i{font-size:11px;}
+.bloq-filtro{display:flex;align-items:center;gap:8px;}
+.bloq-filtro select{padding:6px 10px;border:1.5px solid var(--line);border-radius:10px;font-size:12px;font-family:inherit;background:#fff;color:var(--ink);}
+.bloq-hint{font-size:11.5px;color:var(--ink-soft);margin:-4px 0 10px;line-height:1.5;}
 .premio-card{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:13px;margin-bottom:8px;}
 .premio-card-top{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
 
@@ -3537,6 +3552,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="adm-sec-hdr"><span class="adm-sec-title">Bloquear rango de días</span></div>
       <div style="padding:1rem;">
         <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Bloquea uno o varios días seguidos (vacaciones, feriados). Los clientes verán esos días como "No disponible".</p>
+        <div class="bloq-suc-wrap" id="bloq-suc-rango" style="display:none;"></div>
         <div class="frow">
           <div class="fg"><label class="flbl">Desde</label><input class="fi" type="date" id="bloq-inicio"/></div>
           <div class="fg"><label class="flbl">Hasta</label><input class="fi" type="date" id="bloq-fin"/></div>
@@ -3550,14 +3566,21 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="adm-sec-hdr"><span class="adm-sec-title">Bloquear horas de un día</span></div>
       <div style="padding:1rem;">
         <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.5;">Bloquea horas específicas de un día sin cerrar el día completo.</p>
+        <div class="bloq-suc-wrap" id="bloq-suc-horas" style="display:none;"></div>
         <div class="fg"><label class="flbl">Día</label><input class="fi" type="date" id="bloq-hora-dia" onchange="renderHorasBloqueo()"/></div>
+        <p class="bloq-hint" id="bloq-horas-hint" style="display:none;"></p>
         <div id="horas-bloqueo-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;"></div>
         <button class="btn-add" onclick="guardarHorasBloqueo()" style="width:100%;justify-content:center;padding:10px;"><i class="ti ti-check"></i> Guardar horas bloqueadas</button>
       </div>
     </div>
 
     <div class="adm-sec">
-      <div class="adm-sec-hdr"><span class="adm-sec-title">Bloqueos activos</span></div>
+      <div class="adm-sec-hdr" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <span class="adm-sec-title">Bloqueos activos</span>
+        <div class="bloq-filtro" id="bloq-filtro-wrap" style="display:none;">
+          <select id="bloq-filtro-suc" onchange="filtrarBloqueosPorSucursal(this.value)"></select>
+        </div>
+      </div>
       <div id="lista-bloqueos" style="padding:0.5rem 1rem 1rem;"></div>
     </div>
   </div>
@@ -4722,7 +4745,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=47"></script>
+<script src="sheets.js?v=48"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -4923,7 +4946,8 @@ function resetEstadoNegocio(){
   // Catálogo y bloqueos
   SERVICES = []; categoriasRender = []; catsModal = []; editId = null;
   SUC_SERVICIO_SEL = null;
-  BLOQUEOS = { dias:[], horas:{} };
+  BLOQUEOS = { dias:[], horas:[] };
+  BLOQ_SUC_SEL = { rango:null, horas:null }; BLOQ_FILTRO_SUC = '';
 
   // Plan / módulos
   SUSCRIPCION_ACTUAL = null; CATALOGO_MODULOS = []; FEATURES_DEL_PLAN = []; MODULOS_ACTIVOS = [];
@@ -5518,22 +5542,35 @@ function uuidNuevo(){
   });
 }
 
-// ===== BLOQUEOS =====
-let BLOQUEOS = {dias:[], horas:{}};
+// ===== BLOQUEOS (por sucursal) =====
+// Filas planas: dias [{fecha, motivo, locationId}] · horas [{fecha, hora, locationId}]
+let BLOQUEOS = { dias:[], horas:[] };
 const HORAS_DIA = ['8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
+let BLOQ_SUC_SEL = { rango:null, horas:null }; // Set de sucursales elegidas en cada formulario
+let BLOQ_FILTRO_SUC = '';
 
 async function loadBloqueos(){
+  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){
+    try { SUCURSALES = await Sheets.getSucursales(); } catch(e){ console.error(e); }
+  }
   try {
-    BLOQUEOS = await Sheets.getBloqueos();
-    if(!BLOQUEOS.dias) BLOQUEOS.dias = [];
-    if(!BLOQUEOS.horas) BLOQUEOS.horas = {};
-  } catch(e){ BLOQUEOS = {dias:[], horas:{}}; }
+    const d = await Sheets.getBloqueosDetalle();
+    BLOQUEOS = { dias: d.dias || [], horas: d.horas || [] };
+  } catch(e){ console.error('Error cargando bloqueos:', e); BLOQUEOS = { dias:[], horas:[] }; }
+  prepararSucursalesBloqueo();
+  renderHorasBloqueo();
   renderListaBloqueos();
 }
 
-function saveBloqueos(){
-  Sheets.guardarBloqueos(BLOQUEOS);
+async function saveBloqueos(){
   renderListaBloqueos();
+  try { await Sheets.guardarBloqueosDetalle(BLOQUEOS); return true; }
+  catch(e){
+    console.error('Error guardando bloqueos:', e);
+    alert('No se pudieron guardar los bloqueos. Intenta de nuevo.');
+    await loadBloqueos();
+    return false;
+  }
 }
 
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAdminMenu(); });
@@ -5563,6 +5600,7 @@ function switchTab(tab){
     if(panelEl) panelEl.style.display = tab === t ? 'block' : 'none';
   });
   if(tab==='citas') loadCitas();
+  if(tab==='bloqueos') loadBloqueos();
   if(tab==='promo' && moduloDisponible('PROMOCIONES')) loadPromo();
   if(tab==='ruleta' && moduloDisponible('RULETA')) loadRuleta();
   if(tab==='certificados' && moduloDisponible('CERTIFICADOS')) loadCertificados();
@@ -7457,38 +7495,171 @@ function fmtFecha(iso){
   return parseInt(d)+' de '+meses[parseInt(m)-1]+' '+a;
 }
 
-function agregarBloqueoRango(){
-  const inicio=document.getElementById('bloq-inicio').value;
-  const fin=document.getElementById('bloq-fin').value;
-  const motivo=document.getElementById('bloq-motivo').value.trim();
-  if(!inicio||!fin){alert('Selecciona fecha de inicio y fin.');return;}
-  if(fin<inicio){alert('La fecha fin debe ser igual o posterior a la de inicio.');return;}
-  let d=new Date(inicio+'T00:00:00');
-  const f=new Date(fin+'T00:00:00');
-  while(d<=f){
-    const iso=d.toISOString().split('T')[0];
-    if(!BLOQUEOS.dias.find(x=>x.fecha===iso)){
-      BLOQUEOS.dias.push({fecha:iso, motivo:motivo||'No disponible'});
-    }
-    d.setDate(d.getDate()+1);
+// ---- Sucursales en Bloqueos ----
+function sucursalesParaBloquear(){ return SUCURSALES.filter(x => x.activa); }
+function idSucursalPrincipal(){
+  const p = SUCURSALES.find(x => x.esPrincipal) || SUCURSALES[0];
+  return p ? p.id : null;
+}
+// Filas viejas sin sucursal se tratan como de la Principal
+function locDeBloqueo(f){ return f.locationId || idSucursalPrincipal(); }
+function hayVariasSucursalesBloqueo(){ return sucursalesParaBloquear().length > 1; }
+
+function prepararSucursalesBloqueo(){
+  const ids = sucursalesParaBloquear().map(x => x.id);
+  ['rango','horas'].forEach(t => {
+    const actual = BLOQ_SUC_SEL[t];
+    const valido = actual && [...actual].every(id => ids.includes(id)) && actual.size;
+    if (!valido) BLOQ_SUC_SEL[t] = new Set(ids); // por defecto: todas
+  });
+  if (BLOQ_FILTRO_SUC && !SUCURSALES.some(x => x.id === BLOQ_FILTRO_SUC)) BLOQ_FILTRO_SUC = '';
+  renderSelectorSucBloqueo('rango');
+  renderSelectorSucBloqueo('horas');
+  renderFiltroSucBloqueo();
+}
+
+function renderSelectorSucBloqueo(tipo){
+  const wrap = document.getElementById('bloq-suc-' + tipo);
+  if (!wrap) return;
+  if (!hayVariasSucursalesBloqueo()){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const sel = BLOQ_SUC_SEL[tipo] || new Set();
+  const sucs = sucursalesParaBloquear();
+  const todas = sucs.every(x => sel.has(x.id));
+  wrap.style.display = 'block';
+  wrap.innerHTML = `<span class="bloq-suc-lbl">Sucursales</span>
+    <div class="bloq-suc-chips">
+      <button type="button" class="bloq-suc-chip todas${todas ? ' sel' : ''}" onclick="toggleTodasSucBloqueo('${tipo}')"><i class="ti ti-${todas ? 'checks' : 'building-store'}"></i>Todas</button>
+      ${sucs.map(x => `<button type="button" class="bloq-suc-chip${sel.has(x.id) ? ' sel' : ''}" onclick="toggleSucBloqueo('${tipo}','${x.id}')"><i class="ti ti-${sel.has(x.id) ? 'check' : 'map-pin'}"></i>${escCat(x.nombre)}</button>`).join('')}
+    </div>`;
+}
+
+function toggleSucBloqueo(tipo, id){
+  const sel = BLOQ_SUC_SEL[tipo] || (BLOQ_SUC_SEL[tipo] = new Set());
+  if (sel.has(id)) sel.delete(id); else sel.add(id);
+  renderSelectorSucBloqueo(tipo);
+  if (tipo === 'horas') renderHorasBloqueo();
+}
+
+function toggleTodasSucBloqueo(tipo){
+  const ids = sucursalesParaBloquear().map(x => x.id);
+  const sel = BLOQ_SUC_SEL[tipo] || new Set();
+  BLOQ_SUC_SEL[tipo] = ids.every(id => sel.has(id)) ? new Set() : new Set(ids);
+  renderSelectorSucBloqueo(tipo);
+  if (tipo === 'horas') renderHorasBloqueo();
+}
+
+// Sucursales a las que se aplica el formulario (con una sola sucursal, siempre esa)
+function sucursalesDestinoBloqueo(tipo){
+  if (!hayVariasSucursalesBloqueo()){
+    const unica = sucursalesParaBloquear()[0];
+    return [unica ? unica.id : idSucursalPrincipal()];
   }
-  document.getElementById('bloq-inicio').value='';
-  document.getElementById('bloq-fin').value='';
-  document.getElementById('bloq-motivo').value='';
-  saveBloqueos();
-  alert('Días bloqueados correctamente.');
+  return [...(BLOQ_SUC_SEL[tipo] || [])];
+}
+
+function renderFiltroSucBloqueo(){
+  const wrap = document.getElementById('bloq-filtro-wrap');
+  const sel = document.getElementById('bloq-filtro-suc');
+  if (!wrap || !sel) return;
+  if (SUCURSALES.length < 2){ wrap.style.display = 'none'; BLOQ_FILTRO_SUC = ''; return; }
+  wrap.style.display = 'flex';
+  sel.innerHTML = '<option value="">Todas las sucursales</option>' +
+    SUCURSALES.map(x => `<option value="${x.id}">${escCat(x.nombre)}${x.activa ? '' : ' (inactiva)'}</option>`).join('');
+  sel.value = BLOQ_FILTRO_SUC;
+}
+
+function filtrarBloqueosPorSucursal(id){
+  BLOQ_FILTRO_SUC = id || '';
+  renderListaBloqueos();
+}
+
+function isoLocalBloq(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+async function agregarBloqueoRango(){
+  const inicio = document.getElementById('bloq-inicio').value;
+  const fin = document.getElementById('bloq-fin').value;
+  const motivo = document.getElementById('bloq-motivo').value.trim() || 'No disponible';
+  if (!inicio || !fin){ alert('Selecciona fecha de inicio y fin.'); return; }
+  if (fin < inicio){ alert('La fecha fin debe ser igual o posterior a la de inicio.'); return; }
+  const locs = sucursalesDestinoBloqueo('rango');
+  if (!locs.length){ alert('Elige al menos una sucursal.'); return; }
+
+  const d = new Date(inicio + 'T00:00:00');
+  const f = new Date(fin + 'T00:00:00');
+  while (d <= f){
+    const iso = isoLocalBloq(d);
+    locs.forEach(loc => {
+      const ya = BLOQUEOS.dias.find(x => x.fecha === iso && locDeBloqueo(x) === loc);
+      if (ya) ya.motivo = motivo;
+      else BLOQUEOS.dias.push({ fecha: iso, motivo, locationId: loc });
+    });
+    d.setDate(d.getDate() + 1);
+  }
+  document.getElementById('bloq-inicio').value = '';
+  document.getElementById('bloq-fin').value = '';
+  document.getElementById('bloq-motivo').value = '';
+  if (await saveBloqueos()) alert('Días bloqueados correctamente.');
+}
+
+// Horas de la grilla según el horario de las sucursales elegidas para ese día
+function horasGrillaBloqueo(dia, locs){
+  const dow = new Date(dia + 'T00:00:00').getDay();
+  const clave = dow === 0 ? 'dom' : (dow === 6 ? 'sab' : 'lv');
+  const horarios = locs.map(id => (SUCURSALES.find(x => x.id === id) || {}).horario)
+    .map(h => h || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null)
+    .filter(Boolean);
+  const abiertos = horarios.map(h => h[clave]).filter(c => c && !c.cerrado && c.abre && c.cierra);
+  let lista;
+  if (!horarios.length) lista = HORAS_DIA.slice();
+  else if (!abiertos.length) lista = [];
+  else {
+    const aMin = t => { const [h, m] = t.split(':').map(Number); return h*60 + (m || 0); };
+    let ini = Math.min(...abiertos.map(c => aMin(c.abre)));
+    const fin = Math.max(...abiertos.map(c => aMin(c.cierra)));
+    ini = Math.floor(ini / 30) * 30;
+    lista = [];
+    for (let t = ini; t <= fin; t += 30) lista.push(Math.floor(t/60) + ':' + (t % 60 === 0 ? '00' : '30'));
+  }
+  // Horas ya bloqueadas fuera del horario actual también se muestran, para poder quitarlas
+  BLOQUEOS.horas.forEach(x => {
+    if (x.fecha === dia && locs.includes(locDeBloqueo(x)) && !lista.includes(x.hora)) lista.push(x.hora);
+  });
+  const aMin2 = t => { const [h, m] = t.split(':').map(Number); return h*60 + (m || 0); };
+  return lista.sort((p, q) => aMin2(p) - aMin2(q));
+}
+
+function horaBloqueadaEnTodas(dia, hora, locs){
+  return locs.length > 0 && locs.every(loc => BLOQUEOS.horas.some(x => x.fecha === dia && x.hora === hora && locDeBloqueo(x) === loc));
+}
+function horaBloqueadaEnAlguna(dia, hora, locs){
+  return locs.some(loc => BLOQUEOS.horas.some(x => x.fecha === dia && x.hora === hora && locDeBloqueo(x) === loc));
 }
 
 function renderHorasBloqueo(){
-  const dia=document.getElementById('bloq-hora-dia').value;
-  const grid=document.getElementById('horas-bloqueo-grid');
-  if(!dia){grid.innerHTML='';return;}
-  const bloqueadas=BLOQUEOS.horas[dia]||[];
-  grid.innerHTML=HORAS_DIA.map(h=>{
-    const sel=bloqueadas.includes(h)?' sel':'';
-    const lbl=fmtHora12(h);
-    return `<div class="hora-bloq${sel}" onclick="toggleHoraBloqueo('${h}')">${lbl}</div>`;
+  const dia = document.getElementById('bloq-hora-dia').value;
+  const grid = document.getElementById('horas-bloqueo-grid');
+  const hint = document.getElementById('bloq-horas-hint');
+  if (!grid) return;
+  if (hint){ hint.style.display = 'none'; hint.textContent = ''; }
+  if (!dia){ grid.innerHTML = ''; return; }
+  const locs = sucursalesDestinoBloqueo('horas');
+  if (!locs.length){ grid.innerHTML = '<p style="grid-column:1/-1;font-size:12px;color:#aaa;text-align:center;padding:.6rem;">Elige al menos una sucursal.</p>'; return; }
+  const horas = horasGrillaBloqueo(dia, locs);
+  if (!horas.length){ grid.innerHTML = '<p style="grid-column:1/-1;font-size:12px;color:#aaa;text-align:center;padding:.6rem;">Ese día está cerrado en la sucursal elegida.</p>'; return; }
+  let parcial = false;
+  grid.innerHTML = horas.map(h => {
+    const todas = horaBloqueadaEnTodas(dia, h, locs);
+    const alguna = !todas && horaBloqueadaEnAlguna(dia, h, locs);
+    if (alguna) parcial = true;
+    const estilo = alguna ? ' style="border-style:dashed;border-color:#D9564B;color:#D9564B;"' : '';
+    return `<div class="hora-bloq${todas ? ' sel' : ''}"${estilo} onclick="toggleHoraBloqueo('${h}')">${fmtHora12(h)}</div>`;
   }).join('');
+  if (parcial && hint){
+    hint.style.display = 'block';
+    hint.textContent = 'Las horas con borde punteado están bloqueadas solo en alguna de las sucursales elegidas. Tócalas para bloquearlas en todas.';
+  }
 }
 
 function fmtHora12(h){
@@ -7498,50 +7669,91 @@ function fmtHora12(h){
 }
 
 let horasSeleccionadas=[];
+// Si la hora está bloqueada en todas las sucursales elegidas se libera en todas; si no, se bloquea en todas
 function toggleHoraBloqueo(h){
-  const dia=document.getElementById('bloq-hora-dia').value;
-  if(!BLOQUEOS.horas[dia]) BLOQUEOS.horas[dia]=[];
-  const idx=BLOQUEOS.horas[dia].indexOf(h);
-  if(idx>-1) BLOQUEOS.horas[dia].splice(idx,1);
-  else BLOQUEOS.horas[dia].push(h);
+  const dia = document.getElementById('bloq-hora-dia').value;
+  if (!dia) return;
+  const locs = sucursalesDestinoBloqueo('horas');
+  if (!locs.length) return;
+  if (horaBloqueadaEnTodas(dia, h, locs)){
+    BLOQUEOS.horas = BLOQUEOS.horas.filter(x => !(x.fecha === dia && x.hora === h && locs.includes(locDeBloqueo(x))));
+  } else {
+    locs.forEach(loc => {
+      if (!BLOQUEOS.horas.some(x => x.fecha === dia && x.hora === h && locDeBloqueo(x) === loc))
+        BLOQUEOS.horas.push({ fecha: dia, hora: h, locationId: loc });
+    });
+  }
   renderHorasBloqueo();
 }
 
-function guardarHorasBloqueo(){
-  const dia=document.getElementById('bloq-hora-dia').value;
-  if(!dia){alert('Selecciona un día.');return;}
-  // limpiar si quedó vacío
-  if(BLOQUEOS.horas[dia] && BLOQUEOS.horas[dia].length===0) delete BLOQUEOS.horas[dia];
-  saveBloqueos();
-  alert('Horas bloqueadas guardadas.');
+async function guardarHorasBloqueo(){
+  const dia = document.getElementById('bloq-hora-dia').value;
+  if (!dia){ alert('Selecciona un día.'); return; }
+  if (await saveBloqueos()) alert('Horas bloqueadas guardadas.');
+}
+
+function pillsSucursalBloqueo(locs){
+  if (SUCURSALES.length < 2) return '';
+  const todas = sucursalesParaBloquear().map(x => x.id);
+  if (todas.length > 1 && todas.every(id => locs.includes(id)))
+    return '<span class="bloq-suc-pill"><i class="ti ti-building-store"></i>Todas las sucursales</span>';
+  return locs.map(id => {
+    const n = nombreSucursal(id) || 'Sucursal';
+    return `<span class="bloq-suc-pill"><i class="ti ti-map-pin"></i>${escCat(n)}</span>`;
+  }).join('');
 }
 
 function renderListaBloqueos(){
-  const cont=document.getElementById('lista-bloqueos');
-  if(!cont) return;
-  let html='';
-  // Días completos
-  BLOQUEOS.dias.sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach((b,i)=>{
-    html+=`<div class="bloq-item"><span><strong>${fmtFecha(b.fecha)}</strong> · ${b.motivo}</span><button class="bloq-item-del" onclick="eliminarBloqueoDia('${b.fecha}')"><i class="ti ti-x"></i></button></div>`;
+  const cont = document.getElementById('lista-bloqueos');
+  if (!cont) return;
+  const enFiltro = f => !BLOQ_FILTRO_SUC || locDeBloqueo(f) === BLOQ_FILTRO_SUC;
+
+  // Días: se agrupan por fecha + motivo (un feriado en 3 sucursales se ve una sola vez)
+  const gDias = {};
+  BLOQUEOS.dias.filter(enFiltro).forEach(f => {
+    const k = f.fecha + '|' + f.motivo;
+    (gDias[k] ||= { fecha: f.fecha, motivo: f.motivo, locs: [] }).locs.push(locDeBloqueo(f));
   });
-  // Horas sueltas
-  Object.keys(BLOQUEOS.horas).sort().forEach(dia=>{
-    if(BLOQUEOS.horas[dia].length>0){
-      const horas=BLOQUEOS.horas[dia].map(fmtHora12).join(', ');
-      html+=`<div class="bloq-item"><span><strong>${fmtFecha(dia)}</strong> · Horas: ${horas}</span><button class="bloq-item-del" onclick="eliminarBloqueoHoras('${dia}')"><i class="ti ti-x"></i></button></div>`;
-    }
+  // Horas: se agrupan por fecha + mismas horas
+  const porFechaLoc = {};
+  BLOQUEOS.horas.filter(enFiltro).forEach(f => {
+    const k = f.fecha + '|' + locDeBloqueo(f);
+    (porFechaLoc[k] ||= { fecha: f.fecha, loc: locDeBloqueo(f), horas: [] }).horas.push(f.hora);
   });
-  cont.innerHTML=html||'<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay bloqueos activos.</p>';
+  const aMin = t => { const [h, m] = t.split(':').map(Number); return h*60 + (m || 0); };
+  const gHoras = {};
+  Object.values(porFechaLoc).forEach(x => {
+    x.horas.sort((p, q) => aMin(p) - aMin(q));
+    const k = x.fecha + '|' + x.horas.join(',');
+    (gHoras[k] ||= { fecha: x.fecha, horas: x.horas, locs: [] }).locs.push(x.loc);
+  });
+
+  const items = [
+    ...Object.values(gDias).map(g => ({ ...g, tipo: 'dia' })),
+    ...Object.values(gHoras).map(g => ({ ...g, tipo: 'horas' }))
+  ].sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.tipo === 'dia' ? -1 : 1));
+
+  window._BLOQ_ITEMS = items;
+  cont.innerHTML = items.map((g, i) => {
+    const texto = g.tipo === 'dia' ? escCat(g.motivo || 'No disponible') : 'Horas: ' + g.horas.map(fmtHora12).join(', ');
+    return `<div class="bloq-item">
+      <div class="bloq-item-main"><span><strong>${fmtFecha(g.fecha)}</strong> · ${texto}</span>
+        ${SUCURSALES.length > 1 ? `<div class="bloq-item-sucs">${pillsSucursalBloqueo(g.locs)}</div>` : ''}</div>
+      <button class="bloq-item-del" title="Quitar bloqueo" onclick="eliminarBloqueoItem(${i})"><i class="ti ti-x"></i></button>
+    </div>`;
+  }).join('') || '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay bloqueos activos.</p>';
 }
 
-function eliminarBloqueoDia(fecha){
-  BLOQUEOS.dias=BLOQUEOS.dias.filter(b=>b.fecha!==fecha);
-  saveBloqueos();
-}
-
-function eliminarBloqueoHoras(dia){
-  delete BLOQUEOS.horas[dia];
-  saveBloqueos();
+async function eliminarBloqueoItem(i){
+  const g = (window._BLOQ_ITEMS || [])[i];
+  if (!g) return;
+  if (g.tipo === 'dia'){
+    BLOQUEOS.dias = BLOQUEOS.dias.filter(x => !(x.fecha === g.fecha && x.motivo === g.motivo && g.locs.includes(locDeBloqueo(x))));
+  } else {
+    BLOQUEOS.horas = BLOQUEOS.horas.filter(x => !(x.fecha === g.fecha && g.horas.includes(x.hora) && g.locs.includes(locDeBloqueo(x))));
+  }
+  await saveBloqueos();
+  renderHorasBloqueo();
 }
 
 // ===== CLIENTAS =====
