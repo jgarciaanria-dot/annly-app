@@ -3472,7 +3472,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <button class="adm-tab" id="tab-plan" onclick="switchTab('plan')"><i class="ti ti-sparkles"></i><span>Mi plan</span></button>
     </nav>
     <div class="adm-sidebar-foot">
-      <a href="index.html" class="adm-sidebar-site" target="_blank"><i class="ti ti-external-link"></i><span>Ver sitio</span></a>
+      <a href="index.html" id="adm-side-ver-sitio" class="adm-sidebar-site" target="_blank"><i class="ti ti-external-link"></i><span>Ver sitio</span></a>
       <a href="#" class="adm-sidebar-site" onclick="event.preventDefault();window.AnnlyAuth.logout()"><i class="ti ti-logout"></i><span>Cerrar sesión</span></a>
     </div>
   </aside>
@@ -4870,10 +4870,11 @@ function actualizarContextoNegocioUI(){
 
   document.title = 'Admin — ' + (b.nombre || 'Annly');
 
-  const linkSitio = document.getElementById('adm-hdr-ver-sitio');
-  if (linkSitio) {
-    linkSitio.href = b.slug ? '/' + b.slug : 'index.html';
-  }
+  // "Ver sitio" (cabecera y menú lateral) abre la agenda pública del negocio
+  ['adm-hdr-ver-sitio','adm-side-ver-sitio'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.href = b.slug ? '/' + b.slug : 'index.html';
+  });
 
   const planChip = document.getElementById('adm-plan-chip');
   if (planChip) planChip.style.display = 'inline-flex';
