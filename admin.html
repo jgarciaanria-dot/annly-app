@@ -4751,7 +4751,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=48"></script>
+<script src="sheets.js?v=49"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -4984,6 +4984,7 @@ function resetEstadoNegocio(){
   // Reprogramar
   reprogramarCitaId = null; rpEmpleadoId = null; rpEmpleadoHorarioCache = null;
   rpBloqueosCache = { dias: [], horas: {} }; rpDurMin = 60;
+  rpLocationId = null; rpHorarioSucursal = null; rpExcluirIds = [];
   horasSeleccionadas = [];
 
   // Clientes y equipo
@@ -7313,7 +7314,7 @@ function bloqueDelDia(dow, horario){
 function genSlots(){
   const dt=new Date(rpCalY,rpCalM,rpSelectedDay);
   const dow=dt.getDay();
-  const horarioBase = rpEmpleadoHorarioCache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+  const horarioBase = rpHorarioBase(rpEmpleadoHorarioCache);
   const bloqueCfg = (horarioBase && horarioBase[bloqueDelDia(dow, horarioBase)]) || null;
 
   let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
@@ -7326,7 +7327,7 @@ function genSlots(){
 
   // Cita doble: las horas son el cruce (intersección) del horario de los 2 profesionales
   if (rpEmpleadoId2) {
-    const base2 = rpEmpleadoHorarioCache2 || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado);
+    const base2 = rpHorarioBase(rpEmpleadoHorarioCache2);
     const cfg2 = (base2 && base2[bloqueDelDia(dow, base2)]) || null;
     if (cfg2 && cfg2.cerrado) return [];
     if (cfg2 && cfg2.abre && cfg2.cierra) {
@@ -7345,6 +7346,12 @@ function genSlots(){
     const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
     slots.push({key,lbl});
     m+=30; if(m>=60){m=0;h++;}
+  }
+  // Igual que la agenda pública: hoy solo se ofrecen horas que aún no pasaron
+  const now=new Date();
+  if (rpSelectedDay===now.getDate() && rpCalM===now.getMonth() && rpCalY===now.getFullYear()){
+    const nowMin=now.getHours()*60+now.getMinutes();
+    return slots.filter(x=>timeToMin(x.key)>nowMin);
   }
   return slots;
 }
@@ -7369,22 +7376,47 @@ let rpEmpleadoHorarioCache2 = null;
 let rpCalY, rpCalM, rpSelectedDay = null, rpSelTime = null;
 let rpBloqueosCache = { dias: [], horas: {} };
 let rpDurMin = 60;
+// Sucursal de la cita: manda su horario, sus bloqueos y lo ocupado en ella
+let rpLocationId = null;
+let rpHorarioSucursal = null;
+let rpExcluirIds = [];
+
+// Mismo orden que la agenda pública: horario propio del profesional en la sucursal → horario de la sucursal → horario del negocio
+function rpHorarioBase(cacheEmpleado){
+  return cacheEmpleado || rpHorarioSucursal || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+}
 
 async function abrirModalReprogramar(id, fechaISOStr, horaISOStr, nombre, duracionMin, empleadoId, empleadoId2){
   reprogramarCitaId = id;
   rpEmpleadoId = empleadoId || null;
   rpEmpleadoId2 = empleadoId2 || null;
   rpDurMin = duracionMin || 60;
-  document.getElementById('modal-reprogramar-title').textContent = 'Reprogramar — ' + nombre;
+
+  if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){
+    try { SUCURSALES = await Sheets.getSucursales(); } catch(e){}
+  }
+  const cita = (CITAS_CACHE || []).find(x => String(x.id) === String(id)) || {};
+  const principal = SUCURSALES.find(x => x.esPrincipal) || SUCURSALES[0] || null;
+  const suc = SUCURSALES.find(x => x.id === cita.locationId) || principal;
+  rpLocationId = suc ? suc.id : null;
+  rpHorarioSucursal = suc ? (suc.horario || null) : null;
+  // La cita que se mueve (y su pareja si es doble) no cuenta como ocupada
+  rpExcluirIds = cita.grupoCitaId
+    ? (CITAS_CACHE || []).filter(x => x.grupoCitaId === cita.grupoCitaId).map(x => x.id)
+    : [id];
+
+  const nomSuc = (hayVariasSucursales() && suc) ? ' · ' + suc.nombre : '';
+  document.getElementById('modal-reprogramar-title').textContent = 'Reprogramar — ' + nombre + nomSuc;
   const [y,m] = fechaISOStr.split('-');
   rpCalY = parseInt(y); rpCalM = parseInt(m) - 1;
   rpSelectedDay = null; rpSelTime = null;
   document.getElementById('timeSecAdmin').style.display = 'none';
   document.getElementById('btnGuardarReprogramar').disabled = true;
 
-  try { rpBloqueosCache = await Sheets.getBloqueos(); } catch(e){ rpBloqueosCache = {dias:[],horas:{}}; }
-  rpEmpleadoHorarioCache = rpEmpleadoId ? await Sheets.getEmpleadoHorario(rpEmpleadoId).catch(() => null) : null;
-  rpEmpleadoHorarioCache2 = rpEmpleadoId2 ? await Sheets.getEmpleadoHorario(rpEmpleadoId2).catch(() => null) : null;
+  const loc = rpLocationId || undefined;
+  try { rpBloqueosCache = await Sheets.getBloqueos(loc); } catch(e){ rpBloqueosCache = {dias:[],horas:{}}; }
+  rpEmpleadoHorarioCache = rpEmpleadoId ? await Sheets.getEmpleadoHorario(rpEmpleadoId, loc).catch(() => null) : null;
+  rpEmpleadoHorarioCache2 = rpEmpleadoId2 ? await Sheets.getEmpleadoHorario(rpEmpleadoId2, loc).catch(() => null) : null;
 
   renderCalAdmin();
   document.getElementById('ov-modal-reprogramar').classList.add('open');
@@ -7406,7 +7438,7 @@ function chMoAdmin(d){
 
 function diaCerrado(dow){
   const cerradoPara = (cache) => {
-    const h = cache || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+    const h = rpHorarioBase(cache);
     if (!h) return dow===0;
     const bloque = h[bloqueDelDia(dow, h)];
     return !bloque || !!bloque.cerrado;
@@ -7447,9 +7479,10 @@ async function selDayAdmin(d){
   grid.innerHTML = '<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
   const fechaStr = d + ' de ' + MESES[rpCalM] + ' ' + rpCalY;
   let ocupadas = [];
-  try { ocupadas = await Sheets.getHorasOcupadas(fechaStr, rpEmpleadoId); } catch(e){ ocupadas = []; }
+  const optsOcup = { excluirIds: rpExcluirIds, locationId: rpLocationId };
+  try { ocupadas = await Sheets.getHorasOcupadas(fechaStr, rpEmpleadoId, optsOcup); } catch(e){ ocupadas = []; }
   if (rpEmpleadoId2){
-    try { ocupadas = ocupadas.concat(await Sheets.getHorasOcupadas(fechaStr, rpEmpleadoId2)); } catch(e){}
+    try { ocupadas = ocupadas.concat(await Sheets.getHorasOcupadas(fechaStr, rpEmpleadoId2, optsOcup)); } catch(e){}
   }
   renderTimesAdmin(ocupadas);
 }
