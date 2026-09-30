@@ -3538,7 +3538,8 @@ const Sheets = {
     return (data || []).map(p => ({
       id: p.id, origen: p.origen, appointmentId: p.appointment_id, localSaleId: p.local_sale_id, certificateId: p.certificate_id,
       metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha,
-      concepto: p.concepto, cliente: p.cliente_nombre, empleadoId: p.employee_id, creadoEn: p.creado_en
+      concepto: p.concepto, cliente: p.cliente_nombre, empleadoId: p.employee_id, creadoEn: p.creado_en,
+      locationId: p.location_id || null
     }));
   },
 
@@ -3552,7 +3553,8 @@ const Sheets = {
     return (data || []).map(g => ({
       id: g.id, fecha: g.fecha, categoria: g.categoria, descripcion: g.descripcion,
       monto: Number(g.monto), metodo: g.metodo, referencia: g.referencia, creadoEn: g.creado_en,
-      anulado: !!g.anulado, motivoAnulacion: g.anulado_motivo || '', anuladoEn: g.anulado_en || null
+      anulado: !!g.anulado, motivoAnulacion: g.anulado_motivo || '', anuladoEn: g.anulado_en || null,
+      locationId: g.location_id || null
     }));
   },
 
@@ -3561,7 +3563,8 @@ const Sheets = {
     const { error } = await sbClient.from('finance_expenses').insert([{
       business_id: BUSINESS_ID, fecha: g.fecha, categoria: g.categoria,
       descripcion: g.descripcion || null, monto: g.monto, metodo: g.metodo,
-      referencia: g.referencia || null
+      referencia: g.referencia || null,
+      ...(g.locationId ? { location_id: g.locationId } : {})
     }]);
     if (error) throw error;
   },
@@ -3615,7 +3618,8 @@ const Sheets = {
     return (data || []).map(v => ({
       id: v.id, fecha: v.fecha, cliente: v.cliente_nombre, servicio: v.servicio_nombre,
       empleadoId: v.employee_id, monto: Number(v.monto), creadoEn: v.creado_en,
-      anulada: !!v.anulada, motivoAnulacion: v.anulada_motivo || '', anuladaEn: v.anulada_en || null
+      anulada: !!v.anulada, motivoAnulacion: v.anulada_motivo || '', anuladaEn: v.anulada_en || null,
+      locationId: v.location_id || null
     }));
   },
 
@@ -3939,7 +3943,8 @@ const Sheets = {
     if (error) throw error;
     return (data || []).map(x => ({
       id: x.id, appointmentId: x.appointment_id, descripcion: x.descripcion,
-      monto: Number(x.monto), fecha: x.fecha, empleadoId: x.employee_id, cliente: x.cliente_nombre, creadoEn: x.creado_en
+      monto: Number(x.monto), fecha: x.fecha, empleadoId: x.employee_id, cliente: x.cliente_nombre, creadoEn: x.creado_en,
+      locationId: x.location_id || null
     }));
   },
 
