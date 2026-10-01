@@ -402,20 +402,26 @@ function aplicarSucursalSitio(suc, conSelector){
     else waLink.style.display = 'none';
   }
 
-  // Indicador "📍 Sucursal · Cambiar" debajo del encabezado (solo con varias sucursales)
+  // Tarjeta "Estás reservando en <sede> · Cambiar sede" debajo del encabezado (solo con varias sucursales)
   let chip = document.getElementById('suc-chip');
   if (conSelector){
     if (!chip){
       chip = document.createElement('div');
       chip.id = 'suc-chip';
-      chip.style.cssText = 'display:flex;justify-content:center;padding:12px 1rem 0;';
       const lista = document.getElementById('serviceList');
       lista.parentNode.insertBefore(chip, document.getElementById('cert-link-wrap') || lista);
     }
-    chip.innerHTML = `<button type="button" onclick="abrirSelectorSucursal(true)" style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;border:1px solid rgba(var(--gold-rgb),.45);background:rgba(var(--gold-rgb),.1);color:var(--gold-dark);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">
-        <i class="ti ti-map-pin" aria-hidden="true"></i> ${escSuc(suc.nombre)}${suc.direccion ? `<span style="font-weight:400;opacity:.8;">· ${escSuc(suc.direccion)}</span>` : ''}
-        <span style="text-decoration:underline;margin-left:4px;">Cambiar</span>
-      </button>`;
+    chip.innerHTML = `<div class="suc-card">
+        <div class="suc-card-ico"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+        <div class="suc-card-txt">
+          <span class="suc-card-lbl">Estás reservando en</span>
+          <span class="suc-card-name">${escSuc(suc.nombre)}</span>
+          ${suc.direccion ? `<span class="suc-card-dir">${escSuc(suc.direccion)}</span>` : ''}
+        </div>
+        <button type="button" class="suc-card-btn" onclick="abrirSelectorSucursal(true)" aria-label="Cambiar de sede">
+          <i class="ti ti-arrows-exchange" aria-hidden="true"></i><span>Cambiar sede</span>
+        </button>
+      </div>`;
     // El link queda listo para compartir y la elección se recuerda en esta visita
     try {
       const url = new URL(window.location.href);
