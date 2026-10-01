@@ -1,3 +1,32 @@
+// ============================================================
+// Ajustes de tema de la agenda pública: usan los colores de la paleta del negocio
+// (--gold / --gold-dark) en lugar de fondos negros fijos. Van aquí para no depender
+// de que agenda.css o 404.html estén al día.
+// ============================================================
+(function(){
+  if (document.getElementById('annly-tema-css')) return;
+  const st = document.createElement('style');
+  st.id = 'annly-tema-css';
+  st.textContent = `
+.svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
+.svc-banner-name,.svc-pill-name{color:#fff;}
+.svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
+.svc-banner-dur,.svc-pill-dur{color:rgba(255,255,255,.78);}
+.svc-banner-icon{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.14);}
+.svc-banner-icon i{color:#fff;}
+.svc-resumen{border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;}
+.svc-resumen-name{font-size:15px;font-weight:700;color:#fff;font-family:var(--font-heading);}
+.svc-resumen-meta{font-size:11.5px;color:rgba(255,255,255,.82);margin-top:3px;}
+.stepn{background:var(--gold-dark);color:#fff;font-weight:600;}
+.card-arrow{background:var(--gold-dark);}
+.incl-grid{grid-template-columns:1fr 1fr;gap:10px 16px;}
+.incl-item{align-items:flex-start;line-height:1.45;}
+.incl-dot{width:5px;height:5px;margin-top:.5em;background:var(--gold-dark);}
+@media(max-width:480px){.incl-grid{grid-template-columns:1fr;}}
+`;
+  document.head.appendChild(st);
+})();
+
 document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
     document.getElementById('ruletaModal').classList.remove('activo');
   });
@@ -635,7 +664,7 @@ async function enviarCompraCertificado(){
         <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
         <div class="s-title">¡Compra recibida!</div>
         <div class="s-sub">Estamos confirmando tu pago — en cuanto quede validado te llegará el certificado por correo.</div>
-        <button class="btn-main" style="background:#2E2B2B;color:#C9A96E;" onclick="closeOv('ov-comprar-certificado')">Listo</button>
+        <button class="btn-main" style="background:var(--gold-dark);color:#fff;" onclick="closeOv('ov-comprar-certificado')">Listo</button>
       </div>`;
   } catch(e) {
     console.error('Error comprando certificado:', e);
@@ -1283,9 +1312,9 @@ function goForm(){
   const pagoSection=armarPagoSection(montoAbono);
 
   document.getElementById('form-body').innerHTML=`
-    <div style="background:#3A3A3A;border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;">
-      <div style="font-size:15px;font-weight:700;color:var(--gold);font-family:var(--font-heading);">${curSvc.name}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;">${dayStr} · ${selTime} · ${fmtDur(curSvc.dur)}</div>
+    <div class="svc-resumen">
+      <div class="svc-resumen-name">${curSvc.name}</div>
+      <div class="svc-resumen-meta">${dayStr} · ${selTime} · ${fmtDur(curSvc.dur)}</div>
     </div>
     <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
     <div class="frow">
@@ -1305,7 +1334,7 @@ function goForm(){
       <label class="flbl">¿Tienes un cupón de descuento?</label>
       <div style="display:flex;gap:8px;">
         <input class="fi" id="fcupon" placeholder="Ej: RUL-4F2A" style="flex:1;text-transform:uppercase;">
-        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:#2E2B2B;color:#C9A96E;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="cuponMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>
@@ -1313,7 +1342,7 @@ function goForm(){
       <label class="flbl">¿Tienes un certificado de regalo?</label>
       <div style="display:flex;gap:8px;">
         <input class="fi" id="fcert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;">
-        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:#2E2B2B;color:#C9A96E;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>`}
@@ -1659,7 +1688,7 @@ async function finalizarCita(dayStr, ref){
         ${totalLine}
       </div>
       ${abonoExonerado?'':'<p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>'}
-      <button class="btn-main" style="background:#2E2B2B;color:#C9A96E;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
 
   setTimeout(async () => {
@@ -1757,7 +1786,7 @@ async function finalizarCitaDoble(dayStr, ref){
         <strong>Total del combo:</strong> <span style="color:#D95F2B;font-weight:600;">$${precioTotal.toFixed(2)}</span><br>
       </div>
       <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
-      <button class="btn-main" style="background:#2E2B2B;color:#C9A96E;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
 }
 
