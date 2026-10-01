@@ -1000,19 +1000,24 @@ async function elegirEmpleado(id){
   renderCal();
   if (selectedDay) selDay2(selectedDay);
 }
-// El horario del negocio es por bloques (lv / sab / dom); el de un profesional puede ser
-// por día (lun, mar, mie, jue, vie, sab, dom). Se reconoce el formato por sus claves.
-function bloqueDelDia(dow, horario){
-  if (horario && (horario.lun || horario.mar || horario.mie || horario.jue || horario.vie)) {
-    return ['dom','lun','mar','mie','jue','vie','sab'][dow];
-  }
-  return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv');
-}
+// Reglas de horarios: viven en horarios.js (compartido con el panel). Aquí solo se usan.
+const HOR = window.AnnlyHorarios;
+function bloqueDelDia(dow, horario){ return HOR.bloqueDelDia(dow, horario); }
+function cfgDia(h, dow){ return HOR.cfgDia(h, dow); }
 
-// Configuración de un día para un horario (o el valor por defecto si aún no hay horario)
-function cfgDia(h, dow){
-  if (!h) return dow===0 ? { cerrado:true } : { abre:'8:00', cierra:'16:00', cerrado:false };
-  return h[bloqueDelDia(dow, h)] || { cerrado:true };
+// Qué horarios cuentan para el calendario según cómo se está reservando:
+// cita doble (los 2 deben estar: intersección), "cualquiera disponible" (basta uno: unión)
+// o un profesional / la sucursal.
+function horariosParaCalendario(){
+  if (curSvc && curSvc.esDoble){
+    if (!empleadoSeleccionado || !empleadoSeleccionado2) return null; // hasta elegir a los 2 no hay calendario
+    return { horarios: [horarioDeEmpleado(empleadoSeleccionado), horarioDeEmpleado(empleadoSeleccionado2)], modoDia: 'todos', modoRango: 'interseccion' };
+  }
+  if (modoCualquiera && empleadosDelServicio.length > 1){
+    return { horarios: empleadosDelServicio.map(e => horarioDeEmpleado(e.id)), modoDia: 'alguno', modoRango: 'union' };
+  }
+  const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : horarioBaseSitio();
+  return { horarios: [h], modoDia: 'todos', modoRango: 'interseccion' };
 }
 
 function horarioDeEmpleado(id){
@@ -1028,18 +1033,9 @@ function empleadoTrabajaEn(id, dow, slotKey){
 }
 
 function diaCerrado(dow){
-  if (curSvc && curSvc.esDoble){
-    if (!empleadoSeleccionado || !empleadoSeleccionado2) return true; // hasta elegir a los 2 no hay calendario que mostrar
-    return !!cfgDia(horarioDeEmpleado(empleadoSeleccionado), dow).cerrado || !!cfgDia(horarioDeEmpleado(empleadoSeleccionado2), dow).cerrado;
-  }
-  // "Cualquiera disponible": el día está cerrado solo si NINGÚN profesional trabaja ese día
-  if (modoCualquiera && empleadosDelServicio.length > 1) {
-    return empleadosDelServicio.every(e => !!cfgDia(horarioDeEmpleado(e.id), dow).cerrado);
-  }
-  const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : (horarioBaseSitio() || null);
-  if (!h) return dow===0; // si no hay horario configurado todavía, solo domingo cerrado por defecto
-  const bloque = h[bloqueDelDia(dow, h)];
-  return !bloque || !!bloque.cerrado;
+  const cfg = horariosParaCalendario();
+  if (!cfg) return true;
+  return HOR.diaCerrado(cfg.horarios, dow, cfg.modoDia);
 }
 
 function renderCal(){
@@ -1069,68 +1065,15 @@ function renderCal(){
   document.getElementById('calGrid').innerHTML=h;
 }
 
-function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function timeToMin(t){ return HOR.timeToMin(t); }
 
 function genSlots(){
-  const dt=new Date(calY,calM,selectedDay);
-  const dow=dt.getDay();
-  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
-  if (curSvc && curSvc.esDoble) {
-    if (!empleadoSeleccionado || !empleadoSeleccionado2) return [];
-    const cA = cfgDia(horarioDeEmpleado(empleadoSeleccionado), dow);
-    const cB = cfgDia(horarioDeEmpleado(empleadoSeleccionado2), dow);
-    if (cA.cerrado || cB.cerrado || !cA.abre || !cB.abre || !cA.cierra || !cB.cierra) return [];
-    const abreMax = Math.max(timeToMin(cA.abre), timeToMin(cB.abre));
-    const cierraMin = Math.min(timeToMin(cA.cierra), timeToMin(cB.cierra));
-    if (abreMax >= cierraMin) return [];
-    hIni = Math.floor(abreMax/60); mIni = abreMax % 60;
-    hFin = Math.floor(cierraMin/60); mFin = cierraMin % 60;
-  } else if (modoCualquiera && empleadosDelServicio.length > 1) {
-    // Rango que cubre a todos los profesionales que trabajan ese día
-    const abiertos = empleadosDelServicio.map(e => cfgDia(horarioDeEmpleado(e.id), dow))
-      .filter(c => !c.cerrado && c.abre && c.cierra);
-    if (!abiertos.length) return [];
-    const minAbre = Math.min(...abiertos.map(c => timeToMin(c.abre)));
-    const maxCierra = Math.max(...abiertos.map(c => timeToMin(c.cierra)));
-    hIni = Math.floor(minAbre/60); mIni = minAbre % 60;
-    hFin = Math.floor(maxCierra/60); mFin = maxCierra % 60;
-  } else {
-    const horarioBase=(!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : horarioBaseSitio();
-    const bloqueCfg=(horarioBase && horarioBase[bloqueDelDia(dow, horarioBase)]) || null;
-    if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
-      [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
-      [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
-    } else if (bloqueCfg && bloqueCfg.cerrado) {
-      return []; // cerrado ese día — sin horarios disponibles
-    }
-  }
-
-  const slots=[];
-  let h=hIni,m=mIni;
-  while(h<hFin||(h===hFin&&m===mFin)){
-    const key=h+':'+(m===0?'00':'30');
-    const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
-    slots.push({key,lbl});
-    m+=30; if(m>=60){m=0;h++;}
-  }
-  const now=new Date();
-  const esHoy=selectedDay===now.getDate()&&calM===now.getMonth()&&calY===now.getFullYear();
-  if(esHoy){
-    const nowMin=now.getHours()*60+now.getMinutes();
-    return slots.filter(s=>timeToMin(s.key)>nowMin);
-  }
-  return slots;
+  const cfg = horariosParaCalendario();
+  if (!cfg) return [];
+  return HOR.generarSlots({ horarios: cfg.horarios, fecha: new Date(calY, calM, selectedDay), modo: cfg.modoRango });
 }
 
-function isBlocked(slotKey,citas,durSvc){
-  const slotMin=timeToMin(slotKey);
-  for(const c of citas){
-    const occMin=timeToMin(c.hora);
-    const occDur=parseInt(c.duracion)||60;
-    if(slotMin<occMin+occDur && slotMin+durSvc>occMin) return true;
-  }
-  return false;
-}
+function isBlocked(slotKey, citas, durSvc){ return HOR.solapa(slotKey, citas, durSvc); }
 
 async function selDay2(d){
   selectedDay=d; selTime=null;
