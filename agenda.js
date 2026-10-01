@@ -405,6 +405,32 @@ function aplicarSucursalSitio(suc, conSelector){
   // Tarjeta "Estás reservando en <sede> · Cambiar sede" debajo del encabezado (solo con varias sucursales)
   let chip = document.getElementById('suc-chip');
   if (conSelector){
+    // Estilos de la tarjeta (van aquí para no depender de otro archivo)
+    if (!document.getElementById('suc-chip-css')){
+      const st = document.createElement('style');
+      st.id = 'suc-chip-css';
+      st.textContent = `/* Sede elegida (solo negocios con varias sucursales) */
+#suc-chip{display:block;width:100%;flex:0 0 100%;box-sizing:border-box;padding:1rem 1rem 0;background-color:var(--bg-page);}
+@media(min-width:600px){#suc-chip{max-width:480px;margin-left:auto!important;margin-right:auto!important;}}
+@media(min-width:900px){#suc-chip{max-width:760px;}}
+.suc-card{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:var(--radius-lg,14px);background:#fff;border:1.5px solid rgba(var(--gold-dark-rgb),.35);box-shadow:0 6px 18px -12px rgba(var(--gold-dark-rgb),.55);}
+.suc-card-ico{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--gold-dark-rgb),.12);color:var(--gold-dark);font-size:19px;}
+.suc-card-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.suc-card-lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-dark);opacity:.85;}
+.suc-card-name{font-family:var(--font-heading);font-size:17px;font-weight:700;color:#1a1816;line-height:1.2;}
+.suc-card-dir{font-size:12px;color:rgba(30,26,22,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.suc-card-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--gold-dark);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s;}
+.suc-card-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
+.suc-card-btn i{font-size:15px;}
+body.modo-oscuro .suc-card{background:rgba(255,255,255,.05);border-color:rgba(var(--gold-rgb),.35);}
+body.modo-oscuro .suc-card-name{color:#F4EFE6;}
+body.modo-oscuro .suc-card-dir{color:rgba(244,239,230,.65);}
+body.modo-oscuro .suc-card-ico{background:rgba(var(--gold-rgb),.15);color:var(--gold);}
+body.modo-oscuro .suc-card-lbl{color:var(--gold);}
+@media(max-width:380px){.suc-card-btn span{display:none;}.suc-card-btn{padding:10px;}}
+`;
+      document.head.appendChild(st);
+    }
     if (!chip){
       chip = document.createElement('div');
       chip.id = 'suc-chip';
