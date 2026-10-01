@@ -3087,6 +3087,11 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   transition:transform .18s ease;
 }
 .adm-brand img:hover{transform:translateY(-2px) scale(1.015);}
+/* El logo PNG trae fondo blanco cuadrado: se recorta en círculo para que no se vea el marco */
+.adm-brand img,
+.login-photo-logo img,
+.login-card-logo img{border-radius:50%;clip-path:circle(48.5% at 50% 50%);object-fit:cover!important;}
+.adm-brand{filter:drop-shadow(0 7px 12px rgba(124,58,237,.14));}
 
 .adm-nav{
   gap:4px!important;
