@@ -1903,8 +1903,10 @@ const Sheets = {
         cita_id_externo:
           cita.citaId,
 
+        // Abono pagado a mano (número + comprobante): queda por confirmar hasta que el
+        // negocio revise el pago. Con el botón real de Yappy o sin abono: confirmada.
         estado:
-          'confirmada',
+          cita.abonoPorConfirmar ? 'por_confirmar' : 'confirmada',
 
         ...(
           cita.grupoCitaId
@@ -2037,7 +2039,7 @@ const Sheets = {
   async cancelarConPolitica(id, motivo, opciones, detalle) {
     await window.AnnlyReady;
     const caso = opciones && opciones.caso;
-    if (!['a_tiempo', 'tarde', 'no_show', 'negocio'].includes(caso)) throw new Error('Elige el caso de la cancelación.');
+    if (!['a_tiempo', 'tarde', 'no_show', 'negocio', 'abono_rechazado'].includes(caso)) throw new Error('Elige el caso de la cancelación.');
     if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la cancelación.');
 
     const { data: actual, error: errA } = await sbClient.from('appointments').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
@@ -2076,7 +2078,8 @@ const Sheets = {
     }
 
     // 2) Abono (en citas dobles vive en la cita principal)
-    const abono = r2(Number(principal.abono_monto || 0));
+    // Abono rechazado: el dinero nunca llegó, así que no hay saldo a favor, penalidad ni reembolso
+    const abono = caso === 'abono_rechazado' ? 0 : r2(Number(principal.abono_monto || 0));
     const metodoAbono = principal.metodo_pago === 'yappy' ? 'yappy' : 'transferencia';
     let destino = null, creditoCodigo = null, creditoVence = null;
     if (abono > 0) {
@@ -2140,6 +2143,33 @@ const Sheets = {
         detalle: { metodo: opciones.reembolsoMetodo || metodoAbono, cliente: principal.cliente_nombre } });
     }
     return { caso, abono, destino, creditoCodigo, creditoVence, certificadoDevuelto: Object.values(devuelto).reduce((a, b) => a + b, 0) };
+  },
+
+  // El negocio revisó el comprobante y el abono sí llegó: la cita (y su pareja si es doble)
+  // pasa a confirmada. El webhook de correos manda entonces la confirmación al cliente.
+  async confirmarAbonoCita(id) {
+    await window.AnnlyReady;
+    const { data: c, error } = await sbClient.from('appointments').select('id, grupo_cita_id, estado').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
+    if (error) throw error;
+    if (!c) throw new Error('La cita no existe.');
+    if (c.estado !== 'por_confirmar') throw new Error('Esta cita ya no está por confirmar.');
+    let q = sbClient.from('appointments').update({ estado: 'confirmada', abono_confirmado_en: new Date().toISOString() }).eq('business_id', BUSINESS_ID);
+    q = c.grupo_cita_id ? q.eq('grupo_cita_id', c.grupo_cita_id) : q.eq('id', id);
+    let { error: errU } = await q;
+    if (errU) {
+      // Sin la columna abono_confirmado_en (SQL pendiente) se confirma igual
+      let q2 = sbClient.from('appointments').update({ estado: 'confirmada' }).eq('business_id', BUSINESS_ID);
+      q2 = c.grupo_cita_id ? q2.eq('grupo_cita_id', c.grupo_cita_id) : q2.eq('id', id);
+      ({ error: errU } = await q2);
+    }
+    if (errU) throw errU;
+    await this.registrarAccion({ entidad: 'cita', entidadId: id, accion: 'abono_confirmado', motivo: 'Abono verificado por el negocio' });
+  },
+
+  // El abono no llegó: la cita se cancela sin penalidad ni saldo a favor (no hubo dinero),
+  // y el certificado aplicado vuelve a su saldo.
+  async rechazarAbonoCita(id, motivo) {
+    return this.cancelarConPolitica(id, motivo, { caso: 'abono_rechazado' }, { tipo: 'abono_rechazado' });
   },
 
   async cancelarCita(id, motivo, detalle) {
