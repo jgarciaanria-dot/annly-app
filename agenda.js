@@ -1623,7 +1623,7 @@ async function confirmar(dayStr){
   if(timerInt)clearInterval(timerInt);
   const btnC=document.getElementById('btnConfirmar');
   if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
-  await finalizarCita(dayStr, ref);
+  await finalizarCita(dayStr, ref, false);
 }
 
 // Llamado cuando el pago se completó de verdad por el botón real de Yappy
@@ -1631,10 +1631,11 @@ async function confirmar(dayStr){
 // no algo que el cliente tipeó a mano.
 async function confirmarCitaConfirmada(dayStr, orderId){
   if(timerInt)clearInterval(timerInt);
-  await finalizarCita(dayStr, orderId);
+  await finalizarCita(dayStr, orderId, true);
 }
 
-async function finalizarCita(dayStr, ref){
+// pagoVerificado = true solo con el botón real de Yappy. Un abono a mano queda "por confirmar".
+async function finalizarCita(dayStr, ref, pagoVerificado){
   const nombre=document.getElementById('fn').value.trim();
   const tel=document.getElementById('fp').value.trim();
   const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
@@ -1666,6 +1667,7 @@ async function finalizarCita(dayStr, ref){
     precioTotal:precio,precioEsConsultar:esConsultar,fecha:dayStr,hora:selTime,duracionMin:curSvc.durMin,
     comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
     metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
+    abonoPorConfirmar: tieneAbono && !pagoVerificado,
     cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
     certificadoCodigo: (montoCertAplicado>0 || certPorAplicar) ? certAplicado.codigo : null,
     certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
@@ -1684,7 +1686,7 @@ async function finalizarCita(dayStr, ref){
   const restanteTexto = noFijo
     ? (tieneAbono ? 'Se aplicará el abono al precio acordado' : 'Por confirmar')
     : '$'+(tipoAbono==='descontable' ? Math.max(0, precioFinal - montoAbono).toFixed(2) : precioFinal.toFixed(2));
-  const abonoLine=tieneAbono?`<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`
+  const abonoLine=tieneAbono?`<strong>Abono ${pagoVerificado ? 'pagado' : 'enviado (por validar)'}:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`
     :(abonoExonerado?`<strong>Abono:</strong> No requerido (cubierto por tu certificado)<br>`:'');
   const cuponLine = (cuponAplicado && cuponDescuentoPct>0 && !esConsultar)
     ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
@@ -1702,9 +1704,11 @@ async function finalizarCita(dayStr, ref){
     : `<strong>Total a pagar:</strong> <span style="color:#D95F2B;font-weight:600;">${restanteTexto}</span><br>`;
   document.getElementById('form-body').innerHTML=`
     <div class="success-wrap">
-      <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
-      <div class="s-title">¡Cita reservada!</div>
-      <div class="s-sub">Pronto nos pondremos en contacto contigo para confirmar los detalles.</div>
+      <div class="s-icon"><i class="ti ti-${tieneAbono && !pagoVerificado ? 'hourglass' : 'check'}" aria-hidden="true"></i></div>
+      <div class="s-title">${tieneAbono && !pagoVerificado ? '¡Reserva recibida!' : '¡Cita reservada!'}</div>
+      <div class="s-sub">${tieneAbono && !pagoVerificado
+        ? 'Tu horario quedó apartado. Vamos a validar tu abono y te llegará la confirmación por correo.'
+        : 'Tu cita está confirmada. Te enviamos los detalles por correo.'}</div>
       <div class="s-detail">
         <strong>Servicio:</strong> ${curSvc.name}<br>
         ${lineaSucursalResumen()}<strong>Fecha:</strong> ${dayStr}<br>
@@ -1781,12 +1785,14 @@ async function finalizarCitaDoble(dayStr, ref){
   const citaPrincipal = { ...base, nombre, telefono:tel, correo,
     precioTotal:precioMitad, precioFinal:precioMitad, comprobante:ref,
     abonoMonto:tieneAbono?montoAbono:0, abonoTipo:tieneAbono?tipoAbono:'',
-    metodoPago:tieneAbono?pagoTipo:'', citaId:citaIdBase, empleadoId:empleadoSeleccionado };
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaIdBase, empleadoId:empleadoSeleccionado,
+    abonoPorConfirmar: tieneAbono };
 
   const citaSecundaria = { ...base, nombre:nombre2, telefono:tel2, correo:correo2,
     precioTotal:precioMitad, precioFinal:precioMitad,
     comprobante: tieneAbono ? ('Incluido en la reserva de ' + nombre) : 'Sin abono',
-    abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2 };
+    abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2,
+    abonoPorConfirmar: tieneAbono };
 
   try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }catch(e){ console.error('Error guardando la cita doble:', e); }
   try{ await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); }catch(e){}
@@ -1805,8 +1811,8 @@ async function finalizarCitaDoble(dayStr, ref){
   document.getElementById('form-body').innerHTML=`
     <div class="success-wrap">
       <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
-      <div class="s-title">¡Cita doble reservada!</div>
-      <div class="s-sub">Le mandamos la confirmación a los 2 correos.</div>
+      <div class="s-title">${tieneAbono ? '¡Reserva recibida!' : '¡Cita doble reservada!'}</div>
+      <div class="s-sub">${tieneAbono ? 'Su horario quedó apartado. Vamos a validar el abono y les llegará la confirmación a los 2 correos.' : 'Le mandamos la confirmación a los 2 correos.'}</div>
       <div class="s-detail">
         <strong>Servicio:</strong> ${curSvc.name}<br>
         <strong>Fecha:</strong> ${dayStr}<br>
