@@ -368,7 +368,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .abono-pend-txt{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#7A5200;line-height:1.45;}
 .abono-pend-txt i{font-size:17px;margin-top:1px;}
 .abono-pend-txt strong{display:block;font-size:12.5px;}
-.abono-pend-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.cita-acc{display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;}
+.cita-btn{width:132px;flex:0 0 132px;padding:0 9px;height:34px;font-size:10.5px;gap:5px;font-weight:700;justify-content:center;white-space:nowrap;}
+.cita-btn-ok{background:#159A61!important;border-color:#159A61!important;color:#fff!important;}
+.cita-btn-ok:hover{filter:brightness(1.06);}
+.cita-btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none;}
+@media(max-width:640px){
+  .abono-pend{margin-top:8px;}
+  .cita-acc{justify-content:stretch;}
+  .cita-btn{flex:1 1 calc(50% - 4px);width:auto;height:38px;font-size:11.5px;}
+  .cita-btn-ok{flex-basis:100%;}
+}
 .fin-chip-ajuste{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:#EEF3FB;color:#3A6AB0;font-size:10.5px;font-weight:700;white-space:nowrap;}
 .cx-casos{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .cx-caso{display:flex;flex-direction:column;gap:3px;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s,background .15s;}
@@ -11243,7 +11253,9 @@ function htmlCardCitaDoble(c){
       </div>
     </div>
     ${htmlAbonoPorConfirmar(c)}
-    ${acciones}
+    ${p.estado === 'por_confirmar'
+      ? accionesAbonoPendiente(p.id, `<button class="btn-ico cita-btn" onclick="abrirDetalleCita('${p.id}')"><i class="ti ti-file-description"></i> Detalle ${escCat(primero(p.nombre))}</button><button class="btn-ico cita-btn" onclick="abrirDetalleCita('${o.id}')"><i class="ti ti-file-description"></i> Detalle ${escCat(primero(o.nombre))}</button>`)
+      : acciones}
   </div>`;
 }
 
@@ -11257,10 +11269,19 @@ function htmlAbonoPorConfirmar(c){
       <strong>Abono por confirmar${monto ? ': ' + fmtDinero(monto) : ''}</strong>
       <span>${x.metodoPago ? metodoAbonoTexto(x.metodoPago) + ' · ' : ''}Comprobante: <b>${escCat(x.comprobante || '—')}</b></span>
     </div></div>
-    <div class="abono-pend-btns">
-      <button class="btn-ico" style="height:32px;padding:0 12px;font-size:11px;font-weight:700;color:#159A61;border-color:#BFE3D0;" onclick="confirmarAbonoAdmin('${x.id}')"><i class="ti ti-circle-check"></i> Confirmar abono</button>
-      <button class="btn-ico del" style="height:32px;padding:0 12px;font-size:11px;font-weight:700;" onclick="rechazarAbonoAdmin('${x.id}')"><i class="ti ti-x"></i> No llegó</button>
-    </div>
+  </div>`;
+}
+
+// Fila de botones mientras el abono está por confirmar: Confirmar / No llegó / Detalle.
+// Reprogramar y Cancelar quedan deshabilitados hasta resolver el pago.
+function accionesAbonoPendiente(id, detalles){
+  const off = t => `<button class="btn-ico cita-btn" disabled title="Disponible cuando confirmes el abono"><i class="ti ti-${t[0]}"></i> ${t[1]}</button>`;
+  return `<div class="cita-acc">
+    <button class="btn-ico cita-btn cita-btn-ok" onclick="confirmarAbonoAdmin('${id}')"><i class="ti ti-circle-check"></i> Confirmar abono</button>
+    <button class="btn-ico del cita-btn" onclick="rechazarAbonoAdmin('${id}')"><i class="ti ti-x"></i> No llegó</button>
+    ${detalles}
+    ${off(['calendar-time','Reprogramar'])}
+    ${off(['x','Cancelar'])}
   </div>`;
 }
 
@@ -11336,7 +11357,9 @@ function htmlCardCita(c){
       </div>
     </div>
     ${htmlAbonoPorConfirmar(c)}
-    ${acciones}
+    ${c.estado === 'por_confirmar'
+      ? accionesAbonoPendiente(c.id, `<button class="btn-ico cita-btn" onclick="abrirDetalleCita('${c.id}')"><i class="ti ti-file-description"></i> Detalle</button>`)
+      : acciones}
   </div>`;
 }
 
