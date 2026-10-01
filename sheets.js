@@ -10,6 +10,8 @@ const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Annly Pedidos (producto aparte en Vercel). Mientras no exista el dominio, se puede
 // definir window.ANNLY_PEDIDOS_URL antes de cargar sheets.js con la URL de Vercel.
+// Mientras tienda.annly.app no esté activo en Vercel/GoDaddy se usa pedidos.annly.app (que ya funciona).
+// Cuando tienda.annly.app abra, cambiar esta línea a 'https://tienda.annly.app'.
 const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || 'https://pedidos.annly.app').replace(/\/$/, '');
 
 
@@ -5156,7 +5158,9 @@ const Sheets = {
   // Todas las features marcadas como módulo adicional (is_addon = true), con su precio.
   async getCatalogoModulos() {
     await window.AnnlyReady;
-    const { data } = await sbClient.from('features').select('*').eq('is_addon', true).eq('is_active', true).order('code');
+    // Solo los módulos de Agenda (los de Tiendas tienen producto = 'pedidos')
+    let { data, error } = await sbClient.from('features').select('*').eq('is_addon', true).eq('is_active', true).eq('producto', 'agenda').order('code');
+    if (error) ({ data } = await sbClient.from('features').select('*').eq('is_addon', true).eq('is_active', true).order('code'));
     return (data || []).map(f => ({ code: f.code, name: f.name, description: f.description, price: Number(f.monthly_price) || 0 }));
   },
 
