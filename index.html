@@ -102,11 +102,19 @@
     .site-nav .nav{min-height:100px}
     @media(max-width:800px){.logo-img img{width:62px;height:62px}.site-nav .nav{min-height:78px}}
     @media(max-width:520px){.logo-img img{width:54px;height:54px}.site-nav .nav{min-height:70px}}
+    /* Logo con presencia: grande y "colgando" bajo la barra al inicio; se achica al hacer scroll */
+    .site-nav .logo-img{position:relative;z-index:2;align-self:flex-start;margin-top:10px}
+    .site-nav .logo-img img{width:150px;height:150px;margin-bottom:-74px;transition:width .3s ease,height .3s ease,margin .3s ease,transform .25s ease,box-shadow .25s ease}
+    .site-nav.scrolled .logo-img{align-self:center;margin-top:0}
+    .site-nav.scrolled .logo-img img{width:68px;height:68px;margin-bottom:0}
+    footer .logo-img img{width:96px;height:96px}
+    @media(max-width:800px){.site-nav .logo-img img{width:104px;height:104px;margin-bottom:-40px}.site-nav.scrolled .logo-img img{width:56px;height:56px;margin-bottom:0}footer .logo-img img{width:80px;height:80px}}
+    @media(max-width:520px){.site-nav .logo-img img{width:88px;height:88px;margin-bottom:-30px}.site-nav.scrolled .logo-img img{width:50px;height:50px}}
   </style>
 </head>
 <body>
   <header class="site-nav" id="nav"><div class="wrap nav">
-    <a class="logo logo-img" href="#inicio" aria-label="Annly inicio"><img src="logo-annly-brand-v2.png" alt="Annly" width="84" height="84"></a>
+    <a class="logo logo-img" href="#inicio" aria-label="Annly inicio"><img src="logo-annly-v2.png" alt="Annly" width="150" height="150"></a>
     <ul class="nav-links" id="navLinks"><li><a href="#productos">Productos</a></li><li><a href="#funciones">Agenda</a></li><li><a href="#tiendas">Tiendas</a></li><li><a href="#precios">Precios</a></li><li><a href="#preguntas">Preguntas</a></li></ul>
     <div class="nav-actions"><a href="admin.html">Iniciar sesión</a><a class="btn btn-grad" href="registro.html">Prueba gratis <i data-lucide="arrow-right" size="15"></i></a><button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false"><i data-lucide="menu"></i></button></div>
   </div></header>
@@ -128,7 +136,7 @@
     <section class="wrap section faq" id="preguntas"><div class="how-head"><div class="eyebrow">PREGUNTAS FRECUENTES</div><h2>Lo que más nos <em class="gradient">preguntan.</em></h2></div><div class="faq-list"><details><summary>¿Necesito saber de tecnología para usar Annly?</summary><p>No. Te registras, eliges si trabajas por cita o por pedido, cargas tus servicios o productos y compartes tu enlace. Tu panel te guía paso a paso.</p></details><details><summary>¿Cómo me pagan mis clientes?</summary><p>Como prefieras. Con <b>Yappy</b> o <b>transferencia bancaria</b>, tu cliente ve tu número o tu cuenta y el monto exacto, deja su comprobante y tú confirmas el pago desde el panel. En los planes con pagos en línea también puedes cobrar con <b>Yappy Comercial</b> y con <b>pasarela de pagos: Visa, Mastercard y Clave</b>, y el pago se confirma solo.</p></details><details><summary>¿Puedo usar mi logo y mis colores?</summary><p>Sí. Tu agenda o tu tienda muestran tu logo, tu nombre y tu paleta de colores, y tus clientes reciben los correos con tu marca.</p></details><details><summary>¿Qué pasa cuando termina la prueba de 14 días?</summary><p>Eliges el plan que mejor se ajusta a tu negocio. No pedimos tarjeta para empezar, así que no se te cobra nada sin tu confirmación.</p></details><details><summary>¿Puedo tener agenda y tienda a la vez?</summary><p>Sí. La agenda y la tienda se registran por separado, cada una con su propia cuenta, pero tu marca puede tener las dos: una agenda para tus servicios y una tienda para tus productos, con el mismo logo y los mismos colores. Si necesitas ayuda para configurarlas, escríbenos.</p></details><details><summary>¿Mis clientes necesitan descargar algo?</summary><p>No. Reservan o compran desde tu enlace, en cualquier celular, tablet o computadora.</p></details></div></section>
     <section class="wrap closing" id="contacto"><div class="closing-box"><img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1500&q=85" alt="Persona usando una computadora portátil"><div class="closing-content"><div class="eyebrow" style="color:#efc2ff">EL TIEMPO QUE RECUPERAS ES TUYO</div><h2>Tu talento merece un sistema que trabaje contigo.</h2><p>Prueba Annly gratis por 14 días y descubre cuánto más simple puede sentirse gestionar tus citas y tus pedidos.</p><a class="btn contact-link" href="registro.html">Quiero probar Annly <i data-lucide="arrow-right" size="16"></i></a></div></div></section>
   </main>
-  <footer><div class="wrap"><div class="footer-row"><a class="logo logo-img" href="#inicio" aria-label="Annly inicio"><img src="logo-annly-brand-v2.png" alt="Annly" width="58" height="58"></a><ul class="footer-links"><li><a href="#funciones">Agenda</a></li><li><a href="#tiendas">Tiendas</a></li><li><a href="#precios">Precios</a></li><li><a href="#preguntas">Preguntas</a></li><li><a href="politicas.html">Políticas</a></li></ul></div><div class="copyright">© 2026 Annly. Más citas, más pedidos y más tiempo para ti.</div></div></footer>
+  <footer><div class="wrap"><div class="footer-row"><a class="logo logo-img" href="#inicio" aria-label="Annly inicio"><img src="logo-annly-v2.png" alt="Annly" width="96" height="96"></a><ul class="footer-links"><li><a href="#funciones">Agenda</a></li><li><a href="#tiendas">Tiendas</a></li><li><a href="#precios">Precios</a></li><li><a href="#preguntas">Preguntas</a></li><li><a href="politicas.html">Políticas</a></li></ul></div><div class="copyright">© 2026 Annly. Más citas, más pedidos y más tiempo para ti.</div></div></footer>
   <script>
     lucide.createIcons();
     const nav=document.getElementById('nav'),menu=document.getElementById('menuBtn'),links=document.getElementById('navLinks');
