@@ -8,6 +8,7 @@
   const st = document.createElement('style');
   st.id = 'annly-tema-css';
   st.textContent = `
+@keyframes annlyGiro{to{transform:rotate(360deg);}}
 .svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
 .svc-banner-name,.svc-pill-name{color:#fff;}
 .svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
@@ -845,9 +846,37 @@ function buildCard(s,icon,full=false){
   </div>`;
 }
 
+// Datos del calendario de un servicio (profesionales + sus horarios + bloqueos), pedidos EN PARALELO.
+// Se empiezan a pedir al abrir el detalle, así al tocar "Agendar" ya están (o casi).
+const PRECARGA_CAL = {};
+function precargarCalendario(svcId){
+  const clave = svcId + '|' + (SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : '');
+  if (PRECARGA_CAL[clave]) return PRECARGA_CAL[clave];
+  const t0 = performance.now();
+  const p = (async () => {
+    const [bloq, emps] = await Promise.all([
+      Sheets.getBloqueos(SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : null).catch(() => ({ dias:[], horas:{} })),
+      Sheets.getEmpleadosParaServicio(svcId).catch(() => [])
+    ]);
+    let empleados = emps || [];
+    if (SUCURSAL_ACTUAL && Array.isArray(SUCURSAL_ACTUAL.empleados)) empleados = empleados.filter(e => SUCURSAL_ACTUAL.empleados.includes(e.id));
+    const horarios = {};
+    const hs = await Promise.all(empleados.map(e => horarioPropioSitio(e.id).catch(() => null)));
+    empleados.forEach((e, i) => { horarios[e.id] = hs[i]; });
+    console.log('[Annly] Calendario listo en', Math.round(performance.now() - t0), 'ms');
+    return { bloqueos: bloq || { dias:[], horas:{} }, empleados, horarios };
+  })();
+  PRECARGA_CAL[clave] = p;
+  // Vence en 60 s para no usar datos viejos (bloqueos u horarios recién cambiados)
+  setTimeout(() => { if (PRECARGA_CAL[clave] === p) delete PRECARGA_CAL[clave]; }, 60000);
+  p.catch(() => { delete PRECARGA_CAL[clave]; });
+  return p;
+}
+
 function openDetail(id, esPromo){
   curSvc=SERVICES.find(s=>s.id===id);
   if(!curSvc)return;
+  precargarCalendario(curSvc.id);
   if(esPromo && PROMO_DATA && PROMO_DATA.precioPromo){
     curSvc={...curSvc, price:parseFloat(PROMO_DATA.precioPromo), precioTexto:null, _promo:true, _precioOriginal:curSvc.price};
   }
@@ -912,20 +941,25 @@ async function openCal(){
   document.getElementById('timeSec').style.display='none';
   document.getElementById('btnContinue').disabled=true;
 
-  // Refresca bloqueos justo antes de mostrar el calendario
-  try { await loadBloqueos(); } catch(e){ console.error(e); }
+  // El calendario se abre YA con un aviso de carga; los datos llegan de la precarga
+  const sel = document.getElementById('cal-empleado-sel');
+  if (sel){ sel.style.display='none'; sel.innerHTML=''; }
+  document.getElementById('calGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:#999;font-size:12px;"><i class="ti ti-loader-2" style="display:inline-block;animation:annlyGiro 1s linear infinite;font-size:18px;"></i><br>Cargando disponibilidad…</div>';
+  openOv('ov-cal');
+  const svcAbierto = curSvc.id;
 
-  // Qué empleados hacen este servicio (si hay 0 o 1, no se pregunta nada)
-  try { empleadosDelServicio = await Sheets.getEmpleadosParaServicio(curSvc.id); } catch(e){ empleadosDelServicio = []; }
-  if (SUCURSAL_ACTUAL && Array.isArray(SUCURSAL_ACTUAL.empleados)) {
-    empleadosDelServicio = empleadosDelServicio.filter(e => SUCURSAL_ACTUAL.empleados.includes(e.id));
-  }
-  // Con varios profesionales ("Cualquiera disponible") se necesita el horario de cada uno
+  let datos;
+  try { datos = await precargarCalendario(curSvc.id); }
+  catch(e){ console.error(e); datos = { bloqueos:{ dias:[], horas:{} }, empleados:[], horarios:{} }; }
+  if (!curSvc || curSvc.id !== svcAbierto) return; // cambió de servicio mientras cargaba
+
+  BLOQUEOS = datos.bloqueos;
+  if (!BLOQUEOS.dias) BLOQUEOS.dias = [];
+  if (!BLOQUEOS.horas) BLOQUEOS.horas = {};
+  empleadosDelServicio = datos.empleados.slice();
   horariosEmpleadosCache = {};
-  if (empleadosDelServicio.length > 1) {
-    const hs = await Promise.all(empleadosDelServicio.map(e => horarioPropioSitio(e.id).catch(() => null)));
-    empleadosDelServicio.forEach((e, i) => { horariosEmpleadosCache[e.id] = hs[i]; });
-  }
+  if (empleadosDelServicio.length > 1) empleadosDelServicio.forEach(e => { horariosEmpleadosCache[e.id] = datos.horarios[e.id] || null; });
+
   if (curSvc.esDoble) {
     // Cita doble: siempre se elige explícito para cada persona, nunca "cualquiera"
     modoCualquiera = false;
@@ -934,15 +968,11 @@ async function openCal(){
   } else {
     modoCualquiera = empleadosDelServicio.length > 1;
     empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
-    empleadoHorarioCache = null;
-    if (empleadosDelServicio.length === 1) {
-      try { empleadoHorarioCache = await horarioPropioSitio(empleadoSeleccionado); } catch(e){ empleadoHorarioCache = null; }
-    }
+    empleadoHorarioCache = empleadosDelServicio.length === 1 ? (datos.horarios[empleadoSeleccionado] || null) : null;
   }
   renderSelectorEmpleado();
 
   renderCal();
-  openOv('ov-cal');
 }
 
 function escTextoEmp(t){
