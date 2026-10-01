@@ -4818,6 +4818,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="sheets.js?v=53"></script>
+<script src="horarios.js?v=1"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -5621,7 +5622,6 @@ function uuidNuevo(){
 // ===== BLOQUEOS (por sucursal) =====
 // Filas planas: dias [{fecha, motivo, locationId}] · horas [{fecha, hora, locationId}]
 let BLOQUEOS = { dias:[], horas:[] };
-const HORAS_DIA = ['8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
 let BLOQ_SUC_SEL = { rango:null, horas:null }; // Set de sucursales elegidas en cada formulario
 let BLOQ_FILTRO_SUC = '';
 
@@ -7368,71 +7368,20 @@ function fechaISO(y,m,d){
   return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
 }
 
-function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+// Reglas de horarios: viven en horarios.js (compartido con la agenda pública). Aquí solo se usan.
+function timeToMin(t){ return window.AnnlyHorarios.timeToMin(t); }
+function bloqueDelDia(dow, horario){ return window.AnnlyHorarios.bloqueDelDia(dow, horario); }
 
-// El horario del negocio es por bloques (lv / sab / dom); el de un profesional puede ser
-// por día (lun, mar, mie, jue, vie, sab, dom). Se reconoce el formato por sus claves.
-function bloqueDelDia(dow, horario){
-  if (horario && (horario.lun || horario.mar || horario.mie || horario.jue || horario.vie)) {
-    return ['dom','lun','mar','mie','jue','vie','sab'][dow];
-  }
-  return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv');
+// Reprogramar: horario de la cita (y de la 2da profesional si es doble; los 2 deben estar)
+function rpHorariosCita(){
+  return [rpHorarioBase(rpEmpleadoHorarioCache)].concat(rpEmpleadoId2 ? [rpHorarioBase(rpEmpleadoHorarioCache2)] : []);
 }
 
 function genSlots(){
-  const dt=new Date(rpCalY,rpCalM,rpSelectedDay);
-  const dow=dt.getDay();
-  const horarioBase = rpHorarioBase(rpEmpleadoHorarioCache);
-  const bloqueCfg = (horarioBase && horarioBase[bloqueDelDia(dow, horarioBase)]) || null;
-
-  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si no hay horario configurado
-  if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
-    [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
-    [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
-  } else if (bloqueCfg && bloqueCfg.cerrado) {
-    return [];
-  }
-
-  // Cita doble: las horas son el cruce (intersección) del horario de los 2 profesionales
-  if (rpEmpleadoId2) {
-    const base2 = rpHorarioBase(rpEmpleadoHorarioCache2);
-    const cfg2 = (base2 && base2[bloqueDelDia(dow, base2)]) || null;
-    if (cfg2 && cfg2.cerrado) return [];
-    if (cfg2 && cfg2.abre && cfg2.cierra) {
-      const ini = Math.max(hIni*60+mIni, timeToMin(cfg2.abre));
-      const fin = Math.min(hFin*60+mFin, timeToMin(cfg2.cierra));
-      if (ini > fin) return [];
-      hIni = Math.floor(ini/60); mIni = ini % 60;
-      hFin = Math.floor(fin/60); mFin = fin % 60;
-    }
-  }
-
-  const slots=[];
-  let h=hIni,m=mIni;
-  while(h<hFin||(h===hFin&&m===mFin)){
-    const key=h+':'+(m===0?'00':'30');
-    const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
-    slots.push({key,lbl});
-    m+=30; if(m>=60){m=0;h++;}
-  }
-  // Igual que la agenda pública: hoy solo se ofrecen horas que aún no pasaron
-  const now=new Date();
-  if (rpSelectedDay===now.getDate() && rpCalM===now.getMonth() && rpCalY===now.getFullYear()){
-    const nowMin=now.getHours()*60+now.getMinutes();
-    return slots.filter(x=>timeToMin(x.key)>nowMin);
-  }
-  return slots;
+  return window.AnnlyHorarios.generarSlots({ horarios: rpHorariosCita(), fecha: new Date(rpCalY, rpCalM, rpSelectedDay), modo: 'interseccion' });
 }
 
-function isBlocked(slotKey,citas,durSvc){
-  const slotMin=timeToMin(slotKey);
-  for(const c of citas){
-    const occMin=timeToMin(c.hora);
-    const occDur=parseInt(c.duracion)||60;
-    if(slotMin<occMin+occDur && slotMin+durSvc>occMin) return true;
-  }
-  return false;
-}
+function isBlocked(slotKey, citas, durSvc){ return window.AnnlyHorarios.solapa(slotKey, citas, durSvc); }
 
 // ===== REPROGRAMAR / CANCELAR (con calendario real) =====
 let reprogramarCitaId = null;
@@ -7504,16 +7453,8 @@ function chMoAdmin(d){
   renderCalAdmin();
 }
 
-function diaCerrado(dow){
-  const cerradoPara = (cache) => {
-    const h = rpHorarioBase(cache);
-    if (!h) return dow===0;
-    const bloque = h[bloqueDelDia(dow, h)];
-    return !bloque || !!bloque.cerrado;
-  };
-  // Cita doble: el día se cierra si CUALQUIERA de los 2 profesionales no trabaja ese día
-  return cerradoPara(rpEmpleadoHorarioCache) || (rpEmpleadoId2 ? cerradoPara(rpEmpleadoHorarioCache2) : false);
-}
+// Cita doble: el día se cierra si CUALQUIERA de los 2 profesionales no trabaja ese día
+function diaCerrado(dow){ return window.AnnlyHorarios.diaCerrado(rpHorariosCita(), dow, 'todos'); }
 
 function renderCalAdmin(){
   document.getElementById('calMoLblAdmin').textContent = MESES[rpCalM] + ' ' + rpCalY;
@@ -7813,29 +7754,16 @@ async function agregarBloqueoRango(){
 
 // Horas de la grilla según el horario de las sucursales elegidas para ese día
 function horasGrillaBloqueo(dia, locs){
-  const dow = new Date(dia + 'T00:00:00').getDay();
-  const clave = dow === 0 ? 'dom' : (dow === 6 ? 'sab' : 'lv');
   const horarios = locs.map(id => (SUCURSALES.find(x => x.id === id) || {}).horario)
-    .map(h => h || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null)
-    .filter(Boolean);
-  const abiertos = horarios.map(h => h[clave]).filter(c => c && !c.cerrado && c.abre && c.cierra);
-  let lista;
-  if (!horarios.length) lista = HORAS_DIA.slice();
-  else if (!abiertos.length) lista = [];
-  else {
-    const aMin = t => { const [h, m] = t.split(':').map(Number); return h*60 + (m || 0); };
-    let ini = Math.min(...abiertos.map(c => aMin(c.abre)));
-    const fin = Math.max(...abiertos.map(c => aMin(c.cierra)));
-    ini = Math.floor(ini / 30) * 30;
-    lista = [];
-    for (let t = ini; t <= fin; t += 30) lista.push(Math.floor(t/60) + ':' + (t % 60 === 0 ? '00' : '30'));
-  }
+    .map(h => h || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null);
+  const lista = window.AnnlyHorarios.generarSlots({
+    horarios: horarios.length ? horarios : [null], fecha: new Date(dia + 'T00:00:00'), modo: 'union', incluirPasadas: true
+  }).map(x => x.key);
   // Horas ya bloqueadas fuera del horario actual también se muestran, para poder quitarlas
   BLOQUEOS.horas.forEach(x => {
     if (x.fecha === dia && locs.includes(locDeBloqueo(x)) && !lista.includes(x.hora)) lista.push(x.hora);
   });
-  const aMin2 = t => { const [h, m] = t.split(':').map(Number); return h*60 + (m || 0); };
-  return lista.sort((p, q) => aMin2(p) - aMin2(q));
+  return lista.sort((p, q) => timeToMin(p) - timeToMin(q));
 }
 
 function horaBloqueadaEnTodas(dia, hora, locs){
