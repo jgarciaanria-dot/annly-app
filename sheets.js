@@ -16,6 +16,22 @@ const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || 'https://pedidos.annly.ap
 
 
 // =========================================================
+// PAGO DE PLANES CON TARJETA (etapa 1): enlaces fijos de PagueloFácil por concepto.
+// Son públicos (cualquiera con el link puede pagar). Si falta uno, ese concepto no muestra botón.
+// =========================================================
+const ANNLY_LINKS_PAGO = {
+  BASIC:                 'https://checkout.paguelofacil.com/W_RBOSITE/64ba7b3d',
+  ULTIMATE:              'https://checkout.paguelofacil.com/W_RBOSITE/fab99d1c',
+  MEDIUM:                'https://checkout.paguelofacil.com/W_RBOSITE/c2e772ba',
+  FINANZAS:              'https://checkout.paguelofacil.com/W_RBOSITE/37eaa1fb',
+  PAGOS:                 'https://checkout.paguelofacil.com/W_RBOSITE/34678531',
+  CERTIFICADOS:          'https://checkout.paguelofacil.com/W_RBOSITE/7e4ee3fe',
+  PROFESIONAL_ADICIONAL: 'https://checkout.paguelofacil.com/W_RBOSITE/6f51d01d',
+  SUCURSAL_ADICIONAL:    'https://checkout.paguelofacil.com/W_RBOSITE/18c2e0dc'
+};
+window.ANNLY_LINKS_PAGO = ANNLY_LINKS_PAGO;
+
+// =========================================================
 // CONTEXTO MULTI-TENANT
 // =========================================================
 
@@ -4659,6 +4675,35 @@ const Sheets = {
   // ---------------------------------------------------------
   // Citas del rango (todas, incluidas canceladas), ventas en el local del rango y, para saber si un
   // cliente es nuevo, los teléfonos de quienes ya tenían citas antes del rango.
+  // ---------- Pagos de planes (etapa 1) ----------
+  async registrarAvisoPago(code, concepto, monto) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('pagos_plataforma').insert([{ business_id: BUSINESS_ID, concepto_code: code, concepto, monto }]);
+    if (error) throw error;
+  },
+  async getAvisosPagoNegocio() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('pagos_plataforma').select('*').eq('business_id', BUSINESS_ID).order('creado_en', { ascending: false }).limit(20);
+    if (error) throw error;
+    return data || [];
+  },
+  // Platform Admin: avisos de todos los negocios
+  async getAvisosPagoPlataforma(estado) {
+    await window.AnnlyReady;
+    let q = sbClient.from('pagos_plataforma').select('*, businesses(nombre, slug)').order('creado_en', { ascending: false }).limit(100);
+    if (estado) q = q.eq('estado', estado);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  },
+  async resolverAvisoPago(id, estado, referencia, nota) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('pagos_plataforma').update({
+      estado, referencia: referencia || null, nota: nota || null, resuelto_en: new Date().toISOString()
+    }).eq('id', id);
+    if (error) throw error;
+  },
+
   async getReporteAgenda(desdeISO, hastaISO, locationId) {
     await window.AnnlyReady;
     const paginar = async (armar, max = 20000) => {
