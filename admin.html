@@ -5995,17 +5995,22 @@ async function pintarPagoTarjeta(){
   const hasta = SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd;
   const enPrueba = enPeriodoPrueba();
   const confirmados = pagos.filter(p => p.estado === 'confirmado').slice(0, 3);
+  // "Pagada" solo si un pago confirmado cubre la fecha; si no, la fecha es solo el vencimiento
+  const hoyIso = new Date().toISOString().slice(0, 10);
+  const pagadoHasta = pagos.filter(p => p.estado === 'confirmado' && p.periodo_hasta && p.periodo_hasta >= hoyIso)
+    .map(p => p.periodo_hasta).sort().pop();
   const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD'));
   box.innerHTML = `
     <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Tu mensualidad</h3>
-      <p>${enPrueba ? 'Estás en tu prueba gratis' + (hasta ? ' hasta el <b>' + fecha(hasta) + '</b>' : '') + '. Al pagar, tu plan queda activo de inmediato.'
-                    : (hasta ? 'Tu plan está pagado hasta el <b>' + fecha(hasta) + '</b>.' : 'Paga tu plan con tarjeta, de forma segura.')}</p></div></div>
+      <p>${pagadoHasta ? 'Tu membresía está pagada hasta el <b>' + fecha(pagadoHasta) + '</b>.'
+        : enPrueba ? 'Estás en tu prueba gratis' + (hasta ? ' hasta el <b>' + fecha(hasta) + '</b>' : '') + '. Al pagar, tu membresía queda activa de inmediato.'
+        : (hasta ? 'Tu membresía vence el <b>' + fecha(hasta) + '</b>. Paga para mantenerla activa.' : 'Paga tu membresía con tarjeta, de forma segura.')}</p></div></div>
     <div class="pf-lista">${items.map(i => `
       <div class="pf-item"><div><b>${escCat(i.nombre)}</b><span>${i.cant > 1 ? i.cant + ' × ' + fmtDinero(i.precio) : 'Mensual'}</span></div><b>${fmtDinero(i.precio * i.cant)}</b></div>`).join('')}
       <div class="pf-item pf-total"><div><b>Total del mes</b></div><b>${fmtDinero(total)}</b></div>
     </div>
     <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
-    <p class="pf-nota">Pago seguro con PagueloFácil (Visa, Mastercard o Tafi). Al terminar vuelves aquí y tu plan se actualiza solo.</p>
+    <p class="pf-nota">Pago seguro con tarjeta de crédito o débito (PagueloFácil). Se abre en una ventana aparte y, al terminar, tu membresía se actualiza sola aquí.</p>
     ${enRevision.length ? `<div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
       ${enRevision.map(a => `<span>${escCat(a.concepto)} · ${fmtDinero(a.monto)}</span>`).join('')}
       <small>Los estamos revisando; no necesitas hacer nada.</small></div></div>` : ''}
@@ -6013,15 +6018,43 @@ async function pintarPagoTarjeta(){
   box.style.display = '';
 }
 
+// El pago se abre en una ventana aparte; al terminar, pago.html avisa aquí y se cierra sola
+function abrirVentanaPago(){
+  const w = 520, h = 780;
+  const x = Math.max(0, (window.screenX || 0) + (window.outerWidth - w) / 2), y = Math.max(0, (window.screenY || 0) + (window.outerHeight - h) / 2);
+  const win = window.open('', 'annly_pago', `width=${w},height=${h},left=${x},top=${y}`);
+  if (win) { try { win.document.write('<title>Preparando tu pago…</title><p style="font:15px system-ui;text-align:center;margin-top:45vh;color:#6B6680">Preparando tu pago…</p>'); } catch(e){} }
+  return win;
+}
+let ESCUCHA_PAGO = false;
+function escucharResultadoPago(){
+  if (ESCUCHA_PAGO) return;
+  ESCUCHA_PAGO = true;
+  window.addEventListener('message', ev => {
+    if (ev.origin !== window.location.origin || !ev.data || ev.data.tipo !== 'annly-pago') return;
+    if (ev.data.estado === 'confirmado'){ renderPlan(); setTimeout(() => alert('¡Pago confirmado! Tu membresía quedó activa.'), 300); }
+    else pintarPagoTarjeta();
+  });
+}
 async function pagarMensualidad(){
   const btn = document.getElementById('pf-btn-pagar');
   const antes = btn ? btn.innerHTML : '';
+  const win = abrirVentanaPago(); // se abre ya, en el clic (si se espera, el navegador la bloquea)
   if (btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i><span>Preparando tu pago…</span>'; }
   try {
     const r = await Sheets.crearEnlaceMensualidad();
-    window.location.href = r.url; // misma pestaña: al pagar, PagueloFácil devuelve a pago.html
+    if (win && !win.closed){
+      escucharResultadoPago();
+      win.location.href = r.url;
+      if (btn) btn.innerHTML = '<i class="ti ti-external-link"></i><span>Completa el pago en la ventana que se abrió</span>';
+      // Si cierran la ventana sin terminar, el botón vuelve a quedar disponible
+      const t = setInterval(() => { if (win.closed){ clearInterval(t); pintarPagoTarjeta(); } }, 1000);
+    } else {
+      window.location.href = r.url; // navegador sin ventanas emergentes: se paga en esta misma pestaña
+    }
   } catch(e){
     console.error(e);
+    if (win && !win.closed) win.close();
     alert('No se pudo abrir el pago: ' + (e.message || e) + '\n\nInténtalo en unos minutos o escríbenos.');
     if (btn){ btn.disabled = false; btn.innerHTML = antes; }
   }
