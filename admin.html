@@ -9406,21 +9406,61 @@ function htmlCuerpoRpa(){
     </div>`;
 }
 
-function exportarRpa(){
+// Carga la librería de Excel (SheetJS) solo cuando se necesita
+function cargarLibExcel(){
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((ok, mal) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    sc.onload = () => ok(window.XLSX);
+    sc.onerror = () => mal(new Error('No se pudo cargar la librería de Excel.'));
+    document.head.appendChild(sc);
+  });
+}
+
+async function exportarRpa(){
   if (!RPA.datos) return;
-  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
   const CASO = { a_tiempo: 'Canceló a tiempo', tarde: 'Canceló tarde', no_show: 'No se presentó', negocio: 'Canceló el negocio', abono_rechazado: 'Abono no llegó' };
-  const filas = [['Fecha','Hora','Cliente','Teléfono','Servicio','Categoría','Profesional','Sede','Estado','Cobrado','Cancelación']];
-  RPA.datos.citas.forEach(c => filas.push([c.fecha, String(c.hora || '').slice(0, 5), c.cliente_nombre, c.cliente_telefono, c.servicio_nombre, c.categoria || '',
-    (FIN.equipo || {})[c.employee_id] || '', nombreSucursal(c.location_id) || '',
-    c.estado === 'cancelada' ? 'Cancelada' : (c.completada_en ? 'Atendida' : (c.estado === 'por_confirmar' ? 'Abono por confirmar' : 'Por atender')),
-    c.completada_en ? Number(c.precio_cobrado || 0).toFixed(2) : '', c.estado === 'cancelada' ? (CASO[c.cancelacion_caso] || '') : '']));
-  const csv = '\ufeff' + filas.map(f => f.map(q).join(',')).join('\r\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = `citas-${(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug) || 'agenda'}-${RPA.desde}-a-${RPA.hasta}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  const DESTINO = { credito: 'Saldo a favor', penalidad: 'Penalidad', reembolso: 'Reembolso' };
+  const num = v => v == null || v === '' ? '' : Math.round(Number(v) * 100) / 100;
+  const encabezado = ['Fecha','Hora','Cliente','Teléfono','Servicio','Categoría','Profesional','Sede','Estado','Cobrado','Abono','Cancelación','Qué pasó con el abono','Monto','Código saldo a favor','Certificado devuelto'];
+  const filas = RPA.datos.citas.map(c => {
+    const cancel = c.estado === 'cancelada';
+    const abono = Number(c.abono_monto || 0);
+    return [
+      c.fecha, String(c.hora || '').slice(0, 5), c.cliente_nombre || '', c.cliente_telefono || '', c.servicio_nombre || '', c.categoria || '',
+      (FIN.equipo || {})[c.employee_id] || '', nombreSucursal(c.location_id) || '',
+      cancel ? 'Cancelada' : (c.completada_en ? 'Atendida' : (c.estado === 'por_confirmar' ? 'Abono por confirmar' : 'Por atender')),
+      c.completada_en ? num(c.precio_cobrado) : '',
+      abono > 0 ? num(abono) : '',
+      cancel ? (CASO[c.cancelacion_caso] || '') : '',
+      cancel && c.abono_destino ? (DESTINO[c.abono_destino] || c.abono_destino) : '',
+      cancel && c.abono_destino ? num(abono) : '',
+      c.credito_codigo || '',
+      Number(c.certificado_devuelto || 0) > 0 ? num(c.certificado_devuelto) : ''
+    ];
+  });
+  const nombre = `citas-${(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug) || 'agenda'}-${RPA.desde}-a-${RPA.hasta}`;
+
+  try {
+    const XLSX = await cargarLibExcel();
+    const hoja = XLSX.utils.aoa_to_sheet([encabezado, ...filas]);
+    hoja['!cols'] = encabezado.map((h, i) => ({ wch: Math.min(32, Math.max(h.length + 2, ...filas.map(f => String(f[i] ?? '').length + 1))) }));
+    hoja['!autofilter'] = { ref: hoja['!ref'] };
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Citas');
+    XLSX.writeFile(libro, nombre + '.xlsx');
+  } catch(e){
+    // Si no carga la librería, se baja como CSV (también abre en Excel)
+    console.error(e);
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const csv = '\ufeff' + [encabezado, ...filas].map(f => f.map(q).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = nombre + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
 }
 
 // Periodo anterior comparable: mismo largo, justo antes. Si el periodo actual sigue en curso, se compara
