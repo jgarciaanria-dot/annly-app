@@ -4654,6 +4654,43 @@ const Sheets = {
     return cierre.id;
   },
 
+  // ---------------------------------------------------------
+  // REPORTES DE AGENDA (dentro del módulo Finanzas)
+  // ---------------------------------------------------------
+  // Citas del rango (todas, incluidas canceladas), ventas en el local del rango y, para saber si un
+  // cliente es nuevo, los teléfonos de quienes ya tenían citas antes del rango.
+  async getReporteAgenda(desdeISO, hastaISO, locationId) {
+    await window.AnnlyReady;
+    const paginar = async (armar, max = 20000) => {
+      const filas = [];
+      for (let i = 0; i < max; i += 1000) {
+        const { data, error } = await armar().range(i, i + 999);
+        if (error) throw error;
+        filas.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
+      return filas;
+    };
+    // Se piden todas las columnas (*) para no fallar si alguna tiene otro nombre en la base.
+    // Cada parte falla por separado: si una no carga, el resto del reporte igual se muestra.
+    const seguro = (p, nombre) => p.catch(e => { console.error('[Reportes] No se pudo leer ' + nombre + ':', e); return []; });
+    const [citas, ventas, previas] = await Promise.all([
+      paginar(() => this._enSede(sbClient.from('appointments').select('*')
+        .eq('business_id', BUSINESS_ID).gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)
+        .order('fecha', { ascending: true })),
+      seguro(paginar(() => this._enSede(sbClient.from('local_sales').select('*')
+        .eq('business_id', BUSINESS_ID).eq('anulada', false).gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)), 'ventas en el local'),
+      seguro(paginar(() => sbClient.from('appointments').select('cliente_telefono')
+        .eq('business_id', BUSINESS_ID).neq('estado', 'cancelada').lt('fecha', desdeISO)), 'citas anteriores')
+    ]);
+    const tel = t => String(t || '').replace(/\D/g, '').slice(-8);
+    return {
+      citas,
+      ventas,
+      clientesPrevios: new Set(previas.map(r => tel(r.cliente_telefono)).filter(Boolean))
+    };
+  },
+
   // Estado PARCIAL a la fecha de un profesional (en una sede): no congela nada y se puede pedir
   // cuantas veces se quiera. Va desde el inicio del periodo hasta hoy (o hasta el fin si ya terminó).
   // enviar=true lo manda al correo del profesional; siempre devuelve el PDF para descargarlo.
