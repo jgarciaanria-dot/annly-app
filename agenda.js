@@ -1,5814 +1,1947 @@
-// =========================================================
-// sheets.js — Adaptador Supabase COMPLETO
-// Cubre index.html (sitio público) y admin.html (panel)
-// =========================================================
-
-const SUPABASE_URL = 'https://hokrimtsyseuqfjjvmxu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
-
-const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// Annly Pedidos (producto aparte en Vercel). Mientras no exista el dominio, se puede
-// definir window.ANNLY_PEDIDOS_URL antes de cargar sheets.js con la URL de Vercel.
-// Mientras tienda.annly.app no esté activo en Vercel/GoDaddy se usa pedidos.annly.app (que ya funciona).
-// Cuando tienda.annly.app abra, cambiar esta línea a 'https://tienda.annly.app'.
-const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || 'https://pedidos.annly.app').replace(/\/$/, '');
-
-
-// =========================================================
-// CONTEXTO MULTI-TENANT
-// =========================================================
-
-let BUSINESS_ID = null;
-
-window.ANNLY_BUSINESS = null;
-window.ANNLY_BUSINESSES = [];
-window.ANNLY_PLATFORM_ADMIN = false;
-window.ANNLY_AUTHENTICATED = false;
-
-
-// =========================================================
-// RESOLVER NEGOCIO
-// =========================================================
-
-async function resolverNegocio() {
-
-  window.ANNLY_AUTHENTICATED = false;
-  window.ANNLY_PLATFORM_ADMIN = false;
-  window.ANNLY_BUSINESS = null;
-  window.ANNLY_BUSINESSES = [];
-  BUSINESS_ID = null;
-
-  const esPanelAdmin = window.location.pathname.includes('admin.html');
-  const esRegistro = window.location.pathname.includes('registro.html');
-
-
-  // =======================================================
-  // ADMIN / REGISTRO
-  // =======================================================
-
-  if (esPanelAdmin || esRegistro) {
-
-    // Esperamos a que Supabase termine de resolver la sesión.
-    const session = await new Promise((resolve) => {
-
-      let resuelto = false;
-
-      const resolver = (session) => {
-        if (resuelto) return;
-        resuelto = true;
-        resolve(session);
-      };
-
-      const { data: sub } = sbClient.auth.onAuthStateChange(
-        (_event, session) => {
-
-          try {
-            sub.subscription.unsubscribe();
-          } catch (e) {}
-
-          resolver(session);
-        }
-      );
-
-      // Fallback por si ya existe una sesión y no recibimos
-      // inmediatamente el evento esperado.
-      setTimeout(async () => {
-
-        if (resuelto) return;
-
-        try {
-
-          const { data } = await sbClient.auth.getSession();
-
-          try {
-            sub.subscription.unsubscribe();
-          } catch (e) {}
-
-          resolver(data?.session || null);
-
-        } catch (e) {
-
-          try {
-            sub.subscription.unsubscribe();
-          } catch (err) {}
-
-          resolver(null);
-        }
-
-      }, 1500);
-    });
-
-
-    if (!session || !session.user) {
-      return;
-    }
-
-
-    window.ANNLY_AUTHENTICATED = true;
-
-
-    // =====================================================
-    // REGISTRO
-    // =====================================================
-
-    if (esRegistro) {
-      return;
-    }
-
-
-    // =====================================================
-    // ADMIN — VERIFICAR PLATFORM ADMIN
-    // =====================================================
-
-    let esPlatformAdmin = false;
-
-    try {
-
-      const { data, error } = await sbClient.rpc('is_platform_admin');
-
-      if (!error && data === true) {
-        esPlatformAdmin = true;
-      }
-
-    } catch (e) {
-
-      console.error(
-        '[Annly] Error verificando Platform Admin:',
-        e
-      );
-
-    }
-
-
-    window.ANNLY_PLATFORM_ADMIN = esPlatformAdmin;
-
-
-    // =====================================================
-    // PLATFORM ADMIN
-    // =====================================================
-
-    if (esPlatformAdmin) {
-
-      console.log(
-        '[Annly] Usuario Platform Admin detectado.'
-      );
-
-
-      const { data: negocios, error } = await sbClient
-        .from('businesses')
-        .select('*')
-        .order('nombre', { ascending: true });
-
-
-      if (error) {
-
-        console.error(
-          '[Annly] Error cargando negocios:',
-          error
-        );
-
-        return;
-      }
-
-
-      window.ANNLY_BUSINESSES = negocios || [];
-
-
-      if (!window.ANNLY_BUSINESSES.length) {
-
-        console.warn(
-          '[Annly] Platform Admin sin negocios disponibles.'
-        );
-
-        return;
-      }
-
-
-      // Intentamos mantener el último negocio seleccionado
-      // durante la sesión.
-      const negocioGuardado =
-        sessionStorage.getItem('annly_selected_business_id');
-
-
-      let negocioInicial = null;
-
-
-      if (negocioGuardado) {
-
-        negocioInicial =
-          window.ANNLY_BUSINESSES.find(
-            b => String(b.id) === String(negocioGuardado)
-          );
-      }
-
-
-      // Si no existe uno guardado, usamos el primero.
-      if (!negocioInicial) {
-        negocioInicial = window.ANNLY_BUSINESSES[0];
-      }
-
-
-      BUSINESS_ID = negocioInicial.id;
-      window.ANNLY_BUSINESS = negocioInicial;
-
-
-      sessionStorage.setItem(
-        'annly_selected_business_id',
-        String(negocioInicial.id)
-      );
-
-
-      console.log(
-        '[Annly] Negocio seleccionado:',
-        negocioInicial.nombre
-      );
-
-
-      return;
-    }
-
-
-    // =====================================================
-    // USUARIO NORMAL — SOLO SU NEGOCIO
-    // =====================================================
-
-    const {
-      data,
-      error
-    } = await sbClient
-      .from('businesses')
-      .select('*')
-      .eq('owner_user_id', session.user.id)
-      .maybeSingle();
-
-
-    if (!error && data) {
-
-      BUSINESS_ID = data.id;
-      window.ANNLY_BUSINESS = data;
-      window.ANNLY_BUSINESSES = [data];
-
-    } else {
-
-      window.ANNLY_BUSINESS = null;
-      window.ANNLY_BUSINESSES = [];
-
-    }
-
-
-    return;
+// ============================================================
+// Ajustes de tema de la agenda pública: usan los colores de la paleta del negocio
+// (--gold / --gold-dark) en lugar de fondos negros fijos. Van aquí para no depender
+// de que agenda.css o 404.html estén al día.
+// ============================================================
+(function(){
+  if (document.getElementById('annly-tema-css')) return;
+  const st = document.createElement('style');
+  st.id = 'annly-tema-css';
+  st.textContent = `
+@keyframes annlyGiro{to{transform:rotate(360deg);}}
+.svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
+.svc-banner-name,.svc-pill-name{color:#fff;}
+.svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
+.svc-banner-dur,.svc-pill-dur{color:rgba(255,255,255,.78);}
+.svc-banner-icon{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.14);}
+.svc-banner-icon i{color:#fff;}
+.svc-resumen{border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;}
+.svc-resumen-name{font-size:15px;font-weight:700;color:#fff;font-family:var(--font-heading);}
+.svc-resumen-meta{font-size:11.5px;color:rgba(255,255,255,.82);margin-top:3px;}
+.stepn{background:var(--gold-dark);color:#fff;font-weight:600;}
+.card-arrow{background:var(--gold-dark);}
+.incl-grid{grid-template-columns:1fr 1fr;gap:10px 16px;}
+.incl-item{align-items:flex-start;line-height:1.45;}
+.incl-dot{width:5px;height:5px;margin-top:.5em;background:var(--gold-dark);}
+@media(max-width:480px){.incl-grid{grid-template-columns:1fr;}}
+`;
+  document.head.appendChild(st);
+})();
+
+document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
+    document.getElementById('ruletaModal').classList.remove('activo');
+  });
+
+  // ============================================================
+  // RUEDA DINÁMICA - se construye desde RuletaConfig, sin código fijo
+  // ============================================================
+  let RULETA_SEGMENTOS_ACTIVOS = [];
+
+  const RULETA_PALETA = [
+    { fill: '#F0D68C', text: '#241B10', muted: '#5C4B22' },
+    { fill: '#C9A24B', text: '#241B10', muted: '#4A3B18' },
+    { fill: '#8A6A24', text: '#F5F1E6', muted: '#D8D4CC' },
+    { fill: '#E3C077', text: '#241B10', muted: '#5C4B22' },
+    { fill: '#B8933D', text: '#241B10', muted: '#4A3B18' },
+    { fill: '#6B5518', text: '#F5F1E6', muted: '#D8D4CC' }
+  ];
+
+  function ruletaPt(cx, cy, r, angleDeg){
+    const rad = angleDeg * Math.PI / 180;
+    return { x: (cx + r * Math.sin(rad)).toFixed(1), y: (cy - r * Math.cos(rad)).toFixed(1) };
   }
 
-
-  // =======================================================
-  // SITIO PÚBLICO
-  // =======================================================
-
-  const params =
-    new URLSearchParams(window.location.search);
-
-  let slug = params.get('n');
-
-
-  if (!slug) {
-
-    const segmentos =
-      window.location.pathname
-        .split('/')
-        .filter(Boolean);
-
-    slug =
-      segmentos.find(
-        s => !s.includes('.')
-      ) || 'demo';
-  }
-
-
-  const {
-    data,
-    error
-  } = await sbClient
-    .from('businesses')
-    .select('*')
-    .eq('slug', slug)
-    .maybeSingle();
-
-
-  if (error || !data) {
-
-    console.error(
-      'No se encontró ningún negocio activo para el slug:',
-      slug,
-      error
-    );
-
-    return;
-  }
-
-
-  BUSINESS_ID = data.id;
-  window.ANNLY_BUSINESS = data;
-
-  // El sitio público no utiliza permisos de Platform Admin.
-  window.ANNLY_AUTHENTICATED = false;
-}
-
-
-// =========================================================
-// AUTENTICACIÓN
-// =========================================================
-
-window.AnnlyAuth = {
-
-  // -------------------------------------------------------
-  // LOGIN
-  // -------------------------------------------------------
-
-  async login(email, password) {
-
-    const {
-      data,
-      error
-    } = await sbClient.auth.signInWithPassword({
-      email,
-      password
-    });
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    window.AnnlyReady = resolverNegocio();
-
-    await window.AnnlyReady;
-
-    return data;
-  },
-
-
-  // -------------------------------------------------------
-  // LOGOUT
-  // -------------------------------------------------------
-
-  async logout() {
-
-    sessionStorage.removeItem(
-      'annly_selected_business_id'
-    );
-
-    await sbClient.auth.signOut();
-
-    window.location.reload();
-  },
-
-
-  // -------------------------------------------------------
-  // LOGOUT SILENCIOSO
-  // -------------------------------------------------------
-
-  async logoutSilent() {
-
-    sessionStorage.removeItem(
-      'annly_selected_business_id'
-    );
-
-    await sbClient.auth.signOut();
-
-    window.ANNLY_AUTHENTICATED = false;
-    window.ANNLY_PLATFORM_ADMIN = false;
-    window.ANNLY_BUSINESS = null;
-    window.ANNLY_BUSINESSES = [];
-
-    BUSINESS_ID = null;
-  },
-
-
-  // -------------------------------------------------------
-  // PASSWORD RESET
-  // -------------------------------------------------------
-
-async resetPassword(email) {
-
-  const {
-    error
-  } = await sbClient.auth.resetPasswordForEmail(
-    email,
-    {
-      redirectTo:
-        window.location.origin + '/update-password.html'
-    }
-  );
-
-  if (error) {
-    throw error;
-  }
-},
-
-
-  // -------------------------------------------------------
-  // OAUTH
-  // -------------------------------------------------------
-
-  async loginWithOAuth(provider) {
-
-    const {
-      error
-    } = await sbClient.auth.signInWithOAuth({
-
-      provider,
-
-      options: {
-        redirectTo:
-          window.location.origin + '/admin.html'
-      }
-
-    });
-
-
-    if (error) {
-      throw error;
-    }
-
-    // La página se redirige al proveedor.
-    // Al volver, Supabase detecta la sesión automáticamente.
-  },
-
-
-  // -------------------------------------------------------
-  // GET SESSION
-  // -------------------------------------------------------
-
-  async getSession() {
-
-    const {
-      data
-    } = await sbClient.auth.getSession();
-
-    return data.session;
-  },
-
-
-  // -------------------------------------------------------
-  // ¿ES PLATFORM ADMIN?
-  // -------------------------------------------------------
-
-  async esPlatformAdmin() {
-
-    try {
-
-      const {
-        data,
-        error
-      } = await sbClient.rpc(
-        'is_platform_admin'
-      );
-
-
-      if (error) {
-
-        console.error(
-          '[Annly] Error verificando Platform Admin:',
-          error
-        );
-
-        return false;
-      }
-
-
-      return data === true;
-
-    } catch (e) {
-
-      console.error(
-        '[Annly] Error verificando Platform Admin:',
-        e
-      );
-
-      return false;
-    }
-  },
-
-
-  // -------------------------------------------------------
-  // OBTENER NEGOCIOS DISPONIBLES
-  // -------------------------------------------------------
-
-  async getNegociosDisponibles() {
-
-    await window.AnnlyReady;
-
-
-    if (!window.ANNLY_AUTHENTICATED) {
-      return [];
-    }
-
-
-    if (!window.ANNLY_PLATFORM_ADMIN) {
-
-      return window.ANNLY_BUSINESS
-        ? [window.ANNLY_BUSINESS]
-        : [];
-    }
-
-
-    return window.ANNLY_BUSINESSES || [];
-  },
-
-
-  // -------------------------------------------------------
-  // SELECCIONAR NEGOCIO
-  // -------------------------------------------------------
-
-  async seleccionarNegocio(businessId) {
-
-    await window.AnnlyReady;
-
-
-    if (!window.ANNLY_PLATFORM_ADMIN) {
-
-      throw new Error(
-        'Solo un Platform Admin puede cambiar de negocio.'
-      );
-    }
-
-
-    const negocio =
-      (window.ANNLY_BUSINESSES || []).find(
-        b => String(b.id) === String(businessId)
-      );
-
-
-    if (!negocio) {
-
-      throw new Error(
-        'El negocio seleccionado no está disponible.'
-      );
-    }
-
-
-    BUSINESS_ID = negocio.id;
-
-    window.ANNLY_BUSINESS = negocio;
-
-
-    sessionStorage.setItem(
-      'annly_selected_business_id',
-      String(negocio.id)
-    );
-
-
-    console.log(
-      '[Annly] Cambio de negocio:',
-      negocio.nombre
-    );
-
-
-    // Evento para que admin.html pueda reaccionar
-    // cuando agreguemos el selector visual.
-    window.dispatchEvent(
-      new CustomEvent(
-        'annly:business-changed',
-        {
-          detail: negocio
-        }
-      )
-    );
-
-
-    return negocio;
-  },
-
-
-  // -------------------------------------------------------
-  // REGISTRO SELF-SERVICE
-  // -------------------------------------------------------
-
-  async registrar({
-    email,
-    password,
-    nombreNegocio,
-    categoria,
-    representanteLegal,
-    ruc,
-    whatsapp,
-        colorPrimario,
-    colorSecundario,
-    tipoNegocio
-  }) {
-    // 1. Crear usuario en Supabase Auth
-
-    const {
-      data: authData,
-      error: authError
-    } = await sbClient.auth.signUp({
-      email,
-      password
-    });
-
-
-    if (authError) {
-      throw authError;
-    }
-
-
-    const userId =
-      authData.user?.id;
-
-
-    if (!userId) {
-
-      throw new Error(
-        'No se pudo crear el usuario.'
-      );
-    }
-
-
-    // 2. Asegurar sesión activa
-
-    if (!authData.session) {
-
-      const {
-        error: loginError
-      } = await sbClient.auth.signInWithPassword({
-        email,
-        password
-      });
-
-
-      if (loginError) {
-        throw loginError;
-      }
-    }
-
-
-    return await this._crearNegocio(
-      userId,
-      {
-        nombreNegocio,
-        categoria,
-        representanteLegal,
-        ruc,
-                whatsapp,
-        colorPrimario,
-        colorSecundario,
-        tipoNegocio
-      }
-    );
-  },
-
-  // -------------------------------------------------------
-  // ANNLY PEDIDOS: link al panel con la sesión actual.
-  // Cada dominio guarda su propia sesión, así que se pasa en el hash
-  // (nunca viaja al servidor) y el panel de Pedidos la toma con setSession.
-  // -------------------------------------------------------
-  async urlPanelPedidos() {
-    const { data } = await sbClient.auth.getSession();
-    const ses = data && data.session;
-    if (!ses) return ANNLY_PEDIDOS_URL + '/admin';
-    return ANNLY_PEDIDOS_URL + '/admin#annly_at=' + encodeURIComponent(ses.access_token) +
-      '&annly_rt=' + encodeURIComponent(ses.refresh_token);
-  },
-
-  async irAPanelPedidos() {
-    window.location.replace(await this.urlPanelPedidos());
-  },
-  // -------------------------------------------------------
-  // ¿YA HAY UN NEGOCIO REGISTRADO CON ESTE WHATSAPP?
-  // Aviso suave en el registro; no bloquea (un mismo dueño puede
-  // administrar varios negocios con el mismo número).
-  // -------------------------------------------------------
-
-  async existeWhatsapp(whatsapp) {
-    if (!whatsapp) return false;
-    const { data } = await sbClient
-      .from('businesses')
-      .select('id')
-      .eq('whatsapp', whatsapp)
-      .limit(1);
-    return !!(data && data.length);
-  },
-
-
-  // -------------------------------------------------------
-  // REGISTRO CON GOOGLE
-  // -------------------------------------------------------
-
-  async iniciarRegistroConGoogle(datosNegocio) {
-
-    sessionStorage.setItem(
-      'annly_registro_pendiente',
-      JSON.stringify(datosNegocio)
-    );
-
-
-    const {
-      error
-    } = await sbClient.auth.signInWithOAuth({
-
-      provider: 'google',
-
-      options: {
-        redirectTo:
-          window.location.origin + '/registro.html'
-      }
-
-    });
-
-
-    if (error) {
-
-      sessionStorage.removeItem(
-        'annly_registro_pendiente'
-      );
-
-      throw error;
-    }
-  },
-
-
-  // -------------------------------------------------------
-  // COMPLETAR REGISTRO DESPUÉS DE GOOGLE
-  // -------------------------------------------------------
-
-  async completarRegistroTrasOAuth(datosNegocio) {
-
-    const {
-      data: userData
-    } = await sbClient.auth.getUser();
-
-
-    const userId =
-      userData?.user?.id;
-
-
-    if (!userId) {
-
-      throw new Error(
-        'No hay sesión activa de Google.'
-      );
-    }
-
-
-    return await this._crearNegocio(
-      userId,
-      datosNegocio
-    );
-  },
-
-
-  // -------------------------------------------------------
-  // CREAR NEGOCIO
-  // -------------------------------------------------------
-
-  async _crearNegocio(
-    userId,
-    {
-      nombreNegocio,
-      categoria,
-      representanteLegal,
-      ruc,
-      whatsapp,
-            colorPrimario,
-      colorSecundario,
-      tipoNegocio
-    }
-  ) {
-    const esPedidos = tipoNegocio === 'pedidos';
-    // Generar slug único
-
-    const base =
-      nombreNegocio
-        .toLowerCase()
-        .trim()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-');
-
-
-    let slug = base;
-    let intento = 1;
-
-
-    while (true) {
-
-      const {
-        data: existe
-      } = await sbClient
-        .from('businesses')
-        .select('id')
-        .eq('slug', slug)
-        .maybeSingle();
-
-
-      if (!existe) {
-        break;
-      }
-
-
-      intento++;
-
-      slug =
-        `${base}-${intento}`;
-    }
-
-
-    // Trial de 14 días
-
-    const trialVence =
-      new Date();
-
-    trialVence.setDate(
-      trialVence.getDate() + 14
-    );
-
-
-    // Crear negocio
-
-    const {
-      data: negocio,
-      error: bizError
-    } = await sbClient
-      .from('businesses')
-      .insert([{
-
-        nombre: nombreNegocio,
-
-        slug,
-
-        categoria:
-          categoria || null,
-
-        representante_legal:
-          representanteLegal || null,
-
-        ruc_cedula:
-          ruc || null,
-
-        whatsapp:
-          whatsapp || null,
-
-        color_primario:
-          colorPrimario || '#7C3AED',
-
-        color_secundario:
-          colorSecundario || '#EC4899',
-
-        plan: 'trial',
-
-        trial_vence_en:
-          trialVence
-            .toISOString()
-            .split('T')[0],
-
-        activo: true,
-
-                owner_user_id:
-          userId,
-        tipo_negocio:
-          esPedidos ? 'pedidos' : 'citas'
-      }])
-      .select()
-      .single();
-
-
-    if (bizError) {
-      throw bizError;
-    }
-
-
-        // Annly Pedidos: configuración inicial (tiempo mínimo, vencimiento de pago, etc.)
-    if (esPedidos) {
-      const { error: cfgError } = await sbClient.from('order_settings').insert([{ business_id: negocio.id }]);
-      if (cfgError) console.error('No se pudo crear la configuración de pedidos:', cfgError);
-    }
-    // Crear business_features
-    await sbClient
-      .from('business_features')
-      .insert([{
-
-        business_id:
-          negocio.id,
-
-        ruleta_premios:
-          false,
-
-        clientes_vip:
-          false,
-
-        promociones:
-          true,
-
-        dominio_personalizado:
-          false
-
-      }]);
-
-
-    // Crear la suscripción del negocio (plan Basic por defecto, en periodo de
-    // prueba) — sin esto, "Mi plan" en admin.html no puede cambiar de plan ni
-    // activar módulos, porque getSuscripcionActual() no encuentra nada.
-    const {
-      data: planBasic
-    } = await sbClient
-            .from('plans')
-      .select('id')
-      .eq('code', esPedidos ? 'PEDIDOS_BASIC' : 'BASIC')
-      .maybeSingle();
-
-    if (planBasic) {
-      const {
-        error: subError
-      } = await sbClient
-        .from('subscriptions')
-        .insert([{
-          business_id: negocio.id,
-          plan_id: planBasic.id,
-          status: 'trial',
-          current_period_end: trialVence.toISOString().split('T')[0]
-        }]);
-
-      if (subError) {
-        console.error('No se pudo crear la suscripción del negocio nuevo:', subError);
-      }
-    } else {
-      console.error('No se encontró el plan BASIC — no se pudo crear la suscripción del negocio nuevo.');
-    }
-
-
-    BUSINESS_ID =
-      negocio.id;
-
-
-    window.ANNLY_BUSINESS =
-      negocio;
-
-
-    window.ANNLY_BUSINESSES =
-      [negocio];
-
-
-    window.ANNLY_AUTHENTICATED =
-      true;
-
-
-    window.ANNLY_PLATFORM_ADMIN =
-      false;
-
-
-    return negocio;
-  }
-
-};
-
-
-// =========================================================
-// PROMESA GLOBAL DE INICIALIZACIÓN
-// =========================================================
-
-window.AnnlyReady =
-  resolverNegocio();
-
-
-// =========================================================
-// UTILIDADES
-// =========================================================
-
-const MESES_MAP = {
-  enero: 0,
-  febrero: 1,
-  marzo: 2,
-  abril: 3,
-  mayo: 4,
-  junio: 5,
-  julio: 6,
-  agosto: 7,
-  septiembre: 8,
-  octubre: 9,
-  noviembre: 10,
-  diciembre: 11
-};
-
-
-const MESES_ARR = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre'
-];
-
-
-function parseFechaTexto(fechaStr) {
-
-  const m =
-    fechaStr.match(
-      /(\d+)\s+de\s+(\w+)\s+(\d+)/i
-    );
-
-
-  if (!m) {
-    return null;
-  }
-
-
-  const mesIdx =
-    MESES_MAP[
-      m[2].toLowerCase()
-    ];
-
-
-  if (mesIdx === undefined) {
-    return null;
-  }
-
-
-  return `${m[3]}-${String(
-    mesIdx + 1
-  ).padStart(2, '0')}-${String(
-    m[1]
-  ).padStart(2, '0')}`;
-}
-
-
-function isoAFechaTexto(iso) {
-
-  const [a, m, d] =
-    iso.split('-');
-
-
-  return `${parseInt(d)} de ${
-    MESES_ARR[
-      parseInt(m) - 1
-    ]
-  } ${a}`;
-}
-
-
-function formatHoraSitio(horaPg) {
-
-  if (!horaPg) {
-    return '';
-  }
-
-
-  const [h, m] =
-    horaPg.split(':');
-
-
-  return parseInt(h) + ':' + m;
-}
-
-
-// "13:00:00" -> "1:00 PM" | "09:30:00" -> "9:30 AM" | "00:15:00" -> "12:15 AM"
-function formatHora12Cita(horaPg) {
-
-  if (!horaPg) {
-    return '';
-  }
-
-  const [hStr, mStr] =
-    horaPg.split(':');
-
-  const h = parseInt(hStr, 10);
-
-  return (
-    ((h % 12) || 12) +
-    ':' +
-    (mStr || '00') +
-    (h >= 12 ? ' PM' : ' AM')
-  );
-}
-
-
-function genCodigoCupon() {
-
-  return 'RUL-' +
-    Math.random()
-      .toString(16)
-      .slice(2, 6)
-      .toUpperCase();
-}
-
-
-// =========================================================
-// SHEETS
-// =========================================================
-
-const Sheets = {
-
-  async initSheet() {
-    return true;
-  },
-
-
-  // =======================================================
-  // SERVICIOS
-  // =======================================================
-
-  async getServicios() {
-    await window.AnnlyReady;
-    // Se piden en el orden en que se crearon (así las categorías salen en orden de creación);
-    // si esa columna no existiera, se piden sin orden.
-    let {
-      data,
-      error
-    } = await sbClient
-      .from('services')
-      .select('*')
-      .eq('business_id', BUSINESS_ID)
-      .order('creado_en', { ascending: true });
-    if (error) {
-      ({
-        data,
-        error
-      } = await sbClient
-        .from('services')
-        .select('*')
-        .eq('business_id', BUSINESS_ID));
-    }
-    if (error || !data) {
-      return [];
-    }
-    return data.map(s => ({
-
-      id: s.id,
-
-      name: s.nombre,
-
-      cat: s.categoria,
-
-      price:
-        parseFloat(s.precio) || 0,
-
-      precioTexto:
-        s.precio_texto,
-
-      dur:
-        s.dur,
-
-      durMin:
-        s.dur_min,
-
-      active:
-        s.activo,
-
-      esEval:
-        s.es_eval,
-
-      requiereAbono:
-        s.requiere_abono,
-
-      abonoMonto:
-        s.abono_monto,
-
-      abonoTipo:
-        s.abono_tipo,
-
-      desc:
-        s.descripcion,
-
-      includes:
-        s.includes || [],
-
-      imagenUrl:
-        s.imagen_url || null,
-
-      esDoble:
-        s.es_doble || false
-
-    }));
-  },
-
-
-  // Guarda el catálogo SIN recrear los servicios: cada uno conserva su id, así las
-  // asignaciones de profesionales (employee_services) no se pierden al editar.
-  async guardarServicios(serviciosArr) {
-
-    await window.AnnlyReady;
-
-
-    const servicios =
-      typeof serviciosArr === 'string'
-        ? JSON.parse(serviciosArr)
-        : serviciosArr;
-
-
-    const esUuid = v =>
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        .test(String(v || ''));
-
-    const nuevoUuid = () =>
-      (window.crypto && typeof window.crypto.randomUUID === 'function')
-        ? window.crypto.randomUUID()
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-            const r = Math.random() * 16 | 0;
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-          });
-
-    const armarFila = s => ({
-
-      business_id:
-        BUSINESS_ID,
-
-      nombre:
-        s.name,
-
-      categoria:
-        s.cat,
-
-      precio:
-        s.price || 0,
-
-      precio_texto:
-        s.precioTexto || null,
-
-      dur:
-        s.dur,
-
-      dur_min:
-        s.durMin,
-
-      activo:
-        s.active,
-
-      es_eval:
-        s.esEval || false,
-
-      requiere_abono:
-        s.requiereAbono || false,
-
-      abono_monto:
-        s.abonoMonto,
-
-      abono_tipo:
-        s.abonoTipo,
-
-      descripcion:
-        s.desc,
-
-      includes:
-        s.includes || [],
-
-      imagen_url:
-        s.imagenUrl || null,
-
-      es_doble:
-        s.esDoble || false
-
-    });
-
-
-    const {
-      data: existentes
-    } = await sbClient
-      .from('services')
-      .select('id')
-      .eq('business_id', BUSINESS_ID);
-
-    const idsExistentes = (existentes || []).map(r => r.id);
-
-
-    // Respaldo: si los ids de la base no son uuid, se usa el método anterior
-    // (borrar todo y volver a insertar) para no arriesgar los servicios.
-    if (!idsExistentes.every(esUuid)) {
-
-      await sbClient
-        .from('services')
-        .delete()
-        .eq('business_id', BUSINESS_ID);
-
-      if (!servicios.length) {
-        return;
-      }
-
-      const {
-        error: errLegacy
-      } = await sbClient
-        .from('services')
-        .insert(servicios.map(armarFila));
-
-      if (errLegacy) {
-        console.error('Error guardando servicios:', errLegacy);
-      }
-
-      return;
-    }
-
-
-    // Servicios nuevos o viejos sin uuid: se les da uno (y se refleja en memoria)
-    servicios.forEach(s => {
-      if (!esUuid(s.id)) {
-        s.id = nuevoUuid();
-      }
-    });
-
-
-    // 1) Eliminar los que ya no están en la lista
-    const conservados = new Set(servicios.map(s => s.id));
-
-    const aBorrar = idsExistentes.filter(id => !conservados.has(id));
-
-    if (aBorrar.length) {
-
-      const {
-        error: errDel
-      } = await sbClient
-        .from('services')
-        .delete()
-        .in('id', aBorrar);
-
-      if (errDel) {
-        console.error('Error eliminando servicios:', errDel);
-      }
-    }
-
-
-    if (!servicios.length) {
-      return;
-    }
-
-
-    // 2) Crear o actualizar el resto conservando su id
-    const rows =
-      servicios.map(s => ({ id: s.id, ...armarFila(s) }));
-
-
-    const {
-      error
-    } = await sbClient
-      .from('services')
-      .upsert(
-        rows,
-        { onConflict: 'id' }
-      );
-
-
-    if (error) {
-
-      console.error(
-        'Error guardando servicios:',
-        error
-      );
-    }
-  },
-
-
-  async subirImagenServicio(file) {
-
-    await window.AnnlyReady;
-
-
-    const ext =
-      (
-        file.name
-          .split('.')
-          .pop() || 'jpg'
-      ).toLowerCase();
-
-
-    const path =
-      `${BUSINESS_ID}-svc-${Date.now()}.${ext}`;
-
-
-    const {
-      error: upErr
-    } = await sbClient
-      .storage
-      .from('servicios')
-      .upload(
-        path,
-        file,
-        {
-          upsert: true
-        }
-      );
-
-
-    if (upErr) {
-      throw upErr;
-    }
-
-
-    const {
-      data
-    } =
-      sbClient
-        .storage
-        .from('servicios')
-        .getPublicUrl(path);
-
-
-    return data.publicUrl;
-  },
-
-
-  // =======================================================
-  // BLOQUEOS
-  // =======================================================
-
-  async getBloqueos() {
-
-    await window.AnnlyReady;
-
-
-    // Con sucursal (sitio público): solo los bloqueos de esa sucursal
-    const locationId = arguments[0] || null;
-    let qF = sbClient.from('blocked_dates').select('fecha,motivo').eq('business_id', BUSINESS_ID);
-    let qH = sbClient.from('blocked_hours').select('fecha,hora').eq('business_id', BUSINESS_ID);
-    // Filas sin sucursal (anteriores a sucursales) aplican a todas por compatibilidad
-    if (locationId) {
-      const f = 'location_id.eq.' + locationId + ',location_id.is.null';
-      qF = qF.or(f); qH = qH.or(f);
-    }
-    const { data: fechas } = await qF;
-    const { data: horas } = await qH;
-
-
-    const horasObj = {};
-
-
-    (horas || []).forEach(h => {
-
-      (horasObj[h.fecha] ||= [])
-        .push(h.hora);
-
-    });
-
-
-    return {
-
-      dias:
-        (fechas || []).map(f => ({
-          fecha: f.fecha,
-          motivo: f.motivo
-        })),
-
-      horas:
-        horasObj
-    };
-  },
-
-
-  // Panel admin: todos los bloqueos del negocio con su sucursal (filas planas)
-  async getBloqueosDetalle() {
-    await window.AnnlyReady;
-    const [rF, rH] = await Promise.all([
-      sbClient.from('blocked_dates').select('fecha,motivo,location_id').eq('business_id', BUSINESS_ID),
-      sbClient.from('blocked_hours').select('fecha,hora,location_id').eq('business_id', BUSINESS_ID)
-    ]);
-    if (rF.error) throw rF.error;
-    if (rH.error) throw rH.error;
-    return {
-      dias: (rF.data || []).map(f => ({ fecha: f.fecha, motivo: f.motivo, locationId: f.location_id || null })),
-      horas: (rH.data || []).map(h => ({ fecha: h.fecha, hora: h.hora, locationId: h.location_id || null }))
-    };
-  },
-
-  // Reemplaza todos los bloqueos del negocio; cada fila lleva su sucursal
-  async guardarBloqueosDetalle(bloqueos) {
-    await window.AnnlyReady;
-    const dias = (bloqueos.dias || []).map(d => ({
-      business_id: BUSINESS_ID, fecha: d.fecha, motivo: d.motivo || 'No disponible', location_id: d.locationId || null
-    }));
-    const horas = (bloqueos.horas || []).map(h => ({
-      business_id: BUSINESS_ID, fecha: h.fecha, hora: h.hora, location_id: h.locationId || null
-    }));
-    const d1 = await sbClient.from('blocked_dates').delete().eq('business_id', BUSINESS_ID);
-    if (d1.error) throw d1.error;
-    const d2 = await sbClient.from('blocked_hours').delete().eq('business_id', BUSINESS_ID);
-    if (d2.error) throw d2.error;
-    if (dias.length) {
-      const { error } = await sbClient.from('blocked_dates').insert(dias);
-      if (error) throw error;
-    }
-    if (horas.length) {
-      const { error } = await sbClient.from('blocked_hours').insert(horas);
-      if (error) throw error;
-    }
-  },
-
-
-  async guardarBloqueos(bloqueos) {
-
-    await window.AnnlyReady;
-
-
-    await sbClient
-      .from('blocked_dates')
-      .delete()
-      .eq('business_id', BUSINESS_ID);
-
-
-    await sbClient
-      .from('blocked_hours')
-      .delete()
-      .eq('business_id', BUSINESS_ID);
-
-
-    if (bloqueos.dias?.length) {
-
-      await sbClient
-        .from('blocked_dates')
-        .insert(
-          bloqueos.dias.map(d => ({
-
-            business_id:
-              BUSINESS_ID,
-
-            fecha:
-              d.fecha,
-
-            motivo:
-              d.motivo
-
-          }))
-        );
-    }
-
-
-    const filas = [];
-
-
-    Object.keys(
-      bloqueos.horas || {}
-    ).forEach(fecha => {
-
-      (
-        bloqueos.horas[fecha] || []
-      ).forEach(hora => {
-
-        filas.push({
-
-          business_id:
-            BUSINESS_ID,
-
-          fecha,
-
-          hora
-
-        });
-
-      });
-
-    });
-
-
-    if (filas.length) {
-
-      await sbClient
-        .from('blocked_hours')
-        .insert(filas);
-    }
-  },
-
-
-  // =======================================================
-  // CITAS
-  // =======================================================
-
-  // opts (opcional, lo usa Reprogramar en el panel):
-  //   excluirIds: citas que no cuentan como ocupadas (la misma cita que se está moviendo)
-  //   locationId: sin profesional, solo cuenta lo ocupado en esa sucursal
-  async getHorasOcupadas(
-    fechaStr,
-    empleadoId,
-    opts
-  ) {
-
-    await window.AnnlyReady;
-
-
-    const fechaISO =
-      parseFechaTexto(fechaStr);
-
-
-    if (!fechaISO) {
-      return [];
-    }
-
-
-    let query =
-      sbClient
-        .from('appointments')
-        .select(
-          'id, hora, duracion_min, location_id'
-        )
-        .eq(
-          'business_id',
-          BUSINESS_ID
-        )
-        .eq(
-          'fecha',
-          fechaISO
-        )
-        .neq(
-          'estado',
-          'cancelada'
-        );
-
-
-    if (empleadoId) {
-
-      query =
-        query.eq(
-          'employee_id',
-          empleadoId
-        );
-    }
-
-
-    const {
-      data
-    } = await query;
-
-    const o = opts || {};
-    const excluir = (o.excluirIds || []).map(String);
-
-
-    return (data || [])
-      .filter(c => !excluir.includes(String(c.id)))
-      .filter(c => empleadoId || !o.locationId || !c.location_id || c.location_id === o.locationId)
-      .map(c => ({
-
-        hora:
-          formatHoraSitio(
-            c.hora
-          ),
-
-        duracion:
-          c.duracion_min || 60
-
-      }));
-  },
-
-
-  async getCitas() {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data
-    } = await sbClient
-      .from('appointments')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    const empleados =
-      await this.getEmpleados();
-
-
-    const mapaEmpleados =
-      Object.fromEntries(
-        empleados.map(
-          e => [e.id, e.nombre]
-        )
-      );
-
-
-    return (data || [])
-      .map(c => ({
-
-        id:
-          c.id,
-
-        nombre:
-          c.cliente_nombre,
-
-        telefono:
-          c.cliente_telefono,
-
-        servicio:
-          c.servicio_nombre,
-
-        fecha:
-          isoAFechaTexto(c.fecha),
-
-        hora:
-          formatHora12Cita(c.hora),
-
-        duracion:
-          c.duracion_min,
-
-        fechaISO:
-          c.fecha,
-
-        horaISO:
-          c.hora,
-
-        categoria:
-          c.categoria,
-
-        precioTotal:
-          c.precio_total,
-
-        precioFinal:
-          c.precio_final,
-
-        precioEsConsultar:
-          c.precio_es_consultar,
-
-        empleadoId:
-          c.employee_id,
-
-        locationId:
-          c.location_id || null,
-
-        empleadoNombre:
-          mapaEmpleados[
-            c.employee_id
-          ] || null,
-
-        abonoMonto:
-          c.abono_monto,
-
-        abonoTipo:
-          c.abono_tipo,
-
-        metodoPago:
-          c.metodo_pago,
-
-        descuentoCupon:
-          c.descuento_cupon,
-
-        certificadoMonto:
-          c.certificado_monto,
-
-        certificadoCodigo:
-          c.certificado_codigo,
-
-        comprobante:
-          c.comprobante,
-
-        completadaEn:
-          c.completada_en || null,
-
-        precioCobrado:
-          c.precio_cobrado,
-
-        comisionPct:
-          c.comision_pct != null ? Number(c.comision_pct) : null,
-
-        comisionMonto:
-          c.comision_monto != null ? Number(c.comision_monto) : null,
-
-        correo:
-          c.cliente_correo,
-
-        nota:
-          c.nota,
-
-        cuponAplicado:
-          c.cupon_aplicado,
-
-        certificadoSaldoRestante:
-          c.certificado_saldo_restante != null
-            ? Number(c.certificado_saldo_restante)
-            : null,
-
-        ajusteDetalle:
-          c.ajuste_detalle || '',
-
-        certificadoMotivoNoAplicado:
-          c.certificado_no_aplicado_motivo || '',
-
-        creadoEn:
-          c.creado_en || '',
-
-        estado:
-          c.estado,
-
-        cancelacionMotivo:
-          c.cancelacion_motivo || '',
-
-        canceladaEn:
-          c.cancelada_en || null,
-
-        grupoCitaId:
-          c.grupo_cita_id || null,
-
-        grupoPrincipal:
-          !!c.grupo_principal
-
-      }));
-  },
-
-
-  async guardarCita(cita) {
-
-    await window.AnnlyReady;
-
-
-    const fechaISO =
-      parseFechaTexto(
-        cita.fecha
-      );
-
-
-    // El saldo que le queda al certificado tras esta cita se guarda en la propia cita
-    // (así aparece en los correos y en el detalle). Si esa columna aún no existe en
-    // la base, se reintenta sin ella para no romper la reserva.
-    const armarFila = (conSaldo) => ({
-
-        business_id:
-          BUSINESS_ID,
-
-        employee_id:
-          cita.empleadoId || null,
-
-        cliente_nombre:
-          cita.nombre,
-
-        cliente_telefono:
-          cita.telefono,
-
-        cliente_correo:
-          cita.correo,
-
-        nota:
-          cita.nota,
-
-        servicio_nombre:
-          cita.servicio,
-
-        categoria:
-          cita.categoria,
-
-        precio_total:
-          cita.precioTotal,
-
-        precio_es_consultar:
-          cita.precioEsConsultar,
-
-        fecha:
-          fechaISO,
-
-        hora:
-          cita.hora,
-
-        duracion_min:
-          cita.duracionMin,
-
-        comprobante:
-          cita.comprobante,
-
-        abono_monto:
-          cita.abonoMonto,
-
-        abono_tipo:
-          cita.abonoTipo,
-
-        metodo_pago:
-          cita.metodoPago,
-
-        // Sucursal donde se reservó (sin dato, la base asigna la Principal)
-        ...((cita.locationId || window.ANNLY_SUCURSAL_ID) ? { location_id: cita.locationId || window.ANNLY_SUCURSAL_ID } : {}),
-
-        cupon_aplicado:
-          cita.cuponUsado,
-
-        descuento_cupon:
-          cita.descuentoCupon,
-
-        precio_final:
-          cita.precioFinal,
-
-        certificado_codigo:
-          cita.certificadoCodigo || null,
-
-        certificado_monto:
-          cita.certificadoMonto || null,
-
-        ...(
-          conSaldo && cita.certificadoSaldoRestante != null
-            ? { certificado_saldo_restante: cita.certificadoSaldoRestante }
-            : {}
-        ),
-
-        cita_id_externo:
-          cita.citaId,
-
-        // Abono pagado a mano (número + comprobante): queda por confirmar hasta que el
-        // negocio revise el pago. Con el botón real de Yappy o sin abono: confirmada.
-        estado:
-          cita.abonoPorConfirmar ? 'por_confirmar' : 'confirmada',
-
-        ...(
-          cita.grupoCitaId
-            ? { grupo_cita_id: cita.grupoCitaId, grupo_principal: !!cita.grupoPrincipal }
-            : {}
-        )
-
-    });
-
-    const insertar = (fila) =>
-      sbClient
-        .from('appointments')
-        .insert([fila])
-        .select('id')
-        .single();
-
-    let { data, error } = await insertar(armarFila(true));
-
-    if (
-      error &&
-      /certificado_saldo_restante/.test(error.message || '')
-    ) {
-      ({ data, error } = await insertar(armarFila(false)));
-    }
-
-
-    if (error) {
-
-      console.error(
-        'Error guardando la cita:',
-        error
-      );
-
-      throw error;
-    }
-
-    return data.id;
-  },
-
-  // Cita doble: guarda las 2 citas (una por profesional/clienta) amarradas con el mismo
-  // grupo_cita_id. citaPrincipal lleva el abono/comprobante de la reserva. Si la segunda
-  // falla, se deshace la primera para no dejar una cita huérfana a medias.
-  async guardarCitaDoble(citaPrincipal, citaSecundaria) {
-    await window.AnnlyReady;
-    const grupoCitaId = (window.crypto && typeof window.crypto.randomUUID === 'function')
-      ? window.crypto.randomUUID()
-      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-          const r = Math.random() * 16 | 0;
-          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-        });
-    const idPrincipal = await this.guardarCita({ ...citaPrincipal, grupoCitaId, grupoPrincipal: true });
-    try {
-      const idSecundaria = await this.guardarCita({ ...citaSecundaria, grupoCitaId, grupoPrincipal: false });
-      return { idPrincipal, idSecundaria, grupoCitaId };
-    } catch (e) {
-      await sbClient.from('appointments').delete().eq('id', idPrincipal);
-      throw e;
-    }
-  },
-
-  // Trae la cita pareja de una cita doble (o null si no tiene)
-  async getCitaPareja(citaId) {
-    await window.AnnlyReady;
-    const { data: actual } = await sbClient.from('appointments').select('grupo_cita_id')
-      .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
-    if (!actual || !actual.grupo_cita_id) return null;
-    const { data: pareja } = await sbClient.from('appointments').select('id, cliente_nombre, employee_id')
-      .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', actual.grupo_cita_id).neq('id', citaId).maybeSingle();
-    return pareja ? { id: pareja.id, clienteNombre: pareja.cliente_nombre, employeeId: pareja.employee_id } : null;
-  },
-
-  async reprogramarCita(
-    id,
-    fechaISO,
-    hora
-  ) {
-
-    await window.AnnlyReady;
-
-    // Si es parte de una cita doble, se reprograman las 2 juntas — nunca por separado.
-    const { data: actual } = await sbClient.from('appointments').select('grupo_cita_id')
-      .eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-
-    const base = sbClient.from('appointments').update({ fecha: fechaISO, hora }).eq('business_id', BUSINESS_ID);
-    const {
-      error
-    } = (actual && actual.grupo_cita_id)
-      ? await base.eq('grupo_cita_id', actual.grupo_cita_id)
-      : await base.eq('id', id);
-
-
-    if (error) {
-
-      console.error(
-        'Error reprogramando la cita:',
-        error
-      );
-
-      throw error;
-    }
-  },
-
-
-  // Caso sugerido al cancelar, según las horas que faltan para la cita y la política del negocio
-  // → { caso: 'a_tiempo'|'tarde'|'no_show', horasFaltan, horasAviso }
-  async sugerirCasoCancelacion(fechaISO, hora) {
-    const aj = await this.getAjustesFinanzas();
-    const [h, m] = String(hora || '0:00').split(':').map(n => parseInt(n, 10) || 0);
-    const inicio = new Date(fechaISO + 'T00:00:00');
-    inicio.setHours(h, m, 0, 0);
-    const horasFaltan = (inicio.getTime() - Date.now()) / 3600000;
-    const caso = horasFaltan < 0 ? 'no_show' : (horasFaltan >= aj.horasAviso ? 'a_tiempo' : 'tarde');
-    return { caso, horasFaltan, horasAviso: aj.horasAviso, creditoVigencia: aj.creditoVigencia };
-  },
-
-  async _codigoCertificadoUnico(prefijo = 'CERT') {
-    for (let i = 0; i < 6; i++) {
-      const codigo = prefijo + '-' + Math.random().toString(16).slice(2, 6).toUpperCase() + Math.random().toString(16).slice(2, 4).toUpperCase();
-      const { data: existe } = await sbClient.from('gift_certificates').select('id').eq('business_id', BUSINESS_ID).eq('codigo', codigo).maybeSingle();
-      if (!existe) return codigo;
-    }
-    throw new Error('No se pudo generar un código único.');
-  },
-
-  // Cancela aplicando la política (documento "Reglas de negocio para políticas", sección 3):
-  // opciones = { caso: 'a_tiempo'|'tarde'|'no_show'|'negocio', abonoDestino?: 'credito'|'reembolso' (solo 'negocio'), reembolsoMetodo? }
-  //  - Certificado: siempre se devuelve al saldo lo descontado (la Cortesía se pierde si no se presentó).
-  //  - Abono: a_tiempo → crédito · tarde/no_show → penalidad · negocio → crédito o reembolso.
-  //  - Crédito y penalidad entran como ingreso hoy; el reembolso queda en la bitácora.
-  async cancelarConPolitica(id, motivo, opciones, detalle) {
-    await window.AnnlyReady;
-    const caso = opciones && opciones.caso;
-    if (!['a_tiempo', 'tarde', 'no_show', 'negocio', 'abono_rechazado'].includes(caso)) throw new Error('Elige el caso de la cancelación.');
-    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la cancelación.');
-
-    const { data: actual, error: errA } = await sbClient.from('appointments').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-    if (errA) throw errA;
-    if (!actual) throw new Error('La cita no existe.');
-    if (actual.estado === 'cancelada') throw new Error('Esta cita ya estaba cancelada.');
-    if (actual.completada_en) throw new Error('Esta cita ya fue completada; no se puede cancelar.');
-    let filas = [actual];
-    if (actual.grupo_cita_id) {
-      const { data: par } = await sbClient.from('appointments').select('*').eq('business_id', BUSINESS_ID).eq('grupo_cita_id', actual.grupo_cita_id);
-      if (par && par.length) filas = par;
-    }
-    const principal = filas.find(f => f.grupo_principal) || filas[0];
-    const aj = await this.getAjustesFinanzas();
-    const hoy = this._hoyISO();
-    const r2 = n => Math.round(n * 100) / 100;
-
-    // 1) Certificados: se devuelve al saldo lo que se había descontado en cada cita
-    const devuelto = {};
-    for (const f of filas) {
-      const monto = Number(f.certificado_monto || 0);
-      if (!f.certificado_codigo || !(monto > 0)) continue;
-      const { data: cert } = await sbClient.from('gift_certificates').select('*')
-        .eq('business_id', BUSINESS_ID).eq('codigo', String(f.certificado_codigo).toUpperCase()).maybeSingle();
-      if (!cert) continue;
-      if (cert.tipo === 'cortesia' && caso === 'no_show') continue; // la cortesía se pierde si no se presentó
-      const nuevo = r2(Math.min(Number(cert.monto_inicial), Number(cert.saldo_restante) + monto));
-      const cambios = { saldo_restante: nuevo };
-      if (cert.estado !== 'cancelado' && cert.estado !== 'pendiente_pago') cambios.estado = 'activo';
-      const { error: errC } = await sbClient.from('gift_certificates').update(cambios).eq('id', cert.id);
-      if (errC) throw errC;
-      const filaCanje = { certificate_id: cert.id, business_id: BUSINESS_ID, appointment_id: f.id, monto_aplicado: -monto, saldo_despues: nuevo };
-      let { error: errR } = await sbClient.from('gift_certificate_redemptions').insert([filaCanje]);
-      if (errR) console.error('No se pudo registrar la devolución en el historial del certificado:', errR);
-      devuelto[f.id] = monto;
-    }
-
-    // 2) Abono (en citas dobles vive en la cita principal)
-    // Abono rechazado: el dinero nunca llegó, así que no hay saldo a favor, penalidad ni reembolso
-    const abono = caso === 'abono_rechazado' ? 0 : r2(Number(principal.abono_monto || 0));
-    const metodoAbono = principal.metodo_pago === 'yappy' ? 'yappy' : 'transferencia';
-    let destino = null, creditoCodigo = null, creditoVence = null;
-    if (abono > 0) {
-      destino = caso === 'a_tiempo' ? 'credito' : (caso === 'negocio' ? (opciones.abonoDestino === 'reembolso' ? 'reembolso' : 'credito') : 'penalidad');
-      const concepto = principal.servicio_nombre || 'servicio';
-
-      if (destino === 'credito') {
-        creditoCodigo = await this._codigoCertificadoUnico('CRED');
-        const vence = new Date(hoy + 'T00:00:00'); vence.setDate(vence.getDate() + (aj.creditoVigencia || 30));
-        creditoVence = vence.getFullYear() + '-' + String(vence.getMonth() + 1).padStart(2, '0') + '-' + String(vence.getDate()).padStart(2, '0');
-        const { data: cred, error: errCred } = await sbClient.from('gift_certificates').insert([{
-          business_id: BUSINESS_ID, codigo: creditoCodigo, tipo: 'credito', estado: 'activo',
-          monto_inicial: abono, saldo_restante: abono,
-          comprador_nombre: principal.cliente_nombre || null, comprador_telefono: principal.cliente_telefono || null, comprador_correo: principal.cliente_correo || null,
-          destinatario_nombre: principal.cliente_nombre || null, destinatario_telefono: principal.cliente_telefono || null, destinatario_correo: principal.cliente_correo || null,
-          nota: `Saldo a favor por la cita cancelada del ${this._fmtFechaCorta(principal.fecha)} (${concepto})`,
-          fecha_vencimiento: creditoVence
-        }]).select('id').single();
-        if (errCred) throw errCred;
-        const { error: errP } = await sbClient.from('finance_payments').insert([{
-          business_id: BUSINESS_ID, origen: 'credito', estado: 'confirmado', metodo: metodoAbono, monto: abono, fecha: hoy,
-          concepto: `Saldo a favor por cancelación — ${concepto}`, cliente_nombre: principal.cliente_nombre || null,
-          employee_id: principal.employee_id || null, referencia: creditoCodigo, location_id: principal.location_id || null
-        }]);
-        if (errP) console.error('Se creó el crédito, pero no se pudo registrar en Finanzas:', errP);
-      } else if (destino === 'penalidad') {
-        const { error: errP } = await sbClient.from('finance_payments').insert([{
-          business_id: BUSINESS_ID, origen: 'penalidad', estado: 'confirmado', metodo: metodoAbono, monto: abono, fecha: hoy,
-          concepto: `Penalidad por ${caso === 'no_show' ? 'no presentarse' : 'cancelación tardía'} — ${concepto}`,
-          cliente_nombre: principal.cliente_nombre || null, employee_id: principal.employee_id || null,
-          referencia: principal.comprobante || null, location_id: principal.location_id || null
-        }]);
-        if (errP) throw errP;
-      }
-      // reembolso: no es ingreso; queda en la bitácora (abajo)
-    }
-
-    // 3) La cita (y su pareja) queda cancelada con lo que pasó — el correo de cancelación lo lee de aquí
-    const ahora = new Date().toISOString();
-    for (const f of filas) {
-      const base = { estado: 'cancelada' };
-      const completo = {
-        ...base, cancelacion_motivo: motivo.trim(), cancelada_en: ahora, cancelacion_caso: caso,
-        certificado_devuelto: devuelto[f.id] || 0,
-        ...(f.id === principal.id && abono > 0 ? {
-          abono_destino: destino, credito_codigo: creditoCodigo, credito_vence: creditoVence,
-          reembolso_metodo: destino === 'reembolso' ? (opciones.reembolsoMetodo || metodoAbono) : null
-        } : {})
-      };
-      let { error } = await sbClient.from('appointments').update(completo).eq('id', f.id).eq('business_id', BUSINESS_ID);
-      if (error) {
-        console.error('Faltan columnas de cancelación (¿corriste el SQL?). Se cancela igual:', error);
-        ({ error } = await sbClient.from('appointments').update(base).eq('id', f.id).eq('business_id', BUSINESS_ID));
-      }
-      if (error) throw error;
-      await this.registrarAccion({ entidad: 'cita', entidadId: f.id, accion: 'cancelada', motivo: motivo.trim(), monto: f.id === principal.id ? abono : null,
-        detalle: { ...(detalle || {}), caso, abonoDestino: destino, creditoCodigo, certificadoDevuelto: devuelto[f.id] || 0 } });
-    }
-    if (destino === 'reembolso') {
-      await this.registrarAccion({ entidad: 'reembolso', entidadId: principal.id, accion: 'reembolso_abono', motivo: motivo.trim(), monto: abono,
-        detalle: { metodo: opciones.reembolsoMetodo || metodoAbono, cliente: principal.cliente_nombre } });
-    }
-    return { caso, abono, destino, creditoCodigo, creditoVence, certificadoDevuelto: Object.values(devuelto).reduce((a, b) => a + b, 0) };
-  },
-
-  // El negocio revisó el comprobante y el abono sí llegó: la cita (y su pareja si es doble)
-  // pasa a confirmada. El webhook de correos manda entonces la confirmación al cliente.
-  async confirmarAbonoCita(id) {
-    await window.AnnlyReady;
-    const { data: c, error } = await sbClient.from('appointments').select('id, grupo_cita_id, estado').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-    if (error) throw error;
-    if (!c) throw new Error('La cita no existe.');
-    if (c.estado !== 'por_confirmar') throw new Error('Esta cita ya no está por confirmar.');
-    let q = sbClient.from('appointments').update({ estado: 'confirmada', abono_confirmado_en: new Date().toISOString() }).eq('business_id', BUSINESS_ID);
-    q = c.grupo_cita_id ? q.eq('grupo_cita_id', c.grupo_cita_id) : q.eq('id', id);
-    let { error: errU } = await q;
-    if (errU) {
-      // Sin la columna abono_confirmado_en (SQL pendiente) se confirma igual
-      let q2 = sbClient.from('appointments').update({ estado: 'confirmada' }).eq('business_id', BUSINESS_ID);
-      q2 = c.grupo_cita_id ? q2.eq('grupo_cita_id', c.grupo_cita_id) : q2.eq('id', id);
-      ({ error: errU } = await q2);
-    }
-    if (errU) throw errU;
-    await this.registrarAccion({ entidad: 'cita', entidadId: id, accion: 'abono_confirmado', motivo: 'Abono verificado por el negocio' });
-  },
-
-  // El abono no llegó: la cita se cancela sin penalidad ni saldo a favor (no hubo dinero),
-  // y el certificado aplicado vuelve a su saldo.
-  async rechazarAbonoCita(id, motivo) {
-    return this.cancelarConPolitica(id, motivo, { caso: 'abono_rechazado' }, { tipo: 'abono_rechazado' });
-  },
-
-  async cancelarCita(id, motivo, detalle) {
-    await window.AnnlyReady;
-
-    // Si es parte de una cita doble, se cancelan las 2 juntas — siempre, sin excepción.
-    const { data: actual } = await sbClient.from('appointments').select('grupo_cita_id')
-      .eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-    let ids = [id];
-    if (actual && actual.grupo_cita_id) {
-      const { data: pareja } = await sbClient.from('appointments').select('id')
-        .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', actual.grupo_cita_id);
-      if (pareja && pareja.length) ids = pareja.map(p => p.id);
-    }
-
-    const base = { estado: 'cancelada' };
-    const conMotivo = motivo ? { ...base, cancelacion_motivo: motivo, cancelada_en: new Date().toISOString() } : base;
-    let { error } = await sbClient.from('appointments').update(conMotivo).in('id', ids).eq('business_id', BUSINESS_ID);
-    if (error && motivo) {
-      // Si las columnas del motivo aún no existen, se cancela igual (el motivo queda en la bitácora)
-      ({ error } = await sbClient.from('appointments').update(base).in('id', ids).eq('business_id', BUSINESS_ID));
-    }
-    if (error) {
-      console.error('Error cancelando la cita:', error);
-      throw error;
-    }
-    if (motivo) {
-      for (const cid of ids) {
-        await this.registrarAccion({ entidad: 'cita', entidadId: cid, accion: 'cancelada', motivo, monto: null, detalle });
-      }
-    }
-  },
-
-
-  // =======================================================
-  // PROMO
-  // =======================================================
-
-  async getPromo() {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data
-    } = await sbClient
-      .from('promo_banner')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .maybeSingle();
-
-
-    if (!data) {
-      return {
-        activa: false
-      };
-    }
-
-
-    return {
-
-      activa:
-        data.activa,
-
-      tema:
-        data.tema,
-
-      etiqueta:
-        data.etiqueta,
-
-      festejo:
-        data.festejo,
-
-      servicio:
-        data.servicio,
-
-      precioNormal:
-        data.precio_normal,
-
-      precioPromo:
-        data.precio_promo,
-
-      vigencia:
-        data.vigencia
-
-    };
-  },
-
-
-  async guardarPromo(promo) {
-
-    await window.AnnlyReady;
-
-
-    await sbClient
-      .from('promo_banner')
-      .upsert({
-
-        business_id:
-          BUSINESS_ID,
-
-        activa:
-          promo.activa,
-
-        tema:
-          promo.tema,
-
-        etiqueta:
-          promo.etiqueta,
-
-        festejo:
-          promo.festejo,
-
-        servicio:
-          promo.servicio,
-
-        precio_normal:
-          promo.precioNormal || null,
-
-        precio_promo:
-          promo.precioPromo || null,
-
-        vigencia:
-          promo.vigencia
-
-      });
-  },
-
-
-  // =======================================================
-  // RULETA
-  // =======================================================
-
-  async getRuletaConfig() {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data: feat
-    } = await sbClient
-      .from('business_features')
-      .select('ruleta_premios')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .maybeSingle();
-
-
-    const {
-      data: premios
-    } = await sbClient
-      .from('roulette_prizes')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    return {
-
-      activa:
-        !!(
-          feat &&
-          feat.ruleta_premios
-        ),
-
-      premios:
-        (premios || [])
-          .map(p => ({
-
-            premio:
-              p.nombre,
-
-            probabilidad:
-              p.probabilidad,
-
-            activo:
-              p.activo,
-
-            stock:
-              p.stock
-
-          }))
-
-    };
-  },
-
-
-  async guardarRuletaConfig(payload) {
-
-    await window.AnnlyReady;
-
-
-    await sbClient
-      .from('business_features')
-      .update({
-        ruleta_premios:
-          payload.activa
-      })
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    await sbClient
-      .from('roulette_prizes')
-      .delete()
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    if (payload.premios?.length) {
-
-      await sbClient
-        .from('roulette_prizes')
-        .insert(
-
-          payload.premios.map(p => ({
-
-            business_id:
-              BUSINESS_ID,
-
-            nombre:
-              p.premio,
-
-            probabilidad:
-              p.probabilidad,
-
-            activo:
-              p.activo,
-
-            stock:
-              p.stock
-
-          }))
-
-        );
-    }
-  },
-
-
-  async verificarElegibilidadRuleta(tel) {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data: yaParticipo
-    } = await sbClient
-      .from('roulette_wins')
-      .select('id')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'telefono',
-        tel
-      )
-      .limit(1);
-
-
-    if (yaParticipo?.length) {
-
-      return {
-        elegible: false
-      };
-    }
-
-
-    const {
-      data: feat
-    } = await sbClient
-      .from('business_features')
-      .select('ruleta_premios')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .maybeSingle();
-
-
-    return {
-
-      elegible:
-        !!(
-          feat &&
-          feat.ruleta_premios
-        )
-
-    };
-  },
-
-
-  async girarRuleta(
-    identificador,
-    nombre,
-    citaId
-  ) {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data: premios
-    } = await sbClient
-      .from('roulette_prizes')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'activo',
-        true
-      );
-
-
-    const disponibles =
-      (premios || [])
-        .filter(
-          p =>
-            p.stock === null ||
-            p.stock > 0
-        );
-
-
-    if (!disponibles.length) {
-
-      return {
-        ok: false,
-        motivo: 'sin_premios'
-      };
-    }
-
-
-    const total =
-      disponibles.reduce(
-        (s, p) =>
-          s + (p.probabilidad || 0),
-        0
-      );
-
-
-    let rand =
-      Math.random() * total;
-
-
-    let elegido =
-      disponibles[
-        disponibles.length - 1
-      ];
-
-
-    for (
-      const p of disponibles
-    ) {
-
-      rand -=
-        p.probabilidad || 0;
-
-
-      if (rand <= 0) {
-
-        elegido = p;
-        break;
-      }
-    }
-
-
-    const codigo =
-      genCodigoCupon();
-
-
-    await sbClient
-      .from('roulette_wins')
-      .insert([{
-
-        business_id:
-          BUSINESS_ID,
-
-        telefono:
-          identificador,
-
-        nombre,
-
-        prize_id:
-          elegido.id,
-
-        codigo_cupon:
-          codigo,
-
-        usado:
-          false
-
-      }]);
-
-
-    if (elegido.stock !== null) {
-
-      await sbClient
-        .from('roulette_prizes')
-        .update({
-          stock:
-            elegido.stock - 1
-        })
-        .eq(
-          'id',
-          elegido.id
-        );
-    }
-
-
-    return {
-
-      ok: true,
-
-      premio:
-        elegido.nombre,
-
-      codigoCanje:
-        codigo
-
-    };
-  },
-
-
-  async validarCupon(codigo) {
-
-    await window.AnnlyReady;
-
-
-    const cod =
-      (codigo || '')
-        .toUpperCase()
-        .trim();
-
-
-    if (!cod) {
-
-      return {
-        valido: false,
-        motivo: 'codigo_vacio'
-      };
-    }
-
-
-    const {
-      data
-    } = await sbClient
-      .from('roulette_wins')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'codigo_cupon',
-        cod
-      )
-      .maybeSingle();
-
-
-    if (!data) {
-
-      return {
-        valido: false,
-        motivo: 'codigo_no_encontrado'
-      };
-    }
-
-
-    if (data.usado) {
-
-      return {
-        valido: false,
-        motivo: 'ya_canjeado'
-      };
-    }
-
-
-    const {
-      data: premio
-    } = await sbClient
-      .from('roulette_prizes')
-      .select('nombre')
-      .eq(
-        'id',
-        data.prize_id
-      )
-      .maybeSingle();
-
-
-    const nombre =
-      premio?.nombre || '';
-
-
-    const pctMatch =
-      nombre.match(
-        /(\d+)\s*%/
-      );
-
-
-    if (pctMatch) {
-
-      return {
-
-        valido: true,
-
-        tipo:
-          'porcentaje',
-
-        valor:
-          parseInt(
-            pctMatch[1]
-          ),
-
-        premio:
-          nombre
-
-      };
-    }
-
-
-    return {
-
-      valido: true,
-
-      tipo:
-        'especial',
-
-      premio:
-        nombre
-
-    };
-  },
-
-
-  async marcarCuponCanjeado(codigo) {
-
-    await window.AnnlyReady;
-
-
-    await sbClient
-      .from('roulette_wins')
-      .update({
-        usado: true
-      })
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'codigo_cupon',
-        (
-          codigo || ''
-        )
-          .toUpperCase()
-          .trim()
-      );
-
-
-    return {
-      ok: true
-    };
-  },
-
-
-  // =======================================================
-  // CLIENTAS
-  // =======================================================
-
-  async getClientas() {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data
-    } = await sbClient
-      .from('clients')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    return (data || [])
-      .map(c => ({
-
-        nombre:
-          c.nombre,
-
-        telefono:
-          c.telefono,
-
-        correo:
-          c.email,
-
-        notas:
-          c.notas
-
-      }));
-  },
-
-
-  async guardarClientas(clientasArr) {
-
-    await window.AnnlyReady;
-
-
-    const clientas =
-      typeof clientasArr === 'string'
-        ? JSON.parse(clientasArr)
-        : clientasArr;
-
-
-    await sbClient
-      .from('clients')
-      .delete()
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    if (!clientas.length) {
-      return;
-    }
-
-
-    await sbClient
-      .from('clients')
-      .insert(
-
-        clientas.map(c => ({
-
-          business_id:
-            BUSINESS_ID,
-
-          nombre:
-            c.nombre,
-
-          telefono:
-            c.telefono,
-
-          email:
-            c.correo,
-
-          notas:
-            c.notas
-
-        }))
-
-      );
-  },
-
-
-  async upsertClienteDesdeReserva(
-    nombre,
-    telefono,
-    correo
-  ) {
-
-    await window.AnnlyReady;
-
-
-    if (!telefono) {
-      return;
-    }
-
-
-    const {
-      data: existente,
-      error: errBusqueda
-    } = await sbClient
-      .from('clients')
-      .select('id')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'telefono',
-        telefono
-      )
-      .maybeSingle();
-
-
-    if (errBusqueda) {
-
-      console.error(
-        'Error buscando cliente existente:',
-        errBusqueda
-      );
-
-      return;
-    }
-
-
-    if (existente) {
-
-      const {
-        error
-      } = await sbClient
-        .from('clients')
-        .update({
-
-          nombre,
-
-          email:
-            correo || null
-
-        })
-        .eq(
-          'id',
-          existente.id
-        );
-
-
-      if (error) {
-
-        console.error(
-          'Error actualizando cliente:',
-          error
-        );
-      }
-
-    } else {
-
-      const {
-        error
-      } = await sbClient
-        .from('clients')
-        .insert([{
-
-          business_id:
-            BUSINESS_ID,
-
-          nombre,
-
-          telefono,
-
-          email:
-            correo || null
-
-        }]);
-
-
-      if (error) {
-
-        console.error(
-          'Error creando cliente:',
-          error
-        );
-      }
-    }
-  },
-
-
-  // =======================================================
-  // EQUIPO / EMPLEADOS
-  // =======================================================
-
-  LIMITE_EMPLEADOS_POR_PLAN: {
-
-    trial: 1,
-
-    basic: 1,
-
-    medium: 2,
-
-    ultimate: 3
-
-  },
-
-
-  async getEmpleados() {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data,
-      error
-    } = await sbClient
-      .from('employees')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .order(
-        'creado_en'
-      );
-
-
-    if (error) {
-
-      console.error(
-        'Error leyendo empleados:',
-        error
-      );
-
-      return [];
-    }
-
-
-    return (data || [])
-      .map(e => ({
-
-        id:
-          e.id,
-
-        nombre:
-          e.nombre,
-
-        telefono:
-          e.telefono,
-
-        correo:
-          e.correo,
-
-        fotoUrl:
-          e.foto_url,
-
-        activo:
-          e.activo,
-
-        comisionGlobal:
-          e.comision_global != null ? Number(e.comision_global) : null,
-
-        bio:
-          e.bio || '',
-
-        esDueno:
-          e.es_dueno || false
-
-      }));
-  },
-
-
-  // Garantiza que el dueño exista como empleado y que su ficha traiga los datos
-  // con los que se inscribió (correo de su cuenta y WhatsApp del negocio). Solo
-  // completa campos vacíos: nunca pisa lo que el dueño ya editó.
-  async asegurarEmpleadoDueno() {
-
-    await window.AnnlyReady;
-
-    const biz = window.ANNLY_BUSINESS || {};
-
-    // Teléfono: el WhatsApp del registro (guardado como 507 + número)
-    let telefonoDueno = (biz.whatsapp || '').replace(/\D/g, '');
-    if (telefonoDueno.startsWith('507') && telefonoDueno.length > 8) {
-      telefonoDueno = telefonoDueno.substring(3);
-    }
-
-    // Correo y nombre de la cuenta: solo si quien está en el panel ES el dueño
-    // (un Platform Admin viendo otro negocio no debe cargar su propio correo).
-    let correoDueno = null;
-    let nombreCuenta = null;
-
-    if (!window.ANNLY_PLATFORM_ADMIN) {
-      try {
-        const { data } = await sbClient.auth.getUser();
-        const u = data && data.user;
-        correoDueno = (u && u.email) || null;
-        nombreCuenta = (u && u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || null;
-      } catch (e) {}
-    }
-
-    const { data: duenos } = await sbClient
-      .from('employees')
-      .select('id, telefono, correo')
-      .eq('business_id', BUSINESS_ID)
-      .eq('es_dueno', true)
-      .limit(1);
-
-    if (duenos && duenos.length) {
-
-      const d = duenos[0];
-      const cambios = {};
-
-      if (!d.telefono && telefonoDueno) cambios.telefono = telefonoDueno;
-      if (!d.correo && correoDueno) cambios.correo = correoDueno;
-
-      if (Object.keys(cambios).length) {
-        await sbClient.from('employees').update(cambios).eq('id', d.id);
-      }
-
-      return;
-    }
-
-    // Sin fila de dueño: si ya hay empleados (negocios viejos) no se toca nada.
-    const { count } = await sbClient
-      .from('employees')
-      .select('id', { count: 'exact', head: true })
-      .eq('business_id', BUSINESS_ID);
-
-    if (count && count > 0) {
-      return;
-    }
-
-    await sbClient
-      .from('employees')
-      .insert([{
-        business_id: BUSINESS_ID,
-        nombre: nombreCuenta || biz.nombre || 'Dueño/a',
-        telefono: telefonoDueno || null,
-        correo: correoDueno,
-        activo: true,
-        es_dueno: true
-      }]);
-  },
-
-
-  async guardarEmpleado(empleado) {
-
-    await window.AnnlyReady;
-
-
-    const row = {
-
-      business_id:
-        BUSINESS_ID,
-
-      nombre:
-        empleado.nombre,
-
-      telefono:
-        empleado.telefono || null,
-
-      correo:
-        empleado.correo || null,
-
-      foto_url:
-        empleado.fotoUrl || null,
-
-      bio:
-        (empleado.bio || '').trim() || null,
-
-      activo:
-        empleado.activo !== false,
-
-      comision_global:
-        empleado.comisionGlobal != null ? Number(empleado.comisionGlobal) : null
-
-    };
-
-
-    if (empleado.id) {
-
-      const {
-        error
-      } = await sbClient
-        .from('employees')
-        .update(row)
-        .eq(
-          'id',
-          empleado.id
-        );
-
-
-      if (error) {
-        throw error;
-      }
-
-
-      return empleado.id;
-
-    } else {
-
-      const {
-        data,
-        error
-      } = await sbClient
-        .from('employees')
-        .insert([row])
-        .select()
-        .single();
-
-
-      if (error) {
-        throw error;
-      }
-
-
-      return data.id;
-    }
-  },
-
-
-  async eliminarEmpleado(id) {
-
-    await window.AnnlyReady;
-
-
-    const {
-      error
-    } = await sbClient
-      .from('employees')
-      .delete()
-      .eq(
-        'id',
-        id
-      );
-
-
-    if (error) {
-      throw error;
-    }
-  },
-
-
-  async subirFotoEmpleado(file) {
-
-    await window.AnnlyReady;
-
-
-    const ext =
-      (
-        file.name
-          .split('.')
-          .pop() || 'jpg'
-      ).toLowerCase();
-
-
-    const path =
-      `${BUSINESS_ID}-emp-${Date.now()}.${ext}`;
-
-
-    const {
-      error: upErr
-    } = await sbClient
-      .storage
-      .from('servicios')
-      .upload(
-        path,
-        file,
-        {
-          upsert: true
-        }
-      );
-
-
-    if (upErr) {
-      throw upErr;
-    }
-
-
-    const {
-      data
-    } =
-      sbClient
-        .storage
-        .from('servicios')
-        .getPublicUrl(path);
-
-
-    return data.publicUrl;
-  },
-
-
-  async getEmpleadoServicios(
-    empleadoId
-  ) {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data
-    } = await sbClient
-      .from('employee_services')
-      .select('service_id')
-      .eq(
-        'employee_id',
-        empleadoId
-      );
-
-
-    return (data || [])
-      .map(
-        r => r.service_id
-      );
-  },
-
-
-  // servicios: acepta un array de ids ('svc1','svc2') o de objetos con comisión
-  // por servicio ({ id:'svc1', comision:60 }, { id:'svc2', comision:null }).
-  async guardarEmpleadoServicios(
-    empleadoId,
-    servicios
-  ) {
-
-    await window.AnnlyReady;
-
-
-    const {
-      error: errDel
-    } = await sbClient
-      .from('employee_services')
-      .delete()
-      .eq(
-        'employee_id',
-        empleadoId
-      );
-
-    if (errDel) {
-      throw errDel;
-    }
-
-
-    if (!servicios.length) {
-      return;
-    }
-
-
-    const {
-      error: errIns
-    } = await sbClient
-      .from('employee_services')
-      .insert(
-
-        servicios.map(
-          s => {
-            const esObjeto = s && typeof s === 'object';
-            return {
-
-              employee_id:
-                empleadoId,
-
-              service_id:
-                esObjeto ? s.id : s,
-
-              comision:
-                esObjeto && s.comision != null ? Number(s.comision) : null
-
-            };
-          }
-        )
-
-      );
-
-    if (errIns) {
-      throw errIns;
-    }
-  },
-
-  // Comisión por servicio ya asignada a un empleado: { serviceId: comision|null }
-  async getComisionesServiciosEmpleado(empleadoId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('employee_services')
-      .select('service_id, comision').eq('employee_id', empleadoId);
-    if (error) throw error;
-    const mapa = {};
-    (data || []).forEach(r => { mapa[r.service_id] = r.comision != null ? Number(r.comision) : null; });
-    return mapa;
-  },
-
-
-  async getMapaServiciosEmpleados() {
-
-    await window.AnnlyReady;
-
-
-    const {
-      data: empleados
-    } = await sbClient
-      .from('employees')
-      .select('id')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'activo',
-        true
-      );
-
-
-    const ids =
-      (empleados || [])
-        .map(
-          e => e.id
-        );
-
-
-    if (!ids.length) {
-      return {};
-    }
-
-
-    const {
-      data
-    } = await sbClient
-      .from('employee_services')
-      .select(
-        'employee_id, service_id'
-      )
-      .in(
-        'employee_id',
-        ids
-      );
-
-
-    const mapa = {};
-
-
-    (data || []).forEach(r => {
-
-      (
-        mapa[r.service_id] ||=
-        []
-      ).push(
-        r.employee_id
-      );
-
-    });
-
-
-    return mapa;
-  },
-
-
-  async getEmpleadosParaServicio(
-    serviceId
-  ) {
-
-    await window.AnnlyReady;
-
-
-    // Se pide también la presentación (bio); si esa columna aún no existe en la
-    // base, se reintenta sin ella para no romper el selector de profesional.
-    let {
-      data: empleados,
-      error: errEmp
-    } = await sbClient
-      .from('employees')
-      .select(
-        'id, nombre, foto_url, bio'
-      )
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'activo',
-        true
-      );
-
-    if (errEmp) {
-      const reintento = await sbClient
-        .from('employees')
-        .select(
-          'id, nombre, foto_url'
-        )
-        .eq(
-          'business_id',
-          BUSINESS_ID
-        )
-        .eq(
-          'activo',
-          true
-        );
-      empleados = reintento.data;
-    }
-
-
-    const lista =
-      empleados || [];
-
-
-    if (!lista.length) {
-      return [];
-    }
-
-
-    const ids =
-      lista.map(
-        e => e.id
-      );
-
-
-    const {
-      data: asignaciones
-    } = await sbClient
-      .from('employee_services')
-      .select(
-        'employee_id, service_id'
-      )
-      .in(
-        'employee_id',
-        ids
-      );
-
-
-    const porEmpleado = {};
-
-
-    (asignaciones || [])
-      .forEach(a => {
-
-        (
-          porEmpleado[
-            a.employee_id
-          ] ||= []
-        ).push(
-          a.service_id
-        );
-
-      });
-
-
-    return lista
-      .filter(e => {
-
-        const asign =
-          porEmpleado[e.id];
-
-
-        return (
-          !asign ||
-          !asign.length ||
-          asign.includes(serviceId)
-        );
-
-      })
-      .map(e => ({
-
-        id:
-          e.id,
-
-        nombre:
-          e.nombre,
-
-        fotoUrl:
-          e.foto_url,
-
-        bio:
-          e.bio || ''
-
-      }));
-  },
-
-
-  async getEmpleadoHorario(
-    empleadoId
-  ) {
-
-    await window.AnnlyReady;
-
-
-    // Se toma la fila que trae el horario completo (aunque hubiera filas viejas sin él).
-    // Con sucursal: el de esa sucursal. Sin sucursal: primero el de la Principal.
-    let q = sbClient.from('employee_schedules')
-      .select('horario_estructurado, location_id, locations(is_main)')
-      .eq('employee_id', empleadoId)
-      .not('horario_estructurado', 'is', null);
-    if (arguments[1]) q = q.eq('location_id', arguments[1]);
-    let { data, error } = await q;
-    if (error) {
-      // Respaldo si la relación con locations no está disponible
-      ({ data } = await sbClient.from('employee_schedules').select('horario_estructurado')
-        .eq('employee_id', empleadoId).not('horario_estructurado', 'is', null).limit(1));
-    }
-    if (!data || !data.length) return null;
-    const principal = data.find(r => r.locations && r.locations.is_main);
-    return (principal || data[0]).horario_estructurado;
-  },
-
-
-  async guardarEmpleadoHorario(
-    empleadoId,
-    horario
-  ) {
-
-    await window.AnnlyReady;
-
-
-    // Se reemplaza lo que hubiera (incluidas filas de un diseño anterior por día)
-    // por una sola fila con el horario completo.
-    const {
-      error: errBorrar
-    } = await sbClient
-      .from('employee_schedules')
-      .delete()
-      .eq(
-        'employee_id',
-        empleadoId
-      );
-
-    if (errBorrar) {
-      throw errBorrar;
-    }
-
-
-    const {
-      error: errInsert
-    } = await sbClient
-      .from('employee_schedules')
-      .insert([{
-        employee_id:
-          empleadoId,
-        horario_estructurado:
-          horario
-      }]);
-
-    if (errInsert) {
-      throw errInsert;
-    }
-  },
-
-
-  async eliminarEmpleadoHorario(
-    empleadoId
-  ) {
-
-    await window.AnnlyReady;
-
-
-    const {
-      error
-    } = await sbClient
-      .from('employee_schedules')
-      .delete()
-      .eq(
-        'employee_id',
-        empleadoId
-      );
-
-    if (error) {
-      throw error;
-    }
-  },
-
-
-  // =======================================================
-  // SUSCRIPCIÓN / PLAN / MÓDULOS
-  // =======================================================
-
-  // Trae la suscripción real del negocio, cruzada con su plan.
-  // Devuelve null si el negocio todavía no tiene ninguna fila en subscriptions
-  // (los negocios de prueba viejos, creados antes de esta arquitectura).
-  async getSuscripcionActual() {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient
-      .from('subscriptions')
-      .select('*, plans(*)')
-      .eq('business_id', BUSINESS_ID)
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error) { console.error('Error leyendo la suscripción:', error); return null; }
-    if (!data) return null;
-    return {
-      subscriptionId: data.id,
-      status: data.status,
-      currentPeriodEnd: data.current_period_end,
-      plan: {
-        id: data.plans.id,
-        code: data.plans.code,
-        name: data.plans.name,
-        price: Number(data.plans.monthly_price),
-        professionals: data.plans.included_professionals,
-        locations: data.plans.included_locations
-      }
-    };
-  },
-
-  // Códigos de feature incluidos en un plan (ej. ['AGENDA','CLIENTES','PAGOS', ...])
-  async getFeaturesDelPlan(planId) {
-    await window.AnnlyReady;
-    const { data } = await sbClient.from('plan_features').select('features(code)').eq('plan_id', planId);
-    return (data || []).map(r => r.features.code);
-  },
-
-  // Features incluidas en un plan buscándolo por su código (BASIC/MEDIUM/ULTIMATE).
-  // Usado para saber qué puede usar un negocio en trial, que siempre queda
-  // limitado a Basic sin importar el plan que tenga seleccionado.
-  async getFeaturesDePlanCode(code) {
-    await window.AnnlyReady;
-    const { data: plan } = await sbClient.from('plans').select('id').eq('code', code.toUpperCase()).maybeSingle();
-    if (!plan) return [];
-    return await this.getFeaturesDelPlan(plan.id);
-  },
-
-  // =======================================================
-  // FINANZAS
-  // =======================================================
-
-  // Periodo de cierre del negocio (semanal o quincenal)
-  async getAjustesFinanzas() {
-    await window.AnnlyReady;
-    const { data } = await sbClient.from('finance_settings').select('*').eq('business_id', BUSINESS_ID).maybeSingle();
-    return {
-      periodo: (data && data.periodo_cierre) || 'quincenal',
-      semanaInicia: (data && data.semana_inicia != null) ? data.semana_inicia : 1,
-      // Política de cancelación (configurable por negocio)
-      horasAviso: (data && data.horas_aviso_cancelacion != null) ? Number(data.horas_aviso_cancelacion) : 24,
-      creditoVigencia: (data && data.credito_vigencia_dias != null) ? Number(data.credito_vigencia_dias) : 30
-    };
-  },
-
-  async guardarPoliticaCancelacion({ horasAviso, creditoVigencia }) {
-    await window.AnnlyReady;
-    const h = Math.max(0, Math.min(168, parseInt(horasAviso, 10) || 0));
-    const d = Math.max(1, Math.min(365, parseInt(creditoVigencia, 10) || 30));
-    const { error } = await sbClient.from('finance_settings').upsert({
-      business_id: BUSINESS_ID, horas_aviso_cancelacion: h, credito_vigencia_dias: d,
-      actualizado_en: new Date().toISOString()
-    }, { onConflict: 'business_id' });
-    if (error) throw error;
-  },
-
-  async guardarAjustesFinanzas({ periodo, semanaInicia }) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('finance_settings').upsert({
-      business_id: BUSINESS_ID,
-      periodo_cierre: periodo === 'semanal' ? 'semanal' : 'quincenal',
-      semana_inicia: Number.isInteger(semanaInicia) ? semanaInicia : 1,
-      actualizado_en: new Date().toISOString()
-    }, { onConflict: 'business_id' });
-    if (error) throw error;
-  },
-
-  // Cobros confirmados del periodo (de citas completadas y de ventas en el local)
-  async getPagosFinanzas(desdeISO, hastaISO) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('finance_payments').select('*')
-      .eq('business_id', BUSINESS_ID).eq('estado', 'confirmado')
-      .gte('fecha', desdeISO).lte('fecha', hastaISO)
-      .order('fecha', { ascending: false });
-    if (error) throw error;
-    return (data || []).map(p => ({
-      id: p.id, origen: p.origen, appointmentId: p.appointment_id, localSaleId: p.local_sale_id, certificateId: p.certificate_id,
-      metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha,
-      concepto: p.concepto, cliente: p.cliente_nombre, empleadoId: p.employee_id, creadoEn: p.creado_en,
-      locationId: p.location_id || null
-    }));
-  },
-
-  async getGastosFinanzas(desdeISO, hastaISO) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('finance_expenses').select('*')
-      .eq('business_id', BUSINESS_ID)
-      .gte('fecha', desdeISO).lte('fecha', hastaISO)
-      .order('fecha', { ascending: false });
-    if (error) throw error;
-    return (data || []).map(g => ({
-      id: g.id, fecha: g.fecha, categoria: g.categoria, descripcion: g.descripcion,
-      monto: Number(g.monto), metodo: g.metodo, referencia: g.referencia, creadoEn: g.creado_en,
-      anulado: !!g.anulado, motivoAnulacion: g.anulado_motivo || '', anuladoEn: g.anulado_en || null,
-      locationId: g.location_id || null
-    }));
-  },
-
-  async registrarGasto(g) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('finance_expenses').insert([{
-      business_id: BUSINESS_ID, fecha: g.fecha, categoria: g.categoria,
-      descripcion: g.descripcion || null, monto: g.monto, metodo: g.metodo,
-      referencia: g.referencia || null,
-      ...(g.locationId ? { location_id: g.locationId } : {})
-    }]);
-    if (error) throw error;
-  },
-
-  // Bitácora de acciones (anulaciones, cancelaciones): quién, cuándo, por qué y los datos que tenía.
-  // Si no se puede guardar, no bloquea la acción; devuelve false y queda el aviso en la consola.
-  async registrarAccion({ entidad, entidadId, accion, motivo, monto, detalle }) {
-    await window.AnnlyReady;
-    try {
-      const { data: u } = await sbClient.auth.getUser();
-      const user = u && u.user;
-      const { error } = await sbClient.from('registro_acciones').insert([{
-        business_id: BUSINESS_ID, entidad, entidad_id: entidadId != null ? String(entidadId) : null,
-        accion, motivo, monto: monto != null ? monto : null, detalle: detalle || null,
-        usuario_id: user ? user.id : null, usuario_correo: user ? user.email : null
-      }]);
-      if (error) throw error;
-      return true;
-    } catch (e) {
-      console.error('No se pudo guardar el registro de la acción:', e);
-      return false;
-    }
-  },
-
-  // Anula un gasto: queda en la lista, tachado, con su motivo, y deja de contar en los totales.
-  async anularGasto(id, motivo, detalle) {
-    await window.AnnlyReady;
-    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
-    {
-      const { data: g } = await sbClient.from('finance_expenses').select('fecha, location_id').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-      if (g) {
-        const st = await this.estadoCierreMovimiento({ tipo: 'gasto', fecha: g.fecha, locationId: g.location_id });
-        if (st.cerrado) throw new Error('Este gasto es de un periodo ya cerrado: regístrale un ajuste en vez de anularlo.');
-      }
-    }
-    const { data: filas, error } = await sbClient.from('finance_expenses')
-      .update({ anulado: true, anulado_motivo: motivo.trim(), anulado_en: new Date().toISOString() })
-      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulado', false)
-      .select('id');
-    if (error) throw error;
-    if (!filas || !filas.length) throw new Error('El gasto ya estaba anulado o no existe.');
-    await this.registrarAccion({ entidad: 'gasto', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: detalle && detalle.monto, detalle });
-  },
-
-  async eliminarGasto(id) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('finance_expenses').delete().eq('id', id).eq('business_id', BUSINESS_ID);
-    if (error) throw error;
-  },
-
-  async getVentasLocales(desdeISO, hastaISO) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('local_sales').select('*')
-      .eq('business_id', BUSINESS_ID)
-      .gte('fecha', desdeISO).lte('fecha', hastaISO)
-      .order('fecha', { ascending: false });
-    if (error) throw error;
-    return (data || []).map(v => ({
-      id: v.id, fecha: v.fecha, cliente: v.cliente_nombre, servicio: v.servicio_nombre,
-      empleadoId: v.employee_id, monto: Number(v.monto), creadoEn: v.creado_en,
-      anulada: !!v.anulada, motivoAnulacion: v.anulada_motivo || '', anuladaEn: v.anulada_en || null,
-      locationId: v.location_id || null,
-      comisionMonto: Number(v.comision_monto || 0)
-    }));
-  },
-
-  // Una venta y sus pagos son cosas separadas: una venta puede tener varios pagos.
-  async registrarVentaLocal(v, pagos) {
-    await window.AnnlyReady;
-
-    // Comisión: se calcula y se congela en la venta al momento de registrarla
-    // (si luego cambia el % del profesional o del servicio, no altera lo ya generado)
-    // v.comision: { modo:'pct'|'monto', valor } la decide el negocio en cada venta;
-    // null = sin comisión. (Sin el dato, se usa el % del profesional, como antes.)
-    let comisionPct = 0, comisionMonto = 0;
-    if (v.empleadoId && v.comision && Number(v.comision.valor) > 0) {
-      const montoVenta = Number(v.monto || 0);
-      if (v.comision.modo === 'pct') {
-        comisionPct = Number(v.comision.valor);
-        comisionMonto = Math.round(montoVenta * comisionPct) / 100;
+  function ruletaWordWrap(texto, maxLen){
+    const palabras = texto.split(' ');
+    const lineas = [];
+    let actual = '';
+    palabras.forEach(p => {
+      if ((actual + ' ' + p).trim().length > maxLen && actual) {
+        lineas.push(actual.trim());
+        actual = p;
       } else {
-        comisionMonto = Math.round(Number(v.comision.valor) * 100) / 100;
-        comisionPct = montoVenta > 0 ? Math.round(comisionMonto / montoVenta * 10000) / 100 : 0;
+        actual = (actual + ' ' + p).trim();
       }
-      if (comisionMonto > montoVenta) throw new Error('La comisión no puede ser mayor que el monto de la venta.');
-    } else if (v.empleadoId && v.comision === undefined) {
-      comisionPct = await this.getComisionAplicable(v.empleadoId, v.servicio);
-      comisionMonto = Math.round(Number(v.monto || 0) * comisionPct) / 100;
-    }
-
-    const { data: venta, error } = await sbClient.from('local_sales').insert([{
-      business_id: BUSINESS_ID, fecha: v.fecha, cliente_nombre: v.cliente || null,
-      servicio_nombre: v.servicio, employee_id: v.empleadoId || null, monto: v.monto,
-      comision_pct: comisionPct, comision_monto: comisionMonto,
-      ...(v.locationId ? { location_id: v.locationId } : {})
-    }]).select('id').single();
-    if (error) throw error;
-
-    const filas = (pagos || []).filter(p => p.monto > 0).map(p => ({
-      business_id: BUSINESS_ID, origen: 'local', local_sale_id: venta.id,
-      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
-      fecha: v.fecha, concepto: v.servicio, cliente_nombre: v.cliente || null,
-      employee_id: v.empleadoId || null,
-      ...(v.locationId ? { location_id: v.locationId } : {})
-    }));
-    if (filas.length) {
-      const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
-      if (errPagos) {
-        // No dejamos una venta sin sus pagos
-        await sbClient.from('local_sales').delete().eq('id', venta.id);
-        throw errPagos;
-      }
-    }
-
-    // Propina: si vino en el cobro (nunca desde certificado), queda pendiente de liquidar
-    if (v.propina && v.propina.monto > 0 && v.empleadoId) {
-      await this.registrarPropina({
-        employeeId: v.empleadoId, localSaleId: venta.id, monto: v.propina.monto,
-        metodo: v.propina.metodo, fecha: v.fecha,
-        clienteNombre: v.cliente || null, servicioNombre: v.servicio || null
-      });
-    }
-
-    return venta.id;
-  },
-
-  async _idPrincipal() {
-    const { data } = await sbClient.from('locations').select('id').eq('business_id', BUSINESS_ID).eq('is_main', true).limit(1);
-    return data && data[0] ? data[0].id : null;
-  },
-
-  _fmtFechaCorta(iso) {
-    if (!iso) return '';
-    const [y, m, d] = String(iso).split('-');
-    return `${d}/${m}/${y}`;
-  },
-
-  // ¿La fecha de un movimiento cae en un periodo ya cerrado de su sede?
-  // tipo 'venta': cierra el periodo del profesional que la hizo o el cierre general de la sede.
-  // tipo 'gasto': solo el cierre general de la sede.
-  async estadoCierreMovimiento({ tipo, fecha, employeeId, locationId }) {
-    await window.AnnlyReady;
-    const loc = locationId || await this._idPrincipal();
-    if (tipo === 'venta' && employeeId) {
-      const c = await this.getCierreQueCubre([employeeId], fecha, loc);
-      if (c) return { cerrado: true, por: 'profesional', desde: c.desde, hasta: c.hasta };
-    }
-    const { data, error } = await this._enSede(sbClient.from('cierres_negocio').select('periodo_desde, periodo_hasta')
-      .eq('business_id', BUSINESS_ID).lte('periodo_desde', fecha).gte('periodo_hasta', fecha), loc).limit(1);
-    if (error) throw error;
-    if (data && data[0]) return { cerrado: true, por: 'negocio', desde: data[0].periodo_desde, hasta: data[0].periodo_hasta };
-    return { cerrado: false };
-  },
-
-  // Ajustes ya hechos (para marcar en las listas lo que ya se ajustó): Set de 'venta:<id>' / 'gasto:<id>'
-  async getAjustesHechos() {
-    await window.AnnlyReady;
-    const [g, p] = await Promise.all([
-      sbClient.from('finance_expenses').select('ajuste_de').eq('business_id', BUSINESS_ID).not('ajuste_de', 'is', null),
-      sbClient.from('finance_payments').select('ajuste_de').eq('business_id', BUSINESS_ID).not('ajuste_de', 'is', null)
-    ]);
-    const set = new Set();
-    [...((g && g.data) || []), ...((p && p.data) || [])].forEach(r => set.add(r.ajuste_de));
-    return set;
-  },
-
-  // Corrige un movimiento de un periodo cerrado sin tocar el pasado: crea un movimiento con fecha de hoy.
-  // - venta: un gasto "Ajuste / devolución" por el monto de la venta y, si ya generó comisión,
-  //          un adelanto por esa comisión que se descuenta en el siguiente cierre del profesional.
-  // - gasto: un ingreso de origen "ajuste" por el monto del gasto.
-  async registrarAjuste({ tipo, id, motivo }) {
-    await window.AnnlyReady;
-    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo del ajuste.');
-    const hoy = this._hoyISO();
-    const ref = tipo + ':' + id;
-
-    if (tipo === 'venta') {
-      const { data: v, error } = await sbClient.from('local_sales').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-      if (error) throw error;
-      if (!v) throw new Error('La venta no existe.');
-      if (v.anulada) throw new Error('La venta ya está anulada.');
-      const { data: ya } = await sbClient.from('finance_expenses').select('id').eq('business_id', BUSINESS_ID).eq('ajuste_de', ref).limit(1);
-      if (ya && ya.length) throw new Error('Esta venta ya tiene un ajuste registrado.');
-      const { data: pagos } = await sbClient.from('finance_payments').select('metodo').eq('local_sale_id', id).limit(1);
-      const metodo = (pagos && pagos[0] && pagos[0].metodo && pagos[0].metodo !== 'certificado') ? pagos[0].metodo : 'efectivo';
-
-      const { error: errG } = await sbClient.from('finance_expenses').insert([{
-        business_id: BUSINESS_ID, fecha: hoy, categoria: 'Ajuste / devolución',
-        descripcion: `Devolución de la venta del ${this._fmtFechaCorta(v.fecha)} — ${v.servicio_nombre || 'venta'}${v.cliente_nombre ? ' (' + v.cliente_nombre + ')' : ''}`,
-        monto: Number(v.monto), metodo, referencia: motivo.trim().slice(0, 120),
-        location_id: v.location_id || null, ajuste_de: ref
-      }]);
-      if (errG) throw errG;
-
-      const comision = Number(v.comision_monto || 0);
-      if (v.employee_id && comision > 0) {
-        const { error: errA } = await sbClient.from('adelantos').insert([{
-          business_id: BUSINESS_ID, employee_id: v.employee_id, monto: comision, fecha: hoy,
-          nota: `Ajuste venta del ${this._fmtFechaCorta(v.fecha)} (comisión ya pagada)`,
-          location_id: v.location_id || null
-        }]);
-        if (errA) console.error('El ajuste se registró, pero no se pudo descontar la comisión:', errA);
-      }
-      await this.registrarAccion({ entidad: 'ajuste', entidadId: id, accion: 'ajuste_venta', motivo: motivo.trim(), monto: Number(v.monto),
-        detalle: { venta: v.servicio_nombre, fechaVenta: v.fecha, comisionDescontada: comision } });
-      return { comisionDescontada: comision };
-    }
-
-    if (tipo === 'gasto') {
-      const { data: g, error } = await sbClient.from('finance_expenses').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-      if (error) throw error;
-      if (!g) throw new Error('El gasto no existe.');
-      if (g.anulado) throw new Error('El gasto ya está anulado.');
-      const { data: ya } = await sbClient.from('finance_payments').select('id').eq('business_id', BUSINESS_ID).eq('ajuste_de', ref).limit(1);
-      if (ya && ya.length) throw new Error('Este gasto ya tiene un ajuste registrado.');
-      const { error: errP } = await sbClient.from('finance_payments').insert([{
-        business_id: BUSINESS_ID, origen: 'ajuste', estado: 'confirmado', metodo: g.metodo || 'efectivo',
-        monto: Number(g.monto), fecha: hoy, referencia: motivo.trim().slice(0, 120),
-        concepto: `Ajuste del gasto del ${this._fmtFechaCorta(g.fecha)} — ${g.categoria}`,
-        location_id: g.location_id || null, ajuste_de: ref
-      }]);
-      if (errP) throw errP;
-      await this.registrarAccion({ entidad: 'ajuste', entidadId: id, accion: 'ajuste_gasto', motivo: motivo.trim(), monto: Number(g.monto),
-        detalle: { categoria: g.categoria, fechaGasto: g.fecha } });
-      return {};
-    }
-    throw new Error('Tipo de ajuste desconocido.');
-  },
-
-  // Anula una venta en el local (devolución, error de captura...): no se borra, queda en
-  // el historial con su motivo, y sus pagos dejan de contar en los ingresos.
-  async anularVentaLocal(id, motivo, detalle) {
-    await window.AnnlyReady;
-    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
-    {
-      const { data: v } = await sbClient.from('local_sales').select('fecha, employee_id, location_id').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
-      if (v) {
-        const st = await this.estadoCierreMovimiento({ tipo: 'venta', fecha: v.fecha, employeeId: v.employee_id, locationId: v.location_id });
-        if (st.cerrado) throw new Error('Esta venta es de un periodo ya cerrado: regístrale un ajuste en vez de anularla.');
-      }
-    }
-
-    // 1) Los pagos de la venta dejan de contar como ingreso
-    const { error: errPagos } = await sbClient.from('finance_payments')
-      .update({ estado: 'anulado' })
-      .eq('local_sale_id', id).eq('business_id', BUSINESS_ID).eq('estado', 'confirmado');
-    if (errPagos) throw errPagos;
-
-    // 2) La venta queda marcada como anulada, con su motivo
-    const { data: filas, error: errVenta } = await sbClient.from('local_sales')
-      .update({ anulada: true, anulada_motivo: motivo.trim(), anulada_en: new Date().toISOString() })
-      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulada', false)
-      .select('id');
-    if (errVenta || !filas || !filas.length) {
-      // Si no se pudo marcar la venta, los pagos vuelven a contar
-      await sbClient.from('finance_payments').update({ estado: 'confirmado' })
-        .eq('local_sale_id', id).eq('business_id', BUSINESS_ID).eq('estado', 'anulado');
-      throw errVenta || new Error('La venta ya estaba anulada o no existe.');
-    }
-    await this.registrarAccion({ entidad: 'venta_local', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: detalle && detalle.monto, detalle });
-  },
-
-  // Completa una cita de la Agenda: la cita existente es el origen del cobro
-  // (no se crea una venta duplicada). Se marca primero, solo si aún no estaba
-  // completada, para que dos clics no registren el cobro dos veces.
-  async completarCita(citaId, datos) {
-    await window.AnnlyReady;
-
-    // Comisión: se calcula y se congela en la cita al momento de completarla
-    // (si luego cambia el % del profesional o del servicio, no altera lo ya generado)
-    const { data: citaActual } = await sbClient.from('appointments')
-      .select('employee_id, servicio_nombre, grupo_cita_id, fecha')
-      .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
-    if (citaActual && citaActual.grupo_cita_id) {
-      throw new Error('Esta cita es parte de una cita doble: se completa desde la tarjeta doble (completarCitaDoble).');
-    }
-    const empleadoFinal = (datos.cambiarEmpleado && datos.empleadoId) ? datos.empleadoId : (citaActual && citaActual.employee_id);
-    // Una cita cuya fecha de atención cae en un periodo ya cerrado no se puede completar (sin excepción)
-    await this.validarFechaAbierta([citaActual && citaActual.employee_id, empleadoFinal], (citaActual && citaActual.fecha) || datos.fecha);
-    let comisionPct = 0, comisionMonto = 0;
-    if (empleadoFinal) {
-      comisionPct = await this.getComisionAplicable(empleadoFinal, citaActual && citaActual.servicio_nombre);
-      comisionMonto = Math.round(Number(datos.precioCobrado || 0) * comisionPct) / 100;
-    }
-
-    const marca = { completada_en: new Date().toISOString(), precio_cobrado: datos.precioCobrado, comision_pct: comisionPct, comision_monto: comisionMonto };
-    if (datos.ajusteDetalle) marca.ajuste_detalle = datos.ajusteDetalle;
-    // Motivo por el que un certificado validado al reservar no se aplicó (trazabilidad)
-    if (datos.certNoAplicadoMotivo) marca.certificado_no_aplicado_motivo = datos.certNoAplicadoMotivo;
-    // Si quien realizó el servicio es otra persona, la cita queda a nombre de ese profesional
-    if (datos.cambiarEmpleado && datos.empleadoId) marca.employee_id = datos.empleadoId;
-    const { data: marcada, error: errMarca } = await sbClient.from('appointments')
-      .update(marca)
-      .eq('id', citaId).eq('business_id', BUSINESS_ID).is('completada_en', null)
-      .select('id');
-    if (errMarca) throw errMarca;
-    if (!marcada || !marcada.length) throw new Error('Esta cita ya fue completada.');
-
-    const revertirMarca = () => sbClient.from('appointments')
-      .update({ completada_en: null, precio_cobrado: null, comision_pct: null, comision_monto: null, ...(datos.ajusteDetalle ? { ajuste_detalle: null } : {}), ...(datos.certNoAplicadoMotivo ? { certificado_no_aplicado_motivo: null } : {}), ...(datos.cambiarEmpleado ? { employee_id: datos.empleadoIdOriginal || null } : {}) }).eq('id', citaId);
-
-    // Ventas adicionales de la visita (tratamientos, productos, etc.)
-    let extrasIds = [];
-    const extras = (datos.extras || []).filter(x => x.monto > 0 && x.descripcion);
-    if (extras.length) {
-      const { data: insertados, error: errExtras } = await sbClient.from('appointment_extras').insert(
-        extras.map(x => ({
-          business_id: BUSINESS_ID, appointment_id: citaId, descripcion: x.descripcion,
-          monto: x.monto, fecha: datos.fecha, employee_id: datos.empleadoId || null,
-          cliente_nombre: datos.cliente || null
-        }))
-      ).select('id');
-      if (errExtras) {
-        await revertirMarca();
-        throw errExtras;
-      }
-      extrasIds = (insertados || []).map(r => r.id);
-    }
-
-    const filas = (datos.pagos || []).filter(p => p.monto > 0).map(p => ({
-      business_id: BUSINESS_ID, origen: 'agenda', appointment_id: citaId,
-      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
-      fecha: datos.fecha, concepto: datos.concepto || null,
-      cliente_nombre: datos.cliente || null, employee_id: datos.empleadoId || null
-    }));
-    if (filas.length) {
-      const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
-      if (errPagos) {
-        // Si fallan los pagos, se deshace todo y la cita vuelve a quedar por completar
-        if (extrasIds.length) await sbClient.from('appointment_extras').delete().in('id', extrasIds);
-        await revertirMarca();
-        throw errPagos;
-      }
-    }
-
-    // Propina: si vino en el cobro (nunca desde certificado), queda pendiente de liquidar
-    if (datos.propina && datos.propina.monto > 0 && empleadoFinal) {
-      await this.registrarPropina({
-        employeeId: empleadoFinal, appointmentId: citaId, monto: datos.propina.monto,
-        metodo: datos.propina.metodo, fecha: datos.fecha,
-        clienteNombre: datos.cliente || null, servicioNombre: datos.concepto || (citaActual && citaActual.servicio_nombre) || null
-      });
-    }
-
-  },
-
-  // Cita doble: se completan las 2 juntas, con UN solo cobro por el combo. El precio final del
-  // combo se reparte a la mitad en cada cita (cada profesional cobra su comisión sobre su mitad) y
-  // el cobro se asigna a las 2 citas para que cada una cuadre sola: primero se cubre lo que le falta
-  // a la principal (la que lleva el abono) y el resto va a la otra. La propina se reparte mitad y mitad.
-  // datos: { grupoCitaId, precioCombo, pagos:[{metodo,monto,referencia}], fecha, extras, ajusteDetalle, propina:{monto,metodo} }
-  async completarCitaDoble(datos) {
-    await window.AnnlyReady;
-
-    const { data: par, error: errPar } = await sbClient.from('appointments')
-      .select('id, employee_id, servicio_nombre, cliente_nombre, completada_en, grupo_principal, abono_monto, abono_tipo, metodo_pago, comprobante, fecha')
-      .eq('business_id', BUSINESS_ID).eq('grupo_cita_id', datos.grupoCitaId);
-    if (errPar) throw errPar;
-    if (!par || par.length !== 2) throw new Error('No se encontraron las 2 citas de esta reserva doble.');
-    if (par.some(p => p.completada_en)) throw new Error('Esta cita doble ya fue completada.');
-    await this.validarFechaAbierta(par.map(p => p.employee_id), par[0].fecha || datos.fecha);
-
-    const principal = par.find(p => p.grupo_principal) || par[0];
-    const otra = par.find(p => p.id !== principal.id);
-
-    const total = Math.round(Number(datos.precioCombo || 0) * 100) / 100;
-    const mitadP = Math.round(total * 100 / 2) / 100;
-    const mitadO = Math.round((total - mitadP) * 100) / 100;
-
-    const abono = Number(principal.abono_monto || 0);
-    const descontable = principal.abono_tipo === 'descontable';
-    const extras = (datos.extras || []).filter(x => x.monto > 0 && x.descripcion);
-    const extrasTotal = Math.round(extras.reduce((s, x) => s + x.monto, 0) * 100) / 100;
-
-    // Lo que le toca cobrar hoy a cada cita (el abono descontable ya cubre parte de la principal)
-    const abonoDescontado = descontable ? Math.min(abono, mitadP) : 0;
-    let debeP = Math.round((mitadP + extrasTotal - abonoDescontado) * 100) / 100;
-    if (debeP < 0) debeP = 0;
-    const debeO = mitadO;
-
-    // Se reparte el cobro de hoy: primero lo que falta de la principal, el resto a la otra
-    const lineasP = [], lineasO = [];
-    let faltaP = debeP;
-    for (const l of (datos.pagos || [])) {
-      let restante = Math.round(Number(l.monto) * 100) / 100;
-      if (!(restante > 0)) continue;
-      if (faltaP > 0) {
-        const aP = Math.min(restante, faltaP);
-        lineasP.push({ ...l, monto: aP });
-        faltaP = Math.round((faltaP - aP) * 100) / 100;
-        restante = Math.round((restante - aP) * 100) / 100;
-      }
-      if (restante > 0) lineasO.push({ ...l, monto: restante });
-    }
-
-    const ahora = new Date().toISOString();
-    const marcar = async (cita, mitad) => {
-      const pct = cita.employee_id ? await this.getComisionAplicable(cita.employee_id, cita.servicio_nombre) : 0;
-      const monto = Math.round(mitad * pct) / 100;
-      const fila = { completada_en: ahora, precio_cobrado: mitad, comision_pct: pct, comision_monto: monto };
-      if (datos.ajusteDetalle) fila.ajuste_detalle = datos.ajusteDetalle;
-      const { data: ok, error } = await sbClient.from('appointments').update(fila)
-        .eq('id', cita.id).eq('business_id', BUSINESS_ID).is('completada_en', null).select('id');
-      if (error) throw error;
-      if (!ok || !ok.length) throw new Error('Una de las 2 citas ya estaba completada.');
-    };
-    const revertir = (ids) => sbClient.from('appointments')
-      .update({ completada_en: null, precio_cobrado: null, comision_pct: null, comision_monto: null, ajuste_detalle: null })
-      .in('id', ids);
-
-    await marcar(principal, mitadP);
-    try { await marcar(otra, mitadO); }
-    catch (e) { await revertir([principal.id]); throw e; }
-
-    const ids = [principal.id, otra.id];
-    let extrasIds = [];
-    try {
-      if (extras.length) {
-        const { data: insertados, error: errEx } = await sbClient.from('appointment_extras').insert(
-          extras.map(x => ({
-            business_id: BUSINESS_ID, appointment_id: principal.id, descripcion: x.descripcion,
-            monto: x.monto, fecha: datos.fecha, employee_id: principal.employee_id || null,
-            cliente_nombre: principal.cliente_nombre || null
-          }))
-        ).select('id');
-        if (errEx) throw errEx;
-        extrasIds = (insertados || []).map(r => r.id);
-      }
-
-      const filas = [];
-      // El abono ya pagado por la reserva se registra en la principal, igual que en una cita normal
-      if (abono > 0) {
-        filas.push({
-          business_id: BUSINESS_ID, origen: 'agenda', appointment_id: principal.id,
-          metodo: principal.metodo_pago === 'yappy' ? 'yappy' : 'transferencia', monto: abono,
-          referencia: principal.comprobante || null, fecha: datos.fecha, concepto: datos.concepto || null,
-          cliente_nombre: principal.cliente_nombre || null, employee_id: principal.employee_id || null
-        });
-      }
-      const filaPago = (cita, l) => ({
-        business_id: BUSINESS_ID, origen: 'agenda', appointment_id: cita.id,
-        metodo: l.metodo, monto: l.monto, referencia: l.referencia || null,
-        fecha: datos.fecha, concepto: datos.concepto || null,
-        cliente_nombre: cita.cliente_nombre || null, employee_id: cita.employee_id || null
-      });
-      lineasP.forEach(l => filas.push(filaPago(principal, l)));
-      lineasO.forEach(l => filas.push(filaPago(otra, l)));
-      if (filas.length) {
-        const { error: errPagos } = await sbClient.from('finance_payments').insert(filas);
-        if (errPagos) throw errPagos;
-      }
-    } catch (e) {
-      if (extrasIds.length) await sbClient.from('appointment_extras').delete().in('id', extrasIds);
-      await revertir(ids);
-      throw e;
-    }
-
-    // Propina: se reparte mitad y mitad entre los 2 profesionales
-    if (datos.propina && datos.propina.monto > 0) {
-      const montoP = Math.round(datos.propina.monto * 100 / 2) / 100;
-      const montoO = Math.round((datos.propina.monto - montoP) * 100) / 100;
-      for (const [cita, monto] of [[principal, montoP], [otra, montoO]]) {
-        if (monto > 0 && cita.employee_id) {
-          await this.registrarPropina({
-            employeeId: cita.employee_id, appointmentId: cita.id, monto,
-            metodo: datos.propina.metodo, fecha: datos.fecha,
-            clienteNombre: cita.cliente_nombre || null, servicioNombre: cita.servicio_nombre || datos.concepto || null
-          });
-        }
-      }
-    }
-
-    return { principalId: principal.id, otraId: otra.id };
-  },
-
-  // Cobros registrados de una cita (para su detalle / trazabilidad)
-  async getPagosDeCita(citaId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('finance_payments').select('*')
-      .eq('business_id', BUSINESS_ID).eq('appointment_id', citaId)
-      .order('creado_en', { ascending: true });
-    if (error) throw error;
-    return (data || []).map(p => ({
-      id: p.id, metodo: p.metodo, monto: Number(p.monto), referencia: p.referencia, fecha: p.fecha
-    }));
-  },
-
-  // Ventas adicionales (tratamientos, productos...) registradas en las visitas del periodo
-  async getExtrasFinanzas(desdeISO, hastaISO) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('appointment_extras').select('*')
-      .eq('business_id', BUSINESS_ID)
-      .gte('fecha', desdeISO).lte('fecha', hastaISO);
-    if (error) throw error;
-    return (data || []).map(x => ({
-      id: x.id, appointmentId: x.appointment_id, descripcion: x.descripcion,
-      monto: Number(x.monto), fecha: x.fecha, empleadoId: x.employee_id, cliente: x.cliente_nombre, creadoEn: x.creado_en,
-      locationId: x.location_id || null
-    }));
-  },
-
-  async getExtrasDeCita(citaId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('appointment_extras').select('*')
-      .eq('business_id', BUSINESS_ID).eq('appointment_id', citaId)
-      .order('creado_en', { ascending: true });
-    if (error) throw error;
-    return (data || []).map(x => ({ id: x.id, descripcion: x.descripcion, monto: Number(x.monto) }));
-  },
-
-  // =======================================================
-  // COMISIONES, PROPINAS Y ADELANTOS
-  // =======================================================
-
-  // % aplicable a un profesional: el de servicio (si existe) manda sobre el global
-  async getComisionAplicable(employeeId, servicioNombre) {
-    await window.AnnlyReady;
-    const { data: emp } = await sbClient.from('employees').select('comision_global').eq('id', employeeId).maybeSingle();
-    const global = (emp && emp.comision_global != null) ? Number(emp.comision_global) : 0;
-    if (!servicioNombre) return global;
-    const { data: srv } = await sbClient.from('services').select('id')
-      .eq('business_id', BUSINESS_ID).eq('nombre', servicioNombre).maybeSingle();
-    if (!srv) return global;
-    const { data: es } = await sbClient.from('employee_services').select('comision')
-      .eq('employee_id', employeeId).eq('service_id', srv.id).maybeSingle();
-    return (es && es.comision != null) ? Number(es.comision) : global;
-  },
-
-  async guardarComisionGlobal(employeeId, comision) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('employees')
-      .update({ comision_global: comision != null ? Number(comision) : null })
-      .eq('id', employeeId).eq('business_id', BUSINESS_ID);
-    if (error) throw error;
-  },
-
-  async guardarComisionServicio(employeeId, serviceId, comision) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('employee_services')
-      .update({ comision: comision != null ? Number(comision) : null })
-      .eq('employee_id', employeeId).eq('service_id', serviceId);
-    if (error) throw error;
-  },
-
-  // Comisión ya generada (congelada) por un profesional en un rango — suma directa,
-  // no recalcula %.
-  // Finanzas por sede: si viene locationId, la consulta se limita a esa sede
-  _enSede(q, locationId) {
-    return locationId ? q.eq('location_id', locationId) : q;
-  },
-
-  async getComisionGeneradaPeriodo(employeeId, desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const [citas, ventas] = await Promise.all([
-      this._enSede(sbClient.from('appointments').select('comision_monto')
-        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
-        .not('completada_en', 'is', null)
-        .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId),
-      this._enSede(sbClient.from('local_sales').select('comision_monto')
-        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulada', false)
-        .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)
-    ]);
-    const sum = r => (r.data || []).reduce((s, x) => s + Number(x.comision_monto || 0), 0);
-    return sum(citas) + sum(ventas);
-  },
-
-  // Total de propinas generadas por un profesional en un rango (pendientes + pagadas) —
-  // para el resumen de "Propinas generadas en caja" en Comisiones.
-  async getPropinasGeneradasPeriodo(employeeId, desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const { data, error } = await this._enSede(sbClient.from('propinas').select('monto')
-      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
-      .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId);
-    if (error) throw error;
-    return (data || []).reduce((s, r) => s + Number(r.monto || 0), 0);
-  },
-
-  // ---- Propinas ----
-  // Solo las que llegan al negocio por tarjeta/Yappy/transferencia; nacen "pendiente"
-  // y se liquidan (efectivo en mano del profesional) con liquidarPropina.
-  async registrarPropina({ employeeId, monto, metodo, fecha, appointmentId, localSaleId, clienteNombre, servicioNombre }) {
-    await window.AnnlyReady;
-    if (metodo === 'certificado') throw new Error('El certificado nunca cubre propina.');
-    const { error } = await sbClient.from('propinas').insert([{
-      business_id: BUSINESS_ID, employee_id: employeeId, monto, metodo, fecha,
-      appointment_id: appointmentId || null, local_sale_id: localSaleId || null,
-      cliente_nombre: clienteNombre || null, servicio_nombre: servicioNombre || null
-    }]);
-    if (error) throw error;
-  },
-
-  async getPropinas(employeeId, estado, locationId) {
-    await window.AnnlyReady;
-    let q = sbClient.from('propinas').select('*').eq('business_id', BUSINESS_ID);
-    if (employeeId) q = q.eq('employee_id', employeeId);
-    if (estado) q = q.eq('estado', estado);
-    q = this._enSede(q, locationId);
-    const { data, error } = await q.order('fecha', { ascending: false });
-    if (error) throw error;
-    return (data || []).map(p => ({
-      id: p.id, empleadoId: p.employee_id, monto: Number(p.monto), metodo: p.metodo,
-      fecha: p.fecha, estado: p.estado, pagadaEn: p.pagada_en, pagadaDetalle: p.pagada_detalle || '',
-      pagadaMetodo: p.pagada_metodo || '', cierreId: p.cierre_id,
-      appointmentId: p.appointment_id, localSaleId: p.local_sale_id,
-      clienteNombre: p.cliente_nombre || '', servicioNombre: p.servicio_nombre || '',
-      locationId: p.location_id || null
-    }));
-  },
-
-  // Propinas pendientes (sin decidir todavía) de un profesional en un rango — para bloquear
-  // el cierre de periodo si queda alguna sin resolver.
-  async getPropinasPendientesPeriodo(employeeId, desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const { data, error } = await this._enSede(sbClient.from('propinas').select('id, monto, fecha, cliente_nombre, servicio_nombre')
-      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('estado', 'pendiente')
-      .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId);
-    if (error) throw error;
-    return (data || []).map(p => ({ id: p.id, monto: Number(p.monto), fecha: p.fecha, clienteNombre: p.cliente_nombre || '', servicioNombre: p.servicio_nombre || '' }));
-  },
-
-  // Camino 1: se le paga al profesional ahora mismo (puede ser en cualquier medio, no solo efectivo)
-  async pagarPropinaContado(id, metodo, detalle) {
-    await window.AnnlyReady;
-    if (!metodo) throw new Error('Indica el medio con que se le pagó al profesional.');
-    const { data: u } = await sbClient.auth.getUser();
-    const { data: filas, error } = await sbClient.from('propinas')
-      .update({ estado: 'pagada_contado', pagada_en: new Date().toISOString(), pagada_metodo: metodo, pagada_detalle: (detalle || '').trim() || null, pagada_por: u && u.user ? u.user.id : null })
-      .eq('id', id).eq('business_id', BUSINESS_ID).eq('estado', 'pendiente')
-      .select('id, monto, employee_id');
-    if (error) throw error;
-    if (!filas || !filas.length) throw new Error('Esa propina ya no está pendiente.');
-    await this.registrarAccion({ entidad: 'propina', entidadId: id, accion: 'pagada_contado', motivo: (detalle || '').trim() || ('Pagada al contado — ' + metodo), monto: filas[0].monto, detalle: { employeeId: filas[0].employee_id, metodo } });
-  },
-
-  // Camino 2: se paga junto con el corte de periodo — no hay reversa
-  async programarPropinaCierre(id) {
-    await window.AnnlyReady;
-    const { data: filas, error } = await sbClient.from('propinas')
-      .update({ estado: 'programada_cierre' })
-      .eq('id', id).eq('business_id', BUSINESS_ID).eq('estado', 'pendiente')
-      .select('id, monto, employee_id');
-    if (error) throw error;
-    if (!filas || !filas.length) throw new Error('Esa propina ya no está pendiente.');
-    await this.registrarAccion({ entidad: 'propina', entidadId: id, accion: 'programada_cierre', motivo: 'Programada para pagarse en el corte de periodo', monto: filas[0].monto, detalle: { employeeId: filas[0].employee_id } });
-  },
-
-  // ---- Adelantos ----
-  // Contra comisión, no contra propina. desdeISO/hastaISO = periodo actual
-  // (rangoPeriodoCierre(FIN.ajustes, 0) en admin.html).
-  // Con sedes: el adelanto se da contra la comisión de ESA sede y se descuenta de su pago
-  async registrarAdelanto({ employeeId, monto, fecha, nota, desdeISO, hastaISO, locationId }) {
-    await window.AnnlyReady;
-    const generado = await this.getComisionGeneradaPeriodo(employeeId, desdeISO, hastaISO, locationId);
-    const dados = await this.getAdelantosPeriodo(employeeId, desdeISO, hastaISO, locationId);
-    const disponible = generado - dados;
-    if (monto > disponible) throw new Error(`El adelanto máximo disponible en este periodo es ${disponible.toFixed(2)}.`);
-    const { error } = await sbClient.from('adelantos').insert([{
-      business_id: BUSINESS_ID, employee_id: employeeId, monto, fecha, nota: nota || null,
-      ...(locationId ? { location_id: locationId } : {})
-    }]);
-    if (error) throw error;
-  },
-
-  // Detalle de cada adelanto (no solo el total) en un rango — incluye los anulados,
-  // para que se vean tachados con su motivo, igual que los gastos.
-  async getAdelantosDetalle(employeeId, desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const { data, error } = await this._enSede(sbClient.from('adelantos').select('*')
-      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
-      .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)
-      .order('fecha', { ascending: false });
-    if (error) throw error;
-    return (data || []).map(a => ({
-      id: a.id, monto: Number(a.monto), fecha: a.fecha, nota: a.nota || '',
-      anulado: a.anulado, anuladoMotivo: a.anulado_motivo || '', anuladoEn: a.anulado_en
-    }));
-  },
-
-  async getAdelantosPeriodo(employeeId, desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const { data, error } = await this._enSede(sbClient.from('adelantos').select('monto')
-      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulado', false)
-      .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId);
-    if (error) throw error;
-    return (data || []).reduce((s, r) => s + Number(r.monto), 0);
-  },
-
-  async anularAdelanto(id, motivo) {
-    await window.AnnlyReady;
-    if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la anulación.');
-    const { data: filas, error } = await sbClient.from('adelantos')
-      .update({ anulado: true, anulado_motivo: motivo.trim(), anulado_en: new Date().toISOString() })
-      .eq('id', id).eq('business_id', BUSINESS_ID).eq('anulado', false)
-      .select('id, monto');
-    if (error) throw error;
-    if (!filas || !filas.length) throw new Error('El adelanto ya estaba anulado o no existe.');
-    await this.registrarAccion({ entidad: 'adelanto', entidadId: id, accion: 'anulado', motivo: motivo.trim(), monto: filas[0].monto });
-  },
-
-  // =======================================================
-  // CIERRE DE PERIODO
-  // Reglas: no se cierra antes de que termine el rango (hoy >= hasta); no se cierra si al
-  // profesional le quedan citas sin completar (atrasadas o futuras) o propinas sin decidir en ese
-  // rango; una cita con fecha dentro de un periodo cerrado ya no se puede completar. La pertenencia
-  // de una cita a un periodo siempre se mide por su fecha de atención (appointments.fecha).
-  // =======================================================
-
-  // Fecha de hoy (hora local del navegador) en formato YYYY-MM-DD
-  _hoyISO() {
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  },
-
-  // Cierres de un profesional que se cruzan con el rango (evita cierres encimados si se cambió
-  // de quincenal a semanal o viceversa)
-  async _cierresQueSeCruzan(employeeId, desdeISO, hastaISO, locationId) {
-    const { data, error } = await this._enSede(sbClient.from('cierres_profesional').select('id, periodo_desde, periodo_hasta')
-      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
-      .lte('periodo_desde', hastaISO).gte('periodo_hasta', desdeISO), locationId);
-    if (error) throw error;
-    return data || [];
-  },
-
-  // Cierre (de cualquiera de esos profesionales) que cubre la fecha de atención dada, o null
-  // Con sedes: solo bloquea el cierre de la sede de la cita
-  async getCierreQueCubre(employeeIds, fechaISO, locationId) {
-    await window.AnnlyReady;
-    const ids = [...new Set((employeeIds || []).filter(Boolean))];
-    if (!ids.length || !fechaISO) return null;
-    const { data, error } = await this._enSede(sbClient.from('cierres_profesional').select('id, employee_id, periodo_desde, periodo_hasta')
-      .eq('business_id', BUSINESS_ID).in('employee_id', ids)
-      .lte('periodo_desde', fechaISO).gte('periodo_hasta', fechaISO), locationId).limit(1);
-    if (error) throw error;
-    const c = data && data[0];
-    return c ? { id: c.id, employeeId: c.employee_id, desde: c.periodo_desde, hasta: c.periodo_hasta } : null;
-  },
-
-  // Lanza error si la fecha de atención pertenece a un periodo ya cerrado
-  async validarFechaAbierta(employeeIds, fechaISO, locationId) {
-    const c = await this.getCierreQueCubre(employeeIds, fechaISO, locationId);
-    if (c) throw new Error(`La fecha ${fechaISO} pertenece a un periodo ya cerrado (${c.desde} al ${c.hasta}). Esta cita no se puede completar.`);
-  },
-
-  // ¿Se puede cerrar este periodo para este profesional? Devuelve los motivos si no.
-  async getElegibilidadCierreProfesional(employeeId, desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const hoy = this._hoyISO();
-    const periodoTerminado = hoy >= hastaISO;
-    const [citasRes, propinas, cruces] = await Promise.all([
-      this._enSede(sbClient.from('appointments').select('id, fecha, hora, cliente_nombre, servicio_nombre')
-        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
-        .or('estado.is.null,estado.neq.cancelada').is('completada_en', null)
-        .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)
-        .order('fecha', { ascending: true }).order('hora', { ascending: true }),
-      this.getPropinasPendientesPeriodo(employeeId, desdeISO, hastaISO, locationId),
-      this._cierresQueSeCruzan(employeeId, desdeISO, hastaISO, locationId)
-    ]);
-    if (citasRes.error) throw citasRes.error;
-    const citasPendientes = (citasRes.data || []).map(c => ({
-      id: c.id, fecha: c.fecha, hora: c.hora || '', cliente: c.cliente_nombre || '', servicio: c.servicio_nombre || '',
-      atrasada: c.fecha < hoy
-    }));
-    const cruce = cruces.find(c => !(c.periodo_desde === desdeISO && c.periodo_hasta === hastaISO)) || null;
-
-    const motivos = [];
-    if (!periodoTerminado) motivos.push(`El periodo termina el ${hastaISO}; se puede cerrar desde ese día.`);
-    if (citasPendientes.length) {
-      const atrasadas = citasPendientes.filter(c => c.atrasada).length;
-      const futuras = citasPendientes.length - atrasadas;
-      const partes = [];
-      if (atrasadas) partes.push(`${atrasadas} atrasada${atrasadas === 1 ? '' : 's'}`);
-      if (futuras) partes.push(`${futuras} por atender`);
-      motivos.push(`Tiene ${citasPendientes.length} cita${citasPendientes.length === 1 ? '' : 's'} sin completar (${partes.join(', ')}). Complétalas o cancélalas desde Citas.`);
-    }
-    if (propinas.length) motivos.push(`Tiene ${propinas.length} propina${propinas.length === 1 ? '' : 's'} sin decidir. Resuélvelas en Comisiones y propinas.`);
-    if (cruce) motivos.push(`Este rango se cruza con un cierre ya hecho (${cruce.periodo_desde} al ${cruce.periodo_hasta}).`);
-
-    return { listo: motivos.length === 0, periodoTerminado, citasPendientes, propinasPendientes: propinas.length, motivos };
-  },
-
-  // Todos los rangos que tienen algún cierre (por profesional y/o general), del más reciente al más viejo
-  async getHistorialCierres(locationId) {
-    await window.AnnlyReady;
-    const [prof, neg] = await Promise.all([
-      this._enSede(sbClient.from('cierres_profesional').select('periodo_desde, periodo_hasta, employee_id').eq('business_id', BUSINESS_ID), locationId),
-      this._enSede(sbClient.from('cierres_negocio').select('periodo_desde, periodo_hasta').eq('business_id', BUSINESS_ID), locationId)
-    ]);
-    if (prof.error) throw prof.error;
-    if (neg.error) throw neg.error;
-    const mapa = {};
-    const entrada = (d, h) => {
-      const k = d + '|' + h;
-      if (!mapa[k]) mapa[k] = { desde: d, hasta: h, profesionales: [], general: false };
-      return mapa[k];
-    };
-    (prof.data || []).forEach(c => entrada(c.periodo_desde, c.periodo_hasta).profesionales.push(c.employee_id));
-    (neg.data || []).forEach(c => { entrada(c.periodo_desde, c.periodo_hasta).general = true; });
-    return Object.values(mapa).sort((a, b) => b.desde.localeCompare(a.desde));
-  },
-
-  // Cierre ya existente para un profesional en ese rango exacto (o null si no se ha cerrado)
-  async getCierreProfesional(employeeId, desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const { data, error } = await this._enSede(sbClient.from('cierres_profesional').select('*')
-      .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
-      .eq('periodo_desde', desdeISO).eq('periodo_hasta', hastaISO), locationId).limit(1).maybeSingle();
-    if (error) throw error;
-    if (!data) return null;
-    return {
-      id: data.id, comisionTotal: Number(data.comision_total), propinasTotal: Number(data.propinas_total),
-      adelantosTotal: Number(data.adelantos_total), netoPagado: Number(data.neto_pagado),
-      enviadoEn: data.enviado_en, creadoEn: data.creado_en, pdfBase64: data.pdf_base64, detalle: data.detalle
-    };
-  },
-
-  // Arma el detalle completo (citas, ventas, propinas, adelantos) de un profesional en un rango
-  async _detalleCierreProfesional(employeeId, desdeISO, hastaISO, locationId) {
-    const [citas, ventas, propinas, adelantos] = await Promise.all([
-      this._enSede(sbClient.from('appointments').select('fecha, servicio_nombre, cliente_nombre, precio_cobrado, comision_pct, comision_monto')
-        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).not('completada_en', 'is', null)
-        .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId),
-      this._enSede(sbClient.from('local_sales').select('fecha, servicio_nombre, cliente_nombre, monto, comision_pct, comision_monto')
-        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulada', false)
-        .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId),
-      this._enSede(sbClient.from('propinas').select('id, fecha, cliente_nombre, servicio_nombre, monto, estado')
-        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId)
-        .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId),
-      this._enSede(sbClient.from('adelantos').select('fecha, monto, nota')
-        .eq('business_id', BUSINESS_ID).eq('employee_id', employeeId).eq('anulado', false)
-        .gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)
-    ]);
-    return {
-      citas: (citas.data || []).map(c => ({ fecha: c.fecha, servicio: c.servicio_nombre, cliente: c.cliente_nombre, precio: Number(c.precio_cobrado || 0), comisionPct: Number(c.comision_pct || 0), comisionMonto: Number(c.comision_monto || 0) })),
-      ventas: (ventas.data || []).map(v => ({ fecha: v.fecha, servicio: v.servicio_nombre, cliente: v.cliente_nombre, precio: Number(v.monto || 0), comisionPct: Number(v.comision_pct || 0), comisionMonto: Number(v.comision_monto || 0) })),
-      propinas: (propinas.data || []).map(p => ({ id: p.id, fecha: p.fecha, cliente: p.cliente_nombre, servicio: p.servicio_nombre, monto: Number(p.monto), estado: p.estado })),
-      adelantos: (adelantos.data || []).map(a => ({ fecha: a.fecha, monto: Number(a.monto), nota: a.nota || '' }))
-    };
-  },
-
-  // Envía tipo 'cierre_profesional' (con PDF) o 'cierre_negocio' (resumen) al Edge Function dedicado.
-  // A diferencia de enviarCorreo(), este SÍ lanza error si falla — el cierre depende de que se envíe.
-  // Nombre y dirección de la sede para el comprobante (null si no hay sede)
-  async _datosSedeComprobante(locationId) {
-    if (!locationId) return null;
-    const { data } = await sbClient.from('locations').select('name, address, phone, is_main')
-      .eq('id', locationId).eq('business_id', BUSINESS_ID).maybeSingle();
-    return data ? { id: locationId, nombre: data.name, direccion: data.address || '', telefono: data.phone || '', esPrincipal: !!data.is_main } : null;
-  },
-
-  async enviarComprobanteCierre(tipo, datos) {
-    const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-cierre-comprobante`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_KEY}` },
-      body: JSON.stringify({ tipo, businessId: BUSINESS_ID, datos })
     });
-    const resultado = await resp.json();
-    if (!resultado.ok) throw new Error(resultado.error || 'No se pudo enviar el comprobante.');
-    return resultado;
-  },
-
-  // Cierra el periodo de un profesional: valida, arma el detalle, envía primero el comprobante
-  // (si falla el envío no se escribe nada, queda igual que antes) y solo entonces lo congela en
-  // cierres_profesional y resuelve las propinas que estaban programadas para este corte. No hay reversa.
-  async cerrarPeriodoProfesional({ employeeId, desdeISO, hastaISO, locationId }) {
-    await window.AnnlyReady;
-
-    const yaExiste = await this.getCierreProfesional(employeeId, desdeISO, hastaISO, locationId);
-    if (yaExiste) throw new Error('Este periodo ya está cerrado para este profesional' + (locationId ? ' en esta sede.' : '.'));
-
-    const elig = await this.getElegibilidadCierreProfesional(employeeId, desdeISO, hastaISO, locationId);
-    if (!elig.listo) throw new Error(elig.motivos.join(' '));
-
-    const { data: emp } = await sbClient.from('employees').select('nombre, correo').eq('id', employeeId).maybeSingle();
-    if (!emp || !emp.correo) throw new Error('Este profesional no tiene correo registrado en su ficha — agrégaselo antes de cerrar.');
-
-    const detalle = await this._detalleCierreProfesional(employeeId, desdeISO, hastaISO, locationId);
-    const sucursal = await this._datosSedeComprobante(locationId);
-    const comisionTotal = Math.round((detalle.citas.reduce((s, c) => s + c.comisionMonto, 0) + detalle.ventas.reduce((s, v) => s + v.comisionMonto, 0)) * 100) / 100;
-    // Propinas: solo las programadas para el corte se pagan aquí (y suman al neto).
-    // Las pagadas al contado ya se entregaron: se informan aparte, no se vuelven a pagar.
-    const propinasResueltas = detalle.propinas.filter(p => p.estado === 'programada_cierre');
-    const propinasTotal = Math.round(propinasResueltas.reduce((s, p) => s + p.monto, 0) * 100) / 100;
-    const propinasContado = Math.round(detalle.propinas.filter(p => p.estado === 'pagada_contado').reduce((s, p) => s + p.monto, 0) * 100) / 100;
-    const adelantosTotal = Math.round(detalle.adelantos.reduce((s, a) => s + a.monto, 0) * 100) / 100;
-    const netoPagado = Math.round((comisionTotal + propinasTotal - adelantosTotal) * 100) / 100;
-
-    const resultado = await this.enviarComprobanteCierre('cierre_profesional', {
-      employeeId, periodo: { desde: desdeISO, hasta: hastaISO }, sucursal,
-      resumen: { comisionTotal, propinasTotal, propinasContado, adelantosTotal, netoPagado }, detalle
-    });
-
-    const { data: cierre, error } = await sbClient.from('cierres_profesional').insert([{
-      business_id: BUSINESS_ID, employee_id: employeeId, periodo_desde: desdeISO, periodo_hasta: hastaISO,
-      comision_total: comisionTotal, propinas_total: propinasTotal, adelantos_total: adelantosTotal, neto_pagado: netoPagado,
-      detalle, pdf_base64: resultado.pdfBase64 || null, enviado_en: new Date().toISOString(),
-      ...(locationId ? { location_id: locationId } : {})
-    }]).select('id').single();
-    if (error) throw error;
-
-    if (propinasResueltas.length) {
-      const { error: errProp } = await sbClient.from('propinas')
-        .update({ estado: 'pagada_cierre', pagada_en: new Date().toISOString(), cierre_id: cierre.id })
-        .in('id', propinasResueltas.map(p => p.id));
-      if (errProp) throw errProp;
-    }
-
-    return cierre.id;
-  },
-
-  // ---------------------------------------------------------
-  // REPORTES DE AGENDA (dentro del módulo Finanzas)
-  // ---------------------------------------------------------
-  // Citas del rango (todas, incluidas canceladas), ventas en el local del rango y, para saber si un
-  // cliente es nuevo, los teléfonos de quienes ya tenían citas antes del rango.
-  async getReporteAgenda(desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const paginar = async (armar, max = 20000) => {
-      const filas = [];
-      for (let i = 0; i < max; i += 1000) {
-        const { data, error } = await armar().range(i, i + 999);
-        if (error) throw error;
-        filas.push(...(data || []));
-        if (!data || data.length < 1000) break;
-      }
-      return filas;
-    };
-    const [citas, ventas, previas] = await Promise.all([
-      paginar(() => this._enSede(sbClient.from('appointments')
-        .select('id, fecha, hora, estado, completada_en, precio_cobrado, precio_total, servicio_nombre, categoria, employee_id, location_id, cliente_nombre, cliente_telefono, duracion_min, cancelacion_caso, grupo_cita_id')
-        .eq('business_id', BUSINESS_ID).gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)
-        .order('fecha', { ascending: true })),
-      paginar(() => this._enSede(sbClient.from('local_sales')
-        .select('id, fecha, servicio_nombre, monto, employee_id, location_id')
-        .eq('business_id', BUSINESS_ID).eq('anulada', false).gte('fecha', desdeISO).lte('fecha', hastaISO), locationId)),
-      paginar(() => sbClient.from('appointments').select('cliente_telefono')
-        .eq('business_id', BUSINESS_ID).neq('estado', 'cancelada').lt('fecha', desdeISO))
-    ]);
-    const tel = t => String(t || '').replace(/\D/g, '').slice(-8);
-    return {
-      citas,
-      ventas,
-      clientesPrevios: new Set(previas.map(r => tel(r.cliente_telefono)).filter(Boolean))
-    };
-  },
-
-  // Estado PARCIAL a la fecha de un profesional (en una sede): no congela nada y se puede pedir
-  // cuantas veces se quiera. Va desde el inicio del periodo hasta hoy (o hasta el fin si ya terminó).
-  // enviar=true lo manda al correo del profesional; siempre devuelve el PDF para descargarlo.
-  async estadoProfesionalALaFecha({ employeeId, desdeISO, hastaISO, locationId, enviar }) {
-    await window.AnnlyReady;
-    const hoy = this._hoyISO();
-    const hasta = hoy < hastaISO ? hoy : hastaISO;
-    if (hasta < desdeISO) throw new Error('Este periodo todavía no empieza.');
-
-    const detalle = await this._detalleCierreProfesional(employeeId, desdeISO, hasta, locationId);
-    const r2 = n => Math.round(n * 100) / 100;
-    const comisionTotal = r2(detalle.citas.reduce((s, c) => s + c.comisionMonto, 0) + detalle.ventas.reduce((s, v) => s + v.comisionMonto, 0));
-    const propinasTotal = r2(detalle.propinas.filter(p => p.estado === 'programada_cierre').reduce((s, p) => s + p.monto, 0));
-    const propinasContado = r2(detalle.propinas.filter(p => p.estado === 'pagada_contado').reduce((s, p) => s + p.monto, 0));
-    const adelantosTotal = r2(detalle.adelantos.reduce((s, a) => s + a.monto, 0));
-    const netoPagado = r2(comisionTotal + propinasTotal - adelantosTotal);
-    const sucursal = await this._datosSedeComprobante(locationId);
-
-    const resultado = await this.enviarComprobanteCierre('estado_profesional', {
-      employeeId, periodo: { desde: desdeISO, hasta }, sucursal, enviar: !!enviar,
-      resumen: { comisionTotal, propinasTotal, propinasContado, adelantosTotal, netoPagado }, detalle
-    });
-    if (enviar) {
-      await this.registrarAccion({ entidad: 'estado_profesional', entidadId: employeeId, accion: 'enviado',
-        motivo: `Estado a la fecha ${desdeISO} al ${hasta}`, monto: netoPagado, detalle: { locationId: locationId || null, enviadoA: resultado.enviadoA || null } });
-    }
-    return { pdfBase64: resultado.pdfBase64, archivo: resultado.archivo, enviadoA: resultado.enviadoA || null, hasta };
-  },
-
-  // ¿Ya se puede hacer el cierre general de este periodo? (todos los profesionales activos cerrados)
-  // Profesionales activos que atienden en una sede (sin sede: todos los activos)
-  async _empleadosDeSede(locationId) {
-    const activos = (await this.getEmpleados()).filter(e => e.activo);
-    if (!locationId) return activos;
-    const { data, error } = await sbClient.from('employee_locations').select('employee_id').eq('location_id', locationId);
-    if (error) throw error;
-    const ids = new Set((data || []).map(r => r.employee_id));
-    return activos.filter(e => ids.has(e.id));
-  },
-
-  async getCierreNegocioElegibilidad(desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const periodoTerminado = this._hoyISO() >= hastaISO;
-    const empleados = await this._empleadosDeSede(locationId);
-    const faltantes = [];
-    for (const e of empleados) {
-      const c = await this.getCierreProfesional(e.id, desdeISO, hastaISO, locationId);
-      if (!c) faltantes.push(e.nombre);
-    }
-    return { listo: periodoTerminado && faltantes.length === 0 && empleados.length > 0, faltantes, periodoTerminado };
-  },
-
-  async getCierreNegocio(desdeISO, hastaISO, locationId) {
-    await window.AnnlyReady;
-    const { data, error } = await this._enSede(sbClient.from('cierres_negocio').select('*')
-      .eq('business_id', BUSINESS_ID).eq('periodo_desde', desdeISO).eq('periodo_hasta', hastaISO), locationId).limit(1).maybeSingle();
-    if (error) throw error;
-    return data ? { id: data.id, ingresosTotal: Number(data.ingresos_total), comisionesTotal: Number(data.comisiones_total), enviadoEn: data.enviado_en, creadoEn: data.creado_en } : null;
-  },
-
-  // Cierre general: junta lo ya cerrado por profesional y manda el resumen al correo del dueño.
-  // Solo corre si todos los profesionales activos ya cerraron ese mismo periodo.
-  async cerrarNegocio({ desdeISO, hastaISO, locationId }) {
-    await window.AnnlyReady;
-
-    const yaExiste = await this.getCierreNegocio(desdeISO, hastaISO, locationId);
-    if (yaExiste) throw new Error('Este periodo ya tiene un cierre general' + (locationId ? ' en esta sede.' : '.'));
-
-    const elig = await this.getCierreNegocioElegibilidad(desdeISO, hastaISO, locationId);
-    if (!elig.periodoTerminado) throw new Error(`El periodo termina el ${hastaISO}; el cierre general se puede hacer desde ese día.`);
-    if (!elig.listo) throw new Error('Faltan por cerrar: ' + (elig.faltantes.join(', ') || 'no hay profesionales activos'));
-
-    const [pagos, cierresProf] = await Promise.all([
-      this._enSede(sbClient.from('finance_payments').select('monto').eq('business_id', BUSINESS_ID).eq('estado', 'confirmado').gte('fecha', desdeISO).lte('fecha', hastaISO), locationId),
-      this._enSede(sbClient.from('cierres_profesional').select('employee_id, comision_total, propinas_total, neto_pagado').eq('business_id', BUSINESS_ID).eq('periodo_desde', desdeISO).eq('periodo_hasta', hastaISO), locationId)
-    ]);
-    const ingresosTotal = Math.round((pagos.data || []).reduce((s, p) => s + Number(p.monto), 0) * 100) / 100;
-    const comisionesTotal = Math.round((cierresProf.data || []).reduce((s, c) => s + Number(c.comision_total), 0) * 100) / 100;
-
-    const empleados = await this.getEmpleados();
-    const mapaNombres = Object.fromEntries(empleados.map(e => [e.id, e.nombre]));
-    const porProfesional = (cierresProf.data || []).map(c => ({
-      nombre: mapaNombres[c.employee_id] || 'Profesional', comisionTotal: Number(c.comision_total),
-      propinasTotal: Number(c.propinas_total), netoPagado: Number(c.neto_pagado)
-    }));
-
-    const sucursal = await this._datosSedeComprobante(locationId);
-    await this.enviarComprobanteCierre('cierre_negocio', {
-      periodo: { desde: desdeISO, hasta: hastaISO }, sucursal,
-      resumen: { ingresosTotal, comisionesTotal }, porProfesional
-    });
-
-    const { data: cierre, error } = await sbClient.from('cierres_negocio').insert([{
-      business_id: BUSINESS_ID, periodo_desde: desdeISO, periodo_hasta: hastaISO,
-      ingresos_total: ingresosTotal, comisiones_total: comisionesTotal, detalle: { porProfesional, sucursal },
-      enviado_en: new Date().toISOString(),
-      ...(locationId ? { location_id: locationId } : {})
-    }]).select('id').single();
-    if (error) throw error;
-
-    return cierre.id;
-  },
-
-  // Datos de un certificado por su código (aunque ya no tenga saldo), para el detalle de una cita
-  async getCertificadoPorCodigo(codigo) {
-    await window.AnnlyReady;
-    const cod = (codigo || '').toUpperCase().trim();
-    if (!cod) return null;
-    const { data, error } = await sbClient.from('gift_certificates').select('*')
-      .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
-    if (error || !data) return null;
-    return {
-      id: data.id, codigo: data.codigo, estado: data.estado, tipo: data.tipo,
-      saldoRestante: Number(data.saldo_restante), montoInicial: Number(data.monto_inicial),
-      fechaVencimiento: data.fecha_vencimiento
-    };
-  },
-
-  // Deja constancia en la cita de un certificado usado al completarla en el local
-  // (monto usado y saldo que le quedó). Nunca pisa el certificado de otro código.
-  async registrarCertificadoEnCita(citaId, { codigo, monto, saldo }) {
-    await window.AnnlyReady;
-    const { data: cita } = await sbClient.from('appointments')
-      .select('certificado_codigo, certificado_monto')
-      .eq('id', citaId).eq('business_id', BUSINESS_ID).maybeSingle();
-    if (!cita) return;
-    // Un certificado ya descontado en la cita no se cambia por otro; uno solo "por aplicar" (monto 0) sí
-    if (cita.certificado_codigo && Number(cita.certificado_monto) > 0 && cita.certificado_codigo !== codigo) return;
-    const { error } = await sbClient.from('appointments').update({
-      certificado_codigo: codigo,
-      certificado_monto: (Number(cita.certificado_monto) || 0) + monto,
-      certificado_saldo_restante: saldo
-    }).eq('id', citaId);
-    if (error) console.error('No se pudo registrar el certificado en la cita:', error);
-  },
-
-  // Cobro de la venta de un certificado (efectivo, Yappy, transferencia o tarjeta).
-  // Es dinero recibido, pero NO ingreso: pasa a ser ingreso cuando el certificado se canjea.
-  async registrarPagosCertificado(certificateId, { codigo, compradorNombre, pagos }) {
-    await window.AnnlyReady;
-    const hoy = new Date();
-    const fecha = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-    const filas = (pagos || []).filter(p => p.monto > 0).map(p => ({
-      business_id: BUSINESS_ID, origen: 'certificado', certificate_id: certificateId,
-      metodo: p.metodo, monto: p.monto, referencia: p.referencia || null,
-      fecha, concepto: 'Certificado ' + (codigo || ''), cliente_nombre: compradorNombre || null
-    }));
-    if (!filas.length) return;
-    const { error } = await sbClient.from('finance_payments').insert(filas);
-    if (error) throw error;
-  },
-
-  // ---------------------------------------------------------------
-  // SUCURSALES
-  // Un negocio tiene siempre una sucursal Principal (la crea la base de datos).
-  // Las adicionales se habilitan con el módulo por cantidad SUCURSAL_ADICIONAL.
-  // Una sucursal no se borra: se desactiva (queda su historial de citas y ventas).
-  // ---------------------------------------------------------------
-  _slugSucursal(texto) {
-    return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'sucursal';
-  },
-
-  async getSucursales() {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('locations').select('*')
-      .eq('business_id', BUSINESS_ID)
-      .order('is_main', { ascending: false }).order('orden', { ascending: true }).order('created_at', { ascending: true });
-    if (error) throw error;
-    const sucursales = data || [];
-    let enlaces = [], servicios = [], serviciosDisponibles = false;
-    if (sucursales.length) {
-      const ids = sucursales.map(s => s.id);
-      const [elRes, lsRes] = await Promise.all([
-        sbClient.from('employee_locations').select('employee_id, location_id, is_primary').in('location_id', ids),
-        sbClient.from('location_services').select('location_id, service_id').in('location_id', ids)
-      ]);
-      if (elRes.error) throw elRes.error;
-      enlaces = elRes.data || [];
-      // Si la tabla aún no existe (SQL 3.1 sin correr) se sigue sin servicios por sucursal
-      if (lsRes.error) console.error('Servicios por sucursal no disponibles:', lsRes.error);
-      else { servicios = lsRes.data || []; serviciosDisponibles = true; }
-    }
-    return sucursales.map(s => ({
-      id: s.id, nombre: s.name, direccion: s.address || '', telefono: s.phone || '', correo: s.email || '',
-      slug: s.slug || '', esPrincipal: !!s.is_main, activa: !!s.is_active, orden: s.orden || 0,
-      horario: s.horario_estructurado || null,
-      empleados: enlaces.filter(e => e.location_id === s.id).map(e => e.employee_id),
-      servicios: serviciosDisponibles ? servicios.filter(x => x.location_id === s.id).map(x => x.service_id) : null
-    }));
-  },
-
-  // Crea o edita una sucursal. Devuelve su id. La Principal no se puede desactivar.
-  async guardarSucursal({ id, nombre, direccion, telefono, correo, activa, horario, horarioTexto }) {
-    await window.AnnlyReady;
-    const nom = (nombre || '').trim();
-    if (!nom) throw new Error('Escribe el nombre de la sucursal.');
-
-    const { data: todas, error: errT } = await sbClient.from('locations').select('id, name, slug, is_main')
-      .eq('business_id', BUSINESS_ID);
-    if (errT) throw errT;
-    const otras = (todas || []).filter(s => s.id !== id);
-    if (otras.some(s => (s.name || '').trim().toLowerCase() === nom.toLowerCase())) {
-      throw new Error('Ya tienes una sucursal con ese nombre.');
-    }
-    const actual = id ? (todas || []).find(s => s.id === id) : null;
-    if (actual && actual.is_main && activa === false) throw new Error('La sucursal principal no se puede desactivar.');
-
-    // Identificador para el link público (?s=...), único dentro del negocio
-    let slug = actual && actual.is_main ? (actual.slug || 'principal') : this._slugSucursal(nom);
-    if (!(actual && actual.is_main)) {
-      const usados = new Set(otras.map(s => s.slug).filter(Boolean));
-      const base = slug; let n = 2;
-      while (usados.has(slug)) slug = base + '-' + (n++);
-    }
-
-    const fila = {
-      name: nom, address: (direccion || '').trim() || null, phone: (telefono || '').trim() || null,
-      email: (correo || '').trim() || null, slug, updated_at: new Date().toISOString()
-    };
-    if (!(actual && actual.is_main)) fila.is_active = activa !== false;
-    if (horario) fila.horario_estructurado = horario;
-
-    if (id) {
-      const { data, error } = await sbClient.from('locations').update(fila)
-        .eq('id', id).eq('business_id', BUSINESS_ID).select('id');
-      if (error) throw error;
-      if (!data || !data.length) throw new Error('No se pudo guardar la sucursal (sin permisos).');
-      // La Principal y el horario del Perfil son el mismo: se mantienen iguales
-      if (actual && actual.is_main && horario) {
-        const cambios = { horario_estructurado: horario };
-        if (horarioTexto) cambios.horario_texto = horarioTexto;
-        const { error: errB } = await sbClient.from('businesses').update(cambios).eq('id', BUSINESS_ID);
-        if (errB) throw errB;
-        if (window.ANNLY_BUSINESS) { window.ANNLY_BUSINESS.horario_estructurado = horario; if (horarioTexto) window.ANNLY_BUSINESS.horario_texto = horarioTexto; }
-      }
-      return id;
-    }
-    const { data, error } = await sbClient.from('locations')
-      .insert([{ ...fila, business_id: BUSINESS_ID, is_main: false, orden: (todas || []).length }])
-      .select('id').single();
-    if (error) throw error;
-    return data.id;
-  },
-
-  // Citas pendientes (hoy en adelante, sin completar ni cancelar) en una sucursal
-  async contarCitasFuturasSucursal(locationId) {
-    await window.AnnlyReady;
-    const hoy = this._hoyISO();
-    const { count, error } = await sbClient.from('appointments').select('id', { count: 'exact', head: true })
-      .eq('business_id', BUSINESS_ID).eq('location_id', locationId)
-      .or('estado.is.null,estado.neq.cancelada').is('completada_en', null).gte('fecha', hoy);
-    if (error) throw error;
-    return count || 0;
-  },
-
-  // Deja a la sucursal con exactamente estos profesionales. Un profesional nunca
-  // se queda sin sucursal: si esta era la única que tenía, no se le puede quitar.
-  async asignarProfesionalesSucursal(locationId, employeeIds) {
-    await window.AnnlyReady;
-    const deseados = [...new Set((employeeIds || []).filter(Boolean))];
-    const { data: actuales, error } = await sbClient.from('employee_locations')
-      .select('id, employee_id').eq('location_id', locationId);
-    if (error) throw error;
-    const actualesIds = (actuales || []).map(a => a.employee_id);
-    const quitar = (actuales || []).filter(a => !deseados.includes(a.employee_id));
-    const agregar = deseados.filter(e => !actualesIds.includes(e));
-
-    if (quitar.length) {
-      const { data: otrosEnlaces, error: errO } = await sbClient.from('employee_locations')
-        .select('employee_id, location_id').in('employee_id', quitar.map(q => q.employee_id)).neq('location_id', locationId);
-      if (errO) throw errO;
-      const conOtra = new Set((otrosEnlaces || []).map(o => o.employee_id));
-      const sinSucursal = quitar.filter(q => !conOtra.has(q.employee_id));
-      if (sinSucursal.length) {
-        const { data: emps } = await sbClient.from('employees').select('id, nombre').in('id', sinSucursal.map(s => s.employee_id));
-        const nombres = (emps || []).map(e => e.nombre).join(', ');
-        throw new Error(`${nombres || 'Un profesional'} quedaría sin ninguna sucursal. Asígnalo primero a otra sucursal.`);
-      }
-      const { error: errDel } = await sbClient.from('employee_locations').delete().in('id', quitar.map(q => q.id));
-      if (errDel) throw errDel;
-    }
-
-    if (agregar.length) {
-      const { data: yaTienen } = await sbClient.from('employee_locations').select('employee_id').in('employee_id', agregar);
-      const conAlguna = new Set((yaTienen || []).map(y => y.employee_id));
-      const { error: errIns } = await sbClient.from('employee_locations').insert(
-        agregar.map(e => ({ employee_id: e, location_id: locationId, is_primary: !conAlguna.has(e) }))
-      );
-      if (errIns) throw errIns;
-    }
-  },
-
-  // Profesionales activos y los servicios que realiza cada uno ([] = hace todos)
-  async getEmpleadosActivosServicios() {
-    await window.AnnlyReady;
-    const { data: emps, error } = await sbClient.from('employees').select('id').eq('business_id', BUSINESS_ID).eq('activo', true);
-    if (error) throw error;
-    const ids = (emps || []).map(e => e.id);
-    if (!ids.length) return [];
-    const { data: asign } = await sbClient.from('employee_services').select('employee_id, service_id').in('employee_id', ids);
-    return ids.map(id => ({ id, servicios: (asign || []).filter(a => a.employee_id === id).map(a => a.service_id) }));
-  },
-
-  // Deja a la sucursal con exactamente estos servicios
-  async guardarServiciosDeSucursal(locationId, serviceIds) {
-    await window.AnnlyReady;
-    const deseados = [...new Set((serviceIds || []).filter(Boolean))];
-    const { data: actuales, error } = await sbClient.from('location_services').select('service_id').eq('location_id', locationId);
-    if (error) throw error;
-    const actualesIds = (actuales || []).map(a => a.service_id);
-    const quitar = actualesIds.filter(x => !deseados.includes(x));
-    const agregar = deseados.filter(x => !actualesIds.includes(x));
-    if (quitar.length) {
-      const { error: e1 } = await sbClient.from('location_services').delete().eq('location_id', locationId).in('service_id', quitar);
-      if (e1) throw e1;
-    }
-    if (agregar.length) {
-      const { error: e2 } = await sbClient.from('location_services').insert(agregar.map(x => ({ location_id: locationId, service_id: x })));
-      if (e2) throw e2;
-    }
-  },
-
-  // Deja a un servicio disponible en exactamente estas sucursales (solo sucursales de este negocio)
-  async guardarSucursalesDeServicio(serviceId, locationIds) {
-    await window.AnnlyReady;
-    const { data: sucs, error: errS } = await sbClient.from('locations').select('id').eq('business_id', BUSINESS_ID);
-    if (errS) throw errS;
-    const delNegocio = (sucs || []).map(x => x.id);
-    const deseadas = [...new Set((locationIds || []).filter(l => delNegocio.includes(l)))];
-    const { data: actuales, error } = await sbClient.from('location_services').select('location_id')
-      .eq('service_id', serviceId).in('location_id', delNegocio);
-    if (error) throw error;
-    const actualesIds = (actuales || []).map(a => a.location_id);
-    const quitar = actualesIds.filter(x => !deseadas.includes(x));
-    const agregar = deseadas.filter(x => !actualesIds.includes(x));
-    if (quitar.length) {
-      const { error: e1 } = await sbClient.from('location_services').delete().eq('service_id', serviceId).in('location_id', quitar);
-      if (e1) throw e1;
-    }
-    if (agregar.length) {
-      const { error: e2 } = await sbClient.from('location_services').insert(agregar.map(l => ({ location_id: l, service_id: serviceId })));
-      if (e2) throw e2;
-    }
-  },
-
-  // El horario del Perfil es el de la sucursal Principal: al guardar el Perfil se copia ahí
-  async sincronizarHorarioPrincipal(horario) {
-    await window.AnnlyReady;
-    if (!horario) return;
-    const { error } = await sbClient.from('locations').update({ horario_estructurado: horario, updated_at: new Date().toISOString() })
-      .eq('business_id', BUSINESS_ID).eq('is_main', true);
-    if (error) throw error;
-  },
-
-  // Horarios propios de un profesional, por sucursal: { location_id: horario }
-  async getEmpleadoHorarios(empleadoId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('employee_schedules')
-      .select('location_id, horario_estructurado').eq('employee_id', empleadoId).not('horario_estructurado', 'is', null);
-    if (error) throw error;
-    const mapa = {};
-    (data || []).forEach(r => { if (r.location_id && !mapa[r.location_id]) mapa[r.location_id] = r.horario_estructurado; });
-    return mapa;
-  },
-
-  // Horario propio del profesional en una sucursal (null = usa el de la sucursal)
-  async guardarEmpleadoHorarioSucursal(empleadoId, locationId, horario) {
-    await window.AnnlyReady;
-    const { error: errDel } = await sbClient.from('employee_schedules').delete()
-      .eq('employee_id', empleadoId).eq('location_id', locationId);
-    if (errDel) throw errDel;
-    if (!horario) return;
-    const { error } = await sbClient.from('employee_schedules')
-      .insert([{ employee_id: empleadoId, location_id: locationId, horario_estructurado: horario }]);
-    if (error) throw error;
-  },
-
-  // Borra horarios propios de sucursales donde el profesional ya no atiende (y filas viejas sin sucursal)
-  async limpiarHorariosEmpleado(empleadoId, locationIdsVigentes) {
-    await window.AnnlyReady;
-    const vigentes = (locationIdsVigentes || []).filter(Boolean);
-    let q = sbClient.from('employee_schedules').delete().eq('employee_id', empleadoId);
-    if (vigentes.length) q = q.or('location_id.is.null,location_id.not.in.(' + vigentes.join(',') + ')');
-    const { error } = await q;
-    if (error) throw error;
-  },
-
-  // Sucursales donde atiende un profesional (ids)
-  async getSucursalesDeEmpleado(employeeId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('employee_locations').select('location_id').eq('employee_id', employeeId);
-    if (error) throw error;
-    return (data || []).map(r => r.location_id);
-  },
-
-  // Deja al profesional en exactamente estas sucursales (mínimo una)
-  async asignarSucursalesEmpleado(employeeId, locationIds) {
-    await window.AnnlyReady;
-    const deseadas = [...new Set((locationIds || []).filter(Boolean))];
-    if (!deseadas.length) throw new Error('El profesional debe atender al menos en una sucursal.');
-    const { data: actuales, error } = await sbClient.from('employee_locations')
-      .select('id, location_id').eq('employee_id', employeeId);
-    if (error) throw error;
-    const quitar = (actuales || []).filter(a => !deseadas.includes(a.location_id));
-    const actualesIds = (actuales || []).map(a => a.location_id);
-    const agregar = deseadas.filter(l => !actualesIds.includes(l));
-    if (agregar.length) {
-      const { error: errIns } = await sbClient.from('employee_locations').insert(
-        agregar.map((l, i) => ({ employee_id: employeeId, location_id: l, is_primary: !actualesIds.length && i === 0 }))
-      );
-      if (errIns) throw errIns;
-    }
-    if (quitar.length) {
-      const { error: errDel } = await sbClient.from('employee_locations').delete().in('id', quitar.map(q => q.id));
-      if (errDel) throw errDel;
-    }
-  },
-
-  // Sucursales adicionales contratadas (mismo esquema que Profesional adicional)
-  async getSucursalesExtra(subscriptionId) {
-    await window.AnnlyReady;
-    const vacio = { cantidad: 0, totalMensual: 0, pendientes: [] };
-    if (!subscriptionId) return vacio;
-    const hoyISO = this._hoyISO();
-    const { data, error } = await sbClient.from('subscription_items')
-      .select('id, quantity, unit_price, created_at, cancela_el')
-      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
-      .eq('item_code', 'SUCURSAL_ADICIONAL').eq('is_active', true)
-      .order('created_at', { ascending: true });
-    if (error) { console.error('Error leyendo sucursales adicionales:', error); return vacio; }
-    const vigentes = (data || []).filter(r => !r.cancela_el || r.cancela_el >= hoyISO);
-    return {
-      cantidad: vigentes.reduce((s, r) => s + (r.quantity || 1), 0),
-      totalMensual: vigentes.reduce((s, r) => s + (Number(r.unit_price) || 0) * (r.quantity || 1), 0),
-      pendientes: vigentes.filter(r => r.cancela_el).map(r => r.cancela_el).sort()
-    };
-  },
-
-  async agregarSucursalExtra(subscriptionId, precio) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('subscription_items').insert([{
-      subscription_id: subscriptionId, item_type: 'addon', item_code: 'SUCURSAL_ADICIONAL',
-      description: 'Sucursal adicional', quantity: 1, unit_price: precio, is_active: true
-    }]);
-    if (error) throw error;
-  },
-
-  // Da de baja UNA sucursal adicional al terminar su mes ya pagado. Devuelve la fecha de baja.
-  async quitarSucursalExtra(subscriptionId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('subscription_items')
-      .select('id, created_at')
-      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
-      .eq('item_code', 'SUCURSAL_ADICIONAL').eq('is_active', true).is('cancela_el', null)
-      .order('created_at', { ascending: true }).limit(1);
-    if (error || !data || !data.length) throw error || new Error('No hay sucursales adicionales para quitar.');
-    const corte = new Date(data[0].created_at);
-    const ahora = new Date();
-    while (corte <= ahora) corte.setMonth(corte.getMonth() + 1);
-    const fecha = corte.getFullYear() + '-' + String(corte.getMonth() + 1).padStart(2, '0') + '-' + String(corte.getDate()).padStart(2, '0');
-    const { error: errUpd } = await sbClient.from('subscription_items').update({ cancela_el: fecha }).eq('id', data[0].id);
-    if (errUpd) throw errUpd;
-    return fecha;
-  },
-
-  // ---------------------------------------------------------------
-  // PROFESIONAL ADICIONAL (módulo por cantidad)
-  // Cada extra es una fila (quantity 1) con su propio precio y su propio ciclo de cobro.
-  // ---------------------------------------------------------------
-  async getProfesionalesExtra(subscriptionId) {
-    await window.AnnlyReady;
-    const vacio = { cantidad: 0, totalMensual: 0, pendientes: [] };
-    if (!subscriptionId) return vacio;
-    const hoy = new Date();
-    const hoyISO = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-    const { data, error } = await sbClient.from('subscription_items')
-      .select('id, quantity, unit_price, created_at, cancela_el')
-      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
-      .eq('item_code', 'PROFESIONAL_ADICIONAL').eq('is_active', true)
-      .order('created_at', { ascending: true });
-    if (error) { console.error('Error leyendo profesionales adicionales:', error); return vacio; }
-    // Uno con fecha de baja sigue contando hasta esa fecha (ya está pagado)
-    const vigentes = (data || []).filter(r => !r.cancela_el || r.cancela_el >= hoyISO);
-    return {
-      cantidad: vigentes.reduce((s, r) => s + (r.quantity || 1), 0),
-      totalMensual: vigentes.reduce((s, r) => s + (Number(r.unit_price) || 0) * (r.quantity || 1), 0),
-      pendientes: vigentes.filter(r => r.cancela_el).map(r => r.cancela_el).sort()
-    };
-  },
-
-  async agregarProfesionalExtra(subscriptionId, precio) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('subscription_items').insert([{
-      subscription_id: subscriptionId, item_type: 'addon', item_code: 'PROFESIONAL_ADICIONAL',
-      description: 'Profesional adicional', quantity: 1, unit_price: precio, is_active: true
-    }]);
-    if (error) throw error;
-  },
-
-  // Da de baja UN profesional extra al terminar su ciclo mensual ya pagado (no se corta a mitad del mes).
-  // Se toma el más antiguo que aún no tenga baja programada. Devuelve la fecha de baja.
-  async quitarProfesionalExtra(subscriptionId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('subscription_items')
-      .select('id, created_at')
-      .eq('subscription_id', subscriptionId).eq('item_type', 'addon')
-      .eq('item_code', 'PROFESIONAL_ADICIONAL').eq('is_active', true).is('cancela_el', null)
-      .order('created_at', { ascending: true }).limit(1);
-    if (error || !data || !data.length) throw error || new Error('No hay profesionales adicionales para quitar.');
-    const corte = new Date(data[0].created_at);
-    const ahora = new Date();
-    while (corte <= ahora) corte.setMonth(corte.getMonth() + 1);
-    const fecha = corte.getFullYear() + '-' + String(corte.getMonth() + 1).padStart(2, '0') + '-' + String(corte.getDate()).padStart(2, '0');
-    const { error: errUpd } = await sbClient.from('subscription_items').update({ cancela_el: fecha }).eq('id', data[0].id);
-    if (errUpd) throw errUpd;
-    return fecha;
-  },
-
-  // Módulos que el negocio tiene disponibles ahora mismo, pensado para el sitio
-  // público (visitantes SIN sesión, que por RLS no pueden leer subscriptions).
-  // Lo resuelve la función SQL modulos_publicos (security definer): en trial
-  // cuenta solo lo de Basic; si no, plan + addons vigentes. Devuelve null si falla.
-  async getModulosPublicos() {
-    await window.AnnlyReady;
-    if (!BUSINESS_ID) return null;
-    const { data, error } = await sbClient.rpc('modulos_publicos', { p_business_id: String(BUSINESS_ID) });
-    if (error) { console.error('Error leyendo módulos públicos:', error); return null; }
-    return Array.isArray(data) ? data : [];
-  },
-
-  // Todas las features marcadas como módulo adicional (is_addon = true), con su precio.
-  async getCatalogoModulos() {
-    await window.AnnlyReady;
-    // Solo los módulos de Agenda (los de Tiendas tienen producto = 'pedidos')
-    let { data, error } = await sbClient.from('features').select('*').eq('is_addon', true).eq('is_active', true).eq('producto', 'agenda').order('code');
-    if (error) ({ data } = await sbClient.from('features').select('*').eq('is_addon', true).eq('is_active', true).order('code'));
-    return (data || []).map(f => ({ code: f.code, name: f.name, description: f.description, price: Number(f.monthly_price) || 0 }));
-  },
-
-  // Módulos que el negocio ya activó por separado (subscription_items tipo 'addon').
-  // Uno cancelado sigue contando como activo hasta que pase su fecha de corte
-  // (cancela_el) — así el cliente no pierde acceso a mitad del mes que ya pagó.
-  async getModulosActivos(subscriptionId) {
-    await window.AnnlyReady;
-    if (!subscriptionId) return [];
-    const hoy = new Date().toISOString().split('T')[0];
-    const { data } = await sbClient.from('subscription_items').select('item_code, cancela_el')
-      .eq('subscription_id', subscriptionId).eq('item_type', 'addon').eq('is_active', true);
-    return (data || [])
-      .filter(r => !r.cancela_el || r.cancela_el >= hoy)
-      .map(r => r.item_code);
-  },
-
-  // Detalle completo de los módulos activos del negocio (incluye si está
-  // pendiente de cancelación y hasta cuándo), para pintar el estado real
-  // en la pestaña Mi plan.
-  async getModulosActivosDetalle(subscriptionId) {
-    await window.AnnlyReady;
-    if (!subscriptionId) return [];
-    const hoy = new Date().toISOString().split('T')[0];
-    const { data } = await sbClient.from('subscription_items').select('item_code, cancela_el, created_at')
-      .eq('subscription_id', subscriptionId).eq('item_type', 'addon').eq('is_active', true);
-    return (data || [])
-      .filter(r => !r.cancela_el || r.cancela_el >= hoy)
-      .map(r => ({ code: r.item_code, canceladoParaEl: r.cancela_el, fechaActivacion: r.created_at }));
-  },
-
-  // Activa un módulo al toque (sin cobro real todavía — ver nota en admin.html).
-  async activarModulo(subscriptionId, featureCode, nombre, precio) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('subscription_items').insert([{
-      subscription_id: subscriptionId, item_type: 'addon', item_code: featureCode,
-      description: nombre, quantity: 1, unit_price: precio, is_active: true
-    }]);
-    if (error) throw error;
-  },
-
-  // El negocio abandona un addon que compró — sigue activo hasta que se
-  // cumpla un mes desde el día que lo activó (no se le corta a mitad de lo
-  // que ya pagó). item_code puede repetirse si se reactivó antes, así que
-  // se toma la fila activa (is_active) más reciente.
-  async cancelarModulo(subscriptionId, featureCode) {
-    await window.AnnlyReady;
-    const { data: item, error: errRead } = await sbClient.from('subscription_items')
-      .select('id, created_at').eq('subscription_id', subscriptionId).eq('item_code', featureCode)
-      .eq('item_type', 'addon').eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (errRead || !item) throw errRead || new Error('Módulo no encontrado.');
-
-    const activado = new Date(item.created_at);
-    const corte = new Date(activado);
-    corte.setMonth(corte.getMonth() + 1);
-
-    const { error: errUpdate } = await sbClient.from('subscription_items')
-      .update({ cancela_el: corte.toISOString().split('T')[0] }).eq('id', item.id);
-    if (errUpdate) throw errUpdate;
-
-    return corte.toISOString().split('T')[0];
-  },
-
-  // A diferencia de cancelarModulo() (que mantiene el acceso hasta fin de
-  // mes), esto apaga el addon YA — pensado para Pagos/Yappy: no tiene
-  // sentido seguir "teniendo" el botón de cobro real activo un rato más
-  // después de que el negocio pidió quitarlo. No hace nada si el módulo
-  // viene incluido en el plan (nada que desactivar ahí).
-  async desactivarModuloInmediato(subscriptionId, featureCode) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('subscription_items')
-      .update({ is_active: false }).eq('subscription_id', subscriptionId)
-      .eq('item_code', featureCode).eq('item_type', 'addon').eq('is_active', true);
-    if (error) throw error;
-  },
-
-  // Cambia el plan de la suscripción (sin cobro real todavía, mismo criterio que los
-  // módulos). Si algún módulo comprado suelto ya viene incluido en el plan nuevo,
-  // se desactiva ese cobro aparte para no cobrar dos veces por lo mismo.
-  async cambiarPlan(subscriptionId, nuevoPlanCode) {
-    await window.AnnlyReady;
-    const { data: plan, error: errPlan } = await sbClient.from('plans').select('id').eq('code', nuevoPlanCode.toUpperCase()).maybeSingle();
-    if (errPlan || !plan) throw errPlan || new Error('Plan no encontrado');
-
-    const { error: errUpdate } = await sbClient.from('subscriptions').update({ plan_id: plan.id }).eq('id', subscriptionId);
-    if (errUpdate) throw errUpdate;
-
-    const featuresDelPlanNuevo = await this.getFeaturesDelPlan(plan.id);
-    if (featuresDelPlanNuevo.length) {
-      const { error: errItems } = await sbClient.from('subscription_items')
-        .update({ is_active: false })
-        .eq('subscription_id', subscriptionId).eq('item_type', 'addon').eq('is_active', true)
-        .in('item_code', featuresDelPlanNuevo);
-      if (errItems) console.error('No se pudieron desactivar los módulos ya incluidos:', errItems);
-    }
-  },
-
-  // El negocio decide pagar y salir de su prueba gratis antes de que termine
-  // (paga por fuera del sistema — Yappy/transferencia — y el Platform Admin
-  // lo confirma aquí). En cuanto queda "activo", todo lo que ya tenía
-  // seleccionado (plan + addons) se destraba de inmediato.
-  async activarSuscripcion(subscriptionId) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('subscriptions').update({ status: 'active' }).eq('id', subscriptionId);
-    if (error) throw error;
-  },
-
-  // =======================================================
-  // CERTIFICADOS Y CUPONES DE REGALO
-  // =======================================================
-
-  // Llama a la Edge Function de Supabase que arma y envía el correo
-  // (mantiene la API key de Resend fuera del navegador). No lanza error
-  // si falla — un correo que no sale no debe tumbar la acción principal.
-  async enviarCorreo(tipo, datos) {
-    try {
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-confirmation-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ tipo, businessId: BUSINESS_ID, datos })
-      });
-      const resultado = await resp.json();
-      if (!resultado.ok) console.error('No se pudo enviar el correo (' + tipo + '):', resultado.error);
-    } catch (e) {
-      console.error('Error de red enviando correo (' + tipo + '):', e);
-    }
-  },
-
-  async getCertificados() {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient
-      .from('gift_certificates')
-      .select('*')
-      .eq('business_id', BUSINESS_ID)
-      .order('creado_en', { ascending: false });
-    if (error) { console.error('Error leyendo certificados:', error); return []; }
-    return (data || []).map(c => ({
-      id: c.id,
-      codigo: c.codigo,
-      tipo: c.tipo,
-      estado: c.estado,
-      montoInicial: Number(c.monto_inicial),
-      saldoRestante: Number(c.saldo_restante),
-      compradorNombre: c.comprador_nombre,
-      compradorTelefono: c.comprador_telefono,
-      compradorCorreo: c.comprador_correo,
-      destinatarioNombre: c.destinatario_nombre,
-      destinatarioTelefono: c.destinatario_telefono,
-      destinatarioCorreo: c.destinatario_correo,
-      mensaje: c.mensaje,
-      nota: c.nota,
-      comprobante: c.comprobante,
-      metodoPago: c.metodo_pago,
-      fechaEmision: c.fecha_emision,
-      fechaVencimiento: c.fecha_vencimiento
-    }));
-  },
-
-  // Emitido por el negocio desde el panel — nace activo de una vez
-  // (ya se sabe que el pago, si lo hubo, se resolvió aparte).
-  async emitirCertificado({ tipo, monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, nota, pagos }) {
-    await window.AnnlyReady;
-
-    let codigo, intentos = 0;
-    while (true) {
-      codigo = 'CERT-' + Math.random().toString(16).slice(2, 6).toUpperCase() + Math.random().toString(16).slice(2, 4).toUpperCase();
-      const { data: existe } = await sbClient.from('gift_certificates').select('id').eq('business_id', BUSINESS_ID).eq('codigo', codigo).maybeSingle();
-      if (!existe) break;
-      intentos++;
-      if (intentos > 5) throw new Error('No se pudo generar un código único.');
-    }
-
-    const { data: creado, error } = await sbClient.from('gift_certificates').insert([{
-      business_id: BUSINESS_ID,
-      codigo,
-      tipo,
-      estado: 'activo',
-      monto_inicial: monto,
-      saldo_restante: monto,
-      comprador_nombre: compradorNombre || null,
-      comprador_telefono: compradorTelefono || null,
-      comprador_correo: compradorCorreo || null,
-      destinatario_nombre: destinatarioNombre || null,
-      destinatario_telefono: destinatarioTelefono || null,
-      destinatario_correo: destinatarioCorreo || null,
-      mensaje: mensaje || null,
-      nota: nota || null,
-      fecha_vencimiento: fechaVencimiento
-    }]).select('id').single();
-    if (error) throw error;
-
-    // El certificado se cobra al venderlo: se deja registrado el dinero recibido
-    // (no es ingreso todavía: cuenta cuando el cliente lo canjea).
-    if (pagos && pagos.length && creado) {
-      try {
-        await this.registrarPagosCertificado(creado.id, { codigo, compradorNombre, pagos });
-      } catch (e) {
-        console.error('El certificado se emitió, pero no se pudo registrar su cobro:', e);
-      }
-    }
-
-    await this._notificarCertificadoActivo({
-      codigo, monto, fechaVencimiento,
-      compradorNombre, compradorCorreo,
-      destinatarioNombre, destinatarioCorreo, mensaje
-    });
-
-    return codigo;
-  },
-
-  // Compra hecha por el cliente en el sitio público — nace pendiente de pago.
-  // Solo notifica al negocio para que revise el comprobante y la confirme.
-  async comprarCertificadoPublico({ monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, comprobante, metodoPago }) {
-    await window.AnnlyReady;
-
-    let codigo, intentos = 0;
-    while (true) {
-      codigo = 'CERT-' + Math.random().toString(16).slice(2, 6).toUpperCase() + Math.random().toString(16).slice(2, 4).toUpperCase();
-      const { data: existe } = await sbClient.from('gift_certificates').select('id').eq('business_id', BUSINESS_ID).eq('codigo', codigo).maybeSingle();
-      if (!existe) break;
-      intentos++;
-      if (intentos > 5) throw new Error('No se pudo generar un código único.');
-    }
-
-    const { error } = await sbClient.from('gift_certificates').insert([{
-      business_id: BUSINESS_ID,
-      codigo,
-      tipo: 'venta',
-      estado: 'pendiente_pago',
-      monto_inicial: monto,
-      saldo_restante: monto,
-      comprador_nombre: compradorNombre || null,
-      comprador_telefono: compradorTelefono || null,
-      comprador_correo: compradorCorreo || null,
-      destinatario_nombre: destinatarioNombre || null,
-      destinatario_telefono: destinatarioTelefono || null,
-      destinatario_correo: destinatarioCorreo || null,
-      mensaje: mensaje || null,
-      comprobante: comprobante || null,
-      metodo_pago: metodoPago || null,
-      fecha_vencimiento: fechaVencimiento
-    }]);
-    if (error) throw error;
-
-    await this.enviarCorreo('certificado_pendiente_pago', {
-      monto, nombreComprador: compradorNombre, metodoPago, comprobante
-    });
-
-    return codigo;
-  },
-
-  // El negocio confirma que el pago de un certificado comprado en el sitio
-  // público sí llegó — lo activa y recién ahí salen los correos al
-  // comprador y al destinatario. Misma función que usará el webhook de la
-  // pasarela de pagos el día que esté conectada, en vez de un click manual.
-  async confirmarPagoCertificado(certificateId) {
-    await window.AnnlyReady;
-
-    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('*').eq('id', certificateId).maybeSingle();
-    if (errRead || !cert) throw errRead || new Error('Certificado no encontrado.');
-
-    const { error: errUpdate } = await sbClient.from('gift_certificates').update({ estado: 'activo' }).eq('id', certificateId);
-    if (errUpdate) throw errUpdate;
-
-    // Compra hecha en el sitio público: al confirmar el pago queda registrado el dinero recibido
-    try {
-      const { data: yaRegistrado } = await sbClient.from('finance_payments').select('id')
-        .eq('business_id', BUSINESS_ID).eq('certificate_id', certificateId).limit(1);
-      if (!yaRegistrado || !yaRegistrado.length) {
-        await this.registrarPagosCertificado(certificateId, {
-          codigo: cert.codigo, compradorNombre: cert.comprador_nombre,
-          pagos: [{
-            metodo: cert.metodo_pago === 'yappy' ? 'yappy' : 'transferencia',
-            monto: Number(cert.monto_inicial), referencia: cert.comprobante || null
-          }]
-        });
-      }
-    } catch (e) { console.error('No se pudo registrar el cobro del certificado:', e); }
-
-    await this._notificarCertificadoActivo({
-      codigo: cert.codigo, monto: Number(cert.monto_inicial), fechaVencimiento: cert.fecha_vencimiento,
-      compradorNombre: cert.comprador_nombre, compradorCorreo: cert.comprador_correo,
-      destinatarioNombre: cert.destinatario_nombre, destinatarioCorreo: cert.destinatario_correo,
-      mensaje: cert.mensaje
-    });
-    await this.enviarCorreo('certificado_activado', { codigo: cert.codigo });
-  },
-
-  // Dispara los correos de comprador + destinatario de un certificado que
-  // acaba de quedar activo (ya sea porque el negocio lo emitió directo, o
-  // porque acaba de confirmar el pago de una compra pública).
-  async _notificarCertificadoActivo({ codigo, monto, fechaVencimiento, compradorNombre, compradorCorreo, destinatarioNombre, destinatarioCorreo, mensaje }) {
-    const slugNegocio = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug) || '';
-    const linkCertificado = window.location.origin + '/certificado.html?codigo=' + encodeURIComponent(codigo) + (slugNegocio ? '&n=' + encodeURIComponent(slugNegocio) : '');
-    if (compradorCorreo) {
-      await this.enviarCorreo('certificado_comprador', { codigo, monto, fechaVencimiento, nombreComprador: compradorNombre, correoComprador: compradorCorreo, nombreDestinatario: destinatarioNombre });
-    }
-    if (destinatarioCorreo) {
-      await this.enviarCorreo('certificado_destinatario', { codigo, monto, mensaje, nombreComprador: compradorNombre, correoDestinatario: destinatarioCorreo, linkCertificado });
-    }
-  },
-
-  // Usado desde el sitio público al reservar: valida el código contra el negocio actual.
-  async validarCertificado(codigo) {
-    await window.AnnlyReady;
-    const cod = (codigo || '').toUpperCase().trim();
-    if (!cod) return { valido: false, motivo: 'codigo_vacio' };
-
-    const { data } = await sbClient.from('gift_certificates').select('*')
-      .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
-    if (!data) return { valido: false, motivo: 'codigo_no_encontrado' };
-
-    if (data.estado === 'pendiente_pago') return { valido: false, motivo: 'pendiente_pago' };
-    if (data.estado === 'cancelado') return { valido: false, motivo: 'cancelado' };
-
-    const saldo = Number(data.saldo_restante);
-    if (saldo <= 0) return { valido: false, motivo: 'sin_saldo' };
-
-    const hoy = new Date().toISOString().split('T')[0];
-    if (data.fecha_vencimiento && data.fecha_vencimiento < hoy) return { valido: false, motivo: 'vencido' };
-
-    return {
-      valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo,
-      tipo: data.tipo, unSoloUso: data.tipo === 'cortesia',
-      montoOriginal: Number(data.monto_inicial), montoDisponible: saldo,
-      compradoPorNombre: data.comprador_nombre, destinatarioNombre: data.destinatario_nombre,
-      mensaje: data.mensaje, fechaVencimiento: data.fecha_vencimiento
-    };
-  },
-
-  // Descuenta el monto usado del saldo del certificado y deja el registro del canje.
-  // Se llama al confirmar la cita en el sitio público, después de guardarCita().
-  async aplicarCertificado(certificateId, montoAplicado, appointmentId) {
-    await window.AnnlyReady;
-
-    // 1) Función segura en la base (canjear_certificado): revisa el saldo, lo descuenta y
-    //    registra el canje en un solo paso, con los permisos correctos aunque quien reserva
-    //    sea un cliente sin sesión.
-    const { data: saldoNuevo, error: errRpc } = await sbClient.rpc('canjear_certificado', {
-      p_certificate_id: String(certificateId),
-      p_monto: montoAplicado,
-      p_appointment_id: (appointmentId !== null && appointmentId !== undefined) ? String(appointmentId) : null
-    });
-    if (!errRpc) return Number(saldoNuevo);
-
-    const noExiste = /canjear_certificado|could not find the function|schema cache|PGRST202/i
-      .test((errRpc.message || '') + ' ' + (errRpc.code || ''));
-    if (!noExiste) throw errRpc;
-
-    // 2) Respaldo (si esa función aún no existe): método anterior, pero verificando
-    //    que el saldo realmente se actualizó.
-    const { data: cert, error: errRead } = await sbClient.from('gift_certificates').select('saldo_restante, tipo').eq('id', certificateId).maybeSingle();
-    if (errRead || !cert) throw errRead || new Error('Certificado no encontrado.');
-
-    if (Number(cert.saldo_restante) - montoAplicado < 0) throw new Error('El monto aplicado supera el saldo disponible.');
-    // Cortesía: de un solo uso, se consume completo aunque el servicio valga menos
-    const nuevoSaldo = cert.tipo === 'cortesia' ? 0 : Number(cert.saldo_restante) - montoAplicado;
-
-    const { data: filas, error: errUpdate } = await sbClient.from('gift_certificates')
-      .update({ saldo_restante: nuevoSaldo }).eq('id', certificateId).select('id');
-    if (errUpdate) throw errUpdate;
-    if (!filas || !filas.length) throw new Error('No se pudo actualizar el saldo del certificado (sin permisos).');
-
-    const filaCanje = {
-      certificate_id: certificateId, business_id: BUSINESS_ID, appointment_id: appointmentId || null, monto_aplicado: montoAplicado
-    };
-    let { error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([{ ...filaCanje, saldo_despues: nuevoSaldo }]);
-    // Si la columna saldo_despues aún no existe, se registra el canje sin ella
-    if (errInsert && /saldo_despues/.test(errInsert.message || '')) {
-      ({ error: errInsert } = await sbClient.from('gift_certificate_redemptions').insert([filaCanje]));
-    }
-    if (errInsert) console.error('No se pudo registrar el canje del certificado:', errInsert);
-    return nuevoSaldo;
-  },
-
-  // Historial de canjes de un certificado — para trazabilidad ante reclamos
-  // ("¿cuándo y en qué cita se usó este certificado?").
-  async getCanjesCertificado(certificateId) {
-    await window.AnnlyReady;
-    const { data, error } = await sbClient.from('gift_certificate_redemptions')
-      .select('*, appointments(servicio_nombre, fecha, hora, cliente_nombre)')
-      .eq('certificate_id', certificateId)
-      .order('fecha', { ascending: false });
-    if (error) { console.error('Error leyendo canjes del certificado:', error); return []; }
-    return (data || []).map(r => ({
-      id: r.id,
-      montoAplicado: Number(r.monto_aplicado),
-      saldoDespues: r.saldo_despues != null ? Number(r.saldo_despues) : null,
-      fecha: r.fecha,
-      servicioNombre: r.appointments ? r.appointments.servicio_nombre : null,
-      fechaCita: r.appointments ? r.appointments.fecha : null,
-      horaCita: r.appointments ? r.appointments.hora : null,
-      clienteNombre: r.appointments ? r.appointments.cliente_nombre : null
-    }));
-  },
-
-  // Activar/desactivar un certificado manualmente desde el panel (ej. si
-  // hay un reclamo o se detecta un abuso). "activo" reactiva uno cancelado;
-  // "cancelado" lo bloquea sin importar el saldo o vencimiento que tenga.
-  async cambiarEstadoCertificado(certificateId, nuevoEstado) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('gift_certificates').update({ estado: nuevoEstado }).eq('id', certificateId);
-    if (error) throw error;
-  },
-
-  // =======================================================
-  // YAPPY COMERCIAL (botón de pago real, por negocio)
-  // =======================================================
-
-  // Solo para el panel admin (RLS: dueño o Platform Admin) — incluye el secret.
-  async getCredencialesYappy() {
-    await window.AnnlyReady;
-    const { data } = await sbClient.from('yappy_credentials').select('*').eq('business_id', BUSINESS_ID).maybeSingle();
-    if (!data) return null;
-    return {
-      merchantId: data.merchant_id, secretB64: data.secret_b64,
-      dominioRegistrado: data.dominio_registrado, activo: data.activo
-    };
-  },
-
-  // Guarda o actualiza las credenciales del negocio y mantiene sincronizado
-  // el flag público businesses.tiene_yappy_comercial (sin secretos) que usa
-  // el sitio de reservas para decidir botón real vs flujo manual.
-  async guardarCredencialesYappy({ merchantId, secretB64, dominioRegistrado, activo }) {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('yappy_credentials').upsert({
-      business_id: BUSINESS_ID, merchant_id: merchantId, secret_b64: secretB64,
-      dominio_registrado: dominioRegistrado, activo: activo !== false
-    }, { onConflict: 'business_id' });
-    if (error) throw error;
-
-    const { error: errBiz } = await sbClient.from('businesses')
-      .update({ tiene_yappy_comercial: activo !== false }).eq('id', BUSINESS_ID);
-    if (errBiz) console.error('No se pudo actualizar tiene_yappy_comercial:', errBiz);
-  },
-
-  async eliminarCredencialesYappy() {
-    await window.AnnlyReady;
-    const { error } = await sbClient.from('yappy_credentials').delete().eq('business_id', BUSINESS_ID);
-    if (error) throw error;
-    const { error: errBiz } = await sbClient.from('businesses')
-      .update({ tiene_yappy_comercial: false }).eq('id', BUSINESS_ID);
-    if (errBiz) console.error('No se pudo actualizar tiene_yappy_comercial:', errBiz);
-  },
-
-  // Llamado desde el sitio público (index/404.html) al confirmar el pago del
-  // abono/certificado/etc. Crea la orden en Yappy vía la Edge Function
-  // (nunca con las credenciales en el navegador) y devuelve el token que
-  // necesita el botón <btn-yappy> del SDK oficial para continuar el pago.
-  // Devuelve {ok:false, error} en vez de lanzar excepción — el llamador
-  // (el widget <btn-yappy>) necesita mostrar el error exacto inline, igual
-  // que el flujo que ya tenías funcionando.
-  async crearOrdenYappy({ orderId, total, aliasYappy, tipo, refId }) {
-    await window.AnnlyReady;
-    try {
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/smooth-api`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ businessId: BUSINESS_ID, orderId, total, aliasYappy, tipo, refId })
-      });
-      return await resp.json();
-    } catch (e) {
-      return { ok: false, error: 'Error de conexión al crear la orden de pago.' };
-    }
-  },
-
-  // Consulta ligera del estado de una orden mientras el cliente completa el
-  // pago en su app de Yappy (pendiente / ejecutado / rechazado / etc).
-  async estadoOrdenYappy(orderId) {
-    await window.AnnlyReady;
-    const resp = await fetch(`${SUPABASE_URL}/functions/v1/swift-function?orderId=${encodeURIComponent(orderId)}`);
-    const resultado = await resp.json();
-    return resultado.ok ? resultado.estado : 'error';
-  },
-
-  // =======================================================
-  // PERFIL DEL NEGOCIO
-  // =======================================================
-
-  async actualizarPerfil(datos) {
-
-    await window.AnnlyReady;
-
-
-    const {
-      error
-    } = await sbClient
-      .from('businesses')
-      .update(datos)
-      .eq(
-        'id',
-        BUSINESS_ID
-      );
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    Object.assign(
-      window.ANNLY_BUSINESS,
-      datos
-    );
-
-
-    // Actualizar también la lista de negocios
-    // si estamos trabajando como Platform Admin.
-
-    if (
-      window.ANNLY_PLATFORM_ADMIN &&
-      Array.isArray(
-        window.ANNLY_BUSINESSES
-      )
-    ) {
-
-      const index =
-        window.ANNLY_BUSINESSES.findIndex(
-          b =>
-            String(b.id) ===
-            String(BUSINESS_ID)
-        );
-
-
-      if (index >= 0) {
-
-        window.ANNLY_BUSINESSES[index] =
-          {
-            ...window.ANNLY_BUSINESSES[index],
-            ...datos
-          };
-      }
-    }
-  },
-
-
-  async subirLogo(file) {
-
-    await window.AnnlyReady;
-
-
-    const ext =
-      (
-        file.name
-          .split('.')
-          .pop() || 'png'
-      ).toLowerCase();
-
-
-    const path =
-      `${BUSINESS_ID}-${Date.now()}.${ext}`;
-
-
-    const {
-      error: upErr
-    } = await sbClient
-      .storage
-      .from('logos')
-      .upload(
-        path,
-        file,
-        {
-          upsert: true
-        }
-      );
-
-
-    if (upErr) {
-      throw upErr;
-    }
-
-
-    const {
-      data
-    } =
-      sbClient
-        .storage
-        .from('logos')
-        .getPublicUrl(path);
-
-
-    return data.publicUrl;
+    if (actual) lineas.push(actual);
+    return lineas.slice(0, 2); // máximo 2 líneas para que quepa
   }
 
+  function ruletaEscapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function loadRuletaConfig(){
+    try {
+      const config = await Sheets.getRuletaConfig();
+      const activos = (config.premios || []).filter(p => p.activo);
+      construirRuedaDinamica(activos);
+    } catch(e){
+      console.error('Error cargando config de ruleta:', e);
+    }
+  }
+
+  function construirRuedaDinamica(premiosActivos){
+    const cont = document.getElementById('wheelSvgContainer');
+    const n = premiosActivos.length;
+
+    if (n === 0) {
+      cont.innerHTML = '<p style="color:#8A7A4E;font-size:12px;text-align:center;padding:2rem 0;">La ruleta no tiene premios configurados.</p>';
+      RULETA_SEGMENTOS_ACTIVOS = [];
+      return;
+    }
+
+    const cx = 125, cy = 125, R = 118;
+    const step = 360 / n;
+    const maxLineLen = n <= 4 ? 14 : (n <= 6 ? 11 : 8);
+    const fontSize = n <= 4 ? 15 : (n <= 6 ? 12 : 9);
+    const lineHeight = fontSize * 1.15;
+
+    let pathsHtml = '';
+    let linesHtml = '';
+    let textsHtml = '';
+    const segmentos = [];
+
+    for (let k = 0; k < n; k++) {
+      const p1 = ruletaPt(cx, cy, R, k * step);
+      const p2 = ruletaPt(cx, cy, R, (k + 1) * step);
+      const color = RULETA_PALETA[k % RULETA_PALETA.length];
+      const segId = 'seg' + k;
+
+      pathsHtml += `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
+      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="#C9A24B" stroke-width="0.75" opacity="0.55"/>\n`;
+
+      const midAngle = (k + 0.5) * step;
+      const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
+
+      // Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
+      const rotDeg = midAngle;
+
+      const lineas = ruletaWordWrap(premiosActivos[k].premio, maxLineLen);
+      const startY = parseFloat(headline.y) - ((lineas.length - 1) * lineHeight) / 2;
+      const tspans = lineas.map((linea, i) =>
+        `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lineHeight}">${ruletaEscapeHtml(linea)}</tspan>`
+      ).join('');
+      textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
+
+      segmentos.push({ id: segId, premio: premiosActivos[k].premio, angle: midAngle });
+    }
+
+    const dotsHtml = [
+      [125.0,4.0],[162.4,9.9],[196.1,27.1],[222.9,53.9],[240.1,87.6],[246.0,125.0],
+      [240.1,162.4],[222.9,196.1],[196.1,222.9],[162.4,240.1],[125.0,246.0],[87.6,240.1],
+      [53.9,222.9],[27.1,196.1],[9.9,162.4],[4.0,125.0],[9.9,87.6],[27.1,53.9],[53.9,27.1],[87.6,9.9]
+    ].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="#C9A24B"/>`).join('\n');
+
+    cont.innerHTML = `<svg id="wheelSvg" viewBox="0 0 250 250" width="250" height="250">
+      <circle cx="125" cy="125" r="122" fill="none" stroke="#C9A24B" stroke-width="1" opacity="0.6"/>
+      ${pathsHtml}
+      <circle cx="125" cy="125" r="118" fill="none" stroke="#C9A24B" stroke-width="1.5"/>
+      ${linesHtml}
+      ${dotsHtml}
+      ${textsHtml}
+      <circle cx="125" cy="125" r="34" fill="#0D0C0A" stroke="#C9A24B" stroke-width="2"/>
+    </svg>`;
+
+    RULETA_SEGMENTOS_ACTIVOS = segmentos;
+  }
+
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const SVC_ICONS={
+  eval:'ti-clipboard-list',
+  lavblower:'ti-wind',lavcrteblower:'ti-scissors',
+  peinpro:'ti-sparkles',peinglam:'ti-crown',
+  fastrepair:'ti-droplet',trussinfusion:'ti-leaf',
+  ultimatewella:'ti-heart',celulasmadre:'ti-atom',
+  combocm:'ti-star',
+  highliss:'ti-wave-sine',ybera:'ti-ripple',
+  retoque:'ti-circle-half',colorglobal:'ti-palette',balayage:'ti-brush',
+  instexten:'ti-arrow-merge',retiromantenimiento:'ti-refresh'
 };
+
+let SERVICES=[];
+let BLOQUEOS={dias:[], horas:{}};
+
+async function loadBloqueos(){
+  try {
+    BLOQUEOS = await Sheets.getBloqueos(SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : null);
+    if(!BLOQUEOS.dias) BLOQUEOS.dias=[];
+    if(!BLOQUEOS.horas) BLOQUEOS.horas={};
+  } catch(e){ BLOQUEOS={dias:[], horas:{}}; }
+}
+
+function fechaISO(y,m,d){
+  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+
+// ===== FIX: función restaurada (se había perdido en una edición anterior) =====
+async function loadServices(){
+  try {
+    const servicios = await Sheets.getServicios();
+    if(servicios && servicios.length > 0){
+      SERVICES = servicios;
+      return;
+    }
+  } catch(e) {
+    console.log('Fallback a localStorage:', e);
+  }
+  const saved = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly')
+    ? localStorage.getItem('vss_hair_services') : null;
+  if(saved){
+    SERVICES = JSON.parse(saved);
+  } else if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug === 'vicelly') {
+    SERVICES = getDefaultServices(); // solo Vicelly usa este catálogo de respaldo
+  } else {
+    SERVICES = []; // negocio nuevo: catálogo vacío de verdad
+  }
+}
+
+// ===== Branding dinámico + arranque único (multi-tenant) =====
+function hexToRgb(hex){
+  if(!hex) return null;
+  const m = hex.replace('#','').match(/.{1,2}/g);
+  if(!m || m.length<3) return null;
+  return m.slice(0,3).map(h=>parseInt(h,16)).join(',');
+}
+
+window.AnnlyReady.then(() => {
+  const b = window.ANNLY_BUSINESS;
+  if (b) {
+    if (b.color_primario) {
+      document.documentElement.style.setProperty('--gold', b.color_primario);
+      const rgb = hexToRgb(b.color_primario);
+      if (rgb) document.documentElement.style.setProperty('--gold-rgb', rgb);
+    }
+    if (b.color_secundario) {
+      document.documentElement.style.setProperty('--gold-dark', b.color_secundario);
+      const rgbDark = hexToRgb(b.color_secundario);
+      if (rgbDark) document.documentElement.style.setProperty('--gold-dark-rgb', rgbDark);
+    }
+    const h1 = document.getElementById('hdr-nombre');
+    if (h1 && b.nombre) h1.textContent = b.nombre.toUpperCase();
+    if (b.logo_url) {
+      document.getElementById('hdr-logo').innerHTML =
+        `<img src="${b.logo_url}" alt="${b.nombre || ''}" style="width:130px;height:130px;object-fit:contain;border-radius:50%;"/>`;
+    } else {
+      const inicial = (b.nombre || 'A').trim().charAt(0).toUpperCase();
+      document.getElementById('hdr-logo-fallback').textContent = inicial;
+    }
+    document.title = (b.nombre || 'Annly') + ' — Reservas';
+
+    // Tipografía de títulos: elegante (Vicelly) o básica sans-serif (default para negocios nuevos)
+    const esFuenteElegante = (b.fuente || '').toLowerCase().includes('garamond');
+    document.documentElement.style.setProperty('--font-heading',
+      esFuenteElegante ? "'Cormorant Garamond', serif" : "'Inter', sans-serif");
+
+    // Modo de fondo (claro/oscuro)
+    if (b.modo_fondo === 'oscuro') {
+      document.body.classList.add('modo-oscuro');
+    } else {
+      document.body.classList.remove('modo-oscuro');
+      // Modo claro: tiñe el fondo con el color del propio negocio,
+      // en vez de dejar el gris neutro fijo (que era solo el de Vicelly)
+      if (b.color_primario) {
+        const rgbBase = hexToRgb(b.color_primario);
+        if (rgbBase) {
+          const mezclar = (factorBlanco) => rgbBase.split(',').map(Number)
+            .map(c => Math.round(c + (255 - c) * factorBlanco)).join(',');
+          document.documentElement.style.setProperty('--bg-page', 'rgb(' + mezclar(0.90) + ')');
+          document.documentElement.style.setProperty('--bg-header', 'rgb(' + mezclar(0.72) + ')');
+          // Footer: se tiñe con el mismo color del negocio en vez de quedar fijo en crema
+          document.documentElement.style.setProperty('--bg-footer', 'rgb(' + mezclar(0.94) + ')');
+          document.documentElement.style.setProperty('--footer-text', b.color_primario);
+          document.documentElement.style.setProperty('--footer-text-soft', 'rgba(' + rgbBase + ',.75)');
+          document.documentElement.style.setProperty('--footer-text-faint', 'rgba(' + rgbBase + ',.45)');
+          document.documentElement.style.setProperty('--footer-label', b.color_secundario || b.color_primario);
+        }
+      }
+    }
+
+    // Texto del footer: override manual (negro/blanco) elegido en el Perfil,
+    // por si el tinte automático queda poco legible con alguna paleta
+    if (b.footer_texto === 'claro') {
+      document.documentElement.style.setProperty('--footer-text', '#FFFFFF');
+      document.documentElement.style.setProperty('--footer-text-soft', 'rgba(255,255,255,.85)');
+      document.documentElement.style.setProperty('--footer-text-faint', 'rgba(255,255,255,.6)');
+      document.documentElement.style.setProperty('--footer-label', '#FFFFFF');
+    } else if (b.footer_texto === 'oscuro') {
+      document.documentElement.style.setProperty('--footer-text', '#201b16');
+      document.documentElement.style.setProperty('--footer-text-soft', 'rgba(32,27,22,.75)');
+      document.documentElement.style.setProperty('--footer-text-faint', 'rgba(32,27,22,.45)');
+      document.documentElement.style.setProperty('--footer-label', '#201b16');
+    }
+
+    // Tagline
+    const tagEl = document.getElementById('hdr-tagline');
+    if (tagEl) tagEl.textContent = b.tagline || '';
+    const footerTagEl = document.getElementById('footer-tagline');
+    if (footerTagEl) footerTagEl.textContent = b.footer_mensaje || '';
+
+    // WhatsApp flotante
+    const waLink = document.getElementById('wa-float-link');
+    if (waLink) {
+      if (b.whatsapp) { waLink.href = 'https://wa.me/' + b.whatsapp; waLink.style.display = ''; }
+      else { waLink.style.display = 'none'; }
+    }
+
+    // Instagram (solo se muestra si el negocio tiene uno cargado)
+    if (b.instagram) {
+      document.getElementById('footer-ig-wrap').style.display = 'block';
+      document.getElementById('footer-ig-link').href = 'https://www.instagram.com/' + b.instagram;
+      document.getElementById('footer-ig-handle').textContent = '@' + b.instagram.replace(/^@+/, '');
+    }
+
+    // Horario y dirección
+    const horEl = document.getElementById('footer-horario');
+    if (horEl) horEl.innerHTML = (b.horario_texto || 'Consulta disponibilidad').replace(/\|/g, '<br>');
+    const dirEl = document.getElementById('footer-direccion');
+    if (dirEl) dirEl.textContent = b.direccion || '';
+    const copyEl = document.getElementById('footer-copyright');
+    if (copyEl) copyEl.textContent = '© ' + (b.nombre || 'Annly') + ' · Powered by Annly';
+
+    // La franja de marcas (L'Oréal, Truss, etc.) es contenido específico
+    // de Vicelly — solo se muestra para ese negocio hasta que tengamos
+    // un sistema de "marcas propias" configurable por negocio.
+    if (b.slug === 'vicelly') {
+      document.getElementById('marcas-strip').style.display = 'block';
+    }
+  }
+  // annly.app/slug de un negocio de pedidos: se envía a su tienda en Annly Pedidos
+  if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.tipo_negocio === 'pedidos') {
+    window.location.replace(ANNLY_PEDIDOS_URL + '/' + encodeURIComponent(window.ANNLY_BUSINESS.slug) + window.location.search);
+    return;
+  }
+  Promise.all([loadServices(), cargarSucursalesSitio()]).then(() => { iniciarSucursalSitio(); });
+  loadPromo();
+  loadRuletaConfig();
+  loadCertificadosModulo();
+  try{Sheets.initSheet();}catch(e){}
+});
+
+
+// ===== SUCURSALES (sitio público) =====
+// Con más de una sucursal activa, el cliente elige dónde reservar (o llega directo con ?s=slug).
+// La sucursal define: servicios visibles, profesionales, horario, bloqueos, dirección y WhatsApp.
+let SUCURSALES_PUB = [];
+let SUCURSAL_ACTUAL = null;
+let SERVICES_TODOS = [];
+let EMPLEADOS_SERVICIOS = null; // [{ id, servicios:[] }] profesionales activos ([] = hace todos)
+
+function escSuc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function horarioBaseSitio(){
+  return (SUCURSAL_ACTUAL && SUCURSAL_ACTUAL.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+}
+
+// Horario propio del profesional en la sucursal elegida (null = usa el de la sucursal)
+function horarioPropioSitio(empleadoId){
+  return Sheets.getEmpleadoHorario(empleadoId, SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : undefined);
+}
+
+async function cargarSucursalesSitio(){
+  try {
+    const [sucs, emps] = await Promise.all([
+      Sheets.getSucursales(),
+      Sheets.getEmpleadosActivosServicios().catch(() => null)
+    ]);
+    SUCURSALES_PUB = (sucs || []).filter(x => x.activa);
+    EMPLEADOS_SERVICIOS = emps;
+  } catch(e){
+    console.error('Sucursales no disponibles, se muestra el negocio completo:', e);
+    SUCURSALES_PUB = [];
+  }
+}
+
+// Un servicio aparece si está activado en la sucursal y alguno de sus profesionales lo realiza
+function serviciosDeSucursal(lista){
+  if (!SUCURSAL_ACTUAL) return lista;
+  const ofrecidos = Array.isArray(SUCURSAL_ACTUAL.servicios) ? new Set(SUCURSAL_ACTUAL.servicios) : null;
+  const hayEquipo = Array.isArray(EMPLEADOS_SERVICIOS) && EMPLEADOS_SERVICIOS.length > 0;
+  const equipo = hayEquipo ? EMPLEADOS_SERVICIOS.filter(e => (SUCURSAL_ACTUAL.empleados || []).includes(e.id)) : [];
+  return lista.filter(svc => {
+    if (ofrecidos && !ofrecidos.has(svc.id)) return false;
+    if (!hayEquipo) return true; // negocio sin profesionales cargados: se reserva sin elegir
+    const n = equipo.filter(e => !e.servicios.length || e.servicios.includes(svc.id)).length;
+    return svc.esDoble ? n >= 2 : n >= 1;
+  });
+}
+
+function iniciarSucursalSitio(){
+  SERVICES_TODOS = SERVICES.slice();
+  if (SUCURSALES_PUB.length <= 1){
+    // Una sola sucursal: igual que siempre, pero con su horario y sus datos
+    if (SUCURSALES_PUB.length === 1) aplicarSucursalSitio(SUCURSALES_PUB[0], false);
+    else { renderServices(); loadBloqueos(); }
+    return;
+  }
+  const b = window.ANNLY_BUSINESS || {};
+  const param = new URLSearchParams(window.location.search).get('s');
+  let guardada = null;
+  try { guardada = sessionStorage.getItem('annly_suc_' + (b.slug || '')); } catch(e){}
+  const buscar = slug => slug ? SUCURSALES_PUB.find(x => x.slug === slug || (slug === 'principal' && x.esPrincipal)) : null;
+  const elegida = buscar(param) || buscar(guardada);
+  if (elegida) aplicarSucursalSitio(elegida, true);
+  else abrirSelectorSucursal(false);
+}
+
+function telefonoWhatsApp(t){
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.length === 8) d = '507' + d; // número de Panamá sin código de país
+  return d;
+}
+
+function formatHora12Sitio(hhmm){
+  if (!hhmm) return '';
+  const [hStr, mStr] = hhmm.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return m === '00' ? `${h}${ampm}` : `${h}:${m}${ampm}`;
+}
+function textoHorarioSitio(h){
+  if (!h || !h.lv) return null;
+  const etiqueta = { lv:'Lun-Vie', sab:'Sáb', dom:'Domingo' };
+  return ['lv','sab','dom'].map(k => {
+    const d = h[k] || { cerrado:true };
+    return etiqueta[k] + ' ' + (d.cerrado ? 'Cerrado' : formatHora12Sitio(d.abre) + '-' + formatHora12Sitio(d.cierra));
+  }).join(' | ');
+}
+
+function aplicarSucursalSitio(suc, conSelector){
+  SUCURSAL_ACTUAL = suc;
+  window.ANNLY_SUCURSAL_ID = suc.id;
+  const b = window.ANNLY_BUSINESS || {};
+
+  // Catálogo de la sucursal
+  SERVICES = serviciosDeSucursal(SERVICES_TODOS);
+  renderServices();
+  loadBloqueos();
+
+  // Dirección, horario y WhatsApp de la sucursal (con los del negocio como respaldo)
+  const dirEl = document.getElementById('footer-direccion');
+  if (dirEl) dirEl.textContent = suc.direccion || b.direccion || '';
+  const horEl = document.getElementById('footer-horario');
+  const horTxt = textoHorarioSitio(suc.horario) || b.horario_texto || 'Consulta disponibilidad';
+  if (horEl) horEl.innerHTML = escSuc(horTxt).replace(/\|/g, '<br>');
+  const waLink = document.getElementById('wa-float-link');
+  const wa = suc.telefono ? telefonoWhatsApp(suc.telefono) : (b.whatsapp || '');
+  if (waLink){
+    if (wa){ waLink.href = 'https://wa.me/' + wa; waLink.style.display = ''; }
+    else waLink.style.display = 'none';
+  }
+
+  // Tarjeta "Estás reservando en <sede> · Cambiar sede" debajo del encabezado (solo con varias sucursales)
+  let chip = document.getElementById('suc-chip');
+  if (conSelector){
+    // Estilos de la tarjeta (van aquí para no depender de otro archivo)
+    if (!document.getElementById('suc-chip-css')){
+      const st = document.createElement('style');
+      st.id = 'suc-chip-css';
+      st.textContent = `/* Sede elegida (solo negocios con varias sucursales) */
+#suc-chip{display:block;width:100%;flex:0 0 100%;box-sizing:border-box;padding:1rem 1rem 0;background-color:var(--bg-page);}
+@media(min-width:600px){#suc-chip{max-width:480px;margin-left:auto!important;margin-right:auto!important;}}
+@media(min-width:900px){#suc-chip{max-width:760px;}}
+.suc-card{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:var(--radius-lg,14px);background:#fff;border:1.5px solid rgba(var(--gold-dark-rgb),.35);box-shadow:0 6px 18px -12px rgba(var(--gold-dark-rgb),.55);}
+.suc-card-ico{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--gold-dark-rgb),.12);color:var(--gold-dark);font-size:19px;}
+.suc-card-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.suc-card-lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-dark);opacity:.85;}
+.suc-card-name{font-family:var(--font-heading);font-size:17px;font-weight:700;color:#1a1816;line-height:1.2;}
+.suc-card-dir{font-size:12px;color:rgba(30,26,22,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.suc-card-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--gold-dark);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s;}
+.suc-card-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
+.suc-card-btn i{font-size:15px;}
+body.modo-oscuro .suc-card{background:rgba(255,255,255,.05);border-color:rgba(var(--gold-rgb),.35);}
+body.modo-oscuro .suc-card-name{color:#F4EFE6;}
+body.modo-oscuro .suc-card-dir{color:rgba(244,239,230,.65);}
+body.modo-oscuro .suc-card-ico{background:rgba(var(--gold-rgb),.15);color:var(--gold);}
+body.modo-oscuro .suc-card-lbl{color:var(--gold);}
+@media(max-width:380px){.suc-card-btn span{display:none;}.suc-card-btn{padding:10px;}}
+`;
+      document.head.appendChild(st);
+    }
+    if (!chip){
+      chip = document.createElement('div');
+      chip.id = 'suc-chip';
+      const lista = document.getElementById('serviceList');
+      lista.parentNode.insertBefore(chip, document.getElementById('cert-link-wrap') || lista);
+    }
+    chip.innerHTML = `<div class="suc-card">
+        <div class="suc-card-ico"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+        <div class="suc-card-txt">
+          <span class="suc-card-lbl">Estás reservando en</span>
+          <span class="suc-card-name">${escSuc(suc.nombre)}</span>
+          ${suc.direccion ? `<span class="suc-card-dir">${escSuc(suc.direccion)}</span>` : ''}
+        </div>
+        <button type="button" class="suc-card-btn" onclick="abrirSelectorSucursal(true)" aria-label="Cambiar de sede">
+          <i class="ti ti-arrows-exchange" aria-hidden="true"></i><span>Cambiar sede</span>
+        </button>
+      </div>`;
+    // El link queda listo para compartir y la elección se recuerda en esta visita
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('s', suc.slug || 'principal');
+      window.history.replaceState(null, '', url.toString());
+      sessionStorage.setItem('annly_suc_' + (b.slug || ''), suc.slug || 'principal');
+    } catch(e){}
+  } else if (chip) chip.remove();
+}
+
+function abrirSelectorSucursal(puedeCerrar){
+  let ov = document.getElementById('ov-sucursal');
+  if (!ov){
+    ov = document.createElement('div');
+    ov.className = 'ov';
+    ov.id = 'ov-sucursal';
+    document.body.appendChild(ov);
+  }
+  const tarjetas = SUCURSALES_PUB.map(x => `
+    <div class="eval-card" style="cursor:pointer;margin-bottom:10px;${SUCURSAL_ACTUAL && SUCURSAL_ACTUAL.id === x.id ? 'border-color:var(--gold);' : ''}" onclick="elegirSucursalSitio('${x.id}')">
+      <div class="eval-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+      <div style="flex:1;min-width:0;">
+        <div class="eval-name">${escSuc(x.nombre)}</div>
+        <div class="eval-sub">${escSuc(x.direccion || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.direccion) || '')}</div>
+      </div>
+      <div class="eval-right"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:16px;color:var(--gold-dark);"></i></div>
+    </div>`).join('');
+  ov.innerHTML = `<div class="panel">
+    <div class="phdr"><span class="ptitle">¿En qué sucursal quieres tu cita?</span>${puedeCerrar ? `<button class="pclose" onclick="closeOv('ov-sucursal')">×</button>` : ''}</div>
+    <div class="pbody">${tarjetas}</div>
+  </div>`;
+  if (!puedeCerrar) document.getElementById('serviceList').innerHTML = '';
+  openOv('ov-sucursal');
+}
+
+// Sucursal para los correos (solo si el negocio tiene más de una)
+function datosSucursalCorreo(){
+  if (!SUCURSAL_ACTUAL || SUCURSALES_PUB.length < 2) return {};
+  const b = window.ANNLY_BUSINESS || {};
+  const dir = SUCURSAL_ACTUAL.direccion || b.direccion || '';
+  return {
+    sucursal: SUCURSAL_ACTUAL.nombre,
+    sucursalDireccion: dir,
+    sucursalTelefono: SUCURSAL_ACTUAL.telefono || '',
+    sucursalMapsUrl: dir ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(dir + ', Panamá') : ''
+  };
+}
+
+function lineaSucursalResumen(){
+  if (!SUCURSAL_ACTUAL || SUCURSALES_PUB.length < 2) return '';
+  return `<strong>Sucursal:</strong> ${escSuc(SUCURSAL_ACTUAL.nombre)}${SUCURSAL_ACTUAL.direccion ? ' · ' + escSuc(SUCURSAL_ACTUAL.direccion) : ''}<br>`;
+}
+
+function elegirSucursalSitio(id){
+  const suc = SUCURSALES_PUB.find(x => x.id === id);
+  if (!suc) return;
+  closeOv('ov-sucursal');
+  aplicarSucursalSitio(suc, true);
+}
+
+// ===== CERTIFICADOS DE REGALO (sitio público) =====
+let CERT_MODULO_DISPONIBLE = false;
+let PAGOS_MODULO_DISPONIBLE = false;
+
+async function loadCertificadosModulo(){
+  try {
+    // Camino principal: función pública en Supabase (funciona sin sesión).
+    const codigos = await Sheets.getModulosPublicos();
+    if (codigos) {
+      CERT_MODULO_DISPONIBLE = codigos.includes('CERTIFICADOS');
+      PAGOS_MODULO_DISPONIBLE = codigos.includes('PAGOS');
+    } else {
+      // Respaldo (solo funciona con sesión de dueño/Platform Admin, por RLS).
+      const sus = await Sheets.getSuscripcionActual();
+      if (!sus) return;
+      // En trial, el acceso real queda limitado a lo que trae Basic —
+      // el plan/addon seleccionado no cuenta hasta que haya suscripción paga.
+      const enTrial = sus.status === 'trial';
+      const [features, activos] = await Promise.all([
+        enTrial ? Sheets.getFeaturesDePlanCode('BASIC') : Sheets.getFeaturesDelPlan(sus.plan.id),
+        enTrial ? Promise.resolve([]) : Sheets.getModulosActivos(sus.subscriptionId)
+      ]);
+      CERT_MODULO_DISPONIBLE = features.includes('CERTIFICADOS') || activos.includes('CERTIFICADOS');
+      PAGOS_MODULO_DISPONIBLE = features.includes('PAGOS') || activos.includes('PAGOS');
+    }
+  } catch(e) { CERT_MODULO_DISPONIBLE = false; PAGOS_MODULO_DISPONIBLE = false; }
+  const wrap = document.getElementById('cert-link-wrap');
+  if (wrap) wrap.style.display = CERT_MODULO_DISPONIBLE ? 'block' : 'none';
+  const subEl = document.getElementById('cert-card-sub');
+  if (subEl) subEl.textContent = 'Regala una experiencia ' + ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.nombre) || 'especial');
+}
+
+let certPagoTipo = 'yappy';
+
+function abrirModalComprarCertificado(){
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappy = !!(b.yappy_numero);
+  const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
+  certPagoTipo = tieneYappy ? 'yappy' : 'bank';
+
+  let pagoHtml = '';
+  if (tieneYappy || tieneBanco) {
+    let opciones = '';
+    if (tieneYappy) {
+      opciones += `<div class="pay-opt sel" id="cert-opt-yappy" onclick="selPagoCert('yappy')">
+        <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
+        <div class="pay-opt-sub">Envía el pago desde tu app Yappy.</div>
+        <div class="pay-detail">Envía el monto al número <strong>${b.yappy_numero}</strong> y copia el comprobante aquí abajo.</div>
+      </div>`;
+    }
+    if (tieneBanco) {
+      opciones += `<div class="pay-opt${tieneYappy?'':' sel'}" id="cert-opt-bank" onclick="selPagoCert('bank')">
+        <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">${b.banco_nombre}</span></div>
+        <div class="pay-opt-sub">Transferencia bancaria a cuenta ${(b.banco_tipo_cuenta||'').toLowerCase()}.</div>
+        <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}</div>
+      </div>`;
+    }
+    pagoHtml = `<div class="fg"><label class="flbl">Método de pago</label></div>${opciones}
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="cert-comprobante" placeholder="Ej: YAPPY-001"/></div>`;
+  } else {
+    pagoHtml = `<div class="note-box-warn"><i class="ti ti-whatsapp" aria-hidden="true"></i><span>Contáctanos por WhatsApp para coordinar el pago de tu certificado.</span></div>
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="cert-comprobante" placeholder="Ej: coordinado por WhatsApp"/></div>`;
+  }
+
+  document.getElementById('comprar-cert-body').innerHTML = `
+    <div class="fg"><label class="flbl">Monto del certificado ($)</label><input class="fi" id="cert-pub-monto" type="number" min="1" step="1" placeholder="30"/></div>
+    <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Tu nombre</label><input class="fi" id="cert-pub-comprador-nombre"/></div>
+      <div class="fg"><label class="flbl">Tu WhatsApp</label><input class="fi" id="cert-pub-comprador-telefono"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Tu correo</label><input class="fi" id="cert-pub-comprador-correo" type="email" placeholder="tu@correo.com"/></div>
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">¿Para quién es? (opcional — déjalo vacío si es para ti)</span></div>
+    <div class="fg"><label class="flbl">Nombre de quien lo recibe</label><input class="fi" id="cert-pub-destinatario-nombre"/></div>
+    <div class="fg"><label class="flbl">Correo de quien lo recibe</label><input class="fi" id="cert-pub-destinatario-correo" type="email"/></div>
+    <div class="fg"><label class="flbl">Mensaje (opcional)</label><input class="fi" id="cert-pub-mensaje" placeholder="Disfruta este momento..."/></div>
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">3</span><span class="step-lbl">Pago</span></div>
+    ${pagoHtml}
+    <p id="cert-pub-msg" style="font-size:11px;color:#c0392b;margin-top:8px;min-height:14px;"></p>
+    <button class="btn-main" id="btnComprarCert" onclick="enviarCompraCertificado()">Enviar compra</button>`;
+
+  openOv('ov-comprar-certificado');
+}
+
+function selPagoCert(tipo){
+  certPagoTipo = tipo;
+  const optY = document.getElementById('cert-opt-yappy');
+  const optB = document.getElementById('cert-opt-bank');
+  if (optY) optY.classList.toggle('sel', tipo === 'yappy');
+  if (optB) optB.classList.toggle('sel', tipo === 'bank');
+}
+
+async function enviarCompraCertificado(){
+  const msgEl = document.getElementById('cert-pub-msg');
+  const monto = parseFloat(document.getElementById('cert-pub-monto').value);
+  const compradorNombre = document.getElementById('cert-pub-comprador-nombre').value.trim();
+  const compradorTelefono = document.getElementById('cert-pub-comprador-telefono').value.trim();
+  const compradorCorreo = document.getElementById('cert-pub-comprador-correo').value.trim();
+  const comprobanteEl = document.getElementById('cert-comprobante');
+  const comprobante = comprobanteEl ? comprobanteEl.value.trim() : '';
+
+  if (!monto || monto <= 0){ msgEl.textContent = 'Ingresa un monto válido.'; return; }
+  if (!compradorNombre || !compradorTelefono || !compradorCorreo){ msgEl.textContent = 'Completa tu nombre, WhatsApp y correo.'; return; }
+  if (!comprobante){ msgEl.textContent = 'Ingresa el número de comprobante del pago.'; return; }
+
+  msgEl.textContent = '';
+  const btn = document.getElementById('btnComprarCert');
+  if (btn){ btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  const vencimiento = new Date();
+  vencimiento.setMonth(vencimiento.getMonth() + 12);
+
+  try {
+    const destinatarioNombre = document.getElementById('cert-pub-destinatario-nombre').value.trim();
+    await Sheets.comprarCertificadoPublico({
+      monto, fechaVencimiento: vencimiento.toISOString().split('T')[0],
+      compradorNombre, compradorTelefono, compradorCorreo,
+      destinatarioNombre: destinatarioNombre || null,
+      destinatarioCorreo: document.getElementById('cert-pub-destinatario-correo').value.trim() || null,
+      mensaje: document.getElementById('cert-pub-mensaje').value.trim() || null,
+      comprobante, metodoPago: certPagoTipo
+    });
+    document.getElementById('comprar-cert-body').innerHTML = `
+      <div class="success-wrap">
+        <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+        <div class="s-title">¡Compra recibida!</div>
+        <div class="s-sub">Estamos confirmando tu pago — en cuanto quede validado te llegará el certificado por correo.</div>
+        <button class="btn-main" style="background:var(--gold-dark);color:#fff;" onclick="closeOv('ov-comprar-certificado')">Listo</button>
+      </div>`;
+  } catch(e) {
+    console.error('Error comprando certificado:', e);
+    msgEl.textContent = 'No se pudo procesar la compra. Intenta de nuevo.';
+    if (btn){ btn.disabled = false; btn.textContent = 'Enviar compra'; }
+  }
+}
+
+
+function getDefaultServices(){
+  return [
+      {id:'eval',name:'Cita de Evaluación',cat:'Básicos',price:10,dur:'30 min',durMin:30,active:true,esEval:true,
+        desc:'El punto de partida para cualquier servicio de color, alisado o tratamiento intensivo. Analizamos tu historial capilar, tratamientos químicos previos, tipo y textura para diseñar el plan perfecto para ti.',
+        includes:['Análisis de historial capilar','Diagnóstico de tipo y textura','Revisión de tratamientos previos','Plan de servicio personalizado','Recomendación de productos','Prueba de mechón']},
+      {id:'lavblower',name:'Lavado y Blower',cat:'Básicos',price:25,precioTexto:'desde $25',dur:'40–60 min',durMin:60,active:true,esEval:false,
+        desc:'Limpieza profunda con productos de marcas profesionales Truss, Wella y L\'Oréal, adaptados al tipo y necesidad de tu cabello. Secado con blower profesional para un acabado con volumen, brillo y movimiento natural.',
+        includes:['Lavado con champú profesional','Acondicionador o mascarilla','Protector térmico','Blower con cepillo profesional','Acabado con brillo','Asesoría de cuidado en casa']},
+      {id:'lavcrteblower',name:'Lavado, Corte y Blower',cat:'Básicos',price:65,precioTexto:'desde $65',dur:'~90 min',durMin:90,active:true,esEval:false,
+        desc:'Lavado técnico con productos de alta gama, corte personalizado según tu tipo de cabello y estilo de vida, más blower profesional para un resultado impecable.',
+        includes:['Lavado técnico con marca profesional','Asesoría de corte personalizado','Corte a tu preferencia','Protector térmico','Blower con cepillo redondo','Acabado brillante y definido']},
+      {id:'peinpro',name:'Peinado Profesional',cat:'Básicos',price:0,precioTexto:'consultar',dur:'según estilo',durMin:60,active:true,esEval:false,
+        desc:'Peinado social elegante ideal para salidas, reuniones y ocasiones especiales. Adaptado a tu tipo de cabello y la ocasión, con acabado duradero.',
+        includes:['Secado y preparación de cabello','Peinado a elección','Fijador profesional','Acabado duradero','Asesoría de estilo']},
+      {id:'peinglam',name:'Peinado Glam & Evento',cat:'Básicos',price:0,precioTexto:'consultar',dur:'~60 min',durMin:60,active:true,esEval:false,
+        desc:'Look sofisticado y moderno para eventos, celebraciones, sesiones de fotos o cualquier ocasión especial donde quieras destacar con un toque de elegancia.',
+        includes:['Secado profesional','Peinado de evento o glam','Accesorios a elección','Fijador de larga duración','Retoque y detalle final']},
+      {id:'fastrepair',name:'Fast Repair Truss',cat:'Tratamientos',price:65,dur:'60–90 min',durMin:90,active:true,esEval:false,
+        desc:'Tratamiento de hidratación y nutrición intensiva de la marca Truss en 4 pasos. Restaura la salud del cabello dañado, aporta brillo, suavidad y reduce el frizz en todos los tipos de cabello.',
+        includes:['Champú Fast Repair','Mascarilla Net Mask','Cera vegana Infusión','Sellado con calor','Blower con protectores']},
+      {id:'trussinfusion',name:'Recuperación Truss Infusión',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'~2 hrs',durMin:120,active:true,esEval:false,
+        desc:'El tratamiento más completo de Truss para cabello muy dañado. Combina la cera vegana Infusión, el Fast Repair de 3 productos y la mascarilla reparadora Net Mask para una recuperación profunda.',
+        includes:['Cera vegana Infusión','Fast Repair 3 productos','Mascarilla reparadora Net Mask','Blower con protectores de calor','Sellado y acabado brillante']},
+      {id:'ultimatewella',name:'Ultimate Repair Wella',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,
+        desc:'Fórmula vegana que repara y reconstruye la fibra capilar desde adentro. Restaura la fuerza, aporta brillo y suavidad. Ideal para todo tipo de cabello, especialmente el dañado por químicos o calor.',
+        includes:['Diagnóstico capilar previo','Aplicación Ultimate Repair','Tecnología de reconstrucción','Sellado de cutícula','Acabado suave y brillante']},
+      {id:'celulasmadre',name:'Células Madre',cat:'Tratamientos',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,
+        desc:'Tratamiento regenerador que nutre y fortalece el cabello dañado desde la raíz. Mejora la elasticidad, el brillo y la suavidad aportando vitalidad al cabello sin vida.',
+        includes:['Champú de preparación','Aplicación de células madre','Masaje capilar activador','Sellado con calor','Blower y acabado final']},
+      {id:'combocm',name:'Combo Células Madre + Rubber Gel',cat:'Tratamientos',price:75,dur:'consultar',durMin:120,active:true,esEval:false,
+        desc:'El combo perfecto para quienes buscan cabello y manos en un solo servicio. Brillo, suavidad, nutrición y fuerza con fórmula vegana. Ideal para cabello seco, dañado o sin vida.',
+        includes:['Tratamiento Células Madre completo','Rubber Gel en manos','Brillo y suavidad garantizados','Nutrición con fórmula vegana','Acabado profesional manos y cabello']},
+      {id:'highliss',name:'High Liss Orgánico Truss',cat:'Alisados',price:0,precioTexto:'consultar',dur:'3–3.5 hrs',durMin:210,active:true,esEval:false,
+        desc:'Alisado progresivo orgánico de la marca Truss para control de frizz y volumen sin alisar el 100% del cabello. Resultados naturales con movimiento. Requiere evaluación previa.',
+        includes:['Lavado preparatorio','Aplicación High Liss Truss','Plancha y sellado','Blower con protectores','Mantenimiento en casa indicado']},
+      {id:'ybera',name:'Ybera Alisado Orgánico',cat:'Alisados',price:120,precioTexto:'desde $120',dur:'consultar',durMin:180,active:true,esEval:false,
+        desc:'Alisado orgánico Ybera, el precio es por onza y media. Por lo general esta cantidad funciona para retocar raíces de aproximadamente 3 a 4 cm de crecimiento. Requiere evaluación previa.',
+        includes:['Evaluación previa requerida','Lavado de preparación','Aplicación Ybera por zonas','Plancha y sellado','Asesoría de mantenimiento']},
+      {id:'retoque',name:'Retoque de Raíz',cat:'Color',price:0,precioTexto:'consultar',dur:'consultar',durMin:90,active:true,esEval:false,
+        desc:'Aplicación precisa de tinte solo en las raíces o zona de crecimiento para mantener el color uniforme. Lavado previo con champú que equilibra el pH y elimina residuos de productos anteriores.',
+        includes:['Lavado de equilibrio de pH','Aplicación de tinte en raíces','Control de tiempo técnico','Enjuague y tratamiento post-color','Blower y acabado final']},
+      {id:'colorglobal',name:'Color Global',cat:'Color',price:0,precioTexto:'consultar',dur:'4–5 hrs',durMin:270,active:true,esEval:false,
+        desc:'Aplicación de tinte global para cambiar o reforzar el tono natural del cabello (no incluye decoloración). El servicio dura de 4 a 5 horas e incluye tratamientos de nutrición y protección.',
+        includes:['Consulta de color previa','Lavado preparatorio','Aplicación de color completo','Tratamiento post-color','Blower profesional final']},
+      {id:'balayage',name:'Balayage',cat:'Color',price:0,precioTexto:'consultar',dur:'consultar',durMin:180,active:true,esEval:false,
+        desc:'Técnica de iluminación a mano libre para lograr un efecto natural y luminoso. Requiere cita de evaluación previa. Incluye preparación del cabello con tratamiento de fuerza, lípidos y proteína.',
+        includes:['Cita de evaluación previa obligatoria','Preparación capilar (fuerza + lípidos)','Técnica balayage a mano libre','Tratamiento de brillo post-color','Blower y acabado final']},
+      {id:'instexten',name:'Instalación de Extensiones',cat:'Extensiones',price:0,precioTexto:'consultar',dur:'variable',durMin:120,active:true,esEval:false,
+        desc:'Instalación profesional de extensiones. El tiempo de servicio dependerá de la cantidad de paquetes a instalar. Incluye lavado especial y blower con protectores de calor.',
+        includes:['Consulta de cantidad y método','Lavado especial pre-instalación','Instalación profesional','Blower con protectores de calor','Asesoría de mantenimiento en casa']},
+      {id:'retiromantenimiento',name:'Retiro y Mantenimiento',cat:'Extensiones',price:0,precioTexto:'consultar',dur:'2–3 hrs',durMin:150,active:true,esEval:false,
+        desc:'Servicio de retiro cuidadoso de extensiones + lavado especial + blower con protectores de calor. El tiempo varía según la cantidad de paquetes. No aplica abono para este servicio.',
+        includes:['Retiro cuidadoso de extensiones','Lavado especial post-retiro','Mascarilla nutritiva','Blower con protectores de calor','Asesoría capilar post-extensiones']},
+    ].map(s => ({requiereAbono: false, abonoMonto: null, abonoTipo: null, ...s}));
+}
+
+let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=300;
+let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
+let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={},horariosEmpleadosCache={};
+// Cita doble: un segundo profesional, para la 2da persona de la reserva
+let empleadoSeleccionado2=null,empleadoHorarioCache2=null;
+let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
+let certAplicado=null; // {id, codigo, saldoDisponible}
+let pagoRender=null, abonoMostrado=null;
+
+// Fuente única de los montos de la reserva (precio, cupón, certificado y abono).
+// Si el certificado cubre parte del servicio, el abono nunca puede ser mayor a lo
+// que aún queda por pagar; si lo cubre completo, no se cobra abono.
+// Un precio "no fijo" (sin precio, o con texto como "desde $25" o "consultar") no se conoce
+// hasta atender al cliente. En ese caso el certificado SOLO se valida al reservar: no se
+// descuenta nada hasta que el negocio complete la cita con el precio final.
+function precioNoFijo(svc){
+  return !svc || svc.price<=0 || !!(svc.precioTexto && String(svc.precioTexto).trim());
+}
+
+// Duración con espacio entre el número y la unidad ("4 - 6Horas" -> "4 - 6 Horas")
+function fmtDur(d){
+  return String(d==null?'':d).replace(/(\d)\s*(horas?|hrs?|min(?:utos)?)\b/gi,'$1 $2');
+}
+
+function calcularMontos(){
+  const precio=curSvc.price>0?curSvc.price:0;
+  const esConsultar=curSvc.price<=0;
+  const noFijo=precioNoFijo(curSvc);
+  const descuentoMonto=(!esConsultar&&cuponDescuentoPct>0)?precio*(cuponDescuentoPct/100):0;
+  const precioTrasCupon=Math.max(0,precio-descuentoMonto);
+  const certPorAplicar=!!certAplicado && noFijo;
+  const montoCert=(certAplicado && !noFijo)?Math.min(certAplicado.saldoDisponible,precioTrasCupon):0;
+  const precioFinal=Math.max(0,precioTrasCupon-montoCert);
+  const tieneAbono=!!(curSvc.esEval||curSvc.requiereAbono);
+  const abonoBase=curSvc.esEval?10:(curSvc.abonoMonto||10);
+  let abono=tieneAbono?abonoBase:0;
+  if(tieneAbono && !esConsultar && montoCert>0) abono=Math.min(abonoBase,precioFinal);
+  return {precio,esConsultar,noFijo,certPorAplicar,descuentoMonto,precioTrasCupon,montoCert,precioFinal,tieneAbono,abonoBase,abono};
+}
+let currentDayStr='';
+const CERT_DESDE_URL = new URLSearchParams(window.location.search).get('certificado') || '';
+
+function renderServices(){
+  if(!SERVICES.length){
+    document.getElementById('serviceList').innerHTML =
+      `<div style="text-align:center;padding:3rem 1.5rem;color:var(--page-label-text);opacity:.7;">
+        <i class="ti ti-calendar-off" style="font-size:32px;display:block;margin-bottom:.75rem;"></i>
+        <p style="font-size:13px;">Este negocio todavía no tiene servicios cargados.</p>
+      </div>`;
+    return;
+  }
+  // Orden de las categorías: el que definió el negocio en su panel (las nuevas van al final).
+  // Sin un orden guardado se mantiene el clásico.
+  const presentes=[...new Set(SERVICES.map(s=>s.cat).filter(Boolean))];
+  const guardado=(window.ANNLY_BUSINESS && Array.isArray(window.ANNLY_BUSINESS.categorias_servicios)) ? window.ANNLY_BUSINESS.categorias_servicios : [];
+  let cats;
+  if(guardado.length){
+    cats=[...guardado.filter(c=>presentes.includes(c)), ...presentes.filter(c=>!guardado.includes(c))];
+  } else {
+    const knownOrder=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+    cats=[...knownOrder, ...presentes.filter(c=>!knownOrder.includes(c))];
+  }
+  let html='';
+  cats.forEach(cat=>{
+    const svcs=SERVICES.filter(s=>s.cat===cat&&s.active);
+    if(!svcs.length)return;
+
+    if(cat==='Básicos'){
+      html+=`<div class="sec-label">Básicos</div>`;
+      const evalSvc=svcs.find(s=>s.esEval);
+      if(evalSvc){
+        html+=`<div class="eval-wrap"><div class="eval-card" onclick="openDetail('${evalSvc.id}')">
+          <div class="eval-icon"><i class="ti ti-clipboard-list" aria-hidden="true"></i></div>
+          <div><div class="eval-name">${evalSvc.name}</div><div class="eval-sub">Análisis capilar + prueba de mechón</div></div>
+          <div class="eval-right"><div class="eval-price">$10.00</div><div class="eval-badge">descontable</div></div>
+        </div></div>`;
+      }
+      const otros=svcs.filter(s=>!s.esEval);
+      if(otros.length){
+        html+=`<div class="grid">`;
+        otros.forEach(s=>{
+          const icon=SVC_ICONS[s.id]||'ti-star';
+          html+=buildCard(s,icon);
+        });
+        html+=`</div>`;
+      }
+      return;
+    }
+
+    html+=`<div class="sec-label">${cat}</div><div class="grid">`;
+    svcs.forEach((s,i)=>{
+      const icon=SVC_ICONS[s.id]||'ti-star';
+      const isLast=i===svcs.length-1&&svcs.length%2!==0&&svcs.length>1;
+      html+=buildCard(s,icon,isLast);
+    });
+    html+='</div>';
+  });
+  html+='<div style="padding-bottom:1.5rem;"></div>';
+  document.getElementById('serviceList').innerHTML=html;
+}
+
+function buildCard(s,icon,full=false){
+  const precio=s.precioTexto||(s.price>0?'$'+s.price.toFixed(2):'consultar');
+  const iconHtml = s.imagenUrl
+    ? `<img src="${s.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>`
+    : `<i class="ti ${icon}" aria-hidden="true"></i>`;
+  return `<div class="card${full?' full':''}" onclick="openDetail('${s.id}')">
+    <div class="card-top"><div class="card-icon" style="${s.imagenUrl?'overflow:hidden;background:none;border:none;border-radius:12px;':''}">${iconHtml}</div><div class="card-name">${s.name}</div></div>
+    <div class="card-desc">${s.desc}</div>
+    <div class="card-sep"></div>
+    <div class="card-footer"><span class="card-price">${precio}</span><span class="card-dur">${fmtDur(s.dur)}</span></div>
+    <div class="card-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+  </div>`;
+}
+
+// Datos del calendario de un servicio (profesionales + sus horarios + bloqueos), pedidos EN PARALELO.
+// Se empiezan a pedir al abrir el detalle, así al tocar "Agendar" ya están (o casi).
+const PRECARGA_CAL = {};
+function precargarCalendario(svcId){
+  const clave = svcId + '|' + (SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : '');
+  if (PRECARGA_CAL[clave]) return PRECARGA_CAL[clave];
+  const t0 = performance.now();
+  const p = (async () => {
+    const [bloq, emps] = await Promise.all([
+      Sheets.getBloqueos(SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : null).catch(() => ({ dias:[], horas:{} })),
+      Sheets.getEmpleadosParaServicio(svcId).catch(() => [])
+    ]);
+    let empleados = emps || [];
+    if (SUCURSAL_ACTUAL && Array.isArray(SUCURSAL_ACTUAL.empleados)) empleados = empleados.filter(e => SUCURSAL_ACTUAL.empleados.includes(e.id));
+    const horarios = {};
+    const hs = await Promise.all(empleados.map(e => horarioPropioSitio(e.id).catch(() => null)));
+    empleados.forEach((e, i) => { horarios[e.id] = hs[i]; });
+    console.log('[Annly] Calendario listo en', Math.round(performance.now() - t0), 'ms');
+    return { bloqueos: bloq || { dias:[], horas:{} }, empleados, horarios };
+  })();
+  PRECARGA_CAL[clave] = p;
+  // Vence en 60 s para no usar datos viejos (bloqueos u horarios recién cambiados)
+  setTimeout(() => { if (PRECARGA_CAL[clave] === p) delete PRECARGA_CAL[clave]; }, 60000);
+  p.catch(() => { delete PRECARGA_CAL[clave]; });
+  return p;
+}
+
+function openDetail(id, esPromo){
+  curSvc=SERVICES.find(s=>s.id===id);
+  if(!curSvc)return;
+  precargarCalendario(curSvc.id);
+  if(esPromo && PROMO_DATA && PROMO_DATA.precioPromo){
+    curSvc={...curSvc, price:parseFloat(PROMO_DATA.precioPromo), precioTexto:null, _promo:true, _precioOriginal:curSvc.price};
+  }
+  const icon=SVC_ICONS[curSvc.id]||'ti-star';
+  const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
+  // Cada ítem: punto alineado con la primera línea; lo que va antes del guion largo, en negrita.
+  // Si los textos son largos, la lista va en una sola columna para que se lea ordenada.
+  const inclLargo=curSvc.includes.some(i=>String(i).length>34);
+  const incl=curSvc.includes.map(i=>{
+    const partes=String(i).split(' — ');
+    const texto=partes.length>1 ? `<strong>${partes[0]}</strong> — ${partes.slice(1).join(' — ')}` : i;
+    return `<div class="incl-item"><span class="incl-dot"></span><span>${texto}</span></div>`;
+  }).join('');
+
+  let extraBox='';
+  if(curSvc.esEval){
+    extraBox=`<div class="mechon-box">
+      <div class="mechon-header"><i class="ti ti-test-pipe" aria-hidden="true"></i><span class="mechon-title">Prueba de mechón incluida</span></div>
+      <p class="mechon-text">Realizamos una prueba de mechón para verificar la compatibilidad del color o químico con tu cabello antes de proceder. Esencial para garantizar resultados seguros y predecibles.</p>
+    </div>
+    <div class="note-box"><i class="ti ti-info-circle" aria-hidden="true"></i><span>El abono de <strong>$10.00</strong> se descuenta del servicio que elijas realizar. Si decides no continuar, no hay cobro adicional.</span></div>`;
+  } else if(curSvc.requiereAbono){
+    const montoAb=(curSvc.abonoMonto||10).toFixed(2);
+    const tipoAb=curSvc.abonoTipo==='descontable'?'descontable del servicio':'no reembolsable';
+    extraBox=`<div class="note-box-warn"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Este servicio requiere un abono de <strong>$${montoAb}</strong> (${tipoAb}) para confirmar la cita.</span></div>
+    <div class="note-box-warn"><i class="ti ti-clock" aria-hidden="true"></i><span>Política de cancelación: avisa con al menos <strong>24 horas</strong> de anticipación por WhatsApp.</span></div>`;
+  } else {
+    extraBox=`<div class="note-box"><i class="ti ti-info-circle" aria-hidden="true"></i><span>Este servicio no requiere abono. El pago se realiza el día de tu cita.</span></div>
+    <div class="note-box-warn"><i class="ti ti-clock" aria-hidden="true"></i><span>Política de cancelación: avisa con al menos <strong>24 horas</strong> de anticipación por WhatsApp.</span></div>`;
+  }
+
+  document.getElementById('detail-title').textContent=curSvc.name;
+  document.getElementById('detail-body').innerHTML=`
+    <div class="svc-banner">
+      <div class="svc-banner-icon" style="${curSvc.imagenUrl?'overflow:hidden;background:none;border:none;border-radius:12px;':''}">${curSvc.imagenUrl?`<img src="${curSvc.imagenUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>`:`<i class="ti ${icon}" aria-hidden="true"></i>`}</div>
+      <div>
+        <div class="svc-banner-name">${curSvc.name}</div>
+        <div class="svc-banner-meta">
+          <span class="svc-banner-price">${curSvc._promo?`<span style="color:#aaa;text-decoration:line-through;font-weight:400;">$${curSvc._precioOriginal.toFixed(2)}</span> <span style="color:#D95F2B;">${precio}</span> <span style="background:#D95F2B;color:#fff;font-size:9px;padding:2px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;">PROMO</span>`:`${precio}${curSvc.esEval?' · descontable':''}`}</span>
+          <span class="svc-banner-dur">${fmtDur(curSvc.dur)}</span>
+        </div>
+      </div>
+    </div>
+    <p class="svc-desc">${curSvc.desc}</p>
+    <p class="incl-title">Incluye</p>
+    <div class="incl-grid${inclLargo?' incl-uno':''}">${incl}</div>
+    ${extraBox}
+    <button class="btn-main" onclick="openCal()">Agendar este servicio</button>
+    <button class="btn-ghost" onclick="closeOv('ov-detail')">Volver</button>`;
+  openOv('ov-detail');
+}
+
+async function openCal(){
+  closeOv('ov-detail');
+  selectedDay=null; selTime=null;
+  const now=new Date(); calY=now.getFullYear(); calM=now.getMonth();
+  const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
+  document.getElementById('cal-svc-info').innerHTML=`
+    <span class="svc-pill-name">${curSvc.name}</span>
+    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${fmtDur(curSvc.dur)}</span></div>`
+    + (SUCURSAL_ACTUAL && SUCURSALES_PUB.length > 1 ? `<div style="width:100%;font-size:11px;opacity:.85;margin-top:4px;"><i class="ti ti-map-pin" aria-hidden="true"></i> ${escSuc(SUCURSAL_ACTUAL.nombre)}${SUCURSAL_ACTUAL.direccion ? ' · ' + escSuc(SUCURSAL_ACTUAL.direccion) : ''}</div>` : '');
+  document.getElementById('timeSec').style.display='none';
+  document.getElementById('btnContinue').disabled=true;
+
+  // El calendario se abre YA con un aviso de carga; los datos llegan de la precarga
+  const sel = document.getElementById('cal-empleado-sel');
+  if (sel){ sel.style.display='none'; sel.innerHTML=''; }
+  document.getElementById('calGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:#999;font-size:12px;"><i class="ti ti-loader-2" style="display:inline-block;animation:annlyGiro 1s linear infinite;font-size:18px;"></i><br>Cargando disponibilidad…</div>';
+  openOv('ov-cal');
+  const svcAbierto = curSvc.id;
+
+  let datos;
+  try { datos = await precargarCalendario(curSvc.id); }
+  catch(e){ console.error(e); datos = { bloqueos:{ dias:[], horas:{} }, empleados:[], horarios:{} }; }
+  if (!curSvc || curSvc.id !== svcAbierto) return; // cambió de servicio mientras cargaba
+
+  BLOQUEOS = datos.bloqueos;
+  if (!BLOQUEOS.dias) BLOQUEOS.dias = [];
+  if (!BLOQUEOS.horas) BLOQUEOS.horas = {};
+  empleadosDelServicio = datos.empleados.slice();
+  horariosEmpleadosCache = {};
+  if (empleadosDelServicio.length > 1) empleadosDelServicio.forEach(e => { horariosEmpleadosCache[e.id] = datos.horarios[e.id] || null; });
+
+  if (curSvc.esDoble) {
+    // Cita doble: siempre se elige explícito para cada persona, nunca "cualquiera"
+    modoCualquiera = false;
+    empleadoSeleccionado = null; empleadoSeleccionado2 = null;
+    empleadoHorarioCache = null; empleadoHorarioCache2 = null;
+  } else {
+    modoCualquiera = empleadosDelServicio.length > 1;
+    empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
+    empleadoHorarioCache = empleadosDelServicio.length === 1 ? (datos.horarios[empleadoSeleccionado] || null) : null;
+  }
+  renderSelectorEmpleado();
+
+  renderCal();
+}
+
+function escTextoEmp(t){
+  return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+// Presentación del profesional (la que el negocio escribió en su ficha)
+// "11:00" -> "11:00 AM"
+function horaLegible(t){
+  const [h, m] = String(t || '0:00').split(':').map(Number);
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return hh + ':' + String(m || 0).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+
+// Días y horas que atiende un profesional con horario propio, agrupando días seguidos con la misma hora.
+// Ej.: "Mar a Vie · 11:00 AM – 5:00 PM"
+function resumenHorarioEmpleado(h){
+  if (!h) return '';
+  const orden = [['Lun',1],['Mar',2],['Mié',3],['Jue',4],['Vie',5],['Sáb',6],['Dom',0]];
+  const dias = orden.map(([nombre, dow]) => {
+    const c = cfgDia(h, dow);
+    return (!c.cerrado && c.abre && c.cierra) ? { nombre, rango: horaLegible(c.abre) + ' – ' + horaLegible(c.cierra) } : null;
+  });
+  const grupos = [];
+  dias.forEach((d, i) => {
+    if (!d) return;
+    const ant = grupos[grupos.length - 1];
+    if (ant && ant.fin === i - 1 && ant.rango === d.rango) { ant.fin = i; ant.hasta = d.nombre; }
+    else grupos.push({ desde: d.nombre, hasta: d.nombre, fin: i, rango: d.rango });
+  });
+  if (!grupos.length) return '';
+  return grupos.map(g => (g.desde === g.hasta ? g.desde : g.desde + ' a ' + g.hasta) + ' · ' + g.rango).join(' | ');
+}
+
+// Presentación del profesional (la que el negocio escribió en su ficha) y su horario asignado
+function bioEmpleadoHtml(e, etiqueta, horario){
+  const horarioTxt = resumenHorarioEmpleado(horario);
+  if (!e || (!e.bio && !e.fotoUrl && !horarioTxt)) return '';
+  const inicial = escTextoEmp((e.nombre || '?').trim().charAt(0).toUpperCase());
+  const foto = e.fotoUrl
+    ? `<img class="emp-bio-foto" src="${escTextoEmp(e.fotoUrl)}" alt=""/>`
+    : `<div class="emp-bio-foto emp-bio-ini">${inicial}</div>`;
+  return `<div class="emp-bio">
+    <div class="emp-bio-head">${foto}<div class="emp-bio-name">${etiqueta} ${escTextoEmp(e.nombre)}</div></div>
+    ${e.bio ? `<p>${escTextoEmp(e.bio)}</p>` : ''}
+    ${horarioTxt ? `<div class="emp-bio-horario"><i class="ti ti-clock" aria-hidden="true"></i> Atiende: ${escTextoEmp(horarioTxt)}</div>` : ''}
+  </div>`;
+}
+
+function renderSelectorEmpleado(){
+  const cont=document.getElementById('cal-empleado-sel');
+  if (!cont) return;
+  if (curSvc && curSvc.esDoble){ renderSelectorEmpleadoDoble(); return; }
+  if (empleadosDelServicio.length <= 1){
+    // Con un solo profesional no se pregunta "¿con quién?", pero si tiene presentación se muestra
+    const unico = empleadosDelServicio[0];
+    const tarjeta = unico ? bioEmpleadoHtml(unico, 'Tu profesional:', empleadoHorarioCache) : '';
+    if (tarjeta){ cont.style.display='block'; cont.innerHTML = tarjeta; }
+    else { cont.style.display='none'; cont.innerHTML=''; }
+    return;
+  }
+  cont.style.display='block';
+  const elegido = (!modoCualquiera && empleadoSeleccionado) ? empleadosDelServicio.find(e => e.id===empleadoSeleccionado) : null;
+  const pills = empleadosDelServicio.map(e => `
+    <div class="emp-pill${(!modoCualquiera && empleadoSeleccionado===e.id)?' sel':''}" onclick="elegirEmpleado('${e.id}')">
+      <div class="emp-pill-av">${e.fotoUrl?`<img src="${e.fotoUrl}"/>`:`<span>${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`}</div>
+      <span>${e.nombre}</span>
+    </div>`).join('');
+  cont.innerHTML = `
+    <p class="emp-sel-lbl">¿Con quién?</p>
+    <div class="emp-pill-row">
+      <div class="emp-pill${modoCualquiera?' sel':''}" onclick="elegirEmpleado(null)">
+        <div class="emp-pill-av"><i class="ti ti-users" aria-hidden="true"></i></div>
+        <span>Cualquiera</span>
+      </div>
+      ${pills}
+    </div>
+    ${bioEmpleadoHtml(elegido, 'Sobre', empleadoHorarioCache)}`;
+}
+
+// Cita doble: 2 selectores — uno por persona — sin permitir elegir al mismo profesional en los 2
+function renderSelectorEmpleadoDoble(){
+  const cont=document.getElementById('cal-empleado-sel');
+  if (!cont) return;
+  cont.style.display='block';
+  const pill=(e,sel,cual)=>`
+    <div class="emp-pill${sel?' sel':''}" onclick="elegirEmpleadoDoble(${cual},'${e.id}')">
+      <div class="emp-pill-av">${e.fotoUrl?`<img src="${e.fotoUrl}"/>`:`<span>${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`}</div>
+      <span>${e.nombre}</span>
+    </div>`;
+  const pillsA = empleadosDelServicio.filter(e=>e.id!==empleadoSeleccionado2).map(e=>pill(e, empleadoSeleccionado===e.id, 1)).join('');
+  const pillsB = empleadosDelServicio.filter(e=>e.id!==empleadoSeleccionado).map(e=>pill(e, empleadoSeleccionado2===e.id, 2)).join('');
+  cont.innerHTML = `
+    <p class="emp-sel-lbl">Profesional para ti</p>
+    <div class="emp-pill-row">${pillsA}</div>
+    <p class="emp-sel-lbl" style="margin-top:10px;">Profesional para tu acompañante</p>
+    <div class="emp-pill-row">${pillsB}</div>
+    ${(!empleadoSeleccionado||!empleadoSeleccionado2)?'<p style="font-size:11px;color:#aaa;margin-top:8px;">Elige un profesional distinto para cada persona para ver los horarios disponibles.</p>':''}`;
+}
+
+async function elegirEmpleadoDoble(cual, id){
+  if (cual===1){ empleadoSeleccionado=id; try{ empleadoHorarioCache=await horarioPropioSitio(id);}catch(e){ empleadoHorarioCache=null; } }
+  else { empleadoSeleccionado2=id; try{ empleadoHorarioCache2=await horarioPropioSitio(id);}catch(e){ empleadoHorarioCache2=null; } }
+  renderSelectorEmpleadoDoble();
+  renderCal();
+  if (selectedDay) selDay2(selectedDay);
+}
+
+async function elegirEmpleado(id){
+  if (id === null){ modoCualquiera = true; empleadoSeleccionado = null; empleadoHorarioCache = null; }
+  else {
+    modoCualquiera = false; empleadoSeleccionado = id;
+    try { empleadoHorarioCache = await horarioPropioSitio(id); } catch(e){ empleadoHorarioCache = null; }
+  }
+  renderSelectorEmpleado();
+  renderCal();
+  if (selectedDay) selDay2(selectedDay);
+}
+// Reglas de horarios: viven en horarios.js (compartido con el panel). Aquí solo se usan.
+const HOR = window.AnnlyHorarios;
+function bloqueDelDia(dow, horario){ return HOR.bloqueDelDia(dow, horario); }
+function cfgDia(h, dow){ return HOR.cfgDia(h, dow); }
+
+// Qué horarios cuentan para el calendario según cómo se está reservando:
+// cita doble (los 2 deben estar: intersección), "cualquiera disponible" (basta uno: unión)
+// o un profesional / la sucursal.
+function horariosParaCalendario(){
+  if (curSvc && curSvc.esDoble){
+    if (!empleadoSeleccionado || !empleadoSeleccionado2) return null; // hasta elegir a los 2 no hay calendario
+    return { horarios: [horarioDeEmpleado(empleadoSeleccionado), horarioDeEmpleado(empleadoSeleccionado2)], modoDia: 'todos', modoRango: 'interseccion' };
+  }
+  if (modoCualquiera && empleadosDelServicio.length > 1){
+    return { horarios: empleadosDelServicio.map(e => horarioDeEmpleado(e.id)), modoDia: 'alguno', modoRango: 'union' };
+  }
+  const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : horarioBaseSitio();
+  return { horarios: [h], modoDia: 'todos', modoRango: 'interseccion' };
+}
+
+function horarioDeEmpleado(id){
+  return horariosEmpleadosCache[id] || horarioBaseSitio() || null;
+}
+
+// ¿Este profesional trabaja a esa hora? (según su propio horario o, si no tiene, el del negocio)
+function empleadoTrabajaEn(id, dow, slotKey){
+  const c = cfgDia(horarioDeEmpleado(id), dow);
+  if (c.cerrado || !c.abre || !c.cierra) return false;
+  const m = timeToMin(slotKey);
+  return m >= timeToMin(c.abre) && m <= timeToMin(c.cierra);
+}
+
+function diaCerrado(dow){
+  const cfg = horariosParaCalendario();
+  if (!cfg) return true;
+  return HOR.diaCerrado(cfg.horarios, dow, cfg.modoDia);
+}
+
+function renderCal(){
+  document.getElementById('calMoLbl').textContent=MESES[calM]+' '+calY;
+  const dn=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  let h=dn.map((d,i)=>`<div class="cdn${i===0?' dom':''}">${d}</div>`).join('');
+  const first=new Date(calY,calM,1).getDay();
+  const days=new Date(calY,calM+1,0).getDate();
+  const today=new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<first;i++) h+=`<div class="cd emp"></div>`;
+  for(let d=1;d<=days;d++){
+    const dt=new Date(calY,calM,d);
+    const dow=dt.getDay();
+    const iso=fechaISO(calY,calM,d);
+    const isBloq=BLOQUEOS.dias.some(b=>b.fecha===iso);
+    const isPast=dt<today,isDom=diaCerrado(dow),isHoy=dt.getTime()===today.getTime(),isSel=selectedDay===d;
+    let cls='cd';
+    if(isPast) cls+=' pst';
+    else if(isDom) cls+=' dom';
+    else if(isBloq) cls+=' bloq';
+    if(isHoy) cls+=' hoy';
+    if(isSel&&!isPast&&!isDom&&!isBloq) cls+=' sel';
+    const ok=!isPast&&!isDom&&!isBloq;
+    const title=isBloq?'title="No disponible"':'';
+    h+=`<div class="${cls}" ${title} ${ok?`onclick="selDay2(${d})"`:''} >${d}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML=h;
+}
+
+function timeToMin(t){ return HOR.timeToMin(t); }
+
+function genSlots(){
+  const cfg = horariosParaCalendario();
+  if (!cfg) return [];
+  return HOR.generarSlots({ horarios: cfg.horarios, fecha: new Date(calY, calM, selectedDay), modo: cfg.modoRango });
+}
+
+function isBlocked(slotKey, citas, durSvc){ return HOR.solapa(slotKey, citas, durSvc); }
+
+async function selDay2(d){
+  selectedDay=d; selTime=null;
+  renderCal();
+  document.getElementById('timeSec').style.display='block';
+  document.getElementById('btnContinue').disabled=true;
+  document.getElementById('timeGrid').innerHTML='<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
+  const fechaStr=d+' de '+MESES[calM]+' '+calY;
+  try{
+    if (curSvc && curSvc.esDoble){
+      const [ocA, ocB] = await Promise.all([
+        Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado).catch(()=>[]),
+        Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado2).catch(()=>[])
+      ]);
+      ocupadosPorEmpleadoCache = {};
+      ocupadosPorEmpleadoCache[empleadoSeleccionado]=ocA;
+      ocupadosPorEmpleadoCache[empleadoSeleccionado2]=ocB;
+      window._citasOcupadas = null;
+    } else if (modoCualquiera && empleadosDelServicio.length > 1){
+      const resultados = await Promise.all(empleadosDelServicio.map(e => Sheets.getHorasOcupadas(fechaStr, e.id).catch(()=>[])));
+      ocupadosPorEmpleadoCache = {};
+      empleadosDelServicio.forEach((e,i) => { ocupadosPorEmpleadoCache[e.id] = resultados[i]; });
+      window._citasOcupadas = null;
+    } else {
+      window._citasOcupadas = await Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado);
+      ocupadosPorEmpleadoCache = {};
+    }
+  }catch(e){ window._citasOcupadas=[]; ocupadosPorEmpleadoCache={}; }
+  renderTimes();
+}
+
+function renderTimes(){
+  const durSvc=curSvc.durMin||60;
+  const slots=genSlots();
+  const grid=document.getElementById('timeGrid');
+  const iso=fechaISO(calY,calM,selectedDay);
+  const horasBloqueadas=BLOQUEOS.horas[iso]||[];
+  grid.innerHTML='';
+  slots.forEach(({key,lbl})=>{
+    let ocupada;
+    if (curSvc && curSvc.esDoble){
+      ocupada = isBlocked(key, ocupadosPorEmpleadoCache[empleadoSeleccionado]||[], durSvc) || isBlocked(key, ocupadosPorEmpleadoCache[empleadoSeleccionado2]||[], durSvc);
+    } else if (modoCualquiera && empleadosDelServicio.length > 1){
+      // Solo se ve "ocupado" si TODOS los profesionales que hacen el servicio están ocupados
+      // o no trabajan a esa hora
+      const dowSlot = new Date(calY,calM,selectedDay).getDay();
+      ocupada = empleadosDelServicio.every(e => !empleadoTrabajaEn(e.id, dowSlot, key) || isBlocked(key, ocupadosPorEmpleadoCache[e.id]||[], durSvc));
+    } else {
+      ocupada = isBlocked(key, window._citasOcupadas||[], durSvc);
+    }
+    const bloqueada=horasBloqueadas.includes(key);
+    const blocked=ocupada||bloqueada;
+    const isSel=selTime===key;
+    const div=document.createElement('div');
+    div.className='ts'+(blocked?' tkn':'')+(isSel?' sel':'');
+    div.textContent=lbl;
+    if(blocked){
+      const sub=document.createElement('span');
+      sub.style.cssText='display:block;font-size:9px;color:#ccc;margin-top:1px;';
+      sub.textContent=bloqueada?'no disp.':'ocupada';
+      div.appendChild(sub);
+    }
+    if(!blocked) div.onclick=()=>{selTime=key;renderTimes();document.getElementById('btnContinue').disabled=false;};
+    grid.appendChild(div);
+  });
+}
+
+// En modo "cualquiera", decide a quién le toca realmente la cita: el primer
+// empleado (de los que hacen el servicio) que esté libre a la hora elegida.
+function empleadoAsignadoFinal(){
+  if (!modoCualquiera) return empleadoSeleccionado;
+  const durSvc=curSvc.durMin||60;
+  const dowSel = new Date(calY,calM,selectedDay).getDay();
+  for (const e of empleadosDelServicio){
+    if (empleadoTrabajaEn(e.id, dowSel, selTime) && !isBlocked(selTime, ocupadosPorEmpleadoCache[e.id]||[], durSvc)) return e.id;
+  }
+  return empleadosDelServicio[0] ? empleadosDelServicio[0].id : null;
+}
+
+function chMo(d){
+  calM+=d;
+  if(calM<0){calM=11;calY--;}
+  if(calM>11){calM=0;calY++;}
+  selectedDay=null; selTime=null;
+  document.getElementById('timeSec').style.display='none';
+  document.getElementById('btnContinue').disabled=true;
+  renderCal();
+}
+
+function goForm(){
+  closeOv('ov-cal');
+  cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+  certAplicado=null;
+  const dayStr=`${selectedDay} de ${MESES[calM]} ${calY}`;
+  currentDayStr=dayStr;
+  timerSecs=300;
+  const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
+
+  const tieneAbono = curSvc.esEval || curSvc.requiereAbono;
+  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'no reembolsable';
+
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappy = !!(b.yappy_numero);
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial) && PAGOS_MODULO_DISPONIBLE;
+  const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
+  pagoTipo = (tieneYappy || tieneYappyComercial) ? 'yappy' : 'bank';
+  yappyAbonoListoInicializado=false;
+
+  const armarPagoSection=(montoAbono)=>{
+  let pagoSection='';
+  if(tieneAbono){
+    let opcionesHtml = '';
+    if(tieneYappy || tieneYappyComercial){
+      opcionesHtml += `
+      <div class="pay-opt sel" id="opt-yappy" onclick="selPago('yappy')">
+        <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
+        <div class="pay-opt-sub">${tieneYappyComercial?'Pago rápido y seguro desde tu app Yappy. Tu cita se confirma automáticamente al completar el pago.':'Envía el pago desde tu app Yappy.'}</div>
+        ${tieneYappyComercial?'':`<div class="pay-detail">Abre tu app Yappy y envía <strong>$${montoAbono.toFixed(2)}</strong> al número <strong>${b.yappy_numero}</strong>. Copia el número de comprobante aquí abajo.</div>`}
+      </div>`;
+    }
+    if(tieneBanco){
+      opcionesHtml += `
+      <div class="pay-opt${(tieneYappy||tieneYappyComercial)?'':' sel'}" id="opt-bank" onclick="selPago('bank')">
+        <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">${b.banco_nombre}</span></div>
+        <div class="pay-opt-sub">Transferencia bancaria a cuenta ${(b.banco_tipo_cuenta||'').toLowerCase()}.</div>
+        <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}<br><strong>Monto:</strong> $${montoAbono.toFixed(2)}<br><span style="color:#e74c3c;font-size:11px;">Incluye tu nombre en la referencia</span></div>
+      </div>`;
+    }
+    const stepAbono = curSvc.esDoble ? 3 : 2;
+    if(!tieneYappy && !tieneYappyComercial && !tieneBanco){
+      pagoSection=`
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">${stepAbono}</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="note-box-warn">
+        <i class="ti ti-whatsapp" aria-hidden="true"></i>
+        <span>Este servicio requiere un abono. Contáctanos por WhatsApp para coordinar el pago antes de confirmar tu cita.</span>
+      </div>
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: coordinado por WhatsApp"/></div>`;
+    } else {
+      pagoSection=`
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">${stepAbono}</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="timer-box" id="timerBox">
+        <div class="timer-val" id="timerVal">5:00</div>
+        <div class="timer-lbl">Tienes <strong>5 minutos</strong> para completar el pago.<br>Si no se confirma, el cupo se libera.</div>
+      </div>
+      ${opcionesHtml}
+      ${tieneYappyComercial ? `
+      <div id="yappyRealWrap" style="margin-top:.875rem;">
+        <div class="fg"><label class="flbl">Tu número Yappy (sin +507)</label><input class="fi" id="fAliasYappy" placeholder="6XXXXXXX"></div>
+        <p id="yappyRealMsg" style="font-size:12px;margin:6px 0 10px;min-height:14px;"></p>
+        <btn-yappy id="btnYappyReal" theme="darkBlue" rounded="true"></btn-yappy>
+      </div>` : ''}
+      <div id="yappyManualWrap" class="${tieneYappyComercial?'hidden':''}">
+        <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
+        ${(tieneYappy&&!tieneYappyComercial)?`<button class="btn-yappy" id="btnYappy" onclick="copiarYappy()">Copiar número de Yappy</button>`:''}
+        <button class="btn-transfer${(tieneYappy||tieneYappyComercial)?' hidden':' visible'}" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>
+      </div>`;
+    }
+  } else {
+    pagoSection=`
+      <div class="note-box" style="margin-top:.875rem;">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        <span>Sin abono requerido. El pago se realiza completo el día de tu cita.</span>
+      </div>
+      <div class="note-box-warn">
+        <i class="ti ti-clock" aria-hidden="true"></i>
+        <span>Política de cancelación: avisa con al menos <strong>24 horas</strong> de anticipación por WhatsApp.</span>
+      </div>`;
+  }
+  return pagoSection;
+  };
+  pagoRender=armarPagoSection;
+  abonoMostrado=montoAbono;
+  const pagoSection=armarPagoSection(montoAbono);
+
+  document.getElementById('form-body').innerHTML=`
+    <div class="svc-resumen">
+      <div class="svc-resumen-name">${curSvc.name}</div>
+      <div class="svc-resumen-meta">${dayStr} · ${selTime} · ${fmtDur(curSvc.dur)}</div>
+    </div>
+    <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="fn" placeholder="Tu nombre"/></div>
+      <div class="fg"><label class="flbl">WhatsApp</label><input class="fi" id="fp" placeholder="+507..."/></div>
+    </div>
+    <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe" placeholder="tu@correo.com"/></div>
+    <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fnote" placeholder="Alguna preferencia o detalle que debamos saber..."/></div>
+    ${curSvc.esDoble ? `
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Datos de tu acompañante</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="fn2" placeholder="Nombre de tu acompañante"/></div>
+      <div class="fg"><label class="flbl">WhatsApp</label><input class="fi" id="fp2" placeholder="+507..."/></div>
+    </div>
+    <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe2" placeholder="correo@acompañante.com"/></div>` : `
+    <div class="fg">
+      <label class="flbl">¿Tienes un cupón de descuento?</label>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" id="fcupon" placeholder="Ej: RUL-4F2A" style="flex:1;text-transform:uppercase;">
+        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+      </div>
+      <p id="cuponMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
+    </div>
+    <div class="fg">
+      <label class="flbl">¿Tienes un certificado de regalo?</label>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" id="fcert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;">
+        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+      </div>
+      <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
+    </div>`}
+    <div id="pagoWrap">${pagoSection}</div>
+    <button class="btn-main" id="btnConfirmar" onclick="${curSvc.esDoble ? `confirmarDoble('${dayStr}')` : `confirmar('${dayStr}')`}" style="${(tieneAbono&&tieneYappyComercial)?'display:none;':''}">Confirmar mi cita</button>`;
+
+  if(tieneAbono && tieneYappyComercial) selPago('yappy');
+  if(tieneAbono) startTimer();
+  if(CERT_DESDE_URL){
+    document.getElementById('fcert').value = CERT_DESDE_URL;
+    aplicarCertificadoCodigo();
+  }
+  openOv('ov-form');
+}
+
+async function aplicarCertificadoCodigo(){
+  const input=document.getElementById('fcert');
+  const msgEl=document.getElementById('certMsg');
+  const codigo=input.value.trim();
+  if(!codigo){ msgEl.textContent=''; certAplicado=null; actualizarPagoPorCert(); return; }
+  msgEl.style.color='#999';
+  msgEl.textContent='Verificando...';
+  const res=await Sheets.validarCertificado(codigo);
+  if(res.valido){
+    certAplicado={id:res.certificateId, codigo:res.codigo, saldoDisponible:res.saldoDisponible, unSoloUso:!!res.unSoloUso};
+    msgEl.style.color='#3a7a3a';
+    const _m=calcularMontos();
+    if(_m.noFijo){
+      // Precio no fijo: el certificado solo se valida; se descuenta el día de la cita
+      msgEl.textContent=res.unSoloUso
+        ? `✓ Certificado de cortesía válido: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso. Como el precio de este servicio no es fijo, no se descuenta ahora: se aplicará el día de tu cita, cuando se confirme el precio.`
+        : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles. Como el precio de este servicio no es fijo, no se descuenta ahora: se aplicará el día de tu cita, cuando se confirme el precio.`;
+    } else {
+      msgEl.textContent=res.unSoloUso
+        ? `✓ Certificado de cortesía: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso: se aplica en esta cita y no queda saldo.`
+        : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles.`;
+      if(_m.tieneAbono && !_m.esConsultar && _m.abono<=0) msgEl.textContent+=' Cubre tu servicio: no necesitas pagar abono.';
+    }
+  } else {
+    certAplicado=null;
+    msgEl.style.color='#c0392b';
+    const motivos={codigo_no_encontrado:'Código no válido.',codigo_vacio:'Ingresa un código.',sin_saldo:'Este certificado ya no tiene saldo.',vencido:'Este certificado está vencido.',pendiente_pago:'Este certificado aún no ha sido activado.',cancelado:'Este certificado fue cancelado.'};
+    msgEl.textContent=motivos[res.motivo]||'Código no válido.';
+  }
+  actualizarPagoPorCert();
+}
+
+// Cuando cambia el certificado (o el cupón) se recalcula el abono y se vuelve a
+// dibujar la sección de pago: si el certificado cubre todo, no hay abono que pagar.
+function actualizarPagoPorCert(){
+  if(!curSvc || !pagoRender) return;
+  const m=calcularMontos();
+  if(!m.tieneAbono) return;
+  const wrap=document.getElementById('pagoWrap');
+  if(!wrap || abonoMostrado===m.abono) return;
+  const antes=abonoMostrado;
+  abonoMostrado=m.abono;
+  const btnC=document.getElementById('btnConfirmar');
+  if(m.abono<=0){
+    if(timerInt) clearInterval(timerInt);
+    wrap.innerHTML=`
+      <div class="note-box" style="margin-top:.875rem;">
+        <i class="ti ti-gift" aria-hidden="true"></i>
+        <span>Tu certificado cubre este servicio: <strong>no necesitas pagar abono</strong>.</span>
+      </div>`;
+    if(btnC){ btnC.style.display=''; btnC.disabled=false; btnC.textContent='Confirmar mi cita'; }
+    return;
+  }
+  const refPrev=(document.getElementById('fref')||{}).value||'';
+  const aliasPrev=(document.getElementById('fAliasYappy')||{}).value||'';
+  wrap.innerHTML=pagoRender(m.abono);
+  const refEl=document.getElementById('fref'); if(refEl) refEl.value=refPrev;
+  const aliasEl=document.getElementById('fAliasYappy'); if(aliasEl) aliasEl.value=aliasPrev;
+  yappyAbonoListoInicializado=false;
+  selPago(pagoTipo);
+  if(btnC){ btnC.disabled=false; btnC.textContent='Confirmar mi cita'; }
+  if(antes<=0) startTimer();
+}
+
+
+async function aplicarCupon(){
+  const input=document.getElementById('fcupon');
+  const msgEl=document.getElementById('cuponMsg');
+  const codigo=input.value.trim();
+  if(!codigo){ msgEl.textContent=''; cuponAplicado=null; cuponDescuentoPct=0; actualizarPagoPorCert(); return; }
+  msgEl.style.color='#999';
+  msgEl.textContent='Verificando...';
+  const res=await Sheets.validarCupon(codigo);
+  if(res.valido && res.tipo==='porcentaje'){
+    cuponAplicado=codigo.toUpperCase();
+    cuponDescuentoPct=res.valor;
+    cuponPremioTexto=res.premio;
+    msgEl.style.color='#3a7a3a';
+    msgEl.textContent=`✓ Cupón válido: ${res.valor}% de descuento.`;
+  } else if(res.valido && res.tipo==='especial'){
+    cuponAplicado=codigo.toUpperCase();
+    cuponDescuentoPct=0;
+    cuponPremioTexto=res.premio;
+    msgEl.style.color='#3a7a3a';
+    msgEl.textContent=`✓ Cupón válido: ${res.premio}. Se coordinará el detalle contigo.`;
+  } else {
+    cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+    msgEl.style.color='#c0392b';
+    const motivos={ya_canjeado:'Este cupón ya fue utilizado.',codigo_no_encontrado:'Cupón no válido.',codigo_vacio:'Ingresa un código.'};
+    msgEl.textContent=motivos[res.motivo]||'Cupón no válido.';
+  }
+  actualizarPagoPorCert();
+}
+
+let pagoTipo='yappy';
+let yappyAbonoListoInicializado=false;
+
+function limpiarNumYappy(tel){
+  let n=(tel||'').replace(/[^0-9]/g,'');
+  if(n.length>8 && n.startsWith('507')) n=n.substring(3);
+  return n;
+}
+
+function selPago(tipo){
+  pagoTipo=tipo;
+  const optY=document.getElementById('opt-yappy');
+  const optB=document.getElementById('opt-bank');
+  if(optY) optY.classList.toggle('sel',tipo==='yappy');
+  if(optB) optB.classList.toggle('sel',tipo==='bank');
+
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial) && PAGOS_MODULO_DISPONIBLE;
+  const yappyRealWrap=document.getElementById('yappyRealWrap');
+  const yappyManualWrap=document.getElementById('yappyManualWrap');
+  const btnC=document.getElementById('btnConfirmar');
+
+  if(tipo==='bank'){
+    if(yappyRealWrap) yappyRealWrap.classList.add('hidden');
+    if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
+    if(btnC) btnC.style.display='';
+  } else if(tieneYappyComercial && yappyRealWrap){
+    yappyRealWrap.classList.remove('hidden');
+    if(yappyManualWrap) yappyManualWrap.classList.add('hidden');
+    if(btnC) btnC.style.display='none';
+    setupYappyButtonAbono();
+  } else {
+    if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
+    if(btnC) btnC.style.display='';
+    const btnY=document.getElementById('btnYappy');
+    const btnB=document.getElementById('btnTransfer');
+    if(btnY) btnY.classList.remove('hidden');
+    if(btnB) btnB.classList.remove('visible');
+  }
+}
+
+// Conecta el <btn-yappy> real (SDK oficial de Yappy) para el abono de la
+// cita: al hacer click crea la orden vía la Edge Function y le pasa el
+// token de vuelta al widget con eventPayment(); al confirmar el pago
+// (eventSuccess) reserva la cita de una vez, usando el orderId como
+// comprobante.
+function setupYappyButtonAbono(){
+  const btn=document.getElementById('btnYappyReal');
+  if(!btn || yappyAbonoListoInicializado) return;
+  yappyAbonoListoInicializado=true;
+
+  const telInput=document.getElementById('fp');
+  const aliasInput=document.getElementById('fAliasYappy');
+  if(telInput && aliasInput && !aliasInput.value){ aliasInput.value=limpiarNumYappy(telInput.value); }
+
+  btn.addEventListener('eventClick', async () => {
+    const msgEl=document.getElementById('yappyRealMsg');
+    const nombre=document.getElementById('fn').value.trim();
+    const tel=document.getElementById('fp').value.trim();
+    const correo=document.getElementById('fe').value.trim();
+    if(!nombre||!tel||!correo){ msgEl.style.color='#c0392b'; msgEl.textContent='Completa tu nombre, WhatsApp y correo antes de pagar.'; btn.isButtonLoading=false; return; }
+    const alias=limpiarNumYappy(document.getElementById('fAliasYappy').value);
+    if(!alias || alias.length<7){ msgEl.style.color='#c0392b'; msgEl.textContent='Ingresa tu número Yappy (8 dígitos, sin +507).'; btn.isButtonLoading=false; return; }
+
+    msgEl.style.color='#999'; msgEl.textContent='Creando tu orden de pago...';
+    const montoAbono = calcularMontos().abono;
+    const orderId='C'+Date.now().toString().slice(-10);
+    window._yappyOrderId=orderId;
+
+    const res=await Sheets.crearOrdenYappy({orderId, total:montoAbono, aliasYappy:alias, tipo:'cita', refId:orderId});
+    if(res && res.ok){
+      msgEl.textContent='';
+      btn.eventPayment({ transactionId: res.transactionId, documentName: res.documentName, token: res.token });
+    } else {
+      msgEl.style.color='#c0392b';
+      msgEl.textContent = (res && res.error) || 'No se pudo crear la orden de pago. Intenta de nuevo.';
+      btn.isButtonLoading=false;
+    }
+  });
+
+  btn.addEventListener('eventSuccess', () => {
+    confirmarCitaConfirmada(currentDayStr, window._yappyOrderId);
+  });
+
+  btn.addEventListener('eventError', () => {
+    const msgEl=document.getElementById('yappyRealMsg');
+    if(msgEl){ msgEl.style.color='#c0392b'; msgEl.textContent='El pago no se completó. Puedes intentar de nuevo.'; }
+  });
+}
+
+function copiarCuenta(){
+  const b = window.ANNLY_BUSINESS || {};
+  navigator.clipboard.writeText(b.banco_numero_cuenta || '').then(()=>{
+    const btn=document.getElementById('btnTransfer');
+    btn.textContent='¡Copiado!';
+    setTimeout(()=>{btn.textContent='Copiar número de cuenta';},2000);
+  });
+}
+
+function copiarYappy(){
+  const b = window.ANNLY_BUSINESS || {};
+  navigator.clipboard.writeText(b.yappy_numero || '').then(()=>{
+    const btn=document.getElementById('btnYappy');
+    btn.textContent='¡Copiado!';
+    setTimeout(()=>{btn.textContent='Copiar número de Yappy';},2000);
+  });
+}
+
+function startTimer(){
+  if(timerInt)clearInterval(timerInt);
+  timerSecs=300;
+  timerInt=setInterval(()=>{
+    timerSecs--;
+    const el=document.getElementById('timerVal');
+    const box=document.getElementById('timerBox');
+    const btnC=document.getElementById('btnConfirmar');
+    if(timerSecs<=0){
+      clearInterval(timerInt);
+      if(el)el.textContent='0:00';
+      if(box)box.classList.add('exp');
+      if(btnC){btnC.disabled=true;btnC.textContent='Tiempo expirado — vuelve a empezar';}
+      return;
+    }
+    const mm=Math.floor(timerSecs/60),ss=timerSecs%60;
+    if(el)el.textContent=mm+':'+String(ss).padStart(2,'0');
+    if(timerSecs<=60&&box)box.classList.add('exp');
+  },1000);
+}
+
+async function confirmar(dayStr){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
+  const refEl=document.getElementById('fref');
+  const ref=refEl?refEl.value.trim():'Sin abono';
+  const tieneAbono = calcularMontos().abono>0;
+  if(!nombre||!tel||!correo){alert('Por favor completa tu nombre, WhatsApp y correo.');return;}
+  if(tieneAbono&&!ref){alert('Por favor ingresa el número de comprobante del pago.');return;}
+  if(timerInt)clearInterval(timerInt);
+  const btnC=document.getElementById('btnConfirmar');
+  if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
+  await finalizarCita(dayStr, ref, false);
+}
+
+// Llamado cuando el pago se completó de verdad por el botón real de Yappy
+// (eventSuccess del widget) — el comprobante es el propio orderId de Yappy,
+// no algo que el cliente tipeó a mano.
+async function confirmarCitaConfirmada(dayStr, orderId){
+  if(timerInt)clearInterval(timerInt);
+  await finalizarCita(dayStr, orderId, true);
+}
+
+// pagoVerificado = true solo con el botón real de Yappy. Un abono a mano queda "por confirmar".
+async function finalizarCita(dayStr, ref, pagoVerificado){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
+  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
+  const _M = calcularMontos();
+  const tieneAbono = _M.abono>0;
+  const abonoExonerado = _M.tieneAbono && _M.abono<=0; // el certificado cubrió todo el servicio
+  const montoAbono = _M.abono;
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'sujeto a política de cancelación';
+  const precio=curSvc.price>0?curSvc.price:0;
+  const esConsultar = curSvc.price<=0;
+  const noFijo = precioNoFijo(curSvc);
+  const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
+  const citaId = 'cita-' + Date.now();
+
+  const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
+  const precioTrasCupon = Math.max(0, precio - descuentoMonto);
+  // Precio fijo: el certificado se descuenta ahora. Precio no fijo ("desde…", "consultar"):
+  // solo se valida, y el negocio lo aplica al completar la cita con el precio final. Así, si el
+  // cliente no califica para el servicio, su certificado queda intacto.
+  const montoCertAplicado = (certAplicado && !noFijo)
+    ? Math.min(certAplicado.saldoDisponible, precioTrasCupon)
+    : 0;
+  const certPorAplicar = !!certAplicado && noFijo;
+  const precioFinal = Math.max(0, precioTrasCupon - montoCertAplicado);
+
+  const cita={nombre,telefono:tel,correo,nota:notaFinal,servicio:curSvc.name,categoria:curSvc.cat,
+    precioTotal:precio,precioEsConsultar:esConsultar,fecha:dayStr,hora:selTime,duracionMin:curSvc.durMin,
+    comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
+    abonoPorConfirmar: tieneAbono && !pagoVerificado,
+    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
+    certificadoCodigo: (montoCertAplicado>0 || certPorAplicar) ? certAplicado.codigo : null,
+    certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
+    certificadoSaldoRestante: montoCertAplicado>0 ? (certAplicado.unSoloUso ? 0 : Math.max(0, certAplicado.saldoDisponible - montoCertAplicado)) : null};
+  let appointmentId=null;
+  try{ appointmentId=await Sheets.guardarCita(cita); }catch(e){console.error(e);}
+  try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
+  if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
+  let certFallo=false;
+  if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e); certFallo=true;} }
+  const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre, telefonoCliente:tel, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  await new Promise(r=>setTimeout(r,900));
+  const precioStr=esConsultar?'Por confirmar':(curSvc.precioTexto&&curSvc.precioTexto.toLowerCase().includes('desde')?'Desde $'+precio.toFixed(2):'$'+precio.toFixed(2));
+  const restanteTexto = noFijo
+    ? (tieneAbono ? 'Se aplicará el abono al precio acordado' : 'Por confirmar')
+    : '$'+(tipoAbono==='descontable' ? Math.max(0, precioFinal - montoAbono).toFixed(2) : precioFinal.toFixed(2));
+  const abonoLine=tieneAbono?`<strong>Abono ${pagoVerificado ? 'pagado' : 'enviado (por validar)'}:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`
+    :(abonoExonerado?`<strong>Abono:</strong> No requerido (cubierto por tu certificado)<br>`:'');
+  const cuponLine = (cuponAplicado && cuponDescuentoPct>0 && !esConsultar)
+    ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
+    : (cuponAplicado ? `<strong>Cupón aplicado:</strong> ${cuponPremioTexto}<br>` : '');
+  const certLine = montoCertAplicado>0
+    ? `<strong>Certificado aplicado (${certAplicado.codigo}):</strong> <span style="color:#4CAF50;font-weight:600;">-$${montoCertAplicado.toFixed(2)}</span><br>${certFallo
+      ? '<span style="color:#c0392b;font-size:12px;">No pudimos actualizar el saldo de tu certificado; el negocio lo revisará contigo.</span><br>'
+      : `<strong>Saldo restante del certificado:</strong> <span style="color:#4CAF50;font-weight:600;">$${(certAplicado.unSoloUso ? 0 : Math.max(0,certAplicado.saldoDisponible-montoCertAplicado)).toFixed(2)}</span>${certAplicado.unSoloUso ? ' <span style="font-size:11px;color:#888;">(cortesía de un solo uso)</span>' : ''}<br>`}`
+    : '';
+  const certPendienteLine = certPorAplicar
+    ? `<strong>Certificado (${certAplicado.codigo}):</strong> validado, con $${certAplicado.saldoDisponible.toFixed(2)} disponibles<br><span style="font-size:12px;color:#888;">No se ha descontado nada. Se aplicará el día de tu cita, cuando se confirme el precio final.</span><br>`
+    : '';
+  const totalLine = noFijo
+    ? `<strong>Monto a cancelar el día de la cita:</strong> ${restanteTexto}<br>`
+    : `<strong>Total a pagar:</strong> <span style="color:#D95F2B;font-weight:600;">${restanteTexto}</span><br>`;
+  document.getElementById('form-body').innerHTML=`
+    <div class="success-wrap">
+      <div class="s-icon"><i class="ti ti-${tieneAbono && !pagoVerificado ? 'hourglass' : 'check'}" aria-hidden="true"></i></div>
+      <div class="s-title">${tieneAbono && !pagoVerificado ? '¡Reserva recibida!' : '¡Cita reservada!'}</div>
+      <div class="s-sub">${tieneAbono && !pagoVerificado
+        ? 'Tu horario quedó apartado. Vamos a validar tu abono y te llegará la confirmación por correo.'
+        : 'Tu cita está confirmada. Te enviamos los detalles por correo.'}</div>
+      <div class="s-detail">
+        <strong>Servicio:</strong> ${curSvc.name}<br>
+        ${lineaSucursalResumen()}<strong>Fecha:</strong> ${dayStr}<br>
+        <strong>Hora:</strong> ${selTime ? (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})() : selTime}<br>
+        <strong>Duración aprox.:</strong> ${fmtDur(curSvc.dur)}<br>
+        <strong>Precio total:</strong> <span style="color:#D95F2B;font-weight:600;">${precioStr}</span><br>
+        ${abonoLine}
+        ${cuponLine}
+        ${certLine}
+        ${certPendienteLine}
+        ${totalLine}
+      </div>
+      ${abonoExonerado?'':'<p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>'}
+      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+    </div>`;
+
+  setTimeout(async () => {
+    try {
+      const check = await Sheets.verificarElegibilidadRuleta(tel);
+      if (check && check.elegible) {
+        closeOv('ov-form');
+        abrirModalRuleta(tel, nombre, citaId);
+      }
+      // si no es elegible (ya participó o ruleta apagada), el modal de confirmación se queda abierto tal cual
+    } catch (err) {
+      console.error('Error verificando elegibilidad de ruleta:', err);
+    }
+  }, 1800);
+}
+
+// ---- Cita doble: confirmación y guardado (2 personas, 2 profesionales, 1 solo abono) ----
+async function confirmarDoble(dayStr){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe').value.trim();
+  const nombre2=document.getElementById('fn2').value.trim();
+  const tel2=document.getElementById('fp2').value.trim();
+  const correo2=document.getElementById('fe2').value.trim();
+  const refEl=document.getElementById('fref');
+  const ref=refEl?refEl.value.trim():'Sin abono';
+  const tieneAbono = !!(curSvc.esEval || curSvc.requiereAbono);
+  if(!nombre||!tel||!correo){alert('Por favor completa tu nombre, WhatsApp y correo.');return;}
+  if(!nombre2||!tel2||!correo2){alert('Por favor completa los datos de tu acompañante.');return;}
+  if(!empleadoSeleccionado||!empleadoSeleccionado2){alert('Elige un profesional para cada persona.');return;}
+  if(tieneAbono&&!ref){alert('Por favor ingresa el número de comprobante del pago.');return;}
+  if(timerInt)clearInterval(timerInt);
+  const btnC=document.getElementById('btnConfirmar');
+  if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
+  await finalizarCitaDoble(dayStr, ref);
+}
+
+async function finalizarCitaDoble(dayStr, ref){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe').value.trim();
+  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
+  const nombre2=document.getElementById('fn2').value.trim();
+  const tel2=document.getElementById('fp2').value.trim();
+  const correo2=document.getElementById('fe2').value.trim();
+
+  const tieneAbono = !!(curSvc.esEval || curSvc.requiereAbono);
+  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const precioTotal = curSvc.price>0?curSvc.price:0;
+  const precioMitad = Math.round((precioTotal/2)*100)/100;
+  const citaIdBase = 'cita-' + Date.now();
+
+  const base = {
+    nota, servicio:curSvc.name, categoria:curSvc.cat, precioEsConsultar:false,
+    fecha:dayStr, hora:selTime, duracionMin:curSvc.durMin,
+    cuponUsado:'', descuentoCupon:0, certificadoCodigo:null, certificadoMonto:null, certificadoSaldoRestante:null
+  };
+
+  const citaPrincipal = { ...base, nombre, telefono:tel, correo,
+    precioTotal:precioMitad, precioFinal:precioMitad, comprobante:ref,
+    abonoMonto:tieneAbono?montoAbono:0, abonoTipo:tieneAbono?tipoAbono:'',
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaIdBase, empleadoId:empleadoSeleccionado,
+    abonoPorConfirmar: tieneAbono };
+
+  const citaSecundaria = { ...base, nombre:nombre2, telefono:tel2, correo:correo2,
+    precioTotal:precioMitad, precioFinal:precioMitad,
+    comprobante: tieneAbono ? ('Incluido en la reserva de ' + nombre) : 'Sin abono',
+    abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2,
+    abonoPorConfirmar: tieneAbono };
+
+  try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }catch(e){ console.error('Error guardando la cita doble:', e); }
+  try{ await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); }catch(e){}
+  try{ await Sheets.upsertClienteDesdeReserva(nombre2, tel2, correo2); }catch(e){}
+
+  const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name+' (con '+nombre2+')', fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo2, nombreCliente:nombre2, servicio:curSvc.name+' (con '+nombre+')', fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre+' y '+nombre2, telefonoCliente:tel+' / '+tel2, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+
+  await new Promise(r=>setTimeout(r,900));
+
+  const abonoLine = tieneAbono
+    ? `<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span><br><strong>Comprobante:</strong> ${ref}<br>`
+    : '';
+  document.getElementById('form-body').innerHTML=`
+    <div class="success-wrap">
+      <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+      <div class="s-title">${tieneAbono ? '¡Reserva recibida!' : '¡Cita doble reservada!'}</div>
+      <div class="s-sub">${tieneAbono ? 'Su horario quedó apartado. Vamos a validar el abono y les llegará la confirmación a los 2 correos.' : 'Le mandamos la confirmación a los 2 correos.'}</div>
+      <div class="s-detail">
+        <strong>Servicio:</strong> ${curSvc.name}<br>
+        <strong>Fecha:</strong> ${dayStr}<br>
+        ${lineaSucursalResumen()}<strong>Hora:</strong> ${horaDisplay}<br>
+        <strong>${nombre}</strong> y <strong>${nombre2}</strong>, cada quien con su profesional elegido<br>
+        ${abonoLine}
+        <strong>Total del combo:</strong> <span style="color:#D95F2B;font-weight:600;">$${precioTotal.toFixed(2)}</span><br>
+      </div>
+      <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
+      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+    </div>`;
+}
+
+function openOv(id){document.getElementById(id).classList.add('open');}
+function closeOv(id){
+  document.getElementById(id).classList.remove('open');
+  if(id==='ov-form'&&timerInt)clearInterval(timerInt);
+}
+
+const TEMAS_PROMO={
+  mundial:{emoji:'⚽',bg:'linear-gradient(160deg,#7BA87F 0%,#4E7A53 100%)',lblColor:'#fff',porteria:true,confeti:false,cardBg:'#F0F7F0',cardBorder:'#C8DFC8',vigColor:'#3a7a3f'},
+  regalo:{emoji:'🎁',bg:'#FBF0F3',bgBorder:'#D693AA',lblColor:'#B85478',porteria:false,confeti:true,confetiLight:true,cardBg:'#FBF0F3',cardBorder:'#EDD2DA',vigColor:'#B85478'},
+  corazon:{emoji:'💝',bg:'linear-gradient(160deg,#F0A8B8 0%,#D67D95 100%)',lblColor:'#fff',porteria:false,confeti:true,confetiLight:false,cardBg:'#FBF0F3',cardBorder:'#EDD2DA',vigColor:'#a8455f'},
+  fiesta:{emoji:'🎉',bg:'linear-gradient(160deg,#A89BD9 0%,#7A6AB5 100%)',lblColor:'#fff',porteria:false,confeti:true,confetiLight:false,cardBg:'#F2F0FA',cardBorder:'#DAD3EC',vigColor:'#52468a'}
+};
+
+let PROMO_DATA=null;
+
+async function loadPromo(){
+  let promo;
+  try { promo = await Sheets.getPromo(); }
+  catch(e){ return; }
+  if(!promo || !promo.activa) return;
+  PROMO_DATA=promo;
+
+  const tema=TEMAS_PROMO[promo.tema]||TEMAS_PROMO.mundial;
+  const topEl=document.getElementById('promo-top');
+  topEl.style.background=tema.bg;
+  topEl.style.borderBottom=tema.bgBorder?('3px solid '+tema.bgBorder):'none';
+  document.getElementById('promo-emoji').textContent=tema.emoji;
+  document.getElementById('promo-porteria').style.display=tema.porteria?'block':'none';
+  const lblEl=document.getElementById('promo-lbl');
+  lblEl.textContent=promo.etiqueta||'PROMOCIÓN';
+  lblEl.style.color=tema.lblColor;
+  document.getElementById('promo-fest').textContent=promo.festejo||'¡Oferta especial!';
+  document.getElementById('promo-svc').textContent=promo.servicio||'';
+  const card=document.getElementById('promo-card');
+  card.style.background=tema.cardBg;
+  card.style.border='0.5px solid '+tema.cardBorder;
+  if(promo.precioNormal){
+    document.getElementById('promo-pn').textContent='$'+parseFloat(promo.precioNormal).toFixed(2);
+    document.getElementById('promo-pn').style.display='inline';
+  } else { document.getElementById('promo-pn').style.display='none'; }
+  document.getElementById('promo-pp').textContent=promo.precioPromo?'$'+parseFloat(promo.precioPromo).toFixed(2):'';
+  const vig=document.getElementById('promo-vig');
+  vig.textContent=promo.vigencia||'';
+  vig.style.color=tema.vigColor;
+
+  setTimeout(()=>{
+    document.getElementById('promo-ov').style.display='flex';
+    animarPromo(promo.tema);
+  }, 600);
+}
+
+function animarPromo(tema){
+  const emoji=document.getElementById('promo-emoji');
+  const fest=document.getElementById('promo-fest');
+  const topEl=document.getElementById('promo-top');
+  if(!emoji) return;
+  const conf=TEMAS_PROMO[tema]||TEMAS_PROMO.mundial;
+
+  topEl.querySelectorAll('.promo-confeti').forEach(c=>c.remove());
+
+  fest.style.opacity='0';
+  if(tema==='mundial'){
+    emoji.animate([
+      {transform:'translateX(-50%) translateY(0) scale(1)',offset:0},
+      {transform:'translateX(-50%) translateY(-20px) scale(.7) rotate(360deg)',offset:.6},
+      {transform:'translateX(-50%) translateY(12px) scale(.92) rotate(540deg)',offset:1}
+    ],{duration:1100,easing:'cubic-bezier(.4,1.3,.6,1)',fill:'forwards'});
+  } else {
+    emoji.animate([
+      {transform:'translateX(-50%) scale(0) rotate(-20deg)',offset:0},
+      {transform:'translateX(-50%) scale(1.2) rotate(10deg)',offset:.7},
+      {transform:'translateX(-50%) scale(1) rotate(0)',offset:1}
+    ],{duration:900,easing:'cubic-bezier(.4,1.3,.6,1)',fill:'forwards'});
+  }
+
+  if(conf.confeti){
+    const colors=conf.confetiLight?['#E8A23C','#D26C7A','#7BA87F','#5B9BD5','#C77F3C']:['#F5D76E','#fff','#A6D9F4','#C8F4A6','#FCE8A0'];
+    for(let i=0;i<14;i++){
+      const c=document.createElement('div');
+      c.className='promo-confeti';
+      const size=4+Math.random()*4;
+      c.style.cssText='position:absolute;width:'+size+'px;height:'+(size+2)+'px;background:'+colors[i%colors.length]+';top:-12px;left:'+(Math.random()*100)+'%;border-radius:1px;opacity:.8;z-index:1;pointer-events:none;';
+      topEl.appendChild(c);
+      const dur=2200+Math.random()*1600;
+      const delay=Math.random()*2500;
+      const drift=(Math.random()*36-18);
+      c.animate([
+        {transform:'translateY(0) translateX(0) rotate(0deg)',opacity:.85},
+        {transform:'translateY(105px) translateX('+drift+'px) rotate('+(360+Math.random()*360)+'deg)',opacity:.5}
+      ],{duration:dur,delay:delay,iterations:Infinity,easing:'linear'});
+    }
+  }
+
+  setTimeout(()=>{
+    fest.style.transition='opacity .4s';
+    fest.style.opacity='1';
+    fest.animate([{transform:'scale(.5)'},{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:450,easing:'ease-out'});
+  }, tema==='mundial'?900:700);
+}
+
+function cerrarPromo(){
+  document.getElementById('promo-ov').style.display='none';
+}
+
+function agendarPromo(){
+  cerrarPromo();
+  if(!PROMO_DATA || !PROMO_DATA.servicio){ return; }
+  const norm=s=>s.toLowerCase().trim().replace(/\s+/g,' ');
+  const objetivo=norm(PROMO_DATA.servicio);
+  let svc=SERVICES.find(s=>norm(s.name)===objetivo);
+  if(!svc) svc=SERVICES.find(s=>norm(s.name).includes(objetivo)||objetivo.includes(norm(s.name)));
+  if(svc){
+    openDetail(svc.id, true);
+  } else {
+    document.querySelector('.servicios-wrap, #servicios, .svc-grid')?.scrollIntoView({behavior:'smooth'});
+  }
+}
+
+// El botón de WhatsApp ahora se queda siempre visible (discreto), sin ocultarse cerca del footer
