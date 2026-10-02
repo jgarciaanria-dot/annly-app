@@ -368,6 +368,79 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .abono-pend-txt{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#7A5200;line-height:1.45;}
 .abono-pend-txt i{font-size:17px;margin-top:1px;}
 .abono-pend-txt strong{display:block;font-size:12.5px;}
+.cal-modo-bar{display:flex;justify-content:flex-end;padding:.85rem 1rem 0;}
+.cal-seg{display:inline-flex;gap:3px;background:#F4F1F9;border-radius:12px;padding:3px;}
+.cal-seg button{border:0;background:transparent;border-radius:9px;padding:7px 12px;font:700 12px/1 inherit;color:#77738A;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+.cal-seg button.on{background:#fff;color:#5B21B6;box-shadow:0 2px 6px -2px rgba(60,30,110,.25);}
+#cal-citas{padding:.85rem 1rem 1rem;}
+.cal-barra{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.cal-nav{display:flex;align-items:center;gap:6px;}
+.cal-btn{height:34px;padding:0 13px;border-radius:10px;border:1px solid #E7E2EE;background:#fff;font:700 12.5px/1 inherit;cursor:pointer;color:var(--ink,#2B2838);}
+.cal-btn.ico{width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:16px;}
+.cal-titulo{font-size:17px;font-weight:800;color:var(--ink,#2B2838);margin-left:6px;text-transform:capitalize;}
+.cal-leyenda{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:#8A8796;margin-bottom:10px;align-items:center;}
+.cal-leyenda span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:-6px;}
+.cal-leyenda .conf{background:#EFE8FC;border:1px solid #C9B6EE;}
+.cal-leyenda .pend{background:#FFF4DE;border:1px solid #F1C873;}
+.cal-leyenda .hecha{background:#E6F6EE;border:1px solid #A6DBBE;}
+.cal-leyenda .somb{background:repeating-linear-gradient(45deg,#F1EFF5,#F1EFF5 3px,#E6E2EE 3px,#E6E2EE 6px);}
+.cal-scroll{max-height:72vh;overflow:auto;border:1px solid #EDE9F3;border-radius:14px;background:#fff;}
+.cal-grid{display:grid;grid-template-columns:62px repeat(var(--cols),minmax(150px,1fr));position:relative;}
+.cal-grid.semana{grid-template-columns:62px repeat(7,minmax(118px,1fr));}
+.cal-esq,.cal-col-hdr{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #EDE9F3;}
+.cal-esq{left:0;z-index:6;}
+.cal-col-hdr{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 6px;border-left:1px solid #F1EEF6;font-family:inherit;}
+button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
+.cal-col-hdr img,.cal-ini{width:30px;height:30px;border-radius:50%;object-fit:cover;}
+.cal-ini{display:flex;align-items:center;justify-content:center;background:#F3EEFC;color:#6D28D9;font-weight:800;font-size:13px;}
+.cal-col-hdr b{font-size:12.5px;color:var(--ink,#2B2838);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.cal-col-hdr small{font-size:10.5px;color:#9A97A6;}
+.cal-col-hdr.dia b{font-size:18px;}
+.cal-col-hdr.hoy b{color:#fff;background:#7C3AED;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;}
+.cal-regla{grid-column:1;position:sticky;left:0;z-index:4;background:#fff;}
+.cal-hora{position:relative;border-top:1px solid transparent;}
+.cal-hora span{position:absolute;top:-7px;right:8px;font-size:10.5px;color:#9A97A6;white-space:nowrap;}
+.cal-hora:first-child span{top:2px;}
+.cal-col{position:relative;border-left:1px solid #F1EEF6;}
+.cal-linea{border-top:1px solid #F3F0F8;box-sizing:border-box;}
+.cal-sombra{position:absolute;left:0;right:0;background:repeating-linear-gradient(45deg,#F7F5FA,#F7F5FA 5px,#EFECF4 5px,#EFECF4 10px);z-index:1;display:flex;align-items:flex-start;justify-content:center;}
+.cal-sombra span{margin-top:10px;font-size:11px;font-weight:700;color:#9A97A6;background:#fff;border-radius:999px;padding:3px 9px;}
+.cal-sombra.bloq{background:repeating-linear-gradient(45deg,#FDF1F0,#FDF1F0 5px,#F8E3E0 5px,#F8E3E0 10px);}
+.cal-cita{position:absolute;z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:5px 7px;border-radius:9px;border:1px solid #C9B6EE;border-left:4px solid #7C3AED;background:#F4EFFD;text-align:left;overflow:hidden;cursor:pointer;font-family:inherit;transition:box-shadow .15s,transform .15s;}
+.cal-cita:hover{box-shadow:0 8px 18px -10px rgba(60,30,110,.5);transform:translateY(-1px);z-index:3;}
+.cal-cita b{font-size:12px;color:#2B2838;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.cal-cita span{font-size:11px;color:#6E6A7C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.cal-cita .cal-prof{color:#6D28D9;font-weight:700;}
+.cal-cita .cal-tag{font-size:10px;font-weight:800;color:#9A6200;}
+.cal-cita.pend{background:#FFF8EA;border-color:#F1C873;border-left-color:#E0A21B;}
+.cal-cita.hecha{background:#EEF8F2;border-color:#A6DBBE;border-left-color:#159A61;}
+.cal-ahora{position:absolute;left:0;right:0;height:2px;background:#E1306C;z-index:4;pointer-events:none;}
+.cal-ahora::before{content:"";position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:#E1306C;}
+.cal-mes{border:1px solid #EDE9F3;border-radius:14px;overflow:hidden;background:#fff;}
+.cal-mes-hdr{display:grid;grid-template-columns:repeat(7,1fr);background:#FAF8FC;border-bottom:1px solid #EDE9F3;}
+.cal-mes-hdr span{padding:8px;font-size:11px;font-weight:700;color:#8A8796;text-align:center;}
+.cal-mes-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-dia{min-height:96px;border:0;border-right:1px solid #F1EEF6;border-bottom:1px solid #F1EEF6;background:#fff;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:6px;cursor:pointer;font-family:inherit;text-align:left;}
+.cal-dia:hover{background:#FAF7FE;}
+.cal-dia.fuera{background:#FCFBFD;}
+.cal-dia.fuera .cal-num{color:#C9C6D2;}
+.cal-num{font-size:13px;font-weight:800;color:var(--ink,#2B2838);}
+.cal-dia.hoy .cal-num{background:#7C3AED;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+.cal-cnt{font-size:10.5px;font-weight:700;color:#6D28D9;}
+.cal-cnt em{font-style:normal;color:#B7791F;}
+.cal-mini{font-size:10.5px;padding:1px 5px;border-radius:5px;background:#F4EFFD;color:#4C3A75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.cal-mini.pend{background:#FFF4DE;color:#7A5200;}
+.cal-mini.hecha{background:#E6F6EE;color:#1D7A46;}
+.cal-mas{font-size:10px;color:#9A97A6;}
+@media(max-width:760px){
+  .cal-titulo{font-size:15px;width:100%;margin:6px 0 0;}
+  .cal-nav{flex-wrap:wrap;}
+  .cal-grid{grid-template-columns:48px repeat(var(--cols),minmax(140px,1fr));}
+  .cal-grid.semana{grid-template-columns:48px repeat(7,minmax(110px,1fr));}
+  .cal-dia{min-height:62px;padding:4px;}
+  .cal-mini,.cal-mas{display:none;}
+  .cal-cnt{font-size:9.5px;}
+}
 .rpa-rango{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
 .rpa-chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:700 12px/1 inherit;color:var(--ink-soft,#77738A);cursor:pointer;}
 .rpa-chip.on{background:#F3EEFC;border-color:#DCCFF1;color:#6D28D9;}
@@ -3632,6 +3705,13 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Citas</span></div>
       <div id="citas-suc-tabs" class="suc-tabs" style="display:none;"></div>
+      <div class="cal-modo-bar">
+        <div class="cal-seg" id="citas-modo">
+          <button type="button" data-m="cal" onclick="cambiarModoCitas('cal')"><i class="ti ti-calendar-week"></i> Calendario</button>
+          <button type="button" data-m="lista" onclick="cambiarModoCitas('lista')"><i class="ti ti-list"></i> Lista</button>
+        </div>
+      </div>
+      <div id="cal-citas" style="display:none;"></div>
       <div id="citas-vistas" class="cats" style="padding:.85rem 1rem 0;"></div>
       <div id="citas-buscar-wrap" style="padding:.85rem 1rem 0;">
         <label class="flbl">Buscar cliente</label>
@@ -7013,6 +7093,7 @@ async function poblarFiltroProfesionales(){
   if(!wrap||!sel) return;
   let emps=[];
   try { emps=(await Sheets.getEmpleados()).filter(e=>e.activo); } catch(e){}
+  CAL_EMPS = emps;
   if(emps.length<2){ wrap.style.display='none'; FILTRO_CITAS_PROF=''; return; }
   if(FILTRO_CITAS_PROF && !emps.some(e=>e.id===FILTRO_CITAS_PROF)) FILTRO_CITAS_PROF='';
   wrap.style.display='block';
@@ -7134,6 +7215,220 @@ function htmlCitasAgrupadas(lista){
     </div>`).join('');
 }
 
+// =====================================================================
+// CITAS EN CALENDARIO (Día por profesional · Semana · Mes)
+// En la computadora abre en calendario; en el celular, en lista. Se recuerda la elección.
+// =====================================================================
+let CAL_EMPS = [];
+let MODO_CITAS = (() => { try { return localStorage.getItem('annly_citas_modo') || (window.innerWidth >= 900 ? 'cal' : 'lista'); } catch(e){ return window.innerWidth >= 900 ? 'cal' : 'lista'; } })();
+const CAL = { modo: (() => { try { return localStorage.getItem('annly_cal_modo') || 'dia'; } catch(e){ return 'dia'; } })(), fecha: new Date(), timer: null };
+const CAL_PX = 64; // alto de una hora en la vista Día/Semana
+
+function cambiarModoCitas(m){
+  MODO_CITAS = m;
+  try { localStorage.setItem('annly_citas_modo', m); } catch(e){}
+  renderCitas();
+}
+function pintarModoCitas(){
+  document.querySelectorAll('#citas-modo button').forEach(b => b.classList.toggle('on', b.dataset.m === MODO_CITAS));
+  const enCal = MODO_CITAS === 'cal';
+  ['citas-vistas', 'citas-buscar-wrap', 'lista-citas'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = enCal ? 'none' : ''; });
+  const cal = document.getElementById('cal-citas'); if (cal) cal.style.display = enCal ? 'block' : 'none';
+  if (!enCal && CAL.timer){ clearInterval(CAL.timer); CAL.timer = null; }
+}
+function calModo(m){ CAL.modo = m; try { localStorage.setItem('annly_cal_modo', m); } catch(e){} renderCalendarioCitas(); }
+function calMover(n){
+  const d = new Date(CAL.fecha);
+  if (CAL.modo === 'dia') d.setDate(d.getDate() + n);
+  else if (CAL.modo === 'semana') d.setDate(d.getDate() + 7 * n);
+  else d.setMonth(d.getMonth() + n, 1);
+  CAL.fecha = d; renderCalendarioCitas();
+}
+function calHoy(){ CAL.fecha = new Date(); renderCalendarioCitas(); }
+function calIrDia(iso){ CAL.fecha = new Date(iso + 'T00:00:00'); CAL.modo = 'dia'; renderCalendarioCitas(); }
+
+const minDe = h => { const [a, b] = String(h || '0:0').split(':').map(Number); return (a || 0) * 60 + (b || 0); };
+const etHora = m => { const h = Math.floor(m / 60); return ((h % 12) || 12) + (h >= 12 ? ' p.m.' : ' a.m.'); };
+const etHoraMin = m => { const h = Math.floor(m / 60), mi = m % 60; return ((h % 12) || 12) + ':' + String(mi).padStart(2, '0'); };
+
+// Citas visibles: sin canceladas, respetando sede y profesional elegidos
+function citasCal(){
+  const pr = SUCURSALES.find(x => x.esPrincipal);
+  return (CITAS_CACHE || []).filter(c => c.estado !== 'cancelada')
+    .filter(c => !FILTRO_CITAS_SUC || (c.locationId || (pr && pr.id)) === FILTRO_CITAS_SUC)
+    .filter(c => !FILTRO_CITAS_PROF || c.empleadoId === FILTRO_CITAS_PROF);
+}
+// Horario de la sede elegida (o la principal / el negocio) para el rango de horas y el sombreado
+function horarioCal(){
+  const suc = SUCURSALES.find(x => x.id === FILTRO_CITAS_SUC) || SUCURSALES.find(x => x.esPrincipal);
+  return (suc && suc.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+}
+function rangoHorasCal(fechas, citas){
+  let ini = 8 * 60, fin = 19 * 60, hay = false;
+  const H = horarioCal();
+  fechas.forEach(f => {
+    const r = window.AnnlyHorarios ? window.AnnlyHorarios.rangoDelDia([H], f.getDay()) : null;
+    if (r){ if (!hay){ ini = r.ini; fin = r.fin; hay = true; } else { ini = Math.min(ini, r.ini); fin = Math.max(fin, r.fin); } }
+  });
+  citas.forEach(c => { const a = minDe(c.horaISO); ini = Math.min(ini, a); fin = Math.max(fin, a + (Number(c.duracion) || 60)); });
+  return { ini: Math.floor(ini / 60) * 60, fin: Math.ceil(fin / 60) * 60 };
+}
+function claseEstadoCal(c){
+  if (c.estado === 'por_confirmar') return 'pend';
+  if (c.completadaEn) return 'hecha';
+  return 'conf';
+}
+// Reparte en carriles las citas que se cruzan en la misma columna
+function carriles(lista){
+  const ord = lista.slice().sort((a, b) => minDe(a.horaISO) - minDe(b.horaISO));
+  const fines = [];
+  ord.forEach(c => {
+    const ini = minDe(c.horaISO);
+    let l = fines.findIndex(f => f <= ini);
+    if (l < 0){ l = fines.length; fines.push(0); }
+    fines[l] = ini + (Number(c.duracion) || 60);
+    c._carril = l;
+  });
+  ord.forEach(c => c._carriles = fines.length);
+  return ord;
+}
+function bloqueCal(c, ini, conProf){
+  const top = (minDe(c.horaISO) - ini) / 60 * CAL_PX;
+  const alto = Math.max(26, (Number(c.duracion) || 60) / 60 * CAL_PX - 3);
+  const ancho = 100 / (c._carriles || 1);
+  return `<button type="button" class="cal-cita ${claseEstadoCal(c)}" style="top:${top}px;height:${alto}px;left:calc(${ancho * (c._carril || 0)}% + 3px);width:calc(${ancho}% - 6px);" onclick="abrirDetalleCita('${c.id}')" title="${escCat(c.nombre || '')} · ${escCat(c.servicio || '')}">
+    <b>${etHoraMin(minDe(c.horaISO))} · ${escCat(c.nombre || 'Cliente')}</b>
+    <span>${escCat(c.servicio || '')}</span>
+    ${conProf && c.empleadoNombre ? `<span class="cal-prof">${escCat(c.empleadoNombre)}</span>` : ''}
+    ${c.estado === 'por_confirmar' ? '<span class="cal-tag">Abono por confirmar</span>' : ''}
+  </button>`;
+}
+// Sombreado: fuera de horario y bloqueos de la sede ese día
+function sombrasCal(fecha, ini, fin){
+  const iso = isoLocal(fecha);
+  const pr = SUCURSALES.find(x => x.esPrincipal);
+  const enSede = b => !FILTRO_CITAS_SUC || (b.locationId || (pr && pr.id)) === FILTRO_CITAS_SUC;
+  const B = (typeof BLOQUEOS !== 'undefined' && BLOQUEOS) || { dias: [], horas: [] };
+  const diaBloq = (B.dias || []).find(b => b.fecha === iso && enSede(b));
+  const r = window.AnnlyHorarios ? window.AnnlyHorarios.rangoDelDia([horarioCal()], fecha.getDay()) : null;
+  const alto = (fin - ini) / 60 * CAL_PX;
+  if (diaBloq) return `<div class="cal-sombra" style="top:0;height:${alto}px;"><span>Bloqueado${diaBloq.motivo ? ' · ' + escCat(diaBloq.motivo) : ''}</span></div>`;
+  if (!r) return `<div class="cal-sombra" style="top:0;height:${alto}px;"><span>Cerrado</span></div>`;
+  let h = '';
+  if (r.ini > ini) h += `<div class="cal-sombra" style="top:0;height:${(r.ini - ini) / 60 * CAL_PX}px;"></div>`;
+  if (r.fin < fin) h += `<div class="cal-sombra" style="top:${(r.fin - ini) / 60 * CAL_PX}px;height:${(fin - r.fin) / 60 * CAL_PX}px;"></div>`;
+  (B.horas || []).filter(b => b.fecha === iso && enSede(b)).forEach(b => {
+    const m = minDe(b.hora);
+    if (m >= ini && m < fin) h += `<div class="cal-sombra bloq" style="top:${(m - ini) / 60 * CAL_PX}px;height:${CAL_PX / 2}px;"></div>`;
+  });
+  return h;
+}
+function lineaAhora(fecha, ini, fin){
+  const hoy = new Date();
+  if (isoLocal(fecha) !== isoLocal(hoy)) return '';
+  const m = hoy.getHours() * 60 + hoy.getMinutes();
+  if (m < ini || m > fin) return '';
+  return `<div class="cal-ahora" style="top:${(m - ini) / 60 * CAL_PX}px;"></div>`;
+}
+function reglaHoras(ini, fin){
+  let h = '';
+  for (let m = ini; m < fin; m += 60) h += `<div class="cal-hora" style="height:${CAL_PX}px;"><span>${etHora(m)}</span></div>`;
+  return `<div class="cal-regla">${h}</div>`;
+}
+function lineasFondo(ini, fin){
+  let h = '';
+  for (let m = ini; m < fin; m += 60) h += `<div class="cal-linea" style="height:${CAL_PX}px;"></div>`;
+  return h;
+}
+
+function renderCalendarioCitas(){
+  const cont = document.getElementById('cal-citas');
+  if (!cont) return;
+  const d = new Date(CAL.fecha); d.setHours(0, 0, 0, 0);
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const lunes = new Date(d); lunes.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  let titulo;
+  if (CAL.modo === 'dia') titulo = `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  else if (CAL.modo === 'semana'){ const dom = new Date(lunes); dom.setDate(lunes.getDate() + 6); titulo = `${lunes.getDate()} ${MESES[lunes.getMonth()].slice(0, 3)} – ${dom.getDate()} ${MESES[dom.getMonth()].slice(0, 3)}`; }
+  else titulo = MESES[d.getMonth()].charAt(0).toUpperCase() + MESES[d.getMonth()].slice(1) + ' ' + d.getFullYear();
+
+  const barra = `<div class="cal-barra">
+    <div class="cal-nav"><button type="button" class="cal-btn" onclick="calHoy()">Hoy</button>
+      <button type="button" class="cal-btn ico" onclick="calMover(-1)" aria-label="Anterior"><i class="ti ti-chevron-left"></i></button>
+      <button type="button" class="cal-btn ico" onclick="calMover(1)" aria-label="Siguiente"><i class="ti ti-chevron-right"></i></button>
+      <span class="cal-titulo">${titulo}</span></div>
+    <div class="cal-seg">${[['dia','Día'],['semana','Semana'],['mes','Mes']].map(([k, t]) => `<button type="button" class="${CAL.modo === k ? 'on' : ''}" onclick="calModo('${k}')">${t}</button>`).join('')}</div>
+  </div>
+  <div class="cal-leyenda"><span class="conf"></span>Confirmada <span class="pend"></span>Abono por confirmar <span class="hecha"></span>Completada <span class="somb"></span>Cerrado o bloqueado</div>`;
+
+  const todas = citasCal();
+  let cuerpo = '';
+  if (CAL.modo === 'dia'){
+    const iso = isoLocal(d);
+    const delDia = todas.filter(c => c.fechaISO === iso);
+    // Columnas: profesionales de la sede (o el elegido) + "Sin asignar" si hace falta
+    const sedeEmp = (SUCURSALES.find(x => x.id === FILTRO_CITAS_SUC) || {}).empleados;
+    let cols = (CAL_EMPS || []).filter(e => !FILTRO_CITAS_SUC || !Array.isArray(sedeEmp) || sedeEmp.includes(e.id))
+      .filter(e => !FILTRO_CITAS_PROF || e.id === FILTRO_CITAS_PROF)
+      .map(e => ({ id: e.id, nombre: e.nombre, foto: e.fotoUrl }));
+    delDia.forEach(c => { if (c.empleadoId && !cols.some(x => x.id === c.empleadoId)) cols.push({ id: c.empleadoId, nombre: c.empleadoNombre || 'Profesional' }); });
+    if (delDia.some(c => !c.empleadoId)) cols.push({ id: '', nombre: 'Sin asignar' });
+    if (!cols.length) cols = [{ id: '', nombre: 'Citas' }];
+    const { ini, fin } = rangoHorasCal([d], delDia);
+    const alto = (fin - ini) / 60 * CAL_PX;
+    cuerpo = `<div class="cal-scroll"><div class="cal-grid" style="--cols:${cols.length};">
+      <div class="cal-esq"></div>
+      ${cols.map(c => `<div class="cal-col-hdr">${c.foto ? `<img src="${escCat(c.foto)}" alt="">` : `<span class="cal-ini">${escCat((c.nombre || '?').charAt(0))}</span>`}<b>${escCat(c.nombre)}</b><small>${delDia.filter(x => (x.empleadoId || '') === c.id).length} citas</small></div>`).join('')}
+      ${reglaHoras(ini, fin)}
+      ${cols.map(c => `<div class="cal-col" style="height:${alto}px;">${lineasFondo(ini, fin)}${sombrasCal(d, ini, fin)}${carriles(delDia.filter(x => (x.empleadoId || '') === c.id)).map(x => bloqueCal(x, ini, false)).join('')}${lineaAhora(d, ini, fin)}</div>`).join('')}
+    </div></div>`;
+  }
+  else if (CAL.modo === 'semana'){
+    const dias = Array.from({ length: 7 }, (_, i) => { const x = new Date(lunes); x.setDate(lunes.getDate() + i); return x; });
+    const deSemana = todas.filter(c => dias.some(x => isoLocal(x) === c.fechaISO));
+    const { ini, fin } = rangoHorasCal(dias, deSemana);
+    const alto = (fin - ini) / 60 * CAL_PX;
+    const hoyIso = isoLocal(new Date());
+    cuerpo = `<div class="cal-scroll"><div class="cal-grid semana" style="--cols:7;">
+      <div class="cal-esq"></div>
+      ${dias.map(x => `<button type="button" class="cal-col-hdr dia${isoLocal(x) === hoyIso ? ' hoy' : ''}" onclick="calIrDia('${isoLocal(x)}')"><small>${DIAS[x.getDay()].slice(0, 3)}</small><b>${x.getDate()}</b><small>${deSemana.filter(c => c.fechaISO === isoLocal(x)).length} citas</small></button>`).join('')}
+      ${reglaHoras(ini, fin)}
+      ${dias.map(x => `<div class="cal-col" style="height:${alto}px;">${lineasFondo(ini, fin)}${sombrasCal(x, ini, fin)}${carriles(deSemana.filter(c => c.fechaISO === isoLocal(x))).map(c => bloqueCal(c, ini, true)).join('')}${lineaAhora(x, ini, fin)}</div>`).join('')}
+    </div></div>`;
+  }
+  else {
+    const primero = new Date(d.getFullYear(), d.getMonth(), 1);
+    const inicio = new Date(primero); inicio.setDate(1 - ((primero.getDay() + 6) % 7));
+    const hoyIso = isoLocal(new Date());
+    const celdas = Array.from({ length: 42 }, (_, i) => { const x = new Date(inicio); x.setDate(inicio.getDate() + i); return x; });
+    cuerpo = `<div class="cal-mes"><div class="cal-mes-hdr">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(t => `<span>${t}</span>`).join('')}</div>
+      <div class="cal-mes-grid">${celdas.map(x => {
+        const iso = isoLocal(x);
+        const del = todas.filter(c => c.fechaISO === iso).sort((a, b) => minDe(a.horaISO) - minDe(b.horaISO));
+        const pend = del.filter(c => c.estado === 'por_confirmar').length;
+        return `<button type="button" class="cal-dia${x.getMonth() !== d.getMonth() ? ' fuera' : ''}${iso === hoyIso ? ' hoy' : ''}" onclick="calIrDia('${iso}')">
+          <span class="cal-num">${x.getDate()}</span>
+          ${del.length ? `<span class="cal-cnt">${del.length} cita${del.length === 1 ? '' : 's'}${pend ? ` · <em>${pend} ⏳</em>` : ''}</span>` : ''}
+          ${del.slice(0, 3).map(c => `<span class="cal-mini ${claseEstadoCal(c)}">${etHoraMin(minDe(c.horaISO))} ${escCat((c.nombre || '').split(' ')[0])}</span>`).join('')}
+          ${del.length > 3 ? `<span class="cal-mas">+${del.length - 3} más</span>` : ''}
+        </button>`;
+      }).join('')}</div></div>`;
+  }
+  cont.innerHTML = barra + cuerpo;
+
+  // Al abrir el día de hoy, se acerca la vista a la hora actual
+  const sc = cont.querySelector('.cal-scroll');
+  const ahora = cont.querySelector('.cal-ahora');
+  if (sc && ahora) sc.scrollTop = Math.max(0, ahora.offsetTop - 140);
+  // La línea de "ahora" avanza sola
+  if (CAL.timer) clearInterval(CAL.timer);
+  CAL.timer = setInterval(() => {
+    const visible = document.getElementById('cal-citas') && document.getElementById('cal-citas').offsetParent;
+    if (visible && MODO_CITAS === 'cal' && CAL.modo !== 'mes') renderCalendarioCitas();
+  }, 60000);
+}
+
 async function loadCitas(){
   const cont = document.getElementById('lista-citas');
   cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando citas...</p>';
@@ -7148,6 +7443,8 @@ async function loadCitas(){
 
 // Dibuja las listas con lo ya cargado (sin volver a pedirlo a la base): se usa también al escribir en el buscador
 function renderCitas(){
+  pintarModoCitas();
+  if (MODO_CITAS === 'cal'){ renderCalendarioCitas(); return; }
   const cont = document.getElementById('lista-citas');
   const citas = CITAS_CACHE;
   const inputBusca = document.getElementById('citas-buscar');
