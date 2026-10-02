@@ -368,6 +368,47 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .abono-pend-txt{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#7A5200;line-height:1.45;}
 .abono-pend-txt i{font-size:17px;margin-top:1px;}
 .abono-pend-txt strong{display:block;font-size:12.5px;}
+.rpa-rango{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.rpa-chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:700 12px/1 inherit;color:var(--ink-soft,#77738A);cursor:pointer;}
+.rpa-chip.on{background:#F3EEFC;border-color:#DCCFF1;color:#6D28D9;}
+.rpa-fechas{display:flex;align-items:center;gap:8px;margin:0 0 10px;}
+.rpa-fechas .fi{max-width:180px;}
+.rpa-barra{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--ink-soft,#77738A);}
+.rpa-exp{display:inline-flex;align-items:center;gap:6px;border:1px solid #E7E2EE;background:#fff;border-radius:999px;padding:8px 14px;font:700 12px/1 inherit;color:var(--ink,#2B2838);cursor:pointer;}
+.rpa-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
+.rpa-kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:3px;min-width:0;}
+.rpa-kpi span{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft,#77738A);}
+.rpa-kpi b{font-size:21px;font-weight:800;color:var(--ink,#2B2838);}
+.rpa-kpi small{font-size:11.5px;color:var(--ink-soft,#77738A);}
+.rpa-kpi.grande{background:linear-gradient(135deg,#7C3AED,#EC4899);border:none;}
+.rpa-kpi.grande span,.rpa-kpi.grande small{color:rgba(255,255,255,.85);}
+.rpa-kpi.grande b{color:#fff;}
+.rpa-kpi.malo{background:#FDF1F0;border-color:#F5D3CF;}
+.rpa-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;min-width:0;}
+.rpa-card h3{font-size:14.5px;margin:0 0 10px;color:var(--ink,#2B2838);}
+.rpa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.rpa-grid .rpa-card{margin-bottom:0;}
+.rpa-ancha{grid-column:1 / -1;}
+.rpa-graf{display:flex;align-items:flex-end;gap:3px;height:170px;padding-top:8px;}
+.rpa-bar{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;}
+.rpa-bar i{display:block;width:100%;max-width:34px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#7C3AED,#EC4899);}
+.rpa-bar span{font-size:9.5px;color:var(--ink-soft,#77738A);height:12px;white-space:nowrap;}
+.rpa-tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.rpa-t{width:100%;border-collapse:collapse;font-size:12.5px;}
+.rpa-t th{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft,#77738A);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+.rpa-t td{padding:9px 8px;border-bottom:1px solid #F3F0F7;}
+.rpa-t .d{text-align:right;white-space:nowrap;}
+.rpa-t .vacio{text-align:center;color:var(--ink-soft,#77738A);padding:16px;}
+.rpa-ocup{display:inline-block;width:60px;height:6px;border-radius:999px;background:#F1EDF8;margin-right:8px;vertical-align:middle;overflow:hidden;}
+.rpa-ocup i{display:block;height:100%;background:linear-gradient(90deg,#7C3AED,#EC4899);}
+.rpa-nota{font-size:11px;color:var(--ink-soft,#8A8796);margin:8px 0 0;}
+.rpa-hbars{display:flex;flex-direction:column;gap:6px;}
+.rpa-hbars div{display:grid;grid-template-columns:62px 1fr 30px;align-items:center;gap:8px;font-size:12px;}
+.rpa-hbars span{color:var(--ink-soft,#77738A);}
+.rpa-hbars i{display:block;height:10px;border-radius:999px;background:linear-gradient(90deg,#7C3AED,#EC4899);min-width:2px;}
+.rpa-hbars b{text-align:right;font-size:12px;}
+.rpa-nuevo{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:#E9F7EF;color:#1D7A46;margin-left:4px;}
+@media(max-width:860px){.rpa-grid{grid-template-columns:1fr;}.rpa-graf{height:140px;}}
 .cita-acc{display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;align-items:center;}
 .cbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;min-width:118px;border-radius:11px;border:1px solid #E7E2EE;background:#fff;color:var(--ink,#2B2838);font:700 11.5px/1 inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;}
 .cbtn i{font-size:15px;color:#77738A;}
@@ -3842,6 +3883,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <div class="fin-tab fin-sub" data-v="gastos" onclick="finSub('gastos')">Gastos</div>
         <div class="fin-tab fin-sub" data-v="comisiones" onclick="finSub('comisiones')">Comisiones y propinas</div>
         <div class="fin-tab fin-sub" data-v="ajustes" onclick="finSub('ajustes')">Cierre de periodos</div>
+        <div class="fin-tab fin-sub" data-v="reportes" onclick="finSub('reportes')"><i class="ti ti-chart-bar" style="font-size:14px;"></i> Reportes</div>
       </div>
       <div id="fin-barra-periodo" class="fin-periodo">
         <select class="fi" id="fin-periodo" onchange="cambiarPeriodoFinanzas(this.value)"></select>
@@ -4842,7 +4884,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=57"></script>
+<script src="sheets.js?v=58"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -9160,7 +9202,7 @@ function renderFinanzas(){
   if (!cont) return;
   document.querySelectorAll('.fin-sub').forEach(b => b.classList.toggle('sel', b.dataset.v === FIN_VISTA));
   const barra = elFin('fin-barra-periodo');
-  if (barra) barra.style.display = FIN_VISTA === 'ajustes' ? 'none' : 'block';
+  if (barra) barra.style.display = (FIN_VISTA === 'ajustes' || FIN_VISTA === 'reportes') ? 'none' : 'block';
   renderTabsSucursalFin();
   if (!FIN_SUC && hayVariasSucursales() && (FIN_VISTA === 'comisiones' || FIN_VISTA === 'ajustes')){
     const sedes = SUCURSALES.slice().sort((x, y) => (y.esPrincipal ? 1 : 0) - (x.esPrincipal ? 1 : 0));
@@ -9177,12 +9219,208 @@ function renderFinanzas(){
     cont.innerHTML = ok ? htmlComisionesFin() : '<p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando...</p>';
     if (!ok) cargarComisionesFin();
   }
+  else if (FIN_VISTA === 'reportes') {
+    cont.innerHTML = htmlMarcoRpa();
+    cargarRpa();
+  }
   else if (FIN_VISTA === 'ajustes') {
     const ok = comisionesVigentes();
     if (!ok) FIN.comisiones = null;
     cont.innerHTML = htmlCierresFin(); faCambio();
     if (!ok) cargarComisionesFin();
   }
+}
+
+// =====================================================================
+// REPORTES DE AGENDA (pestaña de Finanzas). Respeta la sede elegida arriba.
+// =====================================================================
+const RPA = { rango: 'mes', desde: '', hasta: '', datos: null, clave: '' };
+const isoRpa = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const fCortaRpa = iso => { const [y, m, d] = iso.split('-'); return d + '/' + m; };
+const pctRpa = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
+const telRpa = t => String(t || '').replace(/\D/g, '').slice(-8);
+
+function fijarRangoRpa(r, sinCargar){
+  const hoy = new Date(); let d = new Date(hoy), h = new Date(hoy);
+  if (r === '7d') d.setDate(d.getDate() - 6);
+  else if (r === 'mes') d = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  else if (r === 'mesant'){ d = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1); h = new Date(hoy.getFullYear(), hoy.getMonth(), 0); }
+  else if (r === 'anio') d = new Date(hoy.getFullYear(), 0, 1);
+  if (r !== 'custom'){ RPA.desde = isoRpa(d); RPA.hasta = isoRpa(h); }
+  RPA.rango = r;
+  if (!sinCargar){ elFin('fin-contenido').innerHTML = htmlMarcoRpa(); cargarRpa(); }
+}
+function fechasRpa(){
+  const d = elFin('rpa-desde').value, h = elFin('rpa-hasta').value;
+  if (!d || !h || h < d) return;
+  RPA.desde = d; RPA.hasta = h; RPA.rango = 'custom';
+  elFin('fin-contenido').innerHTML = htmlMarcoRpa(); cargarRpa();
+}
+
+function htmlMarcoRpa(){
+  if (!RPA.desde) fijarRangoRpa('mes', true);
+  const chip = (k, t) => `<button type="button" class="rpa-chip${RPA.rango === k ? ' on' : ''}" onclick="fijarRangoRpa('${k}')">${t}</button>`;
+  return `<div class="rpa-rango">${chip('hoy','Hoy')}${chip('7d','7 días')}${chip('mes','Este mes')}${chip('mesant','Mes pasado')}${chip('anio','Este año')}${chip('custom','Elegir fechas')}</div>
+    <div class="rpa-fechas"${RPA.rango === 'custom' ? '' : ' hidden'}>
+      <input type="date" class="fi" id="rpa-desde" value="${RPA.desde}" onchange="fechasRpa()"><span>a</span>
+      <input type="date" class="fi" id="rpa-hasta" value="${RPA.hasta}" onchange="fechasRpa()">
+    </div>
+    <div class="rpa-barra"><span>Del ${fCortaRpa(RPA.desde)} al ${fCortaRpa(RPA.hasta)}${nombreSedeFin() ? ' · ' + escCat(nombreSedeFin()) : (hayVariasSucursales() ? ' · todas las sedes' : '')}</span>
+      <button type="button" class="rpa-exp" onclick="exportarRpa()"><i class="ti ti-file-spreadsheet"></i> Exportar a Excel</button></div>
+    <div id="rpa-cuerpo"><p style="font-size:12px;color:#aaa;text-align:center;padding:1.5rem;">Cargando reportes…</p></div>`;
+}
+
+async function cargarRpa(){
+  const clave = RPA.desde + '|' + RPA.hasta + '|' + (FIN_SUC || '');
+  RPA.clave = clave;
+  try {
+    if (!FIN.empleados || !FIN.empleados.length){
+      const todos = await Sheets.getEmpleados();
+      FIN.empleados = todos.filter(e => e.activo);
+      FIN.equipo = Object.fromEntries(todos.map(e => [e.id, e.nombre]));
+    }
+    const datos = await Sheets.getReporteAgenda(RPA.desde, RPA.hasta, FIN_SUC || null);
+    if (RPA.clave !== clave) return;
+    RPA.datos = datos;
+    const el = elFin('rpa-cuerpo'); if (el) el.innerHTML = htmlCuerpoRpa();
+  } catch(e){
+    console.error(e);
+    const el = elFin('rpa-cuerpo'); if (el) el.innerHTML = `<p style="font-size:12px;color:#C2695A;text-align:center;padding:1.5rem;">No se pudieron cargar los reportes.</p>`;
+  }
+}
+
+function agruparRpa(lista, clave, valor){
+  const m = {};
+  lista.forEach(x => { const k = clave(x) || '—'; (m[k] ||= { nombre: k, n: 0, monto: 0 }); m[k].n += 1; m[k].monto += valor(x); });
+  return Object.values(m).sort((a, b) => b.monto - a.monto || b.n - a.n);
+}
+function tablaRpa(cols, filas, pie){
+  return `<div class="rpa-tw"><table class="rpa-t"><thead><tr>${cols.map(c => `<th${c.d ? ' class="d"' : ''}>${c.t}</th>`).join('')}</tr></thead>
+    <tbody>${filas.length ? filas.map(f => `<tr>${f.map((v, i) => `<td${cols[i].d ? ' class="d"' : ''}>${v}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length}" class="vacio">Sin datos en este periodo.</td></tr>`}</tbody>
+    ${pie ? `<tfoot><tr>${pie.map((v, i) => `<td${cols[i].d ? ' class="d"' : ''}>${v}</td>`).join('')}</tr></tfoot>` : ''}</table></div>`;
+}
+const kpiRpa = (t, v, sub, cls) => `<div class="rpa-kpi${cls ? ' ' + cls : ''}"><span>${t}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+
+// Minutos que la sede está abierta en el rango (base para la ocupación de cada profesional)
+function minutosAbiertosRpa(){
+  const suc = SUCURSALES.find(x => x.id === FIN_SUC) || SUCURSALES.find(x => x.esPrincipal) || null;
+  const horario = (suc && suc.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+  let total = 0;
+  const cur = new Date(RPA.desde + 'T00:00:00'), fin = new Date(RPA.hasta + 'T00:00:00');
+  while (cur <= fin){
+    const r = window.AnnlyHorarios ? window.AnnlyHorarios.rangoDelDia([horario], cur.getDay()) : null;
+    if (r) total += Math.max(0, r.fin - r.ini);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return total;
+}
+
+function htmlCuerpoRpa(){
+  const D = RPA.datos;
+  const citas = D.citas;
+  const vivas = citas.filter(c => c.estado !== 'cancelada');
+  const atendidas = citas.filter(c => c.completada_en);
+  const canceladas = citas.filter(c => c.estado === 'cancelada');
+  const vendidoCitas = atendidas.reduce((s, c) => s + Number(c.precio_cobrado || 0), 0);
+  const vendidoLocal = D.ventas.reduce((s, v) => s + Number(v.monto || 0), 0);
+  const vendido = vendidoCitas + vendidoLocal;
+
+  // Clientes: un cliente = su teléfono (sin teléfono, su nombre)
+  const idCli = c => telRpa(c.cliente_telefono) || ('n:' + String(c.cliente_nombre || '').trim().toLowerCase());
+  const clientes = {};
+  vivas.forEach(c => { const k = idCli(c); (clientes[k] ||= { nombre: c.cliente_nombre || '—', n: 0, monto: 0, nuevo: !D.clientesPrevios.has(telRpa(c.cliente_telefono)) }); clientes[k].n += 1; if (c.completada_en) clientes[k].monto += Number(c.precio_cobrado || 0); });
+  const listaCli = Object.values(clientes);
+  const nuevos = listaCli.filter(c => c.nuevo).length;
+
+  // Cancelaciones por tipo
+  const CASO = { a_tiempo: 'Canceló a tiempo', tarde: 'Canceló tarde', no_show: 'No se presentó', negocio: 'Canceló el negocio', abono_rechazado: 'Abono no llegó' };
+  const porCaso = agruparRpa(canceladas, c => CASO[c.cancelacion_caso] || 'Sin detalle', () => 0);
+  const noShow = canceladas.filter(c => c.cancelacion_caso === 'no_show').length;
+
+  // Ocupación por profesional (aproximada: minutos reservados / minutos que abre la sede)
+  const abierto = minutosAbiertosRpa();
+  const sedeEmp = (SUCURSALES.find(x => x.id === FIN_SUC) || {}).empleados;
+  const emps = (FIN.empleados || []).filter(e => !FIN_SUC || !Array.isArray(sedeEmp) || sedeEmp.includes(e.id));
+  const porProf = emps.map(e => {
+    const mias = vivas.filter(c => c.employee_id === e.id);
+    const at = mias.filter(c => c.completada_en);
+    const min = mias.reduce((s, c) => s + (Number(c.duracion_min) || 60), 0);
+    const monto = at.reduce((s, c) => s + Number(c.precio_cobrado || 0), 0) + D.ventas.filter(v => v.employee_id === e.id).reduce((s, v) => s + Number(v.monto || 0), 0);
+    return { nombre: e.nombre, citas: mias.length, atendidas: at.length, monto, ocup: pctRpa(min, abierto) };
+  }).sort((a, b) => b.monto - a.monto);
+  const minTot = vivas.reduce((s, c) => s + (Number(c.duracion_min) || 60), 0);
+  const ocupGeneral = pctRpa(minTot, abierto * Math.max(1, emps.length));
+
+  // Ventas por día (o por mes si el rango es largo)
+  const dias = Math.round((new Date(RPA.hasta) - new Date(RPA.desde)) / 86400000) + 1;
+  const porMes = dias > 92;
+  const serie = [];
+  const cur = new Date(RPA.desde + 'T00:00:00'), fin = new Date(RPA.hasta + 'T00:00:00');
+  while (cur <= fin){ const k = porMes ? isoRpa(cur).slice(0, 7) : isoRpa(cur); if (!serie.length || serie[serie.length - 1].k !== k) serie.push({ k, v: 0 }); cur.setDate(cur.getDate() + 1); }
+  const sumar = (f, v) => { const k = porMes ? f.slice(0, 7) : f; const it = serie.find(x => x.k === k); if (it) it.v += v; };
+  atendidas.forEach(c => sumar(c.fecha, Number(c.precio_cobrado || 0)));
+  D.ventas.forEach(v => sumar(v.fecha, Number(v.monto || 0)));
+  const max = Math.max(1, ...serie.map(x => x.v));
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const et = k => porMes ? meses[Number(k.slice(5, 7)) - 1] : fCortaRpa(k);
+  const grafico = `<div class="rpa-graf">${serie.map((x, i) => `<div class="rpa-bar" title="${et(x.k)}: ${fmtDinero(x.v)}"><i style="height:${Math.max(x.v ? 3 : 0, x.v / max * 100)}%"></i><span>${serie.length <= 16 || i % Math.ceil(serie.length / 12) === 0 ? et(x.k) : ''}</span></div>`).join('')}</div>`;
+
+  // Demanda por hora y por día de la semana (citas no canceladas)
+  const horas = {}; vivas.forEach(c => { const h = parseInt(String(c.hora || '0').split(':')[0], 10); horas[h] = (horas[h] || 0) + 1; });
+  const hKeys = Object.keys(horas).map(Number).sort((a, b) => a - b);
+  const hMax = Math.max(1, ...Object.values(horas));
+  const h12 = h => ((h % 12) || 12) + (h >= 12 ? ' p.m.' : ' a.m.');
+  const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const porDia = [0,0,0,0,0,0,0]; vivas.forEach(c => { porDia[new Date(c.fecha + 'T00:00:00').getDay()] += 1; });
+  const dMax = Math.max(1, ...porDia);
+
+  const servicios = agruparRpa(atendidas, c => c.servicio_nombre, c => Number(c.precio_cobrado || 0));
+  const categorias = agruparRpa(atendidas, c => c.categoria || 'Sin categoría', c => Number(c.precio_cobrado || 0));
+  const localL = agruparRpa(D.ventas, v => v.servicio_nombre, v => Number(v.monto || 0));
+  const porSede = (!FIN_SUC && hayVariasSucursales())
+    ? agruparRpa(atendidas, c => nombreSucursal(c.location_id) || nombreSucursal(idPrincipalFin()) || 'Principal', c => Number(c.precio_cobrado || 0)) : [];
+  const topCli = listaCli.slice().sort((a, b) => b.monto - a.monto || b.n - a.n).slice(0, 10);
+
+  return `
+    <div class="rpa-kpis">
+      ${kpiRpa('Vendido', fmtDinero(vendido), 'servicios ' + fmtDinero(vendidoCitas) + (vendidoLocal ? ' · local ' + fmtDinero(vendidoLocal) : ''), 'grande')}
+      ${kpiRpa('Citas atendidas', String(atendidas.length), vivas.length - atendidas.length > 0 ? (vivas.length - atendidas.length) + ' por atender' : '')}
+      ${kpiRpa('Ticket promedio', fmtDinero(atendidas.length ? vendidoCitas / atendidas.length : 0))}
+      ${kpiRpa('Clientes', String(listaCli.length), nuevos + (nuevos === 1 ? ' nuevo · ' : ' nuevos · ') + (listaCli.length - nuevos) + (listaCli.length - nuevos === 1 ? ' recurrente' : ' recurrentes'))}
+      ${kpiRpa('Ocupación', ocupGeneral + '%', 'horas reservadas / horas abiertas')}
+      ${kpiRpa('Cancelaciones', String(canceladas.length), noShow ? noShow + (noShow === 1 ? ' no se presentó' : ' no se presentaron') : '', canceladas.length ? 'malo' : '')}
+    </div>
+    <div class="rpa-card"><h3>Ventas por ${porMes ? 'mes' : 'día'}</h3>${grafico}</div>
+    <div class="rpa-grid">
+      <div class="rpa-card"><h3>Servicios más vendidos</h3>${tablaRpa([{t:'Servicio'},{t:'Citas',d:1},{t:'Vendido',d:1}], servicios.slice(0, 10).map(x => [escCat(x.nombre), x.n, fmtDinero(x.monto)]))}</div>
+      <div class="rpa-card"><h3>Por categoría</h3>${tablaRpa([{t:'Categoría'},{t:'Citas',d:1},{t:'Vendido',d:1},{t:'%',d:1}], categorias.map(x => [escCat(x.nombre), x.n, fmtDinero(x.monto), pctRpa(x.monto, vendidoCitas) + '%']))}</div>
+      <div class="rpa-card rpa-ancha"><h3>Por profesional</h3>${tablaRpa([{t:'Profesional'},{t:'Citas',d:1},{t:'Atendidas',d:1},{t:'Vendido',d:1},{t:'Ocupación',d:1}],
+        porProf.map(x => [escCat(x.nombre), x.citas, x.atendidas, fmtDinero(x.monto), `<span class="rpa-ocup"><i style="width:${Math.min(100, x.ocup)}%"></i></span>${x.ocup}%`]))}
+        <p class="rpa-nota">Ocupación aproximada: minutos reservados sobre los minutos que la sede está abierta en el periodo.</p></div>
+      ${porSede.length ? `<div class="rpa-card"><h3>Por sede</h3>${tablaRpa([{t:'Sede'},{t:'Citas',d:1},{t:'Vendido',d:1}], porSede.map(x => [escCat(x.nombre), x.n, fmtDinero(x.monto)]))}</div>` : ''}
+      ${localL.length ? `<div class="rpa-card"><h3>Ventas en el local</h3>${tablaRpa([{t:'Venta'},{t:'Cant.',d:1},{t:'Monto',d:1}], localL.slice(0, 10).map(x => [escCat(x.nombre), x.n, fmtDinero(x.monto)]))}</div>` : ''}
+      <div class="rpa-card"><h3>Horas con más demanda</h3>${hKeys.length ? `<div class="rpa-hbars">${hKeys.map(h => `<div><span>${h12(h)}</span><i style="width:${horas[h] / hMax * 100}%"></i><b>${horas[h]}</b></div>`).join('')}</div>` : '<p class="rpa-nota">Sin citas en este periodo.</p>'}</div>
+      <div class="rpa-card"><h3>Días con más demanda</h3><div class="rpa-hbars">${[1,2,3,4,5,6,0].map(d => `<div><span>${DIAS[d]}</span><i style="width:${porDia[d] / dMax * 100}%"></i><b>${porDia[d]}</b></div>`).join('')}</div></div>
+      <div class="rpa-card"><h3>Cancelaciones</h3>${tablaRpa([{t:'Tipo'},{t:'Citas',d:1},{t:'%',d:1}], porCaso.map(x => [x.nombre, x.n, pctRpa(x.n, citas.length) + '%']))}</div>
+      <div class="rpa-card"><h3>Mejores clientes</h3>${tablaRpa([{t:'Cliente'},{t:'Citas',d:1},{t:'Vendido',d:1}], topCli.map(x => [escCat(x.nombre) + (x.nuevo ? ' <span class="rpa-nuevo">nuevo</span>' : ''), x.n, fmtDinero(x.monto)]))}</div>
+    </div>`;
+}
+
+function exportarRpa(){
+  if (!RPA.datos) return;
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const CASO = { a_tiempo: 'Canceló a tiempo', tarde: 'Canceló tarde', no_show: 'No se presentó', negocio: 'Canceló el negocio', abono_rechazado: 'Abono no llegó' };
+  const filas = [['Fecha','Hora','Cliente','Teléfono','Servicio','Categoría','Profesional','Sede','Estado','Cobrado','Cancelación']];
+  RPA.datos.citas.forEach(c => filas.push([c.fecha, String(c.hora || '').slice(0, 5), c.cliente_nombre, c.cliente_telefono, c.servicio_nombre, c.categoria || '',
+    (FIN.equipo || {})[c.employee_id] || '', nombreSucursal(c.location_id) || '',
+    c.estado === 'cancelada' ? 'Cancelada' : (c.completada_en ? 'Atendida' : (c.estado === 'por_confirmar' ? 'Abono por confirmar' : 'Por atender')),
+    c.completada_en ? Number(c.precio_cobrado || 0).toFixed(2) : '', c.estado === 'cancelada' ? (CASO[c.cancelacion_caso] || '') : '']));
+  const csv = '\ufeff' + filas.map(f => f.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `citas-${(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug) || 'agenda'}-${RPA.desde}-a-${RPA.hasta}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
 }
 
 // Periodo anterior comparable: mismo largo, justo antes. Si el periodo actual sigue en curso, se compara
