@@ -514,6 +514,13 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .pf-revision span,.pf-revision small{display:block;}
 .pf-revision small{margin-top:3px;opacity:.85;}
 .pf-nota{font-size:11.5px;color:var(--ink-soft,#8A8796);margin:10px 0 0;}
+.pf-total{background:#FAF7FE;border-color:#EFE8F8;}
+.pf-box .pf-pagar{width:100%;height:46px;margin-top:12px;font-size:14px;}
+.pf-hist{margin-top:12px;font-size:12px;color:var(--ink-soft,#77738A);display:flex;flex-direction:column;gap:4px;}
+.pf-hist b{color:var(--ink,#2B2838);font-size:12.5px;}
+.pf-hist i{color:#159A61;margin-right:5px;}
+.pf-sub{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft,#77738A);margin:12px 0 6px;}
+.pf-estado{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:#E6F6EE;color:#1D7A46;}
 @media(max-width:640px){.pf-item .cbtn{width:100%;}}
 .cita-acc{display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;align-items:center;}
 .cbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;min-width:118px;border-radius:11px;border:1px solid #E7E2EE;background:#fff;color:var(--ink,#2B2838);font:700 11.5px/1 inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;}
@@ -5010,7 +5017,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=61"></script>
+<script src="sheets.js?v=62"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -5981,74 +5988,73 @@ async function pintarPagoTarjeta(){
   const box = document.getElementById('pf-pagar');
   if (!box || !SUSCRIPCION_ACTUAL) { if (box) box.style.display = 'none'; return; }
   const items = conceptosAPagar();
-  let avisos = [];
-  try { avisos = await Sheets.getAvisosPagoNegocio(); } catch(e){ console.error(e); }
-  const enRevision = avisos.filter(a => a.estado === 'pendiente');
+  let pagos = [];
+  try { pagos = await Sheets.getAvisosPagoNegocio(); } catch(e){ console.error(e); }
   const total = items.reduce((s, i) => s + i.precio * i.cant, 0);
-  const fecha = iso => new Date(iso).toLocaleDateString('es-PA', { day: 'numeric', month: 'short' });
+  const fecha = iso => new Date(String(iso).length <= 10 ? iso + 'T12:00:00' : iso).toLocaleDateString('es-PA', { day: 'numeric', month: 'long', year: 'numeric' });
+  const hasta = SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd;
+  const enPrueba = enPeriodoPrueba();
+  const confirmados = pagos.filter(p => p.estado === 'confirmado').slice(0, 3);
+  const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD'));
   box.innerHTML = `
-    <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Paga tu plan con tarjeta</h3>
-      <p>Pago seguro con PagueloFácil. Total del mes: <b>${fmtDinero(total)}</b></p></div></div>
+    <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Tu mensualidad</h3>
+      <p>${enPrueba ? 'Estás en tu prueba gratis' + (hasta ? ' hasta el <b>' + fecha(hasta) + '</b>' : '') + '. Al pagar, tu plan queda activo de inmediato.'
+                    : (hasta ? 'Tu plan está pagado hasta el <b>' + fecha(hasta) + '</b>.' : 'Paga tu plan con tarjeta, de forma segura.')}</p></div></div>
     <div class="pf-lista">${items.map(i => `
-      <div class="pf-item">
-        <div><b>${escCat(i.nombre)}</b><span>${fmtDinero(i.precio)}${i.cant > 1 ? ' × ' + i.cant + ' = ' + fmtDinero(i.precio * i.cant) : ''} / mes</span></div>
-        ${i.link
-          ? `<button type="button" class="cbtn cbtn-ok" onclick="pagarConTarjeta('${i.code}')"><i class="ti ti-credit-card"></i><span>Pagar${i.cant > 1 ? ' (' + i.cant + ' veces)' : ''}</span></button>`
-          : `<span class="pf-sin">Escríbenos para pagarlo</span>`}
-      </div>`).join('')}
+      <div class="pf-item"><div><b>${escCat(i.nombre)}</b><span>${i.cant > 1 ? i.cant + ' × ' + fmtDinero(i.precio) : 'Mensual'}</span></div><b>${fmtDinero(i.precio * i.cant)}</b></div>`).join('')}
+      <div class="pf-item pf-total"><div><b>Total del mes</b></div><b>${fmtDinero(total)}</b></div>
     </div>
+    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
+    <p class="pf-nota">Pago seguro con PagueloFácil (Visa, Mastercard o Tafi). Al terminar vuelves aquí y tu plan se actualiza solo.</p>
     ${enRevision.length ? `<div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
-      ${enRevision.map(a => `<span>${escCat(a.concepto)} · ${fmtDinero(a.monto)} · ${fecha(a.creado_en)}</span>`).join('')}
-      <small>Los confirmamos en menos de 24 horas hábiles.</small></div></div>` : ''}
-    <p class="pf-nota">Al tocar Pagar se abre PagueloFácil en otra pestaña. Usa el mismo correo de tu cuenta Annly para que identifiquemos tu pago.</p>`;
+      ${enRevision.map(a => `<span>${escCat(a.concepto)} · ${fmtDinero(a.monto)}</span>`).join('')}
+      <small>Los estamos revisando; no necesitas hacer nada.</small></div></div>` : ''}
+    ${confirmados.length ? `<div class="pf-hist"><b>Últimos pagos</b>${confirmados.map(p => `<span><i class="ti ti-circle-check"></i>${escCat(p.concepto)} · ${fmtDinero(p.monto_pagado || p.monto)} · ${fecha(p.resuelto_en || p.creado_en)}</span>`).join('')}</div>` : ''}`;
   box.style.display = '';
 }
 
-async function pagarConTarjeta(code){
-  const it = conceptosAPagar().find(i => i.code === code);
-  if (!it || !it.link) return;
-  // Se abre la pestaña de inmediato (si se espera a la base de datos, el navegador la bloquea)
-  const win = window.open(it.link, '_blank');
-  if (win) { try { win.opener = null; } catch(e){} }
+async function pagarMensualidad(){
+  const btn = document.getElementById('pf-btn-pagar');
+  const antes = btn ? btn.innerHTML : '';
+  if (btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i><span>Preparando tu pago…</span>'; }
   try {
-    await Sheets.registrarAvisoPago(it.code, it.nombre + (it.cant > 1 ? ' × ' + it.cant : ''), it.precio * it.cant);
-  } catch(e){ console.error(e); }
-  if (!win) alert('Tu navegador bloqueó la ventana de pago. Permite ventanas emergentes para annly.app e inténtalo de nuevo.');
-  else if (it.cant > 1) alert(`Este concepto se paga ${it.cant} veces: repite el pago en PagueloFácil ${it.cant} veces (${fmtDinero(it.precio)} cada una).`);
-  pintarPagoTarjeta();
+    const r = await Sheets.crearEnlaceMensualidad();
+    window.location.href = r.url; // misma pestaña: al pagar, PagueloFácil devuelve a pago.html
+  } catch(e){
+    console.error(e);
+    alert('No se pudo abrir el pago: ' + (e.message || e) + '\n\nInténtalo en unos minutos o escríbenos.');
+    if (btn){ btn.disabled = false; btn.innerHTML = antes; }
+  }
 }
 
-// Solo Annly: avisos de pago de todos los negocios, para confirmar después de revisar PagueloFácil
+// Solo Annly: pagos de todos los negocios. Los de PagueloFácil se confirman solos;
+// aquí solo hace falta revisar los que no cuadran (o los avisos manuales de la etapa 1).
 async function pintarPagosPlataforma(){
   const box = document.getElementById('pf-admin');
   if (!box) return;
   if (!window.ANNLY_PLATFORM_ADMIN){ box.style.display = 'none'; return; }
   let lista = [];
-  try { lista = await Sheets.getAvisosPagoPlataforma('pendiente'); } catch(e){ console.error(e); }
+  try { lista = await Sheets.getAvisosPagoPlataforma(); } catch(e){ console.error(e); }
   const fecha = iso => new Date(iso).toLocaleString('es-PA', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-  box.innerHTML = `
-    <div class="pf-hdr"><div><h3><i class="ti ti-shield-check"></i> Pagos por confirmar · Annly</h3>
-      <p>Solo tú ves esto. Revisa Balance → Movimientos en PagueloFácil y confirma cada pago.</p></div>
-      <a class="cbtn" href="https://app.paguelofacil.com/movements" target="_blank" rel="noopener"><i class="ti ti-external-link"></i><span>Abrir PagueloFácil</span></a></div>
-    ${lista.length ? `<div class="pf-lista">${lista.map(a => `
+  const revisar = lista.filter(a => a.estado === 'revisar' || (a.estado === 'pendiente' && a.concepto_code !== 'MENSUALIDAD'));
+  const recientes = lista.filter(a => a.estado === 'confirmado').slice(0, 8);
+  const ESTADO = { confirmado: 'Confirmado', revisar: 'Revisar', pendiente: 'Aviso manual' };
+  const fila = (a, conAcciones) => `
       <div class="pf-item">
-        <div><b>${escCat((a.businesses && a.businesses.nombre) || 'Negocio')} · ${escCat(a.concepto)}</b><span>${fmtDinero(a.monto)} · avisó ${fecha(a.creado_en)}</span></div>
-        <div class="pf-acc">
+        <div><b>${escCat((a.businesses && a.businesses.nombre) || 'Negocio')} · ${escCat(a.concepto)}</b>
+          <span>${fmtDinero(a.monto_pagado || a.monto)} · ${fecha(a.resuelto_en || a.creado_en)}${a.referencia ? ' · ' + escCat(a.referencia) : ''}${a.nota ? ' · ' + escCat(a.nota) : ''}</span></div>
+        ${conAcciones ? `<div class="pf-acc">
           <button type="button" class="cbtn cbtn-ok" onclick="resolverPagoUI('${a.id}', 'confirmado')"><i class="ti ti-check"></i><span>Confirmar</span></button>
-          <button type="button" class="cbtn cbtn-no" onclick="resolverPagoUI('${a.id}', 'rechazado')"><i class="ti ti-x"></i><span>No llegó</span></button>
-        </div>
-      </div>`).join('')}</div>` : '<p class="pf-nota">No hay pagos por confirmar.</p>'}`;
+          <button type="button" class="cbtn cbtn-no" onclick="resolverPagoUI('${a.id}', 'rechazado')"><i class="ti ti-x"></i><span>Descartar</span></button>
+        </div>` : `<span class="pf-estado ok">${ESTADO[a.estado] || a.estado}</span>`}
+      </div>`;
+  box.innerHTML = `
+    <div class="pf-hdr"><div><h3><i class="ti ti-shield-check"></i> Cobros de Annly</h3>
+      <p>Solo tú ves esto. Los pagos con tarjeta se confirman solos; aquí solo revisas lo que no cuadra.</p></div>
+      <a class="cbtn" href="https://app.paguelofacil.com/movements" target="_blank" rel="noopener"><i class="ti ti-external-link"></i><span>Abrir PagueloFácil</span></a></div>
+    ${revisar.length ? `<div class="pf-sub">Para revisar</div><div class="pf-lista">${revisar.map(a => fila(a, true)).join('')}</div>` : '<p class="pf-nota" style="margin-top:0;">Nada por revisar.</p>'}
+    ${recientes.length ? `<div class="pf-sub">Confirmados automáticamente</div><div class="pf-lista">${recientes.map(a => fila(a, false)).join('')}</div>` : ''}`;
   box.style.display = '';
-}
-
-async function resolverPagoUI(id, estado){
-  let ref = '';
-  if (estado === 'confirmado'){
-    ref = prompt('Código de operación de PagueloFácil (opcional, para tu control):', '');
-    if (ref === null) return;
-  } else if (!confirm('¿Marcar este pago como no recibido?')) return;
-  try { await Sheets.resolverAvisoPago(id, estado, ref); pintarPagosPlataforma(); pintarPagoTarjeta(); }
-  catch(e){ alert('No se pudo guardar: ' + (e.message || e)); }
 }
 
 async function renderPlan(){
