@@ -483,6 +483,16 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .rpa-hbars b{text-align:right;font-size:12px;}
 .rpa-nuevo{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:#E9F7EF;color:#1D7A46;margin-left:4px;}
 @media(max-width:860px){.rpa-grid{grid-template-columns:1fr;}.rpa-graf{height:140px;}}
+.cert-compartir{border:1px solid #E6DCF8;background:#FAF7FE;border-radius:14px;padding:12px 14px;margin:0 0 14px;}
+.cert-compartir-txt{display:flex;gap:10px;align-items:flex-start;}
+.cert-compartir-txt i{font-size:20px;color:#7C3AED;margin-top:2px;}
+.cert-compartir-txt strong{display:block;font-size:13px;}
+.cert-compartir-txt span{font-size:12px;color:var(--ink-soft,#77738A);}
+.cert-monto{display:flex;align-items:center;gap:7px;font-size:12px;margin:10px 0;cursor:pointer;}
+.cert-monto input{width:16px;height:16px;accent-color:#7C3AED;}
+.cert-compartir-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.cert-compartir-btns .cbtn-ok{background:#1EBE5B;border-color:#1EBE5B;}
+@media(max-width:640px){.cert-compartir-btns .cbtn{flex:1 1 100%;}}
 .cita-acc{display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;align-items:center;}
 .cbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;min-width:118px;border-radius:11px;border:1px solid #E7E2EE;background:#fff;color:var(--ink,#2B2838);font:700 11.5px/1 inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;}
 .cbtn i{font-size:15px;color:#77738A;}
@@ -6889,6 +6899,194 @@ function renderListaCertificados(){
     </tbody></table></div>`;
 }
 
+// =====================================================================
+// CERTIFICADO COMO IMAGEN (para WhatsApp): se dibuja en el navegador, 1080×1350
+// =====================================================================
+function cargarScript(src){
+  return new Promise((ok, mal) => {
+    if (document.querySelector(`script[src="${src}"]`)) return ok();
+    const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = () => mal(new Error('No se pudo cargar ' + src));
+    document.head.appendChild(sc);
+  });
+}
+function cargarImg(url){
+  return new Promise(ok => {
+    if (!url) return ok(null);
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => ok(im); im.onerror = () => ok(null);
+    im.src = url + (url.includes('?') ? '&' : '?') + 'cors=1';
+  });
+}
+// QR del link del regalo (librería qrcodejs, se carga solo al usarla)
+async function qrCertificado(texto){
+  try {
+    await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js');
+    const tmp = document.createElement('div');
+    new window.QRCode(tmp, { text: texto, width: 300, height: 300, colorDark: '#24212E', colorLight: '#FFFFFF', correctLevel: window.QRCode.CorrectLevel.M });
+    const cv = tmp.querySelector('canvas');
+    return cv || null;
+  } catch(e){ console.error(e); return null; }
+}
+function lineasTexto(ctx, txt, max){
+  const palabras = String(txt || '').split(/\s+/); const out = []; let l = '';
+  palabras.forEach(w => { const p = l ? l + ' ' + w : w; if (ctx.measureText(p).width > max && l){ out.push(l); l = w; } else l = p; });
+  if (l) out.push(l);
+  return out;
+}
+function rectRedondo(ctx, x, y, w, h, r){
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function linkCertificado(c){
+  const slug = window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.slug;
+  return window.location.origin + '/certificado.html?codigo=' + encodeURIComponent(c.codigo) + (slug ? '&n=' + encodeURIComponent(slug) : '');
+}
+
+async function generarImagenCertificado(c, conMonto){
+  const N = window.ANNLY_BUSINESS || {};
+  const p1 = N.color_primario || '#7C3AED', p2 = N.color_secundario || '#EC4899';
+  const serif = '"Cormorant Garamond", "Playfair Display", Georgia, serif';
+  const sans = '"DM Sans", "Inter", Arial, sans-serif';
+  try { await document.fonts.ready; } catch(e){}
+  const logo = await cargarImg(N.logo_url);
+  // Alto según el contenido: 1080×1350 (ideal para WhatsApp) o más si el mensaje es largo
+  const W = 1080;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = 10;
+  let ctx = cv.getContext('2d');
+  ctx.font = `italic 500 32px ${serif}`;
+  const lineasMsg = c.mensaje ? lineasTexto(ctx, '“' + c.mensaje + '”', W - 320).slice(0, 4) : [];
+  const necesario = 190 + (logo ? 150 : 0) + 220 + (c.destinatarioNombre ? 112 : 0) + (c.compradorNombre && c.tipo !== 'credito' ? 50 : 0)
+    + (lineasMsg.length ? lineasMsg.length * 44 + 14 : 0)
+    + (conMonto ? 110 + (c.saldoRestante < c.montoInicial ? 40 : 0) : 0)
+    + 40 + 205 + 66 + 150;
+  const H = Math.max(1350, necesario);
+  cv.height = H;
+  ctx = cv.getContext('2d');
+
+  // Fondo con los colores del negocio
+  const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, p1); g.addColorStop(1, p2);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = .12; ctx.fillStyle = '#fff';
+  [[930, 140, 220], [120, 1240, 260], [980, 1180, 120]].forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); });
+  ctx.globalAlpha = 1;
+
+  // Tarjeta blanca
+  ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
+  rectRedondo(ctx, 70, 90, W - 140, H - 180, 46); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  rectRedondo(ctx, 92, 112, W - 184, H - 224, 34); ctx.strokeStyle = p1; ctx.globalAlpha = .35; ctx.lineWidth = 3; ctx.setLineDash([12, 10]); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+  ctx.textAlign = 'center';
+  let y = 190;
+  // Logo
+  if (logo){
+    ctx.save(); ctx.beginPath(); ctx.arc(W / 2, y + 60, 60, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, W / 2 - 60, y, 120, 120); ctx.restore();
+    ctx.beginPath(); ctx.arc(W / 2, y + 60, 62, 0, Math.PI * 2); ctx.strokeStyle = '#EEE'; ctx.lineWidth = 3; ctx.stroke();
+    y += 150;
+  }
+  ctx.fillStyle = '#6E6A7C'; ctx.font = `600 30px ${sans}`;
+  ctx.fillText(String(N.nombre || '').toUpperCase(), W / 2, y + 10);
+  y += 110;
+  // El título se achica si no cabe en la tarjeta
+  const titulo = c.tipo === 'credito' ? 'Saldo a favor' : 'Certificado de regalo';
+  let tam = 78;
+  ctx.font = `700 ${tam}px ${serif}`;
+  while (ctx.measureText(titulo).width > W - 300 && tam > 44){ tam -= 2; ctx.font = `700 ${tam}px ${serif}`; }
+  ctx.fillStyle = p1;
+  ctx.fillText(titulo, W / 2, y);
+  y += 40;
+  ctx.fillStyle = p2; ctx.fillRect(W / 2 - 60, y, 120, 5);
+  y += 70;
+
+  // Para / De
+  ctx.fillStyle = '#24212E';
+  if (c.destinatarioNombre){ ctx.font = `500 34px ${sans}`; ctx.fillStyle = '#8A8796'; ctx.fillText('Para', W / 2, y); y += 56; ctx.font = `700 52px ${serif}`; ctx.fillStyle = '#24212E'; ctx.fillText(c.destinatarioNombre, W / 2, y); y += 56; }
+  if (c.compradorNombre && c.tipo !== 'credito'){ ctx.font = `500 30px ${sans}`; ctx.fillStyle = '#6E6A7C'; ctx.fillText('De parte de ' + c.compradorNombre, W / 2, y); y += 50; }
+
+  // Mensaje
+  if (lineasMsg.length){
+    ctx.font = `italic 500 32px ${serif}`; ctx.fillStyle = '#4C4858';
+    lineasMsg.forEach(l => { ctx.fillText(l, W / 2, y + 10); y += 44; });
+    y += 14;
+  }
+
+  // Monto (opcional)
+  if (conMonto){
+    y += 20;
+    ctx.font = `800 96px ${sans}`; ctx.fillStyle = p1;
+    ctx.fillText('$' + Number(c.montoInicial).toFixed(2), W / 2, y + 60);
+    y += 90;
+    if (c.saldoRestante < c.montoInicial){ ctx.font = `600 28px ${sans}`; ctx.fillStyle = '#6E6A7C'; ctx.fillText('Saldo disponible: $' + Number(c.saldoRestante).toFixed(2), W / 2, y + 10); y += 40; }
+  }
+
+  // Código + QR
+  const baseY = H - 470;
+  y = Math.max(y + 20, baseY);
+  const qr = await qrCertificado(linkCertificado(c));
+  const boxW = qr ? 520 : 640, boxX = qr ? 150 : (W - boxW) / 2;
+  rectRedondo(ctx, boxX, y, boxW, 150, 24); ctx.fillStyle = '#FAF7FE'; ctx.fill();
+  ctx.strokeStyle = p1; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.textAlign = 'center';
+  ctx.font = `600 24px ${sans}`; ctx.fillStyle = '#8A8796'; ctx.fillText('CÓDIGO', boxX + boxW / 2, y + 48);
+  ctx.font = `800 52px ${sans}`; ctx.fillStyle = '#24212E'; ctx.fillText(c.codigo, boxX + boxW / 2, y + 110);
+  if (qr){
+    ctx.fillStyle = '#fff'; rectRedondo(ctx, 700, y - 30, 230, 230, 20); ctx.fill();
+    ctx.drawImage(qr, 715, y - 15, 200, 200);
+    ctx.font = `600 20px ${sans}`; ctx.fillStyle = '#8A8796'; ctx.fillText('Escanea para verlo', 815, y + 225);
+  }
+  y += 205;
+  ctx.font = `600 28px ${sans}`; ctx.fillStyle = '#4C4858';
+  if (c.fechaVencimiento){
+    const f = new Date(c.fechaVencimiento + 'T12:00:00').toLocaleDateString('es-PA', { day: 'numeric', month: 'long', year: 'numeric' });
+    ctx.fillText('Válido hasta el ' + f, qr ? boxX + boxW / 2 : W / 2, y);
+  }
+  y += 46;
+  ctx.font = `500 24px ${sans}`; ctx.fillStyle = '#8A8796';
+  ctx.fillText('Úsalo al reservar en línea o preséntalo en el local.', W / 2, y + 20);
+
+  return await new Promise(ok => cv.toBlob(ok, 'image/png'));
+}
+
+async function blobCertificado(id){
+  const c = CERTIFICADOS.find(x => x.id === id);
+  if (!c) throw new Error('No se encontró el certificado.');
+  const conMonto = !!(document.getElementById('cert-img-monto') || {}).checked;
+  const blob = await generarImagenCertificado(c, conMonto);
+  if (!blob) throw new Error('No se pudo crear la imagen.');
+  return { c, blob, nombre: 'certificado-' + c.codigo + '.png' };
+}
+async function descargarCertificadoImg(id){
+  try {
+    const { blob, nombre } = await blobCertificado(id);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  } catch(e){ console.error(e); alert(e.message || 'No se pudo crear la imagen.'); }
+}
+// En el celular abre el menú de compartir del teléfono (WhatsApp incluido) con la imagen adjunta.
+// En la computadora: baja la imagen y abre WhatsApp Web con el mensaje y el link.
+async function compartirCertificadoImg(id){
+  try {
+    const { c, blob, nombre } = await blobCertificado(id);
+    const N = window.ANNLY_BUSINESS || {};
+    const texto = `${c.destinatarioNombre ? '¡Hola ' + c.destinatarioNombre + '! ' : ''}Tienes un ${c.tipo === 'credito' ? 'saldo a favor' : 'certificado de regalo'} en ${N.nombre || 'nuestro negocio'} 🎁\nCódigo: ${c.codigo}\n${linkCertificado(c)}`;
+    const archivo = new File([blob], nombre, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [archivo] })){
+      await navigator.share({ files: [archivo], text: texto, title: 'Certificado de regalo' });
+      return;
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    let tel = String(c.destinatarioTelefono || '').replace(/\D/g, ''); if (tel.length === 8) tel = '507' + tel;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
+    alert('Se descargó la imagen. Adjúntala en el chat de WhatsApp que se abrió.');
+  } catch(e){
+    if (e && e.name === 'AbortError') return; // canceló el menú de compartir
+    console.error(e); alert(e.message || 'No se pudo compartir.');
+  }
+}
+
 async function verDetalleCertificado(certificateId){
   const c = CERTIFICADOS.find(x => x.id === certificateId);
   if (!c) return;
@@ -6907,6 +7105,14 @@ async function verDetalleCertificado(certificateId){
     </div>
     ${c.mensaje ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Mensaje del regalo:</span> "${c.mensaje}"</div>` : ''}
     ${c.nota ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Nota interna:</span> ${c.nota}</div>` : ''}
+    ${c.estado !== 'cancelado' && c.estado !== 'pendiente_pago' ? `<div class="cert-compartir">
+      <div class="cert-compartir-txt"><i class="ti ti-photo"></i><div><strong>Enviar como imagen</strong><span>Un certificado listo para mandar por WhatsApp, con código y QR.</span></div></div>
+      <label class="cert-monto"><input type="checkbox" id="cert-img-monto"> Incluir el monto en la imagen</label>
+      <div class="cert-compartir-btns">
+        <button type="button" class="cbtn cbtn-ok" onclick="compartirCertificadoImg('${c.id}')"><i class="ti ti-brand-whatsapp"></i><span>Compartir</span></button>
+        <button type="button" class="cbtn" onclick="descargarCertificadoImg('${c.id}')"><i class="ti ti-download"></i><span>Descargar imagen</span></button>
+      </div>
+    </div>` : ''}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <span style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">Estado: <span style="color:${est.color};">${est.texto}</span></span>
       ${c.saldoRestante <= 0 ? ''
