@@ -9519,6 +9519,15 @@ function tarjetaComparacion(ingresos){
     ${nota('Ingresos: ' + fmtDinero(ingresos) + '<br>antes: ' + fmtDinero(anterior) + ' (' + rango + ')' + (p.completo ? '' : '<br>Mismo tramo del periodo anterior'))}`);
 }
 
+// Desglose de "otros" ingresos con su nombre (solo los que tienen monto)
+function detalleOtrosFin(){
+  const nombres = { penalidad: 'Penalidades', credito: 'Saldos a favor', ajuste: 'Ajustes' };
+  return Object.keys(nombres).map(o => {
+    const m = sumaFin(FIN.pagos.filter(p => p.origen === o));
+    return m > 0 ? ' · ' + nombres[o] + ' ' + fmtDinero(m) : '';
+  }).join('');
+}
+
 // Ingresos que no son servicios ni ventas: penalidades, saldos a favor por cancelación y ajustes
 const ORIGENES_OTROS = ['penalidad', 'credito', 'ajuste'];
 function textoOrigenFin(o){
@@ -9646,7 +9655,7 @@ function htmlResumenFin(){
     <div class="fin-summary-grid">
       ${kpi(FIN_PERIODO === 'actual' ? 'Ingresos del periodo actual' : 'Ingresos del periodo',
         '<i class="ti ti-trending-up fin-card-icon"></i><span>' + fmtDinero(ingresos) + '</span>',
-        'Citas ' + fmtDinero(serviciosAgenda) + ' · Local ' + fmtDinero(local + adicionales) + '<br>Certificados ' + fmtDinero(ventaCert) + (otros > 0 ? ' · Otros ' + fmtDinero(otros) : ''),
+        'Citas ' + fmtDinero(serviciosAgenda) + ' · Local ' + fmtDinero(local + adicionales) + '<br>Certificados ' + fmtDinero(ventaCert) + detalleOtrosFin(),
         ingresos,'income')}
 
       ${kpi('Ventas en certificados',
