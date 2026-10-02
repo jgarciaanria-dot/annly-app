@@ -3656,6 +3656,7 @@ const Sheets = {
       subscriptionId: data.id,
       status: data.status,
       currentPeriodEnd: data.current_period_end,
+      periodoHasta: data.current_period_end,
       plan: {
         id: data.plans.id,
         code: data.plans.code,
@@ -4687,14 +4688,27 @@ const Sheets = {
     if (error) throw error;
     return data || [];
   },
-  // Platform Admin: avisos de todos los negocios
-  async getAvisosPagoPlataforma(estado) {
+  // Platform Admin: pagos de todos los negocios (los más recientes)
+  async getAvisosPagoPlataforma() {
     await window.AnnlyReady;
-    let q = sbClient.from('pagos_plataforma').select('*, businesses(nombre, slug)').order('creado_en', { ascending: false }).limit(100);
-    if (estado) q = q.eq('estado', estado);
-    const { data, error } = await q;
+    const { data, error } = await sbClient.from('pagos_plataforma').select('*, businesses(nombre, slug)')
+      .order('creado_en', { ascending: false }).limit(60);
     if (error) throw error;
     return data || [];
+  },
+  // Etapa 2: crea en el servidor un enlace único de PagueloFácil por la mensualidad completa y devuelve la URL
+  async crearEnlaceMensualidad() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.functions.invoke('pf-crear-enlace', {
+      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin }
+    });
+    if (error) {
+      let msg = error.message;
+      try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch(_){}
+      throw new Error(msg);
+    }
+    if (!data || !data.url) throw new Error((data && data.error) || 'No se pudo crear el enlace de pago.');
+    return data;
   },
   async resolverAvisoPago(id, estado, referencia, nota) {
     await window.AnnlyReady;
