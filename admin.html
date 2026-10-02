@@ -3556,6 +3556,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       </div>
       <div id="adm-plan-chip" class="plan-current-badge adm-plan-chip" style="display:none;"><i class="ti ti-sparkles"></i><span>BASIC</span></div>
       <div class="adm-hdr-actions">
+        <span class="cmp-slot" id="cmp-slot" style="display:inline-flex;"></span>
         <a href="index.html" id="adm-hdr-ver-sitio" target="_blank" class="adm-hdr-back"><i class="ti ti-external-link"></i><span class="hdr-btn-txt">Ver sitio</span></a>
         <button type="button" id="adm-hdr-copiar-link" class="adm-hdr-back" onclick="copiarLinkNegocio()"><i class="ti ti-link"></i><span class="hdr-btn-txt">Copiar link</span></button>
         <button type="button" id="adm-hdr-logout" class="adm-hdr-back adm-hdr-logout" onclick="window.AnnlyAuth.logout()"><i class="ti ti-logout"></i><span class="hdr-btn-txt">Cerrar sesión</span></button>
@@ -4843,6 +4844,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="config.js"></script>
 <script src="sheets.js?v=57"></script>
 <script src="horarios.js?v=1"></script>
+<script src="campana.js?v=1"></script>
 <script>
 // ===== LOGIN (Fase 1: autenticación real) =====
 
@@ -5104,6 +5106,7 @@ function resetEstadoNegocio(){
 }
 
 async function recargarPanelPorNegocio(){
+  setTimeout(iniciarCampanaAgenda, 0);
   const epoca = ++EPOCA_NEGOCIO;
   resetEstadoNegocio();
   actualizarContextoNegocioUI();
@@ -5161,9 +5164,43 @@ async function arrancarPanelAdmin(){
   if (esNegocioPedidos()) return;
 
   renderPlan();
+  iniciarCampanaAgenda();
   await loadServices();
   renderAdmin();
   await loadBloqueos();
+}
+
+// ---------- Campanita: citas nuevas y abonos por confirmar, en tiempo real ----------
+function iniciarCampanaAgenda(){
+  if (!window.AnnlyCampana || !BUSINESS_ID) return;
+  if (esNegocioPedidos()) { window.AnnlyCampana.detener(); return; }
+  const fechaCorta = iso => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return d + '/' + m; };
+  const hora12 = h => { if (!h) return ''; const [hh, mm] = String(h).split(':'); const n = parseInt(hh, 10); return ((n % 12) || 12) + ':' + mm + (n >= 12 ? ' p.m.' : ' a.m.'); };
+  window.AnnlyCampana.iniciar({
+    cliente: sbClient, negocioId: BUSINESS_ID, tabla: 'appointments',
+    montarEn: [document.getElementById('cmp-slot')],
+    cargarRecientes: async () => {
+      const { data } = await sbClient.from('appointments')
+        .select('id, cliente_nombre, servicio_nombre, fecha, hora, estado, creado_en')
+        .eq('business_id', BUSINESS_ID).neq('estado', 'cancelada')
+        .order('creado_en', { ascending: false }).limit(20);
+      return data || [];
+    },
+    describir: f => ({
+      titulo: (f.estado === 'por_confirmar' ? 'Abono por confirmar · ' : 'Nueva cita · ') + (f.cliente_nombre || 'Cliente'),
+      detalle: [f.servicio_nombre, (fechaCorta(f.fecha) + ' ' + hora12(f.hora)).trim()].filter(Boolean).join(' · '),
+      urgente: f.estado === 'por_confirmar',
+      fecha: f.creado_en || null
+    }),
+    alAbrir: f => {
+      if (f.estado === 'por_confirmar') VISTA_CITAS = 'porconfirmar';
+      switchTab('citas');
+    },
+    alLlegar: () => {
+      const t = document.querySelector('.adm-tab.active');
+      if (t && t.id === 'tab-citas') loadCitas();
+    }
+  });
 }
 
 window.addEventListener('annly:business-changed', () => {
