@@ -493,6 +493,25 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .cert-compartir-btns{display:flex;gap:8px;flex-wrap:wrap;}
 .cert-compartir-btns .cbtn-ok{background:#1EBE5B;border-color:#1EBE5B;}
 @media(max-width:640px){.cert-compartir-btns .cbtn{flex:1 1 100%;}}
+.pf-box{background:#fff;border:1px solid #E6DCF8;border-radius:18px;padding:16px 18px;margin:14px 0;}
+#pf-admin{border-color:#BFE3D0;background:#F7FCF9;}
+.pf-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.pf-hdr h3{margin:0;font-size:15px;display:flex;align-items:center;gap:7px;}
+.pf-hdr h3 i{color:#7C3AED;font-size:19px;}
+#pf-admin .pf-hdr h3 i{color:#159A61;}
+.pf-hdr p{margin:3px 0 0;font-size:12.5px;color:var(--ink-soft,#77738A);}
+.pf-lista{display:flex;flex-direction:column;gap:8px;}
+.pf-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #F0ECF6;border-radius:12px;flex-wrap:wrap;}
+.pf-item b{display:block;font-size:13px;}
+.pf-item span{font-size:12px;color:var(--ink-soft,#77738A);}
+.pf-acc{display:flex;gap:6px;flex-wrap:wrap;}
+.pf-sin{font-size:11.5px;color:#9A97A6;}
+.pf-revision{display:flex;gap:10px;margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF8EA;border:1px solid #F6E2B8;font-size:12px;color:#7A5200;}
+.pf-revision i{font-size:18px;}
+.pf-revision span,.pf-revision small{display:block;}
+.pf-revision small{margin-top:3px;opacity:.85;}
+.pf-nota{font-size:11.5px;color:var(--ink-soft,#8A8796);margin:10px 0 0;}
+@media(max-width:640px){.pf-item .cbtn{width:100%;}}
 .cita-acc{display:flex;gap:8px;margin-top:11px;justify-content:flex-end;flex-wrap:wrap;align-items:center;}
 .cbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;min-width:118px;border-radius:11px;border:1px solid #E7E2EE;background:#fff;color:var(--ink,#2B2838);font:700 11.5px/1 inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;}
 .cbtn i{font-size:15px;color:#77738A;}
@@ -4196,6 +4215,9 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <button type="button" id="btn-activar-suscripcion" onclick="activarSuscripcionUI()" style="display:none;margin-top:10px;border:1px solid #CDB6EE;background:#fff;color:#6E45C5;border-radius:10px;padding:9px 14px;font-size:11.5px;font-weight:800;cursor:pointer;"><i class="ti ti-bolt" aria-hidden="true"></i> Terminar mi prueba ahora y activar mi plan</button>
     </div>
 
+    <div id="pf-admin" class="pf-box" style="display:none;"></div>
+    <div id="pf-pagar" class="pf-box" style="display:none;"></div>
+
     <div class="plan-grid">
       <article class="plan-card" id="plan-card-basic">
         <div class="plan-name">Basic</div>
@@ -4985,7 +5007,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=59"></script>
+<script src="sheets.js?v=61"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -5928,6 +5950,104 @@ function formatFechaCorta(fechaISO){
   return `${d.getDate()} de ${MESES_CORTOS[d.getMonth()]}`;
 }
 
+// =====================================================================
+// PAGAR CON TARJETA (etapa 1): enlaces fijos de PagueloFácil + confirmación de Annly
+// =====================================================================
+function conceptosAPagar(){
+  const items = [];
+  const L = window.ANNLY_LINKS_PAGO || {};
+  const planKey = getPlanActualUI();
+  const plan = ANNLY_PLANES_UI[planKey];
+  if (plan) items.push({ code: plan.name, nombre: 'Plan ' + plan.name, precio: plan.price, cant: 1 });
+  (MODULOS_ACTIVOS || []).forEach(code => {
+    if (code === 'PROFESIONAL_ADICIONAL' || code === 'SUCURSAL_ADICIONAL') return;
+    const m = (CATALOGO_MODULOS || []).find(x => x.code === code);
+    if (m && m.price > 0) items.push({ code, nombre: m.name, precio: m.price, cant: 1 });
+  });
+  const np = (typeof EXTRAS_PROF !== 'undefined' && EXTRAS_PROF && EXTRAS_PROF.cantidad) || 0;
+  if (np > 0) items.push({ code: 'PROFESIONAL_ADICIONAL', nombre: 'Profesional adicional', precio: precioProfesionalExtra(), cant: np });
+  const ns = (typeof EXTRAS_SUC !== 'undefined' && EXTRAS_SUC && EXTRAS_SUC.cantidad) || 0;
+  if (ns > 0){
+    const m = (CATALOGO_MODULOS || []).find(x => x.code === 'SUCURSAL_ADICIONAL');
+    items.push({ code: 'SUCURSAL_ADICIONAL', nombre: 'Sede adicional', precio: (m && m.price) || 14, cant: ns });
+  }
+  return items.map(i => ({ ...i, link: L[i.code] || null }));
+}
+
+async function pintarPagoTarjeta(){
+  const box = document.getElementById('pf-pagar');
+  if (!box || !SUSCRIPCION_ACTUAL) { if (box) box.style.display = 'none'; return; }
+  const items = conceptosAPagar();
+  let avisos = [];
+  try { avisos = await Sheets.getAvisosPagoNegocio(); } catch(e){ console.error(e); }
+  const enRevision = avisos.filter(a => a.estado === 'pendiente');
+  const total = items.reduce((s, i) => s + i.precio * i.cant, 0);
+  const fecha = iso => new Date(iso).toLocaleDateString('es-PA', { day: 'numeric', month: 'short' });
+  box.innerHTML = `
+    <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Paga tu plan con tarjeta</h3>
+      <p>Pago seguro con PagueloFácil. Total del mes: <b>${fmtDinero(total)}</b></p></div></div>
+    <div class="pf-lista">${items.map(i => `
+      <div class="pf-item">
+        <div><b>${escCat(i.nombre)}</b><span>${fmtDinero(i.precio)}${i.cant > 1 ? ' × ' + i.cant + ' = ' + fmtDinero(i.precio * i.cant) : ''} / mes</span></div>
+        ${i.link
+          ? `<button type="button" class="cbtn cbtn-ok" onclick="pagarConTarjeta('${i.code}')"><i class="ti ti-credit-card"></i><span>Pagar${i.cant > 1 ? ' (' + i.cant + ' veces)' : ''}</span></button>`
+          : `<span class="pf-sin">Escríbenos para pagarlo</span>`}
+      </div>`).join('')}
+    </div>
+    ${enRevision.length ? `<div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
+      ${enRevision.map(a => `<span>${escCat(a.concepto)} · ${fmtDinero(a.monto)} · ${fecha(a.creado_en)}</span>`).join('')}
+      <small>Los confirmamos en menos de 24 horas hábiles.</small></div></div>` : ''}
+    <p class="pf-nota">Al tocar Pagar se abre PagueloFácil en otra pestaña. Usa el mismo correo de tu cuenta Annly para que identifiquemos tu pago.</p>`;
+  box.style.display = '';
+}
+
+async function pagarConTarjeta(code){
+  const it = conceptosAPagar().find(i => i.code === code);
+  if (!it || !it.link) return;
+  // Se abre la pestaña de inmediato (si se espera a la base de datos, el navegador la bloquea)
+  const win = window.open(it.link, '_blank');
+  if (win) { try { win.opener = null; } catch(e){} }
+  try {
+    await Sheets.registrarAvisoPago(it.code, it.nombre + (it.cant > 1 ? ' × ' + it.cant : ''), it.precio * it.cant);
+  } catch(e){ console.error(e); }
+  if (!win) alert('Tu navegador bloqueó la ventana de pago. Permite ventanas emergentes para annly.app e inténtalo de nuevo.');
+  else if (it.cant > 1) alert(`Este concepto se paga ${it.cant} veces: repite el pago en PagueloFácil ${it.cant} veces (${fmtDinero(it.precio)} cada una).`);
+  pintarPagoTarjeta();
+}
+
+// Solo Annly: avisos de pago de todos los negocios, para confirmar después de revisar PagueloFácil
+async function pintarPagosPlataforma(){
+  const box = document.getElementById('pf-admin');
+  if (!box) return;
+  if (!window.ANNLY_PLATFORM_ADMIN){ box.style.display = 'none'; return; }
+  let lista = [];
+  try { lista = await Sheets.getAvisosPagoPlataforma('pendiente'); } catch(e){ console.error(e); }
+  const fecha = iso => new Date(iso).toLocaleString('es-PA', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  box.innerHTML = `
+    <div class="pf-hdr"><div><h3><i class="ti ti-shield-check"></i> Pagos por confirmar · Annly</h3>
+      <p>Solo tú ves esto. Revisa Balance → Movimientos en PagueloFácil y confirma cada pago.</p></div>
+      <a class="cbtn" href="https://app.paguelofacil.com/movements" target="_blank" rel="noopener"><i class="ti ti-external-link"></i><span>Abrir PagueloFácil</span></a></div>
+    ${lista.length ? `<div class="pf-lista">${lista.map(a => `
+      <div class="pf-item">
+        <div><b>${escCat((a.businesses && a.businesses.nombre) || 'Negocio')} · ${escCat(a.concepto)}</b><span>${fmtDinero(a.monto)} · avisó ${fecha(a.creado_en)}</span></div>
+        <div class="pf-acc">
+          <button type="button" class="cbtn cbtn-ok" onclick="resolverPagoUI('${a.id}', 'confirmado')"><i class="ti ti-check"></i><span>Confirmar</span></button>
+          <button type="button" class="cbtn cbtn-no" onclick="resolverPagoUI('${a.id}', 'rechazado')"><i class="ti ti-x"></i><span>No llegó</span></button>
+        </div>
+      </div>`).join('')}</div>` : '<p class="pf-nota">No hay pagos por confirmar.</p>'}`;
+  box.style.display = '';
+}
+
+async function resolverPagoUI(id, estado){
+  let ref = '';
+  if (estado === 'confirmado'){
+    ref = prompt('Código de operación de PagueloFácil (opcional, para tu control):', '');
+    if (ref === null) return;
+  } else if (!confirm('¿Marcar este pago como no recibido?')) return;
+  try { await Sheets.resolverAvisoPago(id, estado, ref); pintarPagosPlataforma(); pintarPagoTarjeta(); }
+  catch(e){ alert('No se pudo guardar: ' + (e.message || e)); }
+}
+
 async function renderPlan(){
   try {
     SUSCRIPCION_ACTUAL = await Sheets.getSuscripcionActual();
@@ -6058,6 +6178,7 @@ async function renderModulosPlan(){
       SUSCRIPCION_ACTUAL ? Sheets.getModulosActivosDetalle(SUSCRIPCION_ACTUAL.subscriptionId) : Promise.resolve([])
     ]);
     CATALOGO_MODULOS = catalogo; FEATURES_DEL_PLAN = features; MODULOS_ACTIVOS = activos; modulosDetalle = detalle;
+    setTimeout(() => { pintarPagoTarjeta(); pintarPagosPlataforma(); }, 0);
   } catch(e) {
     console.error('Error cargando módulos:', e);
     cont.innerHTML = '<p style="font-size:11px;color:var(--ink-soft);">No se pudieron cargar los módulos.</p>';
