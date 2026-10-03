@@ -323,6 +323,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 .tipo-opt.sel{border-color:var(--violet);box-shadow:0 8px 20px -14px rgba(124,58,237,.8);color:var(--violet);background:#FBF8FF;}
 @media(max-width:520px){.tipo-grid{grid-template-columns:1fr;}}
 .step-panel{display:none;animation:fadeIn .35s ease;}
+/* Sesión ya iniciada en este navegador */
+.sesion-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#F7F4FC;border:1.5px solid #E4D8F7;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#4B4560;margin-bottom:16px;}
+.sesion-bar b{color:#211B33;word-break:break-all;}
+.sesion-bar .acc{display:flex;gap:6px;margin-left:auto;}
+.sesion-bar button{border:1px solid #E4D8F7;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;color:var(--violet);font-family:inherit;}
+.sesion-bar button.salir{color:#B4432F;border-color:#F3C9C4;}
+.link-salir{display:block;text-align:center;margin-top:12px;font-size:12.5px;color:#B4432F;background:none;border:none;cursor:pointer;font-weight:600;font-family:inherit;width:100%;}
 .step-panel.active{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
 
@@ -385,6 +392,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
 }
 .social-btn:hover{border-color:#D6C9E9;transform:translateY(-1px);box-shadow:0 8px 20px -18px #5B21B6;}
 .social-btn svg{width:20px;height:20px;}
+.social-btn.apple-btn{background:#000;border-color:#000;color:#fff;}
+.social-btn.apple-btn:hover{background:#1C1C1E;border-color:#1C1C1E;}
+.social-btn.apple-btn.is-soon{background:#2C2C2E;border-color:#2C2C2E;transform:none;}
 
 .foot{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:1.6rem;}
 .foot a{color:var(--violet);text-decoration:none;font-weight:700;}
@@ -1260,13 +1270,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
     <div class="brand-blob blob-2"></div>
     <div class="desktop-head">
       <div class="brand-head">
-        <img class="brand-logo-mark" src="logo-annly.png" alt="Annly"/>
+        <img class="brand-logo-mark" src="logo-annly-v2.png" alt="Annly"/>
         <div class="logo">Annly<span>.</span></div>
       </div>
     </div>
-    <div class="brand-eyebrow">MÁS CITAS. MENOS ESTRÉS.</div>
+    <div class="brand-eyebrow" id="br-eyebrow">CITAS Y PEDIDOS. MENOS ESTRÉS.</div>
     <h1 class="brand-title">Empieza hoy a hacer crecer <em>tu negocio</em>.</h1>
-    <p class="brand-sub">Crea tu cuenta gratis y lleva el control de tus citas, clientes y servicios en un solo lugar.</p>
+    <p class="brand-sub" id="br-sub">Crea tu cuenta gratis: una agenda de citas o una tienda de pedidos, con tu marca y todo en un solo lugar.</p>
 
 
 
@@ -1275,7 +1285,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
         <img src="modelo-registro.png" alt="Dueña de negocio revisando su agenda desde una tablet"/>
         <div class="bfloat bfloat-1 bfloat--booking">
           <div class="dot"><span class="notif-emoji">📅</span></div>
-          <div><strong>¡Alanis ha agendado!</strong><span>Manicure · 4:30 PM</span></div>
+          <div id="br-f1"><strong>¡Alanis ha agendado!</strong><span>Manicure · 4:30 PM</span></div>
         </div>
         <div class="bfloat bfloat-2 bfloat--send">
           <div class="dot"><span class="notif-emoji">✈️</span></div>
@@ -1287,7 +1297,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
         </div>
         <div class="bfloat bfloat-4 bfloat--new">
           <div class="dot"><span class="notif-emoji">✨</span></div>
-          <div><strong>¡Nueva cita!</strong><span>María Gabriela · 3:00 PM</span></div>
+          <div id="br-f4"><strong>¡Nuevo pedido #000012!</strong><span>Ramo de rosas · $45.00</span></div>
         </div>
       </div>
     </div>
@@ -1296,7 +1306,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
       <li class="benefit"><div class="benefit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>Más tiempo</li>
       <li class="benefit"><div class="benefit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>Clientes felices</li>
       <li class="benefit"><div class="benefit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>Tu negocio crece</li>
-      <li class="benefit"><div class="benefit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M8 14h3M8 18h5"/></svg></div>Más reservas</li>
+      <li class="benefit"><div class="benefit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M8 14h3M8 18h5"/></svg></div><span id="br-b4">Más ventas</span></li>
       <li class="benefit"><div class="benefit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg></div>Pagos fáciles</li>
       <li class="benefit"><div class="benefit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg></div>Todo bajo control</li>
     </ul>
@@ -1306,7 +1316,14 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
     <div class="form-inner">
       <div class="mobile-head">
         <div class="mobile-logo">Annly<span>.</span></div>
-        <div class="mobile-tagline">Tu negocio. Tu agenda.<br><em>Así de fácil.</em> <i>✦</i></div>
+        <div class="mobile-tagline" id="br-mobile">Tu negocio. En línea.<br><em>Así de fácil.</em> <i>✦</i></div>
+      </div>
+      <div class="sesion-bar" id="sesion-bar" hidden>
+        <span>Sesión iniciada como <b id="sesion-email"></b></span>
+        <span class="acc">
+          <button type="button" onclick="irAMiPanel()">Ir a mi panel</button>
+          <button type="button" class="salir" onclick="cerrarSesionRegistro()">Cerrar sesión</button>
+        </span>
       </div>
       <div class="steps-wrap" id="steps-wrap">
         <div class="steps">
@@ -1407,9 +1424,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M21.35 12.23c0-.7-.06-1.37-.18-2.02H12v3.82h5.22a4.46 4.46 0 0 1-1.94 2.93v2.44h3.14c1.84-1.7 2.93-4.2 2.93-7.17z"/><path fill="#34A853" d="M12 21.8c2.63 0 4.84-.87 6.45-2.4l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.7-1.72-5.47-4.03H3.29v2.52A9.74 9.74 0 0 0 12 21.8z"/><path fill="#FBBC05" d="M6.53 13.85A5.86 5.86 0 0 1 6.22 12c0-.64.11-1.26.31-1.85V7.63H3.29A9.8 9.8 0 0 0 2.2 12c0 1.58.38 3.07 1.09 4.37l3.24-2.52z"/><path fill="#EA4335" d="M12 6.12c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 3.2 14.63 2.2 12 2.2a9.74 9.74 0 0 0-8.71 5.43l3.24 2.52C7.3 7.84 9.46 6.12 12 6.12z"/></svg>
             Google
           </button>
-          <button class="social-btn" type="button" aria-label="Continuar con Apple">
+          <button class="social-btn apple-btn" type="button" aria-label="Continuar con Apple (próximamente)" onclick="avisoProximamente(this)">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-3-.8-1.6 0-3.1.9-3.9 2.3-1.7 2.9-.4 7.1 1.2 9.4.8 1.1 1.7 2.4 3 2.3 1.2-.1 1.7-.7 3.1-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.9-2.2.9-1.2 1.3-2.5 1.3-2.6-.1 0-2.8-1.1-2.8-3.9zM14.5 6c.6-.8 1.1-1.9 1-3-.9 0-2 .6-2.6 1.3-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.6-1.2z"/></svg>
-            Apple
+            <span class="apple-lbl">Apple</span>
           </button>
         </div>
       </div>
@@ -1418,7 +1435,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
       <div class="step-panel" id="step-listo">
         <div class="step-eyebrow">¡TODO LISTO!</div>
         <h2 class="step-title">Tu agenda ya está en línea ✦</h2>
-        <p class="step-sub">Este es el link de tu agenda — guárdalo, es el que vas a compartir con tus clientas.</p>
+        <p class="step-sub">Este es el link de tu agenda — guárdalo, es el que vas a compartir con tus clientes.</p>
 
         <div style="background:#F7F4FC;border:1.5px solid #E4D8F7;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:10px;margin:1.2rem 0;">
           <span id="link-agenda" style="flex:1;font-size:13.5px;font-weight:600;color:var(--violet);word-break:break-all;">annly.app/</span>
@@ -1430,6 +1447,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:an
         <div class="btn-row">
           <a class="btn-grad" id="btn-ir-panel" href="admin.html" style="text-decoration:none;">Entrar a mi panel<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
+        <button type="button" class="link-salir" onclick="cerrarSesionRegistro()">Cerrar sesión</button>
       </div>
 
       <p class="foot">¿Ya tienes cuenta? <a href="admin.html">Inicia sesión</a></p>
@@ -1454,8 +1472,28 @@ const PALETAS = [
 let paletaSel = 0;
 let tipoNegocio = 'citas';
 
+// Textos del lado izquierdo según lo que ofrece el negocio
+const TEXTOS_TIPO = {
+  citas:   { eyebrow:'MÁS CITAS. MENOS ESTRÉS.', sub:'Crea tu cuenta gratis y lleva el control de tus citas, clientes y servicios en un solo lugar.',
+             f1:['¡Alanis ha agendado!','Manicure · 4:30 PM'], f4:['¡Nueva cita!','María Gabriela · 3:00 PM'], b4:'Más reservas', movil:'Tu agenda' },
+  pedidos: { eyebrow:'MÁS PEDIDOS. MENOS WHATSAPP.', sub:'Crea tu tienda gratis: tus clientes eligen del catálogo, agendan la entrega y pagan con Yappy.',
+             f1:['¡Nuevo pedido #000012!','Ramo de rosas · $45.00'], f4:['¡Pago confirmado!','Entrega viernes · 9:00 AM'], b4:'Más pedidos', movil:'Tu tienda' }
+};
+function aplicarTextosTipo(t){
+  const x = TEXTOS_TIPO[t] || TEXTOS_TIPO.citas;
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('br-eyebrow', x.eyebrow); set('br-sub', x.sub); set('br-b4', x.b4);
+  const mov = document.getElementById('br-mobile');
+  if (mov) mov.innerHTML = 'Tu negocio. ' + x.movil + '.<br><em>Así de fácil.</em> <i>✦</i>';
+  [['br-f1', x.f1], ['br-f4', x.f4]].forEach(([id, v]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.querySelector('strong').textContent = v[0]; el.querySelector('span').textContent = v[1];
+  });
+}
+
 function selTipo(t){
   tipoNegocio = t;
+  aplicarTextosTipo(t);
   document.getElementById('tipo-citas').classList.toggle('sel', t === 'citas');
   document.getElementById('tipo-pedidos').classList.toggle('sel', t === 'pedidos');
   document.getElementById('r-categoria').placeholder = t === 'pedidos'
@@ -1541,6 +1579,16 @@ function copiarLinkAgenda(){
   });
 }
 
+// Apple todavía no está disponible: al tocarlo muestra "Próximamente" un momento
+function avisoProximamente(btn){
+  const lbl = btn.querySelector('.apple-lbl');
+  if (!lbl) return;
+  clearTimeout(btn._tProx);
+  lbl.textContent = 'Próximamente';
+  btn.classList.add('is-soon');
+  btn._tProx = setTimeout(() => { lbl.textContent = 'Apple'; btn.classList.remove('is-soon'); }, 1800);
+}
+
 async function registrarConGoogle(){
   const nombre = document.getElementById('r-nombre').value.trim();
   if(!nombre){
@@ -1574,6 +1622,37 @@ async function registrarConGoogle(){
     msgEl.textContent = 'No se pudo iniciar sesión con Google. Intenta de nuevo.';
   }
 }
+
+// Desde el landing: registro.html?tipo=pedidos (o citas) deja la opción ya elegida
+(function tipoDesdeUrl(){
+  const t = new URLSearchParams(window.location.search).get('tipo');
+  if (t === 'pedidos' || t === 'citas') selTipo(t);
+})();
+
+// ---- Sesión ya iniciada: se muestra con quién, y se puede ir al panel o cerrarla ----
+async function cerrarSesionRegistro(){
+  try {
+    sessionStorage.removeItem('annly_registro_pendiente');
+    sessionStorage.removeItem('annly_selected_business_id');
+    await sbClient.auth.signOut();
+  } catch(e){ console.error(e); }
+  window.location.href = 'registro.html';
+}
+async function irAMiPanel(){
+  if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.tipo_negocio === 'pedidos') { await window.AnnlyAuth.irAPanelPedidos(); return; }
+  window.location.href = 'admin.html';
+}
+(async function mostrarSesionActiva(){
+  if (sessionStorage.getItem('annly_registro_pendiente')) return; // regreso de Google: se completa el registro
+  await window.AnnlyReady;
+  try {
+    const { data } = await sbClient.auth.getSession();
+    const ses = data && data.session;
+    if (!ses) return;
+    document.getElementById('sesion-email').textContent = ses.user.email || 'tu cuenta';
+    document.getElementById('sesion-bar').hidden = false;
+  } catch(e){ console.error(e); }
+})();
 
 // Si volvemos de Google con un registro pendiente guardado, terminamos de crear el negocio.
 (async function completarSiVuelveDeGoogle(){

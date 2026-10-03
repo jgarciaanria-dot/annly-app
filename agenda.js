@@ -1,3 +1,51 @@
+// ============================================================
+// Ajustes de tema de la agenda pública: usan los colores de la paleta del negocio
+// (--gold / --gold-dark) en lugar de fondos negros fijos. Van aquí para no depender
+// de que agenda.css o 404.html estén al día.
+// ============================================================
+(function(){
+  if (document.getElementById('annly-tema-css')) return;
+  const st = document.createElement('style');
+  st.id = 'annly-tema-css';
+  st.textContent = `
+@keyframes annlyGiro{to{transform:rotate(360deg);}}
+/* ---------- Computadora y tablet: página completa, no una columna recortada sobre fondo gris ---------- */
+@media(min-width:600px){
+  body:not(.modo-oscuro){background-color:var(--bg-page);}
+  body.modo-oscuro{background-color:var(--bg-page,#0d0c0b);}
+  html body .hdr{max-width:none;}
+  html body .marcas-strip,html body footer{max-width:none;}
+  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:720px;margin-left:auto;margin-right:auto;background-color:transparent;}
+  html body #serviceList{padding-left:1.25rem;padding-right:1.25rem;}
+}
+@media(min-width:900px){
+  /* Compacto y centrado: las reservas se hacen sobre todo desde el celular */
+  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:960px;}
+  html body #serviceList{padding-left:1.5rem;padding-right:1.5rem;padding-bottom:2.5rem;}
+  html body #cert-link-wrap{padding-left:1.5rem;padding-right:1.5rem;}
+  /* La tarjeta de sede con el mismo ancho que la del certificado */
+  html body #suc-chip{padding-left:calc(1.5rem + 14px);padding-right:calc(1.5rem + 14px);}
+  html body .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+}
+.svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
+.svc-banner-name,.svc-pill-name{color:#fff;}
+.svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
+.svc-banner-dur,.svc-pill-dur{color:rgba(255,255,255,.78);}
+.svc-banner-icon{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.14);}
+.svc-banner-icon i{color:#fff;}
+.svc-resumen{border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;}
+.svc-resumen-name{font-size:15px;font-weight:700;color:#fff;font-family:var(--font-heading);}
+.svc-resumen-meta{font-size:11.5px;color:rgba(255,255,255,.82);margin-top:3px;}
+.stepn{background:var(--gold-dark);color:#fff;font-weight:600;}
+.card-arrow{background:var(--gold-dark);}
+.incl-grid{grid-template-columns:1fr 1fr;gap:10px 16px;}
+.incl-item{align-items:flex-start;line-height:1.45;}
+.incl-dot{width:5px;height:5px;margin-top:.5em;background:var(--gold-dark);}
+@media(max-width:480px){.incl-grid{grid-template-columns:1fr;}}
+`;
+  document.head.appendChild(st);
+})();
+
 document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
     document.getElementById('ruletaModal').classList.remove('activo');
   });
@@ -135,7 +183,7 @@ let BLOQUEOS={dias:[], horas:{}};
 
 async function loadBloqueos(){
   try {
-    BLOQUEOS = await Sheets.getBloqueos();
+    BLOQUEOS = await Sheets.getBloqueos(SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : null);
     if(!BLOQUEOS.dias) BLOQUEOS.dias=[];
     if(!BLOQUEOS.horas) BLOQUEOS.horas={};
   } catch(e){ BLOQUEOS={dias:[], horas:{}}; }
@@ -277,12 +325,373 @@ window.AnnlyReady.then(() => {
       document.getElementById('marcas-strip').style.display = 'block';
     }
   }
-  loadServices().then(() => { renderServices(); });
-  loadBloqueos();
+  // annly.app/slug de un negocio de pedidos: se envía a su tienda en Annly Pedidos
+  if (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.tipo_negocio === 'pedidos') {
+    window.location.replace(ANNLY_PEDIDOS_URL + '/' + encodeURIComponent(window.ANNLY_BUSINESS.slug) + window.location.search);
+    return;
+  }
+  Promise.all([loadServices(), cargarSucursalesSitio()]).then(() => { iniciarSucursalSitio(); });
   loadPromo();
   loadRuletaConfig();
+  loadCertificadosModulo();
   try{Sheets.initSheet();}catch(e){}
 });
+
+
+// ===== SUCURSALES (sitio público) =====
+// Con más de una sucursal activa, el cliente elige dónde reservar (o llega directo con ?s=slug).
+// La sucursal define: servicios visibles, profesionales, horario, bloqueos, dirección y WhatsApp.
+let SUCURSALES_PUB = [];
+let SUCURSAL_ACTUAL = null;
+let SERVICES_TODOS = [];
+let EMPLEADOS_SERVICIOS = null; // [{ id, servicios:[] }] profesionales activos ([] = hace todos)
+
+function escSuc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function horarioBaseSitio(){
+  return (SUCURSAL_ACTUAL && SUCURSAL_ACTUAL.horario) || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
+}
+
+// Horario propio del profesional en la sucursal elegida (null = usa el de la sucursal)
+function horarioPropioSitio(empleadoId){
+  return Sheets.getEmpleadoHorario(empleadoId, SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : undefined);
+}
+
+async function cargarSucursalesSitio(){
+  try {
+    const [sucs, emps] = await Promise.all([
+      Sheets.getSucursales(),
+      Sheets.getEmpleadosActivosServicios().catch(() => null)
+    ]);
+    SUCURSALES_PUB = (sucs || []).filter(x => x.activa);
+    EMPLEADOS_SERVICIOS = emps;
+  } catch(e){
+    console.error('Sucursales no disponibles, se muestra el negocio completo:', e);
+    SUCURSALES_PUB = [];
+  }
+}
+
+// Un servicio aparece si está activado en la sucursal y alguno de sus profesionales lo realiza
+function serviciosDeSucursal(lista){
+  if (!SUCURSAL_ACTUAL) return lista;
+  const ofrecidos = Array.isArray(SUCURSAL_ACTUAL.servicios) ? new Set(SUCURSAL_ACTUAL.servicios) : null;
+  const hayEquipo = Array.isArray(EMPLEADOS_SERVICIOS) && EMPLEADOS_SERVICIOS.length > 0;
+  const equipo = hayEquipo ? EMPLEADOS_SERVICIOS.filter(e => (SUCURSAL_ACTUAL.empleados || []).includes(e.id)) : [];
+  return lista.filter(svc => {
+    if (ofrecidos && !ofrecidos.has(svc.id)) return false;
+    if (!hayEquipo) return true; // negocio sin profesionales cargados: se reserva sin elegir
+    const n = equipo.filter(e => !e.servicios.length || e.servicios.includes(svc.id)).length;
+    return svc.esDoble ? n >= 2 : n >= 1;
+  });
+}
+
+function iniciarSucursalSitio(){
+  SERVICES_TODOS = SERVICES.slice();
+  if (SUCURSALES_PUB.length <= 1){
+    // Una sola sucursal: igual que siempre, pero con su horario y sus datos
+    if (SUCURSALES_PUB.length === 1) aplicarSucursalSitio(SUCURSALES_PUB[0], false);
+    else { renderServices(); loadBloqueos(); }
+    return;
+  }
+  const b = window.ANNLY_BUSINESS || {};
+  const param = new URLSearchParams(window.location.search).get('s');
+  let guardada = null;
+  try { guardada = sessionStorage.getItem('annly_suc_' + (b.slug || '')); } catch(e){}
+  const buscar = slug => slug ? SUCURSALES_PUB.find(x => x.slug === slug || (slug === 'principal' && x.esPrincipal)) : null;
+  const elegida = buscar(param) || buscar(guardada);
+  if (elegida) aplicarSucursalSitio(elegida, true);
+  else abrirSelectorSucursal(false);
+}
+
+function telefonoWhatsApp(t){
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.length === 8) d = '507' + d; // número de Panamá sin código de país
+  return d;
+}
+
+function formatHora12Sitio(hhmm){
+  if (!hhmm) return '';
+  const [hStr, mStr] = hhmm.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return m === '00' ? `${h}${ampm}` : `${h}:${m}${ampm}`;
+}
+function textoHorarioSitio(h){
+  if (!h || !h.lv) return null;
+  const etiqueta = { lv:'Lun-Vie', sab:'Sáb', dom:'Domingo' };
+  return ['lv','sab','dom'].map(k => {
+    const d = h[k] || { cerrado:true };
+    return etiqueta[k] + ' ' + (d.cerrado ? 'Cerrado' : formatHora12Sitio(d.abre) + '-' + formatHora12Sitio(d.cierra));
+  }).join(' | ');
+}
+
+function aplicarSucursalSitio(suc, conSelector){
+  SUCURSAL_ACTUAL = suc;
+  window.ANNLY_SUCURSAL_ID = suc.id;
+  const b = window.ANNLY_BUSINESS || {};
+
+  // Catálogo de la sucursal
+  SERVICES = serviciosDeSucursal(SERVICES_TODOS);
+  renderServices();
+  loadBloqueos();
+
+  // Dirección, horario y WhatsApp de la sucursal (con los del negocio como respaldo)
+  const dirEl = document.getElementById('footer-direccion');
+  if (dirEl) dirEl.textContent = suc.direccion || b.direccion || '';
+  const horEl = document.getElementById('footer-horario');
+  const horTxt = textoHorarioSitio(suc.horario) || b.horario_texto || 'Consulta disponibilidad';
+  if (horEl) horEl.innerHTML = escSuc(horTxt).replace(/\|/g, '<br>');
+  const waLink = document.getElementById('wa-float-link');
+  const wa = suc.telefono ? telefonoWhatsApp(suc.telefono) : (b.whatsapp || '');
+  if (waLink){
+    if (wa){ waLink.href = 'https://wa.me/' + wa; waLink.style.display = ''; }
+    else waLink.style.display = 'none';
+  }
+
+  // Tarjeta "Estás reservando en <sede> · Cambiar sede" debajo del encabezado (solo con varias sucursales)
+  let chip = document.getElementById('suc-chip');
+  if (conSelector){
+    // Estilos de la tarjeta (van aquí para no depender de otro archivo)
+    if (!document.getElementById('suc-chip-css')){
+      const st = document.createElement('style');
+      st.id = 'suc-chip-css';
+      st.textContent = `/* Sede elegida (solo negocios con varias sucursales) */
+#suc-chip{display:block;width:100%;flex:0 0 100%;box-sizing:border-box;padding:1rem 1rem 0;background-color:var(--bg-page);}
+@media(min-width:600px){#suc-chip{max-width:480px;margin-left:auto!important;margin-right:auto!important;}}
+@media(min-width:900px){#suc-chip{max-width:760px;}}
+.suc-card{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:var(--radius-lg,14px);background:#fff;border:1.5px solid rgba(var(--gold-dark-rgb),.35);box-shadow:0 6px 18px -12px rgba(var(--gold-dark-rgb),.55);}
+.suc-card-ico{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(var(--gold-dark-rgb),.12);color:var(--gold-dark);font-size:19px;}
+.suc-card-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.suc-card-lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-dark);opacity:.85;}
+.suc-card-name{font-family:var(--font-heading);font-size:17px;font-weight:700;color:#1a1816;line-height:1.2;}
+.suc-card-dir{font-size:12px;color:rgba(30,26,22,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.suc-card-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--gold-dark);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s;}
+.suc-card-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
+.suc-card-btn i{font-size:15px;}
+body.modo-oscuro .suc-card{background:rgba(255,255,255,.05);border-color:rgba(var(--gold-rgb),.35);}
+body.modo-oscuro .suc-card-name{color:#F4EFE6;}
+body.modo-oscuro .suc-card-dir{color:rgba(244,239,230,.65);}
+body.modo-oscuro .suc-card-ico{background:rgba(var(--gold-rgb),.15);color:var(--gold);}
+body.modo-oscuro .suc-card-lbl{color:var(--gold);}
+@media(max-width:380px){.suc-card-btn span{display:none;}.suc-card-btn{padding:10px;}}
+`;
+      document.head.appendChild(st);
+    }
+    if (!chip){
+      chip = document.createElement('div');
+      chip.id = 'suc-chip';
+      const lista = document.getElementById('serviceList');
+      lista.parentNode.insertBefore(chip, document.getElementById('cert-link-wrap') || lista);
+    }
+    chip.innerHTML = `<div class="suc-card">
+        <div class="suc-card-ico"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+        <div class="suc-card-txt">
+          <span class="suc-card-lbl">Estás reservando en</span>
+          <span class="suc-card-name">${escSuc(suc.nombre)}</span>
+          ${suc.direccion ? `<span class="suc-card-dir">${escSuc(suc.direccion)}</span>` : ''}
+        </div>
+        <button type="button" class="suc-card-btn" onclick="abrirSelectorSucursal(true)" aria-label="Cambiar de sede">
+          <i class="ti ti-arrows-exchange" aria-hidden="true"></i><span>Cambiar sede</span>
+        </button>
+      </div>`;
+    // El link queda listo para compartir y la elección se recuerda en esta visita
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('s', suc.slug || 'principal');
+      window.history.replaceState(null, '', url.toString());
+      sessionStorage.setItem('annly_suc_' + (b.slug || ''), suc.slug || 'principal');
+    } catch(e){}
+  } else if (chip) chip.remove();
+}
+
+function abrirSelectorSucursal(puedeCerrar){
+  let ov = document.getElementById('ov-sucursal');
+  if (!ov){
+    ov = document.createElement('div');
+    ov.className = 'ov';
+    ov.id = 'ov-sucursal';
+    document.body.appendChild(ov);
+  }
+  const tarjetas = SUCURSALES_PUB.map(x => `
+    <div class="eval-card" style="cursor:pointer;margin-bottom:10px;${SUCURSAL_ACTUAL && SUCURSAL_ACTUAL.id === x.id ? 'border-color:var(--gold);' : ''}" onclick="elegirSucursalSitio('${x.id}')">
+      <div class="eval-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+      <div style="flex:1;min-width:0;">
+        <div class="eval-name">${escSuc(x.nombre)}</div>
+        <div class="eval-sub">${escSuc(x.direccion || (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.direccion) || '')}</div>
+      </div>
+      <div class="eval-right"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:16px;color:var(--gold-dark);"></i></div>
+    </div>`).join('');
+  ov.innerHTML = `<div class="panel">
+    <div class="phdr"><span class="ptitle">¿En qué sucursal quieres tu cita?</span>${puedeCerrar ? `<button class="pclose" onclick="closeOv('ov-sucursal')">×</button>` : ''}</div>
+    <div class="pbody">${tarjetas}</div>
+  </div>`;
+  if (!puedeCerrar) document.getElementById('serviceList').innerHTML = '';
+  openOv('ov-sucursal');
+}
+
+// Sucursal para los correos (solo si el negocio tiene más de una)
+function datosSucursalCorreo(){
+  if (!SUCURSAL_ACTUAL || SUCURSALES_PUB.length < 2) return {};
+  const b = window.ANNLY_BUSINESS || {};
+  const dir = SUCURSAL_ACTUAL.direccion || b.direccion || '';
+  return {
+    sucursal: SUCURSAL_ACTUAL.nombre,
+    sucursalDireccion: dir,
+    sucursalTelefono: SUCURSAL_ACTUAL.telefono || '',
+    sucursalMapsUrl: dir ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(dir + ', Panamá') : ''
+  };
+}
+
+function lineaSucursalResumen(){
+  if (!SUCURSAL_ACTUAL || SUCURSALES_PUB.length < 2) return '';
+  return `<strong>Sucursal:</strong> ${escSuc(SUCURSAL_ACTUAL.nombre)}${SUCURSAL_ACTUAL.direccion ? ' · ' + escSuc(SUCURSAL_ACTUAL.direccion) : ''}<br>`;
+}
+
+function elegirSucursalSitio(id){
+  const suc = SUCURSALES_PUB.find(x => x.id === id);
+  if (!suc) return;
+  closeOv('ov-sucursal');
+  aplicarSucursalSitio(suc, true);
+}
+
+// ===== CERTIFICADOS DE REGALO (sitio público) =====
+let CERT_MODULO_DISPONIBLE = false;
+let PAGOS_MODULO_DISPONIBLE = false;
+
+async function loadCertificadosModulo(){
+  try {
+    // Camino principal: función pública en Supabase (funciona sin sesión).
+    const codigos = await Sheets.getModulosPublicos();
+    if (codigos) {
+      CERT_MODULO_DISPONIBLE = codigos.includes('CERTIFICADOS');
+      PAGOS_MODULO_DISPONIBLE = codigos.includes('PAGOS');
+    } else {
+      // Respaldo (solo funciona con sesión de dueño/Platform Admin, por RLS).
+      const sus = await Sheets.getSuscripcionActual();
+      if (!sus) return;
+      // En trial, el acceso real queda limitado a lo que trae Basic —
+      // el plan/addon seleccionado no cuenta hasta que haya suscripción paga.
+      const enTrial = sus.status === 'trial';
+      const [features, activos] = await Promise.all([
+        enTrial ? Sheets.getFeaturesDePlanCode('BASIC') : Sheets.getFeaturesDelPlan(sus.plan.id),
+        enTrial ? Promise.resolve([]) : Sheets.getModulosActivos(sus.subscriptionId)
+      ]);
+      CERT_MODULO_DISPONIBLE = features.includes('CERTIFICADOS') || activos.includes('CERTIFICADOS');
+      PAGOS_MODULO_DISPONIBLE = features.includes('PAGOS') || activos.includes('PAGOS');
+    }
+  } catch(e) { CERT_MODULO_DISPONIBLE = false; PAGOS_MODULO_DISPONIBLE = false; }
+  const wrap = document.getElementById('cert-link-wrap');
+  if (wrap) wrap.style.display = CERT_MODULO_DISPONIBLE ? 'block' : 'none';
+  const subEl = document.getElementById('cert-card-sub');
+  if (subEl) subEl.textContent = 'Regala una experiencia ' + ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.nombre) || 'especial');
+}
+
+let certPagoTipo = 'yappy';
+
+function abrirModalComprarCertificado(){
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappy = !!(b.yappy_numero);
+  const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
+  certPagoTipo = tieneYappy ? 'yappy' : 'bank';
+
+  let pagoHtml = '';
+  if (tieneYappy || tieneBanco) {
+    let opciones = '';
+    if (tieneYappy) {
+      opciones += `<div class="pay-opt sel" id="cert-opt-yappy" onclick="selPagoCert('yappy')">
+        <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
+        <div class="pay-opt-sub">Envía el pago desde tu app Yappy.</div>
+        <div class="pay-detail">Envía el monto al número <strong>${b.yappy_numero}</strong> y copia el comprobante aquí abajo.</div>
+      </div>`;
+    }
+    if (tieneBanco) {
+      opciones += `<div class="pay-opt${tieneYappy?'':' sel'}" id="cert-opt-bank" onclick="selPagoCert('bank')">
+        <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">${b.banco_nombre}</span></div>
+        <div class="pay-opt-sub">Transferencia bancaria a cuenta ${(b.banco_tipo_cuenta||'').toLowerCase()}.</div>
+        <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}</div>
+      </div>`;
+    }
+    pagoHtml = `<div class="fg"><label class="flbl">Método de pago</label></div>${opciones}
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="cert-comprobante" placeholder="Ej: YAPPY-001"/></div>`;
+  } else {
+    pagoHtml = `<div class="note-box-warn"><i class="ti ti-whatsapp" aria-hidden="true"></i><span>Contáctanos por WhatsApp para coordinar el pago de tu certificado.</span></div>
+      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="cert-comprobante" placeholder="Ej: coordinado por WhatsApp"/></div>`;
+  }
+
+  document.getElementById('comprar-cert-body').innerHTML = `
+    <div class="fg"><label class="flbl">Monto del certificado ($)</label><input class="fi" id="cert-pub-monto" type="number" min="1" step="1" placeholder="30"/></div>
+    <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Tu nombre</label><input class="fi" id="cert-pub-comprador-nombre"/></div>
+      <div class="fg"><label class="flbl">Tu WhatsApp</label><input class="fi" id="cert-pub-comprador-telefono"/></div>
+    </div>
+    <div class="fg"><label class="flbl">Tu correo</label><input class="fi" id="cert-pub-comprador-correo" type="email" placeholder="tu@correo.com"/></div>
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">¿Para quién es? (opcional — déjalo vacío si es para ti)</span></div>
+    <div class="fg"><label class="flbl">Nombre de quien lo recibe</label><input class="fi" id="cert-pub-destinatario-nombre"/></div>
+    <div class="fg"><label class="flbl">Correo de quien lo recibe</label><input class="fi" id="cert-pub-destinatario-correo" type="email"/></div>
+    <div class="fg"><label class="flbl">Mensaje (opcional)</label><input class="fi" id="cert-pub-mensaje" placeholder="Disfruta este momento..."/></div>
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">3</span><span class="step-lbl">Pago</span></div>
+    ${pagoHtml}
+    <p id="cert-pub-msg" style="font-size:11px;color:#c0392b;margin-top:8px;min-height:14px;"></p>
+    <button class="btn-main" id="btnComprarCert" onclick="enviarCompraCertificado()">Enviar compra</button>`;
+
+  openOv('ov-comprar-certificado');
+}
+
+function selPagoCert(tipo){
+  certPagoTipo = tipo;
+  const optY = document.getElementById('cert-opt-yappy');
+  const optB = document.getElementById('cert-opt-bank');
+  if (optY) optY.classList.toggle('sel', tipo === 'yappy');
+  if (optB) optB.classList.toggle('sel', tipo === 'bank');
+}
+
+async function enviarCompraCertificado(){
+  const msgEl = document.getElementById('cert-pub-msg');
+  const monto = parseFloat(document.getElementById('cert-pub-monto').value);
+  const compradorNombre = document.getElementById('cert-pub-comprador-nombre').value.trim();
+  const compradorTelefono = document.getElementById('cert-pub-comprador-telefono').value.trim();
+  const compradorCorreo = document.getElementById('cert-pub-comprador-correo').value.trim();
+  const comprobanteEl = document.getElementById('cert-comprobante');
+  const comprobante = comprobanteEl ? comprobanteEl.value.trim() : '';
+
+  if (!monto || monto <= 0){ msgEl.textContent = 'Ingresa un monto válido.'; return; }
+  if (!compradorNombre || !compradorTelefono || !compradorCorreo){ msgEl.textContent = 'Completa tu nombre, WhatsApp y correo.'; return; }
+  if (!comprobante){ msgEl.textContent = 'Ingresa el número de comprobante del pago.'; return; }
+
+  msgEl.textContent = '';
+  const btn = document.getElementById('btnComprarCert');
+  if (btn){ btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  const vencimiento = new Date();
+  vencimiento.setMonth(vencimiento.getMonth() + 12);
+
+  try {
+    const destinatarioNombre = document.getElementById('cert-pub-destinatario-nombre').value.trim();
+    await Sheets.comprarCertificadoPublico({
+      monto, fechaVencimiento: vencimiento.toISOString().split('T')[0],
+      compradorNombre, compradorTelefono, compradorCorreo,
+      destinatarioNombre: destinatarioNombre || null,
+      destinatarioCorreo: document.getElementById('cert-pub-destinatario-correo').value.trim() || null,
+      mensaje: document.getElementById('cert-pub-mensaje').value.trim() || null,
+      comprobante, metodoPago: certPagoTipo
+    });
+    document.getElementById('comprar-cert-body').innerHTML = `
+      <div class="success-wrap">
+        <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+        <div class="s-title">¡Compra recibida!</div>
+        <div class="s-sub">Estamos confirmando tu pago — en cuanto quede validado te llegará el certificado por correo.</div>
+        <button class="btn-main" style="background:var(--gold-dark);color:#fff;" onclick="closeOv('ov-comprar-certificado')">Listo</button>
+      </div>`;
+  } catch(e) {
+    console.error('Error comprando certificado:', e);
+    msgEl.textContent = 'No se pudo procesar la compra. Intenta de nuevo.';
+    if (btn){ btn.disabled = false; btn.textContent = 'Enviar compra'; }
+  }
+}
+
 
 function getDefaultServices(){
   return [
@@ -341,7 +750,46 @@ function getDefaultServices(){
 }
 
 let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=300;
+let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
+let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={},horariosEmpleadosCache={};
+// Cita doble: un segundo profesional, para la 2da persona de la reserva
+let empleadoSeleccionado2=null,empleadoHorarioCache2=null;
 let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
+let certAplicado=null; // {id, codigo, saldoDisponible}
+let pagoRender=null, abonoMostrado=null;
+
+// Fuente única de los montos de la reserva (precio, cupón, certificado y abono).
+// Si el certificado cubre parte del servicio, el abono nunca puede ser mayor a lo
+// que aún queda por pagar; si lo cubre completo, no se cobra abono.
+// Un precio "no fijo" (sin precio, o con texto como "desde $25" o "consultar") no se conoce
+// hasta atender al cliente. En ese caso el certificado SOLO se valida al reservar: no se
+// descuenta nada hasta que el negocio complete la cita con el precio final.
+function precioNoFijo(svc){
+  return !svc || svc.price<=0 || !!(svc.precioTexto && String(svc.precioTexto).trim());
+}
+
+// Duración con espacio entre el número y la unidad ("4 - 6Horas" -> "4 - 6 Horas")
+function fmtDur(d){
+  return String(d==null?'':d).replace(/(\d)\s*(horas?|hrs?|min(?:utos)?)\b/gi,'$1 $2');
+}
+
+function calcularMontos(){
+  const precio=curSvc.price>0?curSvc.price:0;
+  const esConsultar=curSvc.price<=0;
+  const noFijo=precioNoFijo(curSvc);
+  const descuentoMonto=(!esConsultar&&cuponDescuentoPct>0)?precio*(cuponDescuentoPct/100):0;
+  const precioTrasCupon=Math.max(0,precio-descuentoMonto);
+  const certPorAplicar=!!certAplicado && noFijo;
+  const montoCert=(certAplicado && !noFijo)?Math.min(certAplicado.saldoDisponible,precioTrasCupon):0;
+  const precioFinal=Math.max(0,precioTrasCupon-montoCert);
+  const tieneAbono=!!(curSvc.esEval||curSvc.requiereAbono);
+  const abonoBase=curSvc.esEval?10:(curSvc.abonoMonto||10);
+  let abono=tieneAbono?abonoBase:0;
+  if(tieneAbono && !esConsultar && montoCert>0) abono=Math.min(abonoBase,precioFinal);
+  return {precio,esConsultar,noFijo,certPorAplicar,descuentoMonto,precioTrasCupon,montoCert,precioFinal,tieneAbono,abonoBase,abono};
+}
+let currentDayStr='';
+const CERT_DESDE_URL = new URLSearchParams(window.location.search).get('certificado') || '';
 
 function renderServices(){
   if(!SERVICES.length){
@@ -352,10 +800,17 @@ function renderServices(){
       </div>`;
     return;
   }
-  const knownOrder=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+  // Orden de las categorías: el que definió el negocio en su panel (las nuevas van al final).
+  // Sin un orden guardado se mantiene el clásico.
   const presentes=[...new Set(SERVICES.map(s=>s.cat).filter(Boolean))];
-  const extra=presentes.filter(c=>!knownOrder.includes(c));
-  const cats=[...knownOrder, ...extra];
+  const guardado=(window.ANNLY_BUSINESS && Array.isArray(window.ANNLY_BUSINESS.categorias_servicios)) ? window.ANNLY_BUSINESS.categorias_servicios : [];
+  let cats;
+  if(guardado.length){
+    cats=[...guardado.filter(c=>presentes.includes(c)), ...presentes.filter(c=>!guardado.includes(c))];
+  } else {
+    const knownOrder=['Básicos','Tratamientos','Alisados','Color','Extensiones'];
+    cats=[...knownOrder, ...presentes.filter(c=>!knownOrder.includes(c))];
+  }
   let html='';
   cats.forEach(cat=>{
     const svcs=SERVICES.filter(s=>s.cat===cat&&s.active);
@@ -404,20 +859,55 @@ function buildCard(s,icon,full=false){
     <div class="card-top"><div class="card-icon" style="${s.imagenUrl?'overflow:hidden;background:none;border:none;border-radius:12px;':''}">${iconHtml}</div><div class="card-name">${s.name}</div></div>
     <div class="card-desc">${s.desc}</div>
     <div class="card-sep"></div>
-    <div class="card-footer"><span class="card-price">${precio}</span><span class="card-dur">${s.dur}</span></div>
+    <div class="card-footer"><span class="card-price">${precio}</span><span class="card-dur">${fmtDur(s.dur)}</span></div>
     <div class="card-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
   </div>`;
+}
+
+// Datos del calendario de un servicio (profesionales + sus horarios + bloqueos), pedidos EN PARALELO.
+// Se empiezan a pedir al abrir el detalle, así al tocar "Agendar" ya están (o casi).
+const PRECARGA_CAL = {};
+function precargarCalendario(svcId){
+  const clave = svcId + '|' + (SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : '');
+  if (PRECARGA_CAL[clave]) return PRECARGA_CAL[clave];
+  const t0 = performance.now();
+  const p = (async () => {
+    const [bloq, emps] = await Promise.all([
+      Sheets.getBloqueos(SUCURSAL_ACTUAL ? SUCURSAL_ACTUAL.id : null).catch(() => ({ dias:[], horas:{} })),
+      Sheets.getEmpleadosParaServicio(svcId).catch(() => [])
+    ]);
+    let empleados = emps || [];
+    if (SUCURSAL_ACTUAL && Array.isArray(SUCURSAL_ACTUAL.empleados)) empleados = empleados.filter(e => SUCURSAL_ACTUAL.empleados.includes(e.id));
+    const horarios = {};
+    const hs = await Promise.all(empleados.map(e => horarioPropioSitio(e.id).catch(() => null)));
+    empleados.forEach((e, i) => { horarios[e.id] = hs[i]; });
+    console.log('[Annly] Calendario listo en', Math.round(performance.now() - t0), 'ms');
+    return { bloqueos: bloq || { dias:[], horas:{} }, empleados, horarios };
+  })();
+  PRECARGA_CAL[clave] = p;
+  // Vence en 60 s para no usar datos viejos (bloqueos u horarios recién cambiados)
+  setTimeout(() => { if (PRECARGA_CAL[clave] === p) delete PRECARGA_CAL[clave]; }, 60000);
+  p.catch(() => { delete PRECARGA_CAL[clave]; });
+  return p;
 }
 
 function openDetail(id, esPromo){
   curSvc=SERVICES.find(s=>s.id===id);
   if(!curSvc)return;
+  precargarCalendario(curSvc.id);
   if(esPromo && PROMO_DATA && PROMO_DATA.precioPromo){
     curSvc={...curSvc, price:parseFloat(PROMO_DATA.precioPromo), precioTexto:null, _promo:true, _precioOriginal:curSvc.price};
   }
   const icon=SVC_ICONS[curSvc.id]||'ti-star';
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
-  const incl=curSvc.includes.map(i=>`<div class="incl-item"><span class="incl-dot"></span>${i}</div>`).join('');
+  // Cada ítem: punto alineado con la primera línea; lo que va antes del guion largo, en negrita.
+  // Si los textos son largos, la lista va en una sola columna para que se lea ordenada.
+  const inclLargo=curSvc.includes.some(i=>String(i).length>34);
+  const incl=curSvc.includes.map(i=>{
+    const partes=String(i).split(' — ');
+    const texto=partes.length>1 ? `<strong>${partes[0]}</strong> — ${partes.slice(1).join(' — ')}` : i;
+    return `<div class="incl-item"><span class="incl-dot"></span><span>${texto}</span></div>`;
+  }).join('');
 
   let extraBox='';
   if(curSvc.esEval){
@@ -444,13 +934,13 @@ function openDetail(id, esPromo){
         <div class="svc-banner-name">${curSvc.name}</div>
         <div class="svc-banner-meta">
           <span class="svc-banner-price">${curSvc._promo?`<span style="color:#aaa;text-decoration:line-through;font-weight:400;">$${curSvc._precioOriginal.toFixed(2)}</span> <span style="color:#D95F2B;">${precio}</span> <span style="background:#D95F2B;color:#fff;font-size:9px;padding:2px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;">PROMO</span>`:`${precio}${curSvc.esEval?' · descontable':''}`}</span>
-          <span class="svc-banner-dur">${curSvc.dur}</span>
+          <span class="svc-banner-dur">${fmtDur(curSvc.dur)}</span>
         </div>
       </div>
     </div>
     <p class="svc-desc">${curSvc.desc}</p>
     <p class="incl-title">Incluye</p>
-    <div class="incl-grid">${incl}</div>
+    <div class="incl-grid${inclLargo?' incl-uno':''}">${incl}</div>
     ${extraBox}
     <button class="btn-main" onclick="openCal()">Agendar este servicio</button>
     <button class="btn-ghost" onclick="closeOv('ov-detail')">Volver</button>`;
@@ -464,23 +954,197 @@ async function openCal(){
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
   document.getElementById('cal-svc-info').innerHTML=`
     <span class="svc-pill-name">${curSvc.name}</span>
-    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${curSvc.dur}</span></div>`;
+    <div class="svc-pill-meta"><span class="svc-pill-price">${curSvc.price>0?'$'+curSvc.price.toFixed(2):curSvc.precioTexto||'A consultar'}</span><span class="svc-pill-dur">${fmtDur(curSvc.dur)}</span></div>`
+    + (SUCURSAL_ACTUAL && SUCURSALES_PUB.length > 1 ? `<div style="width:100%;font-size:11px;opacity:.85;margin-top:4px;"><i class="ti ti-map-pin" aria-hidden="true"></i> ${escSuc(SUCURSAL_ACTUAL.nombre)}${SUCURSAL_ACTUAL.direccion ? ' · ' + escSuc(SUCURSAL_ACTUAL.direccion) : ''}</div>` : '');
   document.getElementById('timeSec').style.display='none';
   document.getElementById('btnContinue').disabled=true;
 
-  // Refresca bloqueos justo antes de mostrar el calendario
-  try { await loadBloqueos(); } catch(e){ console.error(e); }
+  // El calendario se abre YA con un aviso de carga; los datos llegan de la precarga
+  const sel = document.getElementById('cal-empleado-sel');
+  if (sel){ sel.style.display='none'; sel.innerHTML=''; }
+  document.getElementById('calGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:#999;font-size:12px;"><i class="ti ti-loader-2" style="display:inline-block;animation:annlyGiro 1s linear infinite;font-size:18px;"></i><br>Cargando disponibilidad…</div>';
+  openOv('ov-cal');
+  const svcAbierto = curSvc.id;
+
+  let datos;
+  try { datos = await precargarCalendario(curSvc.id); }
+  catch(e){ console.error(e); datos = { bloqueos:{ dias:[], horas:{} }, empleados:[], horarios:{} }; }
+  if (!curSvc || curSvc.id !== svcAbierto) return; // cambió de servicio mientras cargaba
+
+  BLOQUEOS = datos.bloqueos;
+  if (!BLOQUEOS.dias) BLOQUEOS.dias = [];
+  if (!BLOQUEOS.horas) BLOQUEOS.horas = {};
+  empleadosDelServicio = datos.empleados.slice();
+  horariosEmpleadosCache = {};
+  if (empleadosDelServicio.length > 1) empleadosDelServicio.forEach(e => { horariosEmpleadosCache[e.id] = datos.horarios[e.id] || null; });
+
+  if (curSvc.esDoble) {
+    // Cita doble: siempre se elige explícito para cada persona, nunca "cualquiera"
+    modoCualquiera = false;
+    empleadoSeleccionado = null; empleadoSeleccionado2 = null;
+    empleadoHorarioCache = null; empleadoHorarioCache2 = null;
+  } else {
+    modoCualquiera = empleadosDelServicio.length > 1;
+    empleadoSeleccionado = empleadosDelServicio.length === 1 ? empleadosDelServicio[0].id : null;
+    empleadoHorarioCache = empleadosDelServicio.length === 1 ? (datos.horarios[empleadoSeleccionado] || null) : null;
+  }
+  renderSelectorEmpleado();
 
   renderCal();
-  openOv('ov-cal');
 }
-function bloqueDelDia(dow){ return dow===0 ? 'dom' : (dow===6 ? 'sab' : 'lv'); }
+
+function escTextoEmp(t){
+  return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
+// Presentación del profesional (la que el negocio escribió en su ficha)
+// "11:00" -> "11:00 AM"
+function horaLegible(t){
+  const [h, m] = String(t || '0:00').split(':').map(Number);
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return hh + ':' + String(m || 0).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+
+// Días y horas que atiende un profesional con horario propio, agrupando días seguidos con la misma hora.
+// Ej.: "Mar a Vie · 11:00 AM – 5:00 PM"
+function resumenHorarioEmpleado(h){
+  if (!h) return '';
+  const orden = [['Lun',1],['Mar',2],['Mié',3],['Jue',4],['Vie',5],['Sáb',6],['Dom',0]];
+  const dias = orden.map(([nombre, dow]) => {
+    const c = cfgDia(h, dow);
+    return (!c.cerrado && c.abre && c.cierra) ? { nombre, rango: horaLegible(c.abre) + ' – ' + horaLegible(c.cierra) } : null;
+  });
+  const grupos = [];
+  dias.forEach((d, i) => {
+    if (!d) return;
+    const ant = grupos[grupos.length - 1];
+    if (ant && ant.fin === i - 1 && ant.rango === d.rango) { ant.fin = i; ant.hasta = d.nombre; }
+    else grupos.push({ desde: d.nombre, hasta: d.nombre, fin: i, rango: d.rango });
+  });
+  if (!grupos.length) return '';
+  return grupos.map(g => (g.desde === g.hasta ? g.desde : g.desde + ' a ' + g.hasta) + ' · ' + g.rango).join(' | ');
+}
+
+// Presentación del profesional (la que el negocio escribió en su ficha) y su horario asignado
+function bioEmpleadoHtml(e, etiqueta, horario){
+  const horarioTxt = resumenHorarioEmpleado(horario);
+  if (!e || (!e.bio && !e.fotoUrl && !horarioTxt)) return '';
+  const inicial = escTextoEmp((e.nombre || '?').trim().charAt(0).toUpperCase());
+  const foto = e.fotoUrl
+    ? `<img class="emp-bio-foto" src="${escTextoEmp(e.fotoUrl)}" alt=""/>`
+    : `<div class="emp-bio-foto emp-bio-ini">${inicial}</div>`;
+  return `<div class="emp-bio">
+    <div class="emp-bio-head">${foto}<div class="emp-bio-name">${etiqueta} ${escTextoEmp(e.nombre)}</div></div>
+    ${e.bio ? `<p>${escTextoEmp(e.bio)}</p>` : ''}
+    ${horarioTxt ? `<div class="emp-bio-horario"><i class="ti ti-clock" aria-hidden="true"></i> Atiende: ${escTextoEmp(horarioTxt)}</div>` : ''}
+  </div>`;
+}
+
+function renderSelectorEmpleado(){
+  const cont=document.getElementById('cal-empleado-sel');
+  if (!cont) return;
+  if (curSvc && curSvc.esDoble){ renderSelectorEmpleadoDoble(); return; }
+  if (empleadosDelServicio.length <= 1){
+    // Con un solo profesional no se pregunta "¿con quién?", pero si tiene presentación se muestra
+    const unico = empleadosDelServicio[0];
+    const tarjeta = unico ? bioEmpleadoHtml(unico, 'Tu profesional:', empleadoHorarioCache) : '';
+    if (tarjeta){ cont.style.display='block'; cont.innerHTML = tarjeta; }
+    else { cont.style.display='none'; cont.innerHTML=''; }
+    return;
+  }
+  cont.style.display='block';
+  const elegido = (!modoCualquiera && empleadoSeleccionado) ? empleadosDelServicio.find(e => e.id===empleadoSeleccionado) : null;
+  const pills = empleadosDelServicio.map(e => `
+    <div class="emp-pill${(!modoCualquiera && empleadoSeleccionado===e.id)?' sel':''}" onclick="elegirEmpleado('${e.id}')">
+      <div class="emp-pill-av">${e.fotoUrl?`<img src="${e.fotoUrl}"/>`:`<span>${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`}</div>
+      <span>${e.nombre}</span>
+    </div>`).join('');
+  cont.innerHTML = `
+    <p class="emp-sel-lbl">¿Con quién?</p>
+    <div class="emp-pill-row">
+      <div class="emp-pill${modoCualquiera?' sel':''}" onclick="elegirEmpleado(null)">
+        <div class="emp-pill-av"><i class="ti ti-users" aria-hidden="true"></i></div>
+        <span>Cualquiera</span>
+      </div>
+      ${pills}
+    </div>
+    ${bioEmpleadoHtml(elegido, 'Sobre', empleadoHorarioCache)}`;
+}
+
+// Cita doble: 2 selectores — uno por persona — sin permitir elegir al mismo profesional en los 2
+function renderSelectorEmpleadoDoble(){
+  const cont=document.getElementById('cal-empleado-sel');
+  if (!cont) return;
+  cont.style.display='block';
+  const pill=(e,sel,cual)=>`
+    <div class="emp-pill${sel?' sel':''}" onclick="elegirEmpleadoDoble(${cual},'${e.id}')">
+      <div class="emp-pill-av">${e.fotoUrl?`<img src="${e.fotoUrl}"/>`:`<span>${(e.nombre||'?').trim().charAt(0).toUpperCase()}</span>`}</div>
+      <span>${e.nombre}</span>
+    </div>`;
+  const pillsA = empleadosDelServicio.filter(e=>e.id!==empleadoSeleccionado2).map(e=>pill(e, empleadoSeleccionado===e.id, 1)).join('');
+  const pillsB = empleadosDelServicio.filter(e=>e.id!==empleadoSeleccionado).map(e=>pill(e, empleadoSeleccionado2===e.id, 2)).join('');
+  cont.innerHTML = `
+    <p class="emp-sel-lbl">Profesional para ti</p>
+    <div class="emp-pill-row">${pillsA}</div>
+    <p class="emp-sel-lbl" style="margin-top:10px;">Profesional para tu acompañante</p>
+    <div class="emp-pill-row">${pillsB}</div>
+    ${(!empleadoSeleccionado||!empleadoSeleccionado2)?'<p style="font-size:11px;color:#aaa;margin-top:8px;">Elige un profesional distinto para cada persona para ver los horarios disponibles.</p>':''}`;
+}
+
+async function elegirEmpleadoDoble(cual, id){
+  if (cual===1){ empleadoSeleccionado=id; try{ empleadoHorarioCache=await horarioPropioSitio(id);}catch(e){ empleadoHorarioCache=null; } }
+  else { empleadoSeleccionado2=id; try{ empleadoHorarioCache2=await horarioPropioSitio(id);}catch(e){ empleadoHorarioCache2=null; } }
+  renderSelectorEmpleadoDoble();
+  renderCal();
+  if (selectedDay) selDay2(selectedDay);
+}
+
+async function elegirEmpleado(id){
+  if (id === null){ modoCualquiera = true; empleadoSeleccionado = null; empleadoHorarioCache = null; }
+  else {
+    modoCualquiera = false; empleadoSeleccionado = id;
+    try { empleadoHorarioCache = await horarioPropioSitio(id); } catch(e){ empleadoHorarioCache = null; }
+  }
+  renderSelectorEmpleado();
+  renderCal();
+  if (selectedDay) selDay2(selectedDay);
+}
+// Reglas de horarios: viven en horarios.js (compartido con el panel). Aquí solo se usan.
+const HOR = window.AnnlyHorarios;
+function bloqueDelDia(dow, horario){ return HOR.bloqueDelDia(dow, horario); }
+function cfgDia(h, dow){ return HOR.cfgDia(h, dow); }
+
+// Qué horarios cuentan para el calendario según cómo se está reservando:
+// cita doble (los 2 deben estar: intersección), "cualquiera disponible" (basta uno: unión)
+// o un profesional / la sucursal.
+function horariosParaCalendario(){
+  if (curSvc && curSvc.esDoble){
+    if (!empleadoSeleccionado || !empleadoSeleccionado2) return null; // hasta elegir a los 2 no hay calendario
+    return { horarios: [horarioDeEmpleado(empleadoSeleccionado), horarioDeEmpleado(empleadoSeleccionado2)], modoDia: 'todos', modoRango: 'interseccion' };
+  }
+  if (modoCualquiera && empleadosDelServicio.length > 1){
+    return { horarios: empleadosDelServicio.map(e => horarioDeEmpleado(e.id)), modoDia: 'alguno', modoRango: 'union' };
+  }
+  const h = (!modoCualquiera && empleadoHorarioCache) ? empleadoHorarioCache : horarioBaseSitio();
+  return { horarios: [h], modoDia: 'todos', modoRango: 'interseccion' };
+}
+
+function horarioDeEmpleado(id){
+  return horariosEmpleadosCache[id] || horarioBaseSitio() || null;
+}
+
+// ¿Este profesional trabaja a esa hora? (según su propio horario o, si no tiene, el del negocio)
+function empleadoTrabajaEn(id, dow, slotKey){
+  const c = cfgDia(horarioDeEmpleado(id), dow);
+  if (c.cerrado || !c.abre || !c.cierra) return false;
+  const m = timeToMin(slotKey);
+  return m >= timeToMin(c.abre) && m <= timeToMin(c.cierra);
+}
 
 function diaCerrado(dow){
-  const h = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado) || null;
-  if (!h) return dow===0; // si el negocio no tiene horario configurado todavía, solo domingo cerrado por defecto
-  const bloque = h[bloqueDelDia(dow)];
-  return !bloque || !!bloque.cerrado;
+  const cfg = horariosParaCalendario();
+  if (!cfg) return true;
+  return HOR.diaCerrado(cfg.horarios, dow, cfg.modoDia);
 }
 
 function renderCal(){
@@ -510,48 +1174,15 @@ function renderCal(){
   document.getElementById('calGrid').innerHTML=h;
 }
 
-function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function timeToMin(t){ return HOR.timeToMin(t); }
 
 function genSlots(){
-  const dt=new Date(calY,calM,selectedDay);
-  const dow=dt.getDay();
-  const bloqueCfg=(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.horario_estructurado
-    && window.ANNLY_BUSINESS.horario_estructurado[bloqueDelDia(dow)]) || null;
-
-  let hIni=8, mIni=0, hFin=16, mFin=0; // respaldo si el negocio no tiene horario configurado
-  if (bloqueCfg && !bloqueCfg.cerrado && bloqueCfg.abre && bloqueCfg.cierra) {
-    [hIni,mIni]=bloqueCfg.abre.split(':').map(Number);
-    [hFin,mFin]=bloqueCfg.cierra.split(':').map(Number);
-  } else if (bloqueCfg && bloqueCfg.cerrado) {
-    return []; // el negocio está cerrado ese día — sin horarios disponibles
-  }
-
-  const slots=[];
-  let h=hIni,m=mIni;
-  while(h<hFin||(h===hFin&&m===mFin)){
-    const key=h+':'+(m===0?'00':'30');
-    const lbl=(h>12?h-12:h)+':'+(m===0?'00':'30')+(h>=12?' PM':' AM');
-    slots.push({key,lbl});
-    m+=30; if(m>=60){m=0;h++;}
-  }
-  const now=new Date();
-  const esHoy=selectedDay===now.getDate()&&calM===now.getMonth()&&calY===now.getFullYear();
-  if(esHoy){
-    const nowMin=now.getHours()*60+now.getMinutes();
-    return slots.filter(s=>timeToMin(s.key)>nowMin);
-  }
-  return slots;
+  const cfg = horariosParaCalendario();
+  if (!cfg) return [];
+  return HOR.generarSlots({ horarios: cfg.horarios, fecha: new Date(calY, calM, selectedDay), modo: cfg.modoRango });
 }
 
-function isBlocked(slotKey,citas,durSvc){
-  const slotMin=timeToMin(slotKey);
-  for(const c of citas){
-    const occMin=timeToMin(c.hora);
-    const occDur=parseInt(c.duracion)||60;
-    if(slotMin<occMin+occDur && slotMin+durSvc>occMin) return true;
-  }
-  return false;
-}
+function isBlocked(slotKey, citas, durSvc){ return HOR.solapa(slotKey, citas, durSvc); }
 
 async function selDay2(d){
   selectedDay=d; selTime=null;
@@ -560,16 +1191,30 @@ async function selDay2(d){
   document.getElementById('btnContinue').disabled=true;
   document.getElementById('timeGrid').innerHTML='<p style="color:#aaa;font-size:11px;grid-column:span 4;text-align:center;padding:.5rem;">Consultando disponibilidad...</p>';
   const fechaStr=d+' de '+MESES[calM]+' '+calY;
-  let citasOcupadas=[];
   try{
-    citasOcupadas=await Sheets.getHorasOcupadas(fechaStr);
-  }catch(e){citasOcupadas=[];}
-  window._citasOcupadas=citasOcupadas;
+    if (curSvc && curSvc.esDoble){
+      const [ocA, ocB] = await Promise.all([
+        Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado).catch(()=>[]),
+        Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado2).catch(()=>[])
+      ]);
+      ocupadosPorEmpleadoCache = {};
+      ocupadosPorEmpleadoCache[empleadoSeleccionado]=ocA;
+      ocupadosPorEmpleadoCache[empleadoSeleccionado2]=ocB;
+      window._citasOcupadas = null;
+    } else if (modoCualquiera && empleadosDelServicio.length > 1){
+      const resultados = await Promise.all(empleadosDelServicio.map(e => Sheets.getHorasOcupadas(fechaStr, e.id).catch(()=>[])));
+      ocupadosPorEmpleadoCache = {};
+      empleadosDelServicio.forEach((e,i) => { ocupadosPorEmpleadoCache[e.id] = resultados[i]; });
+      window._citasOcupadas = null;
+    } else {
+      window._citasOcupadas = await Sheets.getHorasOcupadas(fechaStr, empleadoSeleccionado);
+      ocupadosPorEmpleadoCache = {};
+    }
+  }catch(e){ window._citasOcupadas=[]; ocupadosPorEmpleadoCache={}; }
   renderTimes();
 }
 
 function renderTimes(){
-  const citas=window._citasOcupadas||[];
   const durSvc=curSvc.durMin||60;
   const slots=genSlots();
   const grid=document.getElementById('timeGrid');
@@ -577,7 +1222,17 @@ function renderTimes(){
   const horasBloqueadas=BLOQUEOS.horas[iso]||[];
   grid.innerHTML='';
   slots.forEach(({key,lbl})=>{
-    const ocupada=isBlocked(key,citas,durSvc);
+    let ocupada;
+    if (curSvc && curSvc.esDoble){
+      ocupada = isBlocked(key, ocupadosPorEmpleadoCache[empleadoSeleccionado]||[], durSvc) || isBlocked(key, ocupadosPorEmpleadoCache[empleadoSeleccionado2]||[], durSvc);
+    } else if (modoCualquiera && empleadosDelServicio.length > 1){
+      // Solo se ve "ocupado" si TODOS los profesionales que hacen el servicio están ocupados
+      // o no trabajan a esa hora
+      const dowSlot = new Date(calY,calM,selectedDay).getDay();
+      ocupada = empleadosDelServicio.every(e => !empleadoTrabajaEn(e.id, dowSlot, key) || isBlocked(key, ocupadosPorEmpleadoCache[e.id]||[], durSvc));
+    } else {
+      ocupada = isBlocked(key, window._citasOcupadas||[], durSvc);
+    }
     const bloqueada=horasBloqueadas.includes(key);
     const blocked=ocupada||bloqueada;
     const isSel=selTime===key;
@@ -595,6 +1250,18 @@ function renderTimes(){
   });
 }
 
+// En modo "cualquiera", decide a quién le toca realmente la cita: el primer
+// empleado (de los que hacen el servicio) que esté libre a la hora elegida.
+function empleadoAsignadoFinal(){
+  if (!modoCualquiera) return empleadoSeleccionado;
+  const durSvc=curSvc.durMin||60;
+  const dowSel = new Date(calY,calM,selectedDay).getDay();
+  for (const e of empleadosDelServicio){
+    if (empleadoTrabajaEn(e.id, dowSel, selTime) && !isBlocked(selTime, ocupadosPorEmpleadoCache[e.id]||[], durSvc)) return e.id;
+  }
+  return empleadosDelServicio[0] ? empleadosDelServicio[0].id : null;
+}
+
 function chMo(d){
   calM+=d;
   if(calM<0){calM=11;calY--;}
@@ -608,7 +1275,9 @@ function chMo(d){
 function goForm(){
   closeOv('ov-cal');
   cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+  certAplicado=null;
   const dayStr=`${selectedDay} de ${MESES[calM]} ${calY}`;
+  currentDayStr=dayStr;
   timerSecs=300;
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
 
@@ -619,31 +1288,35 @@ function goForm(){
 
   const b = window.ANNLY_BUSINESS || {};
   const tieneYappy = !!(b.yappy_numero);
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial) && PAGOS_MODULO_DISPONIBLE;
   const tieneBanco = !!(b.banco_nombre && b.banco_numero_cuenta && b.banco_titular);
-  pagoTipo = tieneYappy ? 'yappy' : 'bank';
+  pagoTipo = (tieneYappy || tieneYappyComercial) ? 'yappy' : 'bank';
+  yappyAbonoListoInicializado=false;
 
+  const armarPagoSection=(montoAbono)=>{
   let pagoSection='';
   if(tieneAbono){
     let opcionesHtml = '';
-    if(tieneYappy){
+    if(tieneYappy || tieneYappyComercial){
       opcionesHtml += `
       <div class="pay-opt sel" id="opt-yappy" onclick="selPago('yappy')">
         <div><span class="pay-badge badge-yappy">Yappy</span><span class="pay-opt-title">Pagar con Yappy</span></div>
-        <div class="pay-opt-sub">Envía el pago desde tu app Yappy.</div>
-        <div class="pay-detail">Abre tu app Yappy y envía <strong>$${montoAbono.toFixed(2)}</strong> al número <strong>${b.yappy_numero}</strong>. Copia el número de comprobante aquí abajo.</div>
+        <div class="pay-opt-sub">${tieneYappyComercial?'Pago rápido y seguro desde tu app Yappy. Tu cita se confirma automáticamente al completar el pago.':'Envía el pago desde tu app Yappy.'}</div>
+        ${tieneYappyComercial?'':`<div class="pay-detail">Abre tu app Yappy y envía <strong>$${montoAbono.toFixed(2)}</strong> al número <strong>${b.yappy_numero}</strong>. Copia el número de comprobante aquí abajo.</div>`}
       </div>`;
     }
     if(tieneBanco){
       opcionesHtml += `
-      <div class="pay-opt${tieneYappy?'':' sel'}" id="opt-bank" onclick="selPago('bank')">
+      <div class="pay-opt${(tieneYappy||tieneYappyComercial)?'':' sel'}" id="opt-bank" onclick="selPago('bank')">
         <div><span class="pay-badge badge-bank">Transferencia</span><span class="pay-opt-title">${b.banco_nombre}</span></div>
         <div class="pay-opt-sub">Transferencia bancaria a cuenta ${(b.banco_tipo_cuenta||'').toLowerCase()}.</div>
         <div class="pay-detail"><strong>Banco:</strong> ${b.banco_nombre}<br>${b.banco_tipo_cuenta?`<strong>Tipo:</strong> ${b.banco_tipo_cuenta}<br>`:''}<strong>Cuenta:</strong> ${b.banco_numero_cuenta}<br><strong>Titular:</strong> ${b.banco_titular}<br><strong>Monto:</strong> $${montoAbono.toFixed(2)}<br><span style="color:#e74c3c;font-size:11px;">Incluye tu nombre en la referencia</span></div>
       </div>`;
     }
-    if(!tieneYappy && !tieneBanco){
+    const stepAbono = curSvc.esDoble ? 3 : 2;
+    if(!tieneYappy && !tieneYappyComercial && !tieneBanco){
       pagoSection=`
-      <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">${stepAbono}</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
       <div class="note-box-warn">
         <i class="ti ti-whatsapp" aria-hidden="true"></i>
         <span>Este servicio requiere un abono. Contáctanos por WhatsApp para coordinar el pago antes de confirmar tu cita.</span>
@@ -651,15 +1324,23 @@ function goForm(){
       <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: coordinado por WhatsApp"/></div>`;
     } else {
       pagoSection=`
-      <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
+      <div class="step-row" style="margin-top:1rem;"><span class="stepn">${stepAbono}</span><span class="step-lbl">Abono $${montoAbono.toFixed(2)} — ${textoTipo}</span></div>
       <div class="timer-box" id="timerBox">
         <div class="timer-val" id="timerVal">5:00</div>
         <div class="timer-lbl">Tienes <strong>5 minutos</strong> para completar el pago.<br>Si no se confirma, el cupo se libera.</div>
       </div>
       ${opcionesHtml}
-      <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
-      ${tieneYappy?`<button class="btn-yappy" id="btnYappy" onclick="copiarYappy()">Copiar número de Yappy</button>`:''}
-      <button class="btn-transfer${tieneYappy?' hidden':' visible'}" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>`;
+      ${tieneYappyComercial ? `
+      <div id="yappyRealWrap" style="margin-top:.875rem;">
+        <div class="fg"><label class="flbl">Tu número Yappy (sin +507)</label><input class="fi" id="fAliasYappy" placeholder="6XXXXXXX"></div>
+        <p id="yappyRealMsg" style="font-size:12px;margin:6px 0 10px;min-height:14px;"></p>
+        <btn-yappy id="btnYappyReal" theme="darkBlue" rounded="true"></btn-yappy>
+      </div>` : ''}
+      <div id="yappyManualWrap" class="${tieneYappyComercial?'hidden':''}">
+        <div class="fg" style="margin-top:.875rem;"><label class="flbl">N° de comprobante / referencia</label><input class="fi" id="fref" placeholder="Ej: YAPPY-001 o número de transacción"/></div>
+        ${(tieneYappy&&!tieneYappyComercial)?`<button class="btn-yappy" id="btnYappy" onclick="copiarYappy()">Copiar número de Yappy</button>`:''}
+        <button class="btn-transfer${(tieneYappy||tieneYappyComercial)?' hidden':' visible'}" id="btnTransfer" onclick="copiarCuenta()">Copiar número de cuenta</button>
+      </div>`;
     }
   } else {
     pagoSection=`
@@ -672,11 +1353,16 @@ function goForm(){
         <span>Política de cancelación: avisa con al menos <strong>24 horas</strong> de anticipación por WhatsApp.</span>
       </div>`;
   }
+  return pagoSection;
+  };
+  pagoRender=armarPagoSection;
+  abonoMostrado=montoAbono;
+  const pagoSection=armarPagoSection(montoAbono);
 
   document.getElementById('form-body').innerHTML=`
-    <div style="background:#3A3A3A;border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;">
-      <div style="font-size:15px;font-weight:700;color:var(--gold);font-family:var(--font-heading);">${curSvc.name}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;">${dayStr} · ${selTime} · ${curSvc.dur}</div>
+    <div class="svc-resumen">
+      <div class="svc-resumen-name">${curSvc.name}</div>
+      <div class="svc-resumen-meta">${dayStr} · ${selTime} · ${fmtDur(curSvc.dur)}</div>
     </div>
     <div class="step-row"><span class="stepn">1</span><span class="step-lbl">Tus datos</span></div>
     <div class="frow">
@@ -685,19 +1371,103 @@ function goForm(){
     </div>
     <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe" placeholder="tu@correo.com"/></div>
     <div class="fg"><label class="flbl">Nota (opcional)</label><input class="fi" id="fnote" placeholder="Alguna preferencia o detalle que debamos saber..."/></div>
+    ${curSvc.esDoble ? `
+    <div class="step-row" style="margin-top:1rem;"><span class="stepn">2</span><span class="step-lbl">Datos de tu acompañante</span></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="fn2" placeholder="Nombre de tu acompañante"/></div>
+      <div class="fg"><label class="flbl">WhatsApp</label><input class="fi" id="fp2" placeholder="+507..."/></div>
+    </div>
+    <div class="fg"><label class="flbl">Correo</label><input class="fi" id="fe2" placeholder="correo@acompañante.com"/></div>` : `
     <div class="fg">
       <label class="flbl">¿Tienes un cupón de descuento?</label>
       <div style="display:flex;gap:8px;">
         <input class="fi" id="fcupon" placeholder="Ej: RUL-4F2A" style="flex:1;text-transform:uppercase;">
-        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:#2E2B2B;color:#C9A96E;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="cuponMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>
-    ${pagoSection}
-    <button class="btn-main" id="btnConfirmar" onclick="confirmar('${dayStr}')">Confirmar mi cita</button>`;
+    <div class="fg">
+      <label class="flbl">¿Tienes un certificado de regalo?</label>
+      <div style="display:flex;gap:8px;">
+        <input class="fi" id="fcert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;">
+        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+      </div>
+      <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
+    </div>`}
+    <div id="pagoWrap">${pagoSection}</div>
+    <button class="btn-main" id="btnConfirmar" onclick="${curSvc.esDoble ? `confirmarDoble('${dayStr}')` : `confirmar('${dayStr}')`}" style="${(tieneAbono&&tieneYappyComercial)?'display:none;':''}">Confirmar mi cita</button>`;
 
+  if(tieneAbono && tieneYappyComercial) selPago('yappy');
   if(tieneAbono) startTimer();
+  if(CERT_DESDE_URL){
+    document.getElementById('fcert').value = CERT_DESDE_URL;
+    aplicarCertificadoCodigo();
+  }
   openOv('ov-form');
+}
+
+async function aplicarCertificadoCodigo(){
+  const input=document.getElementById('fcert');
+  const msgEl=document.getElementById('certMsg');
+  const codigo=input.value.trim();
+  if(!codigo){ msgEl.textContent=''; certAplicado=null; actualizarPagoPorCert(); return; }
+  msgEl.style.color='#999';
+  msgEl.textContent='Verificando...';
+  const res=await Sheets.validarCertificado(codigo);
+  if(res.valido){
+    certAplicado={id:res.certificateId, codigo:res.codigo, saldoDisponible:res.saldoDisponible, unSoloUso:!!res.unSoloUso};
+    msgEl.style.color='#3a7a3a';
+    const _m=calcularMontos();
+    if(_m.noFijo){
+      // Precio no fijo: el certificado solo se valida; se descuenta el día de la cita
+      msgEl.textContent=res.unSoloUso
+        ? `✓ Certificado de cortesía válido: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso. Como el precio de este servicio no es fijo, no se descuenta ahora: se aplicará el día de tu cita, cuando se confirme el precio.`
+        : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles. Como el precio de este servicio no es fijo, no se descuenta ahora: se aplicará el día de tu cita, cuando se confirme el precio.`;
+    } else {
+      msgEl.textContent=res.unSoloUso
+        ? `✓ Certificado de cortesía: $${res.saldoDisponible.toFixed(2)}. Es de un solo uso: se aplica en esta cita y no queda saldo.`
+        : `✓ Certificado válido: $${res.saldoDisponible.toFixed(2)} disponibles.`;
+      if(_m.tieneAbono && !_m.esConsultar && _m.abono<=0) msgEl.textContent+=' Cubre tu servicio: no necesitas pagar abono.';
+    }
+  } else {
+    certAplicado=null;
+    msgEl.style.color='#c0392b';
+    const motivos={codigo_no_encontrado:'Código no válido.',codigo_vacio:'Ingresa un código.',sin_saldo:'Este certificado ya no tiene saldo.',vencido:'Este certificado está vencido.',pendiente_pago:'Este certificado aún no ha sido activado.',cancelado:'Este certificado fue cancelado.'};
+    msgEl.textContent=motivos[res.motivo]||'Código no válido.';
+  }
+  actualizarPagoPorCert();
+}
+
+// Cuando cambia el certificado (o el cupón) se recalcula el abono y se vuelve a
+// dibujar la sección de pago: si el certificado cubre todo, no hay abono que pagar.
+function actualizarPagoPorCert(){
+  if(!curSvc || !pagoRender) return;
+  const m=calcularMontos();
+  if(!m.tieneAbono) return;
+  const wrap=document.getElementById('pagoWrap');
+  if(!wrap || abonoMostrado===m.abono) return;
+  const antes=abonoMostrado;
+  abonoMostrado=m.abono;
+  const btnC=document.getElementById('btnConfirmar');
+  if(m.abono<=0){
+    if(timerInt) clearInterval(timerInt);
+    wrap.innerHTML=`
+      <div class="note-box" style="margin-top:.875rem;">
+        <i class="ti ti-gift" aria-hidden="true"></i>
+        <span>Tu certificado cubre este servicio: <strong>no necesitas pagar abono</strong>.</span>
+      </div>`;
+    if(btnC){ btnC.style.display=''; btnC.disabled=false; btnC.textContent='Confirmar mi cita'; }
+    return;
+  }
+  const refPrev=(document.getElementById('fref')||{}).value||'';
+  const aliasPrev=(document.getElementById('fAliasYappy')||{}).value||'';
+  wrap.innerHTML=pagoRender(m.abono);
+  const refEl=document.getElementById('fref'); if(refEl) refEl.value=refPrev;
+  const aliasEl=document.getElementById('fAliasYappy'); if(aliasEl) aliasEl.value=aliasPrev;
+  yappyAbonoListoInicializado=false;
+  selPago(pagoTipo);
+  if(btnC){ btnC.disabled=false; btnC.textContent='Confirmar mi cita'; }
+  if(antes<=0) startTimer();
 }
 
 
@@ -705,7 +1475,7 @@ async function aplicarCupon(){
   const input=document.getElementById('fcupon');
   const msgEl=document.getElementById('cuponMsg');
   const codigo=input.value.trim();
-  if(!codigo){ msgEl.textContent=''; cuponAplicado=null; cuponDescuentoPct=0; return; }
+  if(!codigo){ msgEl.textContent=''; cuponAplicado=null; cuponDescuentoPct=0; actualizarPagoPorCert(); return; }
   msgEl.style.color='#999';
   msgEl.textContent='Verificando...';
   const res=await Sheets.validarCupon(codigo);
@@ -727,19 +1497,97 @@ async function aplicarCupon(){
     const motivos={ya_canjeado:'Este cupón ya fue utilizado.',codigo_no_encontrado:'Cupón no válido.',codigo_vacio:'Ingresa un código.'};
     msgEl.textContent=motivos[res.motivo]||'Cupón no válido.';
   }
+  actualizarPagoPorCert();
 }
 
 let pagoTipo='yappy';
+let yappyAbonoListoInicializado=false;
+
+function limpiarNumYappy(tel){
+  let n=(tel||'').replace(/[^0-9]/g,'');
+  if(n.length>8 && n.startsWith('507')) n=n.substring(3);
+  return n;
+}
+
 function selPago(tipo){
   pagoTipo=tipo;
   const optY=document.getElementById('opt-yappy');
   const optB=document.getElementById('opt-bank');
   if(optY) optY.classList.toggle('sel',tipo==='yappy');
   if(optB) optB.classList.toggle('sel',tipo==='bank');
-  const btnY=document.getElementById('btnYappy');
-  const btnB=document.getElementById('btnTransfer');
-  if(tipo==='bank'){ if(btnY) btnY.classList.add('hidden'); if(btnB) btnB.classList.add('visible'); }
-  else{ if(btnY) btnY.classList.remove('hidden'); if(btnB) btnB.classList.remove('visible'); }
+
+  const b = window.ANNLY_BUSINESS || {};
+  const tieneYappyComercial = !!(b.tiene_yappy_comercial) && PAGOS_MODULO_DISPONIBLE;
+  const yappyRealWrap=document.getElementById('yappyRealWrap');
+  const yappyManualWrap=document.getElementById('yappyManualWrap');
+  const btnC=document.getElementById('btnConfirmar');
+
+  if(tipo==='bank'){
+    if(yappyRealWrap) yappyRealWrap.classList.add('hidden');
+    if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
+    if(btnC) btnC.style.display='';
+  } else if(tieneYappyComercial && yappyRealWrap){
+    yappyRealWrap.classList.remove('hidden');
+    if(yappyManualWrap) yappyManualWrap.classList.add('hidden');
+    if(btnC) btnC.style.display='none';
+    setupYappyButtonAbono();
+  } else {
+    if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
+    if(btnC) btnC.style.display='';
+    const btnY=document.getElementById('btnYappy');
+    const btnB=document.getElementById('btnTransfer');
+    if(btnY) btnY.classList.remove('hidden');
+    if(btnB) btnB.classList.remove('visible');
+  }
+}
+
+// Conecta el <btn-yappy> real (SDK oficial de Yappy) para el abono de la
+// cita: al hacer click crea la orden vía la Edge Function y le pasa el
+// token de vuelta al widget con eventPayment(); al confirmar el pago
+// (eventSuccess) reserva la cita de una vez, usando el orderId como
+// comprobante.
+function setupYappyButtonAbono(){
+  const btn=document.getElementById('btnYappyReal');
+  if(!btn || yappyAbonoListoInicializado) return;
+  yappyAbonoListoInicializado=true;
+
+  const telInput=document.getElementById('fp');
+  const aliasInput=document.getElementById('fAliasYappy');
+  if(telInput && aliasInput && !aliasInput.value){ aliasInput.value=limpiarNumYappy(telInput.value); }
+
+  btn.addEventListener('eventClick', async () => {
+    const msgEl=document.getElementById('yappyRealMsg');
+    const nombre=document.getElementById('fn').value.trim();
+    const tel=document.getElementById('fp').value.trim();
+    const correo=document.getElementById('fe').value.trim();
+    if(!nombre||!tel||!correo){ msgEl.style.color='#c0392b'; msgEl.textContent='Completa tu nombre, WhatsApp y correo antes de pagar.'; btn.isButtonLoading=false; return; }
+    const alias=limpiarNumYappy(document.getElementById('fAliasYappy').value);
+    if(!alias || alias.length<7){ msgEl.style.color='#c0392b'; msgEl.textContent='Ingresa tu número Yappy (8 dígitos, sin +507).'; btn.isButtonLoading=false; return; }
+
+    msgEl.style.color='#999'; msgEl.textContent='Creando tu orden de pago...';
+    const montoAbono = calcularMontos().abono;
+    const orderId='C'+Date.now().toString().slice(-10);
+    window._yappyOrderId=orderId;
+
+    const res=await Sheets.crearOrdenYappy({orderId, total:montoAbono, aliasYappy:alias, tipo:'cita', refId:orderId});
+    if(res && res.ok){
+      msgEl.textContent='';
+      btn.eventPayment({ transactionId: res.transactionId, documentName: res.documentName, token: res.token });
+    } else {
+      msgEl.style.color='#c0392b';
+      msgEl.textContent = (res && res.error) || 'No se pudo crear la orden de pago. Intenta de nuevo.';
+      btn.isButtonLoading=false;
+    }
+  });
+
+  btn.addEventListener('eventSuccess', () => {
+    confirmarCitaConfirmada(currentDayStr, window._yappyOrderId);
+  });
+
+  btn.addEventListener('eventError', () => {
+    const msgEl=document.getElementById('yappyRealMsg');
+    if(msgEl){ msgEl.style.color='#c0392b'; msgEl.textContent='El pago no se completó. Puedes intentar de nuevo.'; }
+  });
 }
 
 function copiarCuenta(){
@@ -785,63 +1633,114 @@ async function confirmar(dayStr){
   const nombre=document.getElementById('fn').value.trim();
   const tel=document.getElementById('fp').value.trim();
   const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
-  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
   const refEl=document.getElementById('fref');
   const ref=refEl?refEl.value.trim():'Sin abono';
-  const tieneAbono = curSvc.esEval || curSvc.requiereAbono;
-  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
-  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
-  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'sujeto a política de cancelación';
+  const tieneAbono = calcularMontos().abono>0;
   if(!nombre||!tel||!correo){alert('Por favor completa tu nombre, WhatsApp y correo.');return;}
   if(tieneAbono&&!ref){alert('Por favor ingresa el número de comprobante del pago.');return;}
   if(timerInt)clearInterval(timerInt);
   const btnC=document.getElementById('btnConfirmar');
   if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
+  await finalizarCita(dayStr, ref, false);
+}
+
+// Llamado cuando el pago se completó de verdad por el botón real de Yappy
+// (eventSuccess del widget) — el comprobante es el propio orderId de Yappy,
+// no algo que el cliente tipeó a mano.
+async function confirmarCitaConfirmada(dayStr, orderId){
+  if(timerInt)clearInterval(timerInt);
+  await finalizarCita(dayStr, orderId, true);
+}
+
+// pagoVerificado = true solo con el botón real de Yappy. Un abono a mano queda "por confirmar".
+async function finalizarCita(dayStr, ref, pagoVerificado){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe')?document.getElementById('fe').value.trim():'';
+  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
+  const _M = calcularMontos();
+  const tieneAbono = _M.abono>0;
+  const abonoExonerado = _M.tieneAbono && _M.abono<=0; // el certificado cubrió todo el servicio
+  const montoAbono = _M.abono;
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const textoTipo = tipoAbono === 'descontable' ? 'descontable del servicio' : 'sujeto a política de cancelación';
   const precio=curSvc.price>0?curSvc.price:0;
   const esConsultar = curSvc.price<=0;
+  const noFijo = precioNoFijo(curSvc);
   const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
   const citaId = 'cita-' + Date.now();
 
   const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
-  const precioFinal = Math.max(0, precio - descuentoMonto);
+  const precioTrasCupon = Math.max(0, precio - descuentoMonto);
+  // Precio fijo: el certificado se descuenta ahora. Precio no fijo ("desde…", "consultar"):
+  // solo se valida, y el negocio lo aplica al completar la cita con el precio final. Así, si el
+  // cliente no califica para el servicio, su certificado queda intacto.
+  const montoCertAplicado = (certAplicado && !noFijo)
+    ? Math.min(certAplicado.saldoDisponible, precioTrasCupon)
+    : 0;
+  const certPorAplicar = !!certAplicado && noFijo;
+  const precioFinal = Math.max(0, precioTrasCupon - montoCertAplicado);
 
   const cita={nombre,telefono:tel,correo,nota:notaFinal,servicio:curSvc.name,categoria:curSvc.cat,
     precioTotal:precio,precioEsConsultar:esConsultar,fecha:dayStr,hora:selTime,duracionMin:curSvc.durMin,
     comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
-    metodoPago:tieneAbono?pagoTipo:'', citaId:citaId,
-    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal};
-  try{await Sheets.guardarCita(cita);}catch(e){console.error(e);}
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
+    abonoPorConfirmar: tieneAbono && !pagoVerificado,
+    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
+    certificadoCodigo: (montoCertAplicado>0 || certPorAplicar) ? certAplicado.codigo : null,
+    certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
+    certificadoSaldoRestante: montoCertAplicado>0 ? (certAplicado.unSoloUso ? 0 : Math.max(0, certAplicado.saldoDisponible - montoCertAplicado)) : null};
+  let appointmentId=null;
+  try{ appointmentId=await Sheets.guardarCita(cita); }catch(e){console.error(e);}
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
   if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
+  let certFallo=false;
+  if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e); certFallo=true;} }
+  const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre, telefonoCliente:tel, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
   await new Promise(r=>setTimeout(r,900));
   const precioStr=esConsultar?'Por confirmar':(curSvc.precioTexto&&curSvc.precioTexto.toLowerCase().includes('desde')?'Desde $'+precio.toFixed(2):'$'+precio.toFixed(2));
-  const restanteTexto = esConsultar
+  const restanteTexto = noFijo
     ? (tieneAbono ? 'Se aplicará el abono al precio acordado' : 'Por confirmar')
     : '$'+(tipoAbono==='descontable' ? Math.max(0, precioFinal - montoAbono).toFixed(2) : precioFinal.toFixed(2));
-  const abonoLine=tieneAbono?`<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`:'';
+  const abonoLine=tieneAbono?`<strong>Abono ${pagoVerificado ? 'pagado' : 'enviado (por validar)'}:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`
+    :(abonoExonerado?`<strong>Abono:</strong> No requerido (cubierto por tu certificado)<br>`:'');
   const cuponLine = (cuponAplicado && cuponDescuentoPct>0 && !esConsultar)
     ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
     : (cuponAplicado ? `<strong>Cupón aplicado:</strong> ${cuponPremioTexto}<br>` : '');
-  const totalLine = esConsultar
+  const certLine = montoCertAplicado>0
+    ? `<strong>Certificado aplicado (${certAplicado.codigo}):</strong> <span style="color:#4CAF50;font-weight:600;">-$${montoCertAplicado.toFixed(2)}</span><br>${certFallo
+      ? '<span style="color:#c0392b;font-size:12px;">No pudimos actualizar el saldo de tu certificado; el negocio lo revisará contigo.</span><br>'
+      : `<strong>Saldo restante del certificado:</strong> <span style="color:#4CAF50;font-weight:600;">$${(certAplicado.unSoloUso ? 0 : Math.max(0,certAplicado.saldoDisponible-montoCertAplicado)).toFixed(2)}</span>${certAplicado.unSoloUso ? ' <span style="font-size:11px;color:#888;">(cortesía de un solo uso)</span>' : ''}<br>`}`
+    : '';
+  const certPendienteLine = certPorAplicar
+    ? `<strong>Certificado (${certAplicado.codigo}):</strong> validado, con $${certAplicado.saldoDisponible.toFixed(2)} disponibles<br><span style="font-size:12px;color:#888;">No se ha descontado nada. Se aplicará el día de tu cita, cuando se confirme el precio final.</span><br>`
+    : '';
+  const totalLine = noFijo
     ? `<strong>Monto a cancelar el día de la cita:</strong> ${restanteTexto}<br>`
     : `<strong>Total a pagar:</strong> <span style="color:#D95F2B;font-weight:600;">${restanteTexto}</span><br>`;
   document.getElementById('form-body').innerHTML=`
     <div class="success-wrap">
-      <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
-      <div class="s-title">¡Cita reservada!</div>
-      <div class="s-sub">Pronto nos pondremos en contacto contigo para confirmar los detalles.</div>
+      <div class="s-icon"><i class="ti ti-${tieneAbono && !pagoVerificado ? 'hourglass' : 'check'}" aria-hidden="true"></i></div>
+      <div class="s-title">${tieneAbono && !pagoVerificado ? '¡Reserva recibida!' : '¡Cita reservada!'}</div>
+      <div class="s-sub">${tieneAbono && !pagoVerificado
+        ? 'Tu horario quedó apartado. Vamos a validar tu abono y te llegará la confirmación por correo.'
+        : 'Tu cita está confirmada. Te enviamos los detalles por correo.'}</div>
       <div class="s-detail">
         <strong>Servicio:</strong> ${curSvc.name}<br>
-        <strong>Fecha:</strong> ${dayStr}<br>
+        ${lineaSucursalResumen()}<strong>Fecha:</strong> ${dayStr}<br>
         <strong>Hora:</strong> ${selTime ? (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})() : selTime}<br>
-        <strong>Duración aprox.:</strong> ${curSvc.dur}<br>
+        <strong>Duración aprox.:</strong> ${fmtDur(curSvc.dur)}<br>
         <strong>Precio total:</strong> <span style="color:#D95F2B;font-weight:600;">${precioStr}</span><br>
         ${abonoLine}
         ${cuponLine}
+        ${certLine}
+        ${certPendienteLine}
         ${totalLine}
       </div>
-      <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>
-      <button class="btn-main" style="background:#2E2B2B;color:#C9A96E;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+      ${abonoExonerado?'':'<p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>'}
+      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
 
   setTimeout(async () => {
@@ -856,6 +1755,93 @@ async function confirmar(dayStr){
       console.error('Error verificando elegibilidad de ruleta:', err);
     }
   }, 1800);
+}
+
+// ---- Cita doble: confirmación y guardado (2 personas, 2 profesionales, 1 solo abono) ----
+async function confirmarDoble(dayStr){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe').value.trim();
+  const nombre2=document.getElementById('fn2').value.trim();
+  const tel2=document.getElementById('fp2').value.trim();
+  const correo2=document.getElementById('fe2').value.trim();
+  const refEl=document.getElementById('fref');
+  const ref=refEl?refEl.value.trim():'Sin abono';
+  const tieneAbono = !!(curSvc.esEval || curSvc.requiereAbono);
+  if(!nombre||!tel||!correo){alert('Por favor completa tu nombre, WhatsApp y correo.');return;}
+  if(!nombre2||!tel2||!correo2){alert('Por favor completa los datos de tu acompañante.');return;}
+  if(!empleadoSeleccionado||!empleadoSeleccionado2){alert('Elige un profesional para cada persona.');return;}
+  if(tieneAbono&&!ref){alert('Por favor ingresa el número de comprobante del pago.');return;}
+  if(timerInt)clearInterval(timerInt);
+  const btnC=document.getElementById('btnConfirmar');
+  if(btnC){btnC.disabled=true;btnC.textContent='Confirmando...';}
+  await finalizarCitaDoble(dayStr, ref);
+}
+
+async function finalizarCitaDoble(dayStr, ref){
+  const nombre=document.getElementById('fn').value.trim();
+  const tel=document.getElementById('fp').value.trim();
+  const correo=document.getElementById('fe').value.trim();
+  const nota=document.getElementById('fnote')?document.getElementById('fnote').value.trim():'';
+  const nombre2=document.getElementById('fn2').value.trim();
+  const tel2=document.getElementById('fp2').value.trim();
+  const correo2=document.getElementById('fe2').value.trim();
+
+  const tieneAbono = !!(curSvc.esEval || curSvc.requiereAbono);
+  const montoAbono = curSvc.esEval ? 10 : (curSvc.abonoMonto || 10);
+  const tipoAbono = curSvc.esEval ? 'descontable' : (curSvc.abonoTipo || 'noreembolsable');
+  const precioTotal = curSvc.price>0?curSvc.price:0;
+  const precioMitad = Math.round((precioTotal/2)*100)/100;
+  const citaIdBase = 'cita-' + Date.now();
+
+  const base = {
+    nota, servicio:curSvc.name, categoria:curSvc.cat, precioEsConsultar:false,
+    fecha:dayStr, hora:selTime, duracionMin:curSvc.durMin,
+    cuponUsado:'', descuentoCupon:0, certificadoCodigo:null, certificadoMonto:null, certificadoSaldoRestante:null
+  };
+
+  const citaPrincipal = { ...base, nombre, telefono:tel, correo,
+    precioTotal:precioMitad, precioFinal:precioMitad, comprobante:ref,
+    abonoMonto:tieneAbono?montoAbono:0, abonoTipo:tieneAbono?tipoAbono:'',
+    metodoPago:tieneAbono?pagoTipo:'', citaId:citaIdBase, empleadoId:empleadoSeleccionado,
+    abonoPorConfirmar: tieneAbono };
+
+  const citaSecundaria = { ...base, nombre:nombre2, telefono:tel2, correo:correo2,
+    precioTotal:precioMitad, precioFinal:precioMitad,
+    comprobante: tieneAbono ? ('Incluido en la reserva de ' + nombre) : 'Sin abono',
+    abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2,
+    abonoPorConfirmar: tieneAbono };
+
+  try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }catch(e){ console.error('Error guardando la cita doble:', e); }
+  try{ await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); }catch(e){}
+  try{ await Sheets.upsertClienteDesdeReserva(nombre2, tel2, correo2); }catch(e){}
+
+  const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo, nombreCliente:nombre, servicio:curSvc.name+' (con '+nombre2+')', fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_confirmada', {correoCliente:correo2, nombreCliente:nombre2, servicio:curSvc.name+' (con '+nombre+')', fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+  Sheets.enviarCorreo('cita_nueva', {nombreCliente:nombre+' y '+nombre2, telefonoCliente:tel+' / '+tel2, servicio:curSvc.name, fecha:dayStr, hora:horaDisplay, ...datosSucursalCorreo()});
+
+  await new Promise(r=>setTimeout(r,900));
+
+  const abonoLine = tieneAbono
+    ? `<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span><br><strong>Comprobante:</strong> ${ref}<br>`
+    : '';
+  document.getElementById('form-body').innerHTML=`
+    <div class="success-wrap">
+      <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+      <div class="s-title">${tieneAbono ? '¡Reserva recibida!' : '¡Cita doble reservada!'}</div>
+      <div class="s-sub">${tieneAbono ? 'Su horario quedó apartado. Vamos a validar el abono y les llegará la confirmación a los 2 correos.' : 'Le mandamos la confirmación a los 2 correos.'}</div>
+      <div class="s-detail">
+        <strong>Servicio:</strong> ${curSvc.name}<br>
+        <strong>Fecha:</strong> ${dayStr}<br>
+        ${lineaSucursalResumen()}<strong>Hora:</strong> ${horaDisplay}<br>
+        <strong>${nombre}</strong> y <strong>${nombre2}</strong>, cada quien con su profesional elegido<br>
+        ${abonoLine}
+        <strong>Total del combo:</strong> <span style="color:#D95F2B;font-weight:600;">$${precioTotal.toFixed(2)}</span><br>
+      </div>
+      <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
+      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+    </div>`;
 }
 
 function openOv(id){document.getElementById(id).classList.add('open');}
