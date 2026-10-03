@@ -12,7 +12,9 @@ const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // definir window.ANNLY_PEDIDOS_URL antes de cargar sheets.js con la URL de Vercel.
 // Mientras tienda.annly.app no esté activo en Vercel/GoDaddy se usa pedidos.annly.app (que ya funciona).
 // Cuando tienda.annly.app abra, cambiar esta línea a 'https://tienda.annly.app'.
-const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || 'https://pedidos.annly.app').replace(/\/$/, '');
+// develop (dev.annly.app o *.vercel.app) enlaza con la tienda de desarrollo; main, con la de producción
+const ANNLY_ES_DEV = /^dev[.-]|\.vercel\.app$|^localhost$|^127\./.test(window.location.hostname);
+const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || (ANNLY_ES_DEV ? 'https://dev-pedidos.annly.app' : 'https://pedidos.annly.app')).replace(/\/$/, '');
 
 
 // =========================================================
@@ -1107,6 +1109,14 @@ function formatHora12Cita(horaPg) {
 }
 
 
+function nuevoUUID() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 function genCodigoCupon() {
 
   return 'RUL-' +
@@ -1596,76 +1606,22 @@ const Sheets = {
   // opts (opcional, lo usa Reprogramar en el panel):
   //   excluirIds: citas que no cuentan como ocupadas (la misma cita que se está moviendo)
   //   locationId: sin profesional, solo cuenta lo ocupado en esa sucursal
-  async getHorasOcupadas(
-    fechaStr,
-    empleadoId,
-    opts
-  ) {
 
+  async getHorasOcupadas(fechaStr, empleadoId, opts) {
     await window.AnnlyReady;
-
-
-    const fechaISO =
-      parseFechaTexto(fechaStr);
-
-
-    if (!fechaISO) {
-      return [];
-    }
-
-
-    let query =
-      sbClient
-        .from('appointments')
-        .select(
-          'id, hora, duracion_min, location_id'
-        )
-        .eq(
-          'business_id',
-          BUSINESS_ID
-        )
-        .eq(
-          'fecha',
-          fechaISO
-        )
-        .neq(
-          'estado',
-          'cancelada'
-        );
-
-
-    if (empleadoId) {
-
-      query =
-        query.eq(
-          'employee_id',
-          empleadoId
-        );
-    }
-
-
-    const {
-      data
-    } = await query;
-
+    const fechaISO = parseFechaTexto(fechaStr);
+    if (!fechaISO || !BUSINESS_ID) return [];
+    // Función segura de la base: solo hora, duración y sede (nunca datos del cliente)
+    const { data, error } = await sbClient.rpc('agenda_horas_ocupadas', {
+      p_business: BUSINESS_ID, p_fecha: fechaISO, p_employee: empleadoId || null
+    });
+    if (error) { console.error('Error leyendo horarios ocupados:', error); return []; }
     const o = opts || {};
     const excluir = (o.excluirIds || []).map(String);
-
-
     return (data || [])
       .filter(c => !excluir.includes(String(c.id)))
       .filter(c => empleadoId || !o.locationId || !c.location_id || c.location_id === o.locationId)
-      .map(c => ({
-
-        hora:
-          formatHoraSitio(
-            c.hora
-          ),
-
-        duracion:
-          c.duracion_min || 60
-
-      }));
+      .map(c => ({ hora: formatHoraSitio(c.hora), duracion: c.duracion_min || 60 }));
   },
 
 
@@ -1932,34 +1888,27 @@ const Sheets = {
 
     });
 
+    // El id se genera aquí: quien reserva sin sesión ya no puede leer la cita después de crearla
+    const nuevoId = nuevoUUID();
     const insertar = (fila) =>
       sbClient
         .from('appointments')
-        .insert([fila])
-        .select('id')
-        .single();
-
-    let { data, error } = await insertar(armarFila(true));
-
+        .insert([{ id: nuevoId, ...fila }]);
+    let { error } = await insertar(armarFila(true));
     if (
       error &&
       /certificado_saldo_restante/.test(error.message || '')
     ) {
-      ({ data, error } = await insertar(armarFila(false)));
+      ({ error } = await insertar(armarFila(false)));
     }
-
-
     if (error) {
-
       console.error(
         'Error guardando la cita:',
         error
       );
-
       throw error;
     }
-
-    return data.id;
+    return nuevoId;
   },
 
   // Cita doble: guarda las 2 citas (una por profesional/clienta) amarradas con el mismo
@@ -2436,330 +2385,52 @@ const Sheets = {
   },
 
 
+
   async verificarElegibilidadRuleta(tel) {
-
     await window.AnnlyReady;
-
-
-    const {
-      data: yaParticipo
-    } = await sbClient
-      .from('roulette_wins')
-      .select('id')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'telefono',
-        tel
-      )
-      .limit(1);
-
-
-    if (yaParticipo?.length) {
-
-      return {
-        elegible: false
-      };
-    }
-
-
-    const {
-      data: feat
-    } = await sbClient
-      .from('business_features')
-      .select('ruleta_premios')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .maybeSingle();
-
-
-    return {
-
-      elegible:
-        !!(
-          feat &&
-          feat.ruleta_premios
-        )
-
-    };
+    const { data, error } = await sbClient.rpc('ruleta_elegible', { p_business: BUSINESS_ID, p_telefono: tel });
+    if (error) { console.error('Error verificando la ruleta:', error); return { elegible: false }; }
+    return { elegible: !!data };
   },
 
 
-  async girarRuleta(
-    identificador,
-    nombre,
-    citaId
-  ) {
 
+  async girarRuleta(identificador, nombre, citaId) {
     await window.AnnlyReady;
-
-
-    const {
-      data: premios
-    } = await sbClient
-      .from('roulette_prizes')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'activo',
-        true
-      );
-
-
-    const disponibles =
-      (premios || [])
-        .filter(
-          p =>
-            p.stock === null ||
-            p.stock > 0
-        );
-
-
-    if (!disponibles.length) {
-
-      return {
-        ok: false,
-        motivo: 'sin_premios'
-      };
-    }
-
-
-    const total =
-      disponibles.reduce(
-        (s, p) =>
-          s + (p.probabilidad || 0),
-        0
-      );
-
-
-    let rand =
-      Math.random() * total;
-
-
-    let elegido =
-      disponibles[
-        disponibles.length - 1
-      ];
-
-
-    for (
-      const p of disponibles
-    ) {
-
-      rand -=
-        p.probabilidad || 0;
-
-
-      if (rand <= 0) {
-
-        elegido = p;
-        break;
-      }
-    }
-
-
-    const codigo =
-      genCodigoCupon();
-
-
-    await sbClient
-      .from('roulette_wins')
-      .insert([{
-
-        business_id:
-          BUSINESS_ID,
-
-        telefono:
-          identificador,
-
-        nombre,
-
-        prize_id:
-          elegido.id,
-
-        codigo_cupon:
-          codigo,
-
-        usado:
-          false
-
-      }]);
-
-
-    if (elegido.stock !== null) {
-
-      await sbClient
-        .from('roulette_prizes')
-        .update({
-          stock:
-            elegido.stock - 1
-        })
-        .eq(
-          'id',
-          elegido.id
-        );
-    }
-
-
-    return {
-
-      ok: true,
-
-      premio:
-        elegido.nombre,
-
-      codigoCanje:
-        codigo
-
-    };
+    // El premio se sortea en la base (antes lo elegía el navegador)
+    const { data, error } = await sbClient.rpc('ruleta_girar', {
+      p_business: BUSINESS_ID, p_telefono: identificador, p_nombre: nombre
+    });
+    if (error) { console.error('Error girando la ruleta:', error); return { ok: false, motivo: 'error' }; }
+    return data || { ok: false, motivo: 'error' };
   },
+
 
 
   async validarCupon(codigo) {
-
     await window.AnnlyReady;
-
-
-    const cod =
-      (codigo || '')
-        .toUpperCase()
-        .trim();
-
-
-    if (!cod) {
-
-      return {
-        valido: false,
-        motivo: 'codigo_vacio'
-      };
+    const cod = (codigo || '').toUpperCase().trim();
+    if (!cod) return { valido: false, motivo: 'codigo_vacio' };
+    const { data, error } = await sbClient.rpc('cupon_validar', { p_business: BUSINESS_ID, p_codigo: cod });
+    if (error || !data) {
+      if (error) console.error('Error validando el cupón:', error);
+      return { valido: false, motivo: 'codigo_no_encontrado' };
     }
-
-
-    const {
-      data
-    } = await sbClient
-      .from('roulette_wins')
-      .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'codigo_cupon',
-        cod
-      )
-      .maybeSingle();
-
-
-    if (!data) {
-
-      return {
-        valido: false,
-        motivo: 'codigo_no_encontrado'
-      };
-    }
-
-
-    if (data.usado) {
-
-      return {
-        valido: false,
-        motivo: 'ya_canjeado'
-      };
-    }
-
-
-    const {
-      data: premio
-    } = await sbClient
-      .from('roulette_prizes')
-      .select('nombre')
-      .eq(
-        'id',
-        data.prize_id
-      )
-      .maybeSingle();
-
-
-    const nombre =
-      premio?.nombre || '';
-
-
-    const pctMatch =
-      nombre.match(
-        /(\d+)\s*%/
-      );
-
-
-    if (pctMatch) {
-
-      return {
-
-        valido: true,
-
-        tipo:
-          'porcentaje',
-
-        valor:
-          parseInt(
-            pctMatch[1]
-          ),
-
-        premio:
-          nombre
-
-      };
-    }
-
-
-    return {
-
-      valido: true,
-
-      tipo:
-        'especial',
-
-      premio:
-        nombre
-
-    };
+    if (!data.valido) return data;
+    const nombre = data.premio || '';
+    const pctMatch = nombre.match(/(\d+)\s*%/);
+    return pctMatch
+      ? { valido: true, tipo: 'porcentaje', valor: parseInt(pctMatch[1]), premio: nombre }
+      : { valido: true, tipo: 'especial', premio: nombre };
   },
 
 
+
   async marcarCuponCanjeado(codigo) {
-
     await window.AnnlyReady;
-
-
-    await sbClient
-      .from('roulette_wins')
-      .update({
-        usado: true
-      })
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'codigo_cupon',
-        (
-          codigo || ''
-        )
-          .toUpperCase()
-          .trim()
-      );
-
-
-    return {
-      ok: true
-    };
+    const { error } = await sbClient.rpc('cupon_marcar_usado', { p_business: BUSINESS_ID, p_codigo: codigo || '' });
+    if (error) console.error('Error marcando el cupón como usado:', error);
+    return { ok: !error };
   },
 
 
@@ -2854,105 +2525,15 @@ const Sheets = {
   },
 
 
-  async upsertClienteDesdeReserva(
-    nombre,
-    telefono,
-    correo
-  ) {
 
+  async upsertClienteDesdeReserva(nombre, telefono, correo) {
     await window.AnnlyReady;
-
-
-    if (!telefono) {
-      return;
-    }
-
-
-    const {
-      data: existente,
-      error: errBusqueda
-    } = await sbClient
-      .from('clients')
-      .select('id')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'telefono',
-        telefono
-      )
-      .maybeSingle();
-
-
-    if (errBusqueda) {
-
-      console.error(
-        'Error buscando cliente existente:',
-        errBusqueda
-      );
-
-      return;
-    }
-
-
-    if (existente) {
-
-      const {
-        error
-      } = await sbClient
-        .from('clients')
-        .update({
-
-          nombre,
-
-          email:
-            correo || null
-
-        })
-        .eq(
-          'id',
-          existente.id
-        );
-
-
-      if (error) {
-
-        console.error(
-          'Error actualizando cliente:',
-          error
-        );
-      }
-
-    } else {
-
-      const {
-        error
-      } = await sbClient
-        .from('clients')
-        .insert([{
-
-          business_id:
-            BUSINESS_ID,
-
-          nombre,
-
-          telefono,
-
-          email:
-            correo || null
-
-        }]);
-
-
-      if (error) {
-
-        console.error(
-          'Error creando cliente:',
-          error
-        );
-      }
-    }
+    if (!telefono) return;
+    // Función segura de la base: el público ya no lee ni escribe la tabla de clientes
+    const { error } = await sbClient.rpc('agenda_upsert_cliente', {
+      p_business: BUSINESS_ID, p_nombre: nombre, p_telefono: telefono, p_correo: correo || null
+    });
+    if (error) console.error('Error guardando el cliente:', error);
   },
 
 
@@ -5499,42 +5080,19 @@ const Sheets = {
 
   // Compra hecha por el cliente en el sitio público — nace pendiente de pago.
   // Solo notifica al negocio para que revise el comprobante y la confirme.
+
   async comprarCertificadoPublico({ monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo, destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, comprobante, metodoPago }) {
     await window.AnnlyReady;
-
-    let codigo, intentos = 0;
-    while (true) {
-      codigo = 'CERT-' + Math.random().toString(16).slice(2, 6).toUpperCase() + Math.random().toString(16).slice(2, 4).toUpperCase();
-      const { data: existe } = await sbClient.from('gift_certificates').select('id').eq('business_id', BUSINESS_ID).eq('codigo', codigo).maybeSingle();
-      if (!existe) break;
-      intentos++;
-      if (intentos > 5) throw new Error('No se pudo generar un código único.');
-    }
-
-    const { error } = await sbClient.from('gift_certificates').insert([{
-      business_id: BUSINESS_ID,
-      codigo,
-      tipo: 'venta',
-      estado: 'pendiente_pago',
-      monto_inicial: monto,
-      saldo_restante: monto,
-      comprador_nombre: compradorNombre || null,
-      comprador_telefono: compradorTelefono || null,
-      comprador_correo: compradorCorreo || null,
-      destinatario_nombre: destinatarioNombre || null,
-      destinatario_telefono: destinatarioTelefono || null,
-      destinatario_correo: destinatarioCorreo || null,
-      mensaje: mensaje || null,
-      comprobante: comprobante || null,
-      metodo_pago: metodoPago || null,
-      fecha_vencimiento: fechaVencimiento
-    }]);
+    // Función segura de la base: el certificado siempre nace "pendiente de pago"
+    const { data: codigo, error } = await sbClient.rpc('certificado_comprar', {
+      p_business: BUSINESS_ID,
+      p: { monto, fechaVencimiento, compradorNombre, compradorTelefono, compradorCorreo,
+           destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, comprobante, metodoPago }
+    });
     if (error) throw error;
-
     await this.enviarCorreo('certificado_pendiente_pago', {
       monto, nombreComprador: compradorNombre, metodoPago, comprobante
     });
-
     return codigo;
   },
 
@@ -5590,30 +5148,25 @@ const Sheets = {
   },
 
   // Usado desde el sitio público al reservar: valida el código contra el negocio actual.
+
   async validarCertificado(codigo) {
     await window.AnnlyReady;
     const cod = (codigo || '').toUpperCase().trim();
     if (!cod) return { valido: false, motivo: 'codigo_vacio' };
-
-    const { data } = await sbClient.from('gift_certificates').select('*')
-      .eq('business_id', BUSINESS_ID).eq('codigo', cod).maybeSingle();
-    if (!data) return { valido: false, motivo: 'codigo_no_encontrado' };
-
-    if (data.estado === 'pendiente_pago') return { valido: false, motivo: 'pendiente_pago' };
-    if (data.estado === 'cancelado') return { valido: false, motivo: 'cancelado' };
-
-    const saldo = Number(data.saldo_restante);
-    if (saldo <= 0) return { valido: false, motivo: 'sin_saldo' };
-
-    const hoy = new Date().toISOString().split('T')[0];
-    if (data.fecha_vencimiento && data.fecha_vencimiento < hoy) return { valido: false, motivo: 'vencido' };
-
+    // Función segura de la base: solo responde por el código que se escribió
+    const { data, error } = await sbClient.rpc('certificado_validar', { p_business: BUSINESS_ID, p_codigo: cod });
+    if (error || !data) {
+      if (error) console.error('Error validando el certificado:', error);
+      return { valido: false, motivo: 'codigo_no_encontrado' };
+    }
+    if (!data.valido) return data;
+    const saldo = Number(data.saldoDisponible);
     return {
-      valido: true, certificateId: data.id, saldoDisponible: saldo, codigo: data.codigo,
+      valido: true, certificateId: data.certificateId, saldoDisponible: saldo, codigo: data.codigo,
       tipo: data.tipo, unSoloUso: data.tipo === 'cortesia',
-      montoOriginal: Number(data.monto_inicial), montoDisponible: saldo,
-      compradoPorNombre: data.comprador_nombre, destinatarioNombre: data.destinatario_nombre,
-      mensaje: data.mensaje, fechaVencimiento: data.fecha_vencimiento
+      montoOriginal: Number(data.montoOriginal), montoDisponible: saldo,
+      compradoPorNombre: data.compradoPorNombre, destinatarioNombre: data.destinatarioNombre,
+      mensaje: data.mensaje, fechaVencimiento: data.fechaVencimiento
     };
   },
 
