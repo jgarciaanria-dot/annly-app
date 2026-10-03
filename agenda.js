@@ -9,6 +9,24 @@
   st.id = 'annly-tema-css';
   st.textContent = `
 @keyframes annlyGiro{to{transform:rotate(360deg);}}
+/* ---------- Computadora y tablet: página completa, no una columna recortada sobre fondo gris ---------- */
+@media(min-width:600px){
+  body:not(.modo-oscuro){background-color:var(--bg-page);}
+  body.modo-oscuro{background-color:var(--bg-page,#0d0c0b);}
+  html body .hdr{max-width:none;}
+  html body .marcas-strip,html body footer{max-width:none;}
+  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:720px;margin-left:auto;margin-right:auto;background-color:transparent;}
+  html body #serviceList{padding-left:1.25rem;padding-right:1.25rem;}
+}
+@media(min-width:900px){
+  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:1120px;}
+  html body #serviceList{padding-left:2rem;padding-right:2rem;padding-bottom:2.5rem;}
+  html body #cert-link-wrap,html body #suc-chip{padding-left:2rem;padding-right:2rem;}
+  html body .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+}
+@media(min-width:1400px){
+  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:1240px;}
+}
 .svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
 .svc-banner-name,.svc-pill-name{color:#fff;}
 .svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
