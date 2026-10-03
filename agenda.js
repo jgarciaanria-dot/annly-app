@@ -19,13 +19,13 @@
   html body #serviceList{padding-left:1.25rem;padding-right:1.25rem;}
 }
 @media(min-width:900px){
-  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:1120px;}
-  html body #serviceList{padding-left:2rem;padding-right:2rem;padding-bottom:2.5rem;}
-  html body #cert-link-wrap,html body #suc-chip{padding-left:2rem;padding-right:2rem;}
-  html body .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
-}
-@media(min-width:1400px){
-  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:1240px;}
+  /* Compacto y centrado: las reservas se hacen sobre todo desde el celular */
+  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:960px;}
+  html body #serviceList{padding-left:1.5rem;padding-right:1.5rem;padding-bottom:2.5rem;}
+  html body #cert-link-wrap{padding-left:1.5rem;padding-right:1.5rem;}
+  /* La tarjeta de sede con el mismo ancho que la del certificado */
+  html body #suc-chip{padding-left:calc(1.5rem + 14px);padding-right:calc(1.5rem + 14px);}
+  html body .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
 }
 .svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
 .svc-banner-name,.svc-pill-name{color:#fff;}
