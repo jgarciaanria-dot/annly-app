@@ -303,14 +303,11 @@ async function resolverNegocio() {
   }
 
 
+  // Función segura: un solo negocio, por su slug, con las columnas públicas
   const {
     data,
     error
-  } = await sbClient
-    .from('businesses')
-    .select('*')
-    .eq('slug', slug)
-    .maybeSingle();
+  } = await sbClient.rpc('negocio_publico', { p_slug: slug });
 
 
   if (error || !data) {
@@ -701,12 +698,10 @@ async resetPassword(email) {
 
   async existeWhatsapp(whatsapp) {
     if (!whatsapp) return false;
-    const { data } = await sbClient
-      .from('businesses')
-      .select('id')
-      .eq('whatsapp', whatsapp)
-      .limit(1);
-    return !!(data && data.length);
+    // Función segura: responde sí/no sin poder leer los demás negocios
+    const { data, error } = await sbClient.rpc('whatsapp_registrado', { p_whatsapp: whatsapp });
+    if (error) { console.error('Error revisando el WhatsApp:', error); return false; }
+    return !!data;
   },
 
 
@@ -813,16 +808,17 @@ async resetPassword(email) {
 
     while (true) {
 
+      // Función segura: revisa el slug en todos los negocios sin poder leerlos
       const {
-        data: existe
-      } = await sbClient
-        .from('businesses')
-        .select('id')
-        .eq('slug', slug)
-        .maybeSingle();
+        data: libre,
+        error: errSlug
+      } = await sbClient.rpc('slug_disponible', { p_slug: slug });
 
+      if (errSlug) {
+        throw errSlug;
+      }
 
-      if (!existe) {
+      if (libre) {
         break;
       }
 
@@ -3002,124 +2998,15 @@ const Sheets = {
   },
 
 
-  async getEmpleadosParaServicio(
-    serviceId
-  ) {
 
+  async getEmpleadosParaServicio(serviceId) {
     await window.AnnlyReady;
-
-
-    // Se pide también la presentación (bio); si esa columna aún no existe en la
-    // base, se reintenta sin ella para no romper el selector de profesional.
-    let {
-      data: empleados,
-      error: errEmp
-    } = await sbClient
-      .from('employees')
-      .select(
-        'id, nombre, foto_url, bio'
-      )
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
-      .eq(
-        'activo',
-        true
-      );
-
-    if (errEmp) {
-      const reintento = await sbClient
-        .from('employees')
-        .select(
-          'id, nombre, foto_url'
-        )
-        .eq(
-          'business_id',
-          BUSINESS_ID
-        )
-        .eq(
-          'activo',
-          true
-        );
-      empleados = reintento.data;
-    }
-
-
-    const lista =
-      empleados || [];
-
-
-    if (!lista.length) {
-      return [];
-    }
-
-
-    const ids =
-      lista.map(
-        e => e.id
-      );
-
-
-    const {
-      data: asignaciones
-    } = await sbClient
-      .from('employee_services')
-      .select(
-        'employee_id, service_id'
-      )
-      .in(
-        'employee_id',
-        ids
-      );
-
-
-    const porEmpleado = {};
-
-
-    (asignaciones || [])
-      .forEach(a => {
-
-        (
-          porEmpleado[
-            a.employee_id
-          ] ||= []
-        ).push(
-          a.service_id
-        );
-
-      });
-
-
-    return lista
-      .filter(e => {
-
-        const asign =
-          porEmpleado[e.id];
-
-
-        return (
-          !asign ||
-          !asign.length ||
-          asign.includes(serviceId)
-        );
-
-      })
-      .map(e => ({
-
-        id:
-          e.id,
-
-        nombre:
-          e.nombre,
-
-        fotoUrl:
-          e.foto_url,
-
-        bio:
-          e.bio || ''
-
-      }));
+    // Función segura: profesionales activos con nombre, foto, bio y servicios (nada privado)
+    const { data, error } = await sbClient.rpc('empleados_publicos', { p_business: BUSINESS_ID });
+    if (error) { console.error('Error leyendo profesionales:', error); return []; }
+    return (data || [])
+      .filter(e => !e.servicios || !e.servicios.length || e.servicios.includes(serviceId))
+      .map(e => ({ id: e.id, nombre: e.nombre, fotoUrl: e.foto_url, bio: e.bio || '' }));
   },
 
 
@@ -4625,14 +4512,12 @@ const Sheets = {
   },
 
   // Profesionales activos y los servicios que realiza cada uno ([] = hace todos)
+
   async getEmpleadosActivosServicios() {
     await window.AnnlyReady;
-    const { data: emps, error } = await sbClient.from('employees').select('id').eq('business_id', BUSINESS_ID).eq('activo', true);
+    const { data, error } = await sbClient.rpc('empleados_publicos', { p_business: BUSINESS_ID });
     if (error) throw error;
-    const ids = (emps || []).map(e => e.id);
-    if (!ids.length) return [];
-    const { data: asign } = await sbClient.from('employee_services').select('employee_id, service_id').in('employee_id', ids);
-    return ids.map(id => ({ id, servicios: (asign || []).filter(a => a.employee_id === id).map(a => a.service_id) }));
+    return (data || []).map(e => ({ id: e.id, servicios: e.servicios || [] }));
   },
 
   // Deja a la sucursal con exactamente estos servicios
