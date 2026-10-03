@@ -8,13 +8,11 @@ const SUPABASE_KEY = 'sb_publishable_7JZShvbADW0URka-k_hjBQ_MSE0LM-V';
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Annly Pedidos (producto aparte en Vercel). Mientras no exista el dominio, se puede
-// definir window.ANNLY_PEDIDOS_URL antes de cargar sheets.js con la URL de Vercel.
-// Mientras tienda.annly.app no esté activo en Vercel/GoDaddy se usa pedidos.annly.app (que ya funciona).
-// Cuando tienda.annly.app abra, cambiar esta línea a 'https://tienda.annly.app'.
+// Annly Tiendas (producto aparte en Vercel, repo annly-pedidos).
+// Producción: tienda.annly.app (pedidos.annly.app redirige ahí). Dev: dev-pedidos.annly.app.
 // develop (dev.annly.app o *.vercel.app) enlaza con la tienda de desarrollo; main, con la de producción
 const ANNLY_ES_DEV = /^dev[.-]|\.vercel\.app$|^localhost$|^127\./.test(window.location.hostname);
-const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || (ANNLY_ES_DEV ? 'https://dev-pedidos.annly.app' : 'https://pedidos.annly.app')).replace(/\/$/, '');
+const ANNLY_PEDIDOS_URL = (window.ANNLY_PEDIDOS_URL || (ANNLY_ES_DEV ? 'https://dev-pedidos.annly.app' : 'https://tienda.annly.app')).replace(/\/$/, '');
 
 
 // =========================================================
