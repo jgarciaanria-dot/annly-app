@@ -4163,10 +4163,10 @@ const Sheets = {
     return data || [];
   },
   // Etapa 2: crea en el servidor un enlace único de PagueloFácil por la mensualidad completa y devuelve la URL
-  async crearEnlaceMensualidad() {
+  async crearEnlaceMensualidad(modulo) {
     await window.AnnlyReady;
     const { data, error } = await sbClient.functions.invoke('pf-crear-enlace', {
-      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin }
+      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, modulo: modulo || undefined }
     });
     if (error) {
       let msg = error.message;
@@ -4177,10 +4177,10 @@ const Sheets = {
     return data;
   },
   // Pago de la mensualidad con Yappy: el servidor calcula el monto y crea la orden en Yappy
-  async crearOrdenYappyMensualidad(aliasYappy) {
+  async crearOrdenYappyMensualidad(aliasYappy, modulo) {
     await window.AnnlyReady;
     const { data, error } = await sbClient.functions.invoke('yappy-crear-orden', {
-      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, aliasYappy }
+      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, aliasYappy, modulo: modulo || undefined }
     });
     if (error) {
       let msg = error.message;
