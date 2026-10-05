@@ -8228,7 +8228,7 @@ function rpHorariosCita(){
 }
 
 function genSlots(){
-  return window.AnnlyHorarios.generarSlots({ horarios: rpHorariosCita(), fecha: new Date(rpCalY, rpCalM, rpSelectedDay), modo: 'interseccion' });
+  return window.AnnlyHorarios.generarSlots({ horarios: rpHorariosCita(), fecha: new Date(rpCalY, rpCalM, rpSelectedDay), modo: 'interseccion', durMin: rpDurMin || 60 });
 }
 
 function isBlocked(slotKey, citas, durSvc){ return window.AnnlyHorarios.solapa(slotKey, citas, durSvc); }

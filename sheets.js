@@ -1776,20 +1776,18 @@ const Sheets = {
 
 
   async guardarCita(cita) {
-
+    const [id] = await this._insertarCitas([cita]);
+    return id;
+  },
+  // Inserta una o varias citas en UNA sola operación: o se guardan todas o ninguna.
+  // La base rechaza la operación completa si alguna choca con otra cita (HORARIO_OCUPADO).
+  async _insertarCitas(citas) {
     await window.AnnlyReady;
-
-
-    const fechaISO =
-      parseFechaTexto(
-        cita.fecha
-      );
-
 
     // El saldo que le queda al certificado tras esta cita se guarda en la propia cita
     // (así aparece en los correos y en el detalle). Si esa columna aún no existe en
     // la base, se reintenta sin ella para no romper la reserva.
-    const armarFila = (conSaldo) => ({
+    const armarFila = (cita, conSaldo) => ({
 
         business_id:
           BUSINESS_ID,
@@ -1822,7 +1820,7 @@ const Sheets = {
           cita.precioEsConsultar,
 
         fecha:
-          fechaISO,
+          parseFechaTexto(cita.fecha),
 
         hora:
           cita.hora,
@@ -1882,18 +1880,18 @@ const Sheets = {
 
     });
 
-    // El id se genera aquí: quien reserva sin sesión ya no puede leer la cita después de crearla
-    const nuevoId = nuevoUUID();
-    const insertar = (fila) =>
+    // Los id se generan aquí: quien reserva sin sesión ya no puede leer la cita después de crearla
+    const ids = citas.map(() => nuevoUUID());
+    const insertar = (conSaldo) =>
       sbClient
         .from('appointments')
-        .insert([{ id: nuevoId, ...fila }]);
-    let { error } = await insertar(armarFila(true));
+        .insert(citas.map((c, n) => ({ id: ids[n], ...armarFila(c, conSaldo) })));
+    let { error } = await insertar(true);
     if (
       error &&
       /certificado_saldo_restante/.test(error.message || '')
     ) {
-      ({ error } = await insertar(armarFila(false)));
+      ({ error } = await insertar(false));
     }
     if (error) {
       console.error(
@@ -1902,28 +1900,18 @@ const Sheets = {
       );
       throw error;
     }
-    return nuevoId;
+    return ids;
   },
-
   // Cita doble: guarda las 2 citas (una por profesional/clienta) amarradas con el mismo
-  // grupo_cita_id. citaPrincipal lleva el abono/comprobante de la reserva. Si la segunda
-  // falla, se deshace la primera para no dejar una cita huérfana a medias.
+  // grupo_cita_id, en UNA sola operación: si una choca con otra cita, no se guarda ninguna.
+  // citaPrincipal lleva el abono/comprobante de la reserva.
   async guardarCitaDoble(citaPrincipal, citaSecundaria) {
-    await window.AnnlyReady;
-    const grupoCitaId = (window.crypto && typeof window.crypto.randomUUID === 'function')
-      ? window.crypto.randomUUID()
-      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-          const r = Math.random() * 16 | 0;
-          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-        });
-    const idPrincipal = await this.guardarCita({ ...citaPrincipal, grupoCitaId, grupoPrincipal: true });
-    try {
-      const idSecundaria = await this.guardarCita({ ...citaSecundaria, grupoCitaId, grupoPrincipal: false });
-      return { idPrincipal, idSecundaria, grupoCitaId };
-    } catch (e) {
-      await sbClient.from('appointments').delete().eq('id', idPrincipal);
-      throw e;
-    }
+    const grupoCitaId = nuevoUUID();
+    const [idPrincipal, idSecundaria] = await this._insertarCitas([
+      { ...citaPrincipal, grupoCitaId, grupoPrincipal: true },
+      { ...citaSecundaria, grupoCitaId, grupoPrincipal: false }
+    ]);
+    return { idPrincipal, idSecundaria, grupoCitaId };
   },
 
   // Trae la cita pareja de una cita doble (o null si no tiene)
