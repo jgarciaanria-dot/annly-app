@@ -531,6 +531,12 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .pf-yappy-hdr b{font-size:13.5px;}
 .pf-yappy-hdr span{font-size:12px;color:var(--ink-soft,#77738A);}
 .pf-yappy .fi{width:100%;}
+.pm-ov{position:fixed;inset:0;background:rgba(26,22,37,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+.pm-box{position:relative;background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;padding:24px 22px 22px;}
+.pm-box h3{margin:0 24px 4px 0;font-size:17px;}
+.pm-x{position:absolute;top:10px;right:12px;border:0;background:none;font-size:26px;line-height:1;cursor:pointer;color:var(--ink-soft,#77738A);}
+.pm-precio{font-size:26px;font-weight:800;margin:0 0 8px;}
+.pm-precio small{font-size:13px;font-weight:600;color:var(--ink-soft,#77738A);}
 .pf-hist{margin-top:12px;font-size:12px;color:var(--ink-soft,#77738A);display:flex;flex-direction:column;gap:4px;}
 .pf-hist b{color:var(--ink,#2B2838);font-size:12.5px;}
 .pf-hist i{color:#159A61;margin-right:5px;}
@@ -5969,6 +5975,12 @@ function getPlanActualUI(){
 function enPeriodoPrueba(){
   return !!(SUSCRIPCION_ACTUAL && SUSCRIPCION_ACTUAL.status === 'trial');
 }
+// La prueba ya pasó su fecha de fin y no se ha pagado: los módulos agregados quedan bloqueados
+function pruebaVencida(){
+  if (!enPeriodoPrueba()) return false;
+  const fin = String(SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd || '').slice(0, 10);
+  return !!fin && fin < new Date().toISOString().slice(0, 10);
+}
 
 const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function formatFechaCorta(fechaISO){
@@ -6016,7 +6028,7 @@ async function pintarPagoTarjeta(){
   const hoyIso = new Date().toISOString().slice(0, 10);
   const pagadoHasta = pagos.filter(p => p.estado === 'confirmado' && p.periodo_hasta && p.periodo_hasta >= hoyIso)
     .map(p => p.periodo_hasta).sort().pop();
-  const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD'));
+  const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD' && !String(p.concepto_code || '').startsWith('MODULO:')));
   box.innerHTML = `
     <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Tu mensualidad</h3>
       <p>${pagadoHasta ? 'Tu membresía está pagada hasta el <b>' + fecha(pagadoHasta) + '</b>.'
@@ -6047,15 +6059,18 @@ async function pintarPagoTarjeta(){
 // El navegador NUNCA confirma el pago: lo confirma el aviso IPN de Yappy al servidor.
 // =====================================================================
 function activarBotonYappy(){
-  const btn = document.getElementById('pf-btn-yappy');
+  conectarBotonYappy(document.getElementById('pf-btn-yappy'), { aliasId: 'pf-yappy-alias', msgId: 'pf-yappy-msg' });
+}
+// Conecta un botón btn-yappy con yappy-crear-orden. `o.modulo` (opcional): código del módulo que se paga.
+function conectarBotonYappy(btn, o){
   if (!btn) return;
-  const msg = document.getElementById('pf-yappy-msg');
+  const msg = document.getElementById(o.msgId);
   const decir = (t, ok) => { if (msg){ msg.style.color = ok ? '#159A61' : '#C2455F'; msg.textContent = t || ''; } };
   btn.addEventListener('eventClick', async () => {
-    const alias = document.getElementById('pf-yappy-alias').value;
-    decir('Creando tu orden de pago…', true); msg.style.color = '';
+    const alias = document.getElementById(o.aliasId).value;
+    decir('Creando tu orden de pago…', true); if (msg) msg.style.color = '';
     try {
-      const r = await Sheets.crearOrdenYappyMensualidad(alias);
+      const r = await Sheets.crearOrdenYappyMensualidad(alias, o.modulo);
       window._yappyPagoId = r.pagoId;
       decir('');
       btn.eventPayment({ transactionId: r.body.transactionId, documentName: r.body.documentName, token: r.body.token });
@@ -6065,28 +6080,86 @@ function activarBotonYappy(){
       btn.isButtonLoading = false;
     }
   });
-  btn.addEventListener('eventSuccess', () => { esperarConfirmacionYappy(); });
+  btn.addEventListener('eventSuccess', () => { esperarConfirmacionYappy(o); });
   btn.addEventListener('eventError', () => {
     decir('El pago no se completó. Puedes intentarlo de nuevo.');
     btn.isButtonLoading = false;
   });
 }
 // Yappy ya aprobó en la app; el servidor recibe el IPN y marca el pago. Aquí solo se consulta ese estado.
-async function esperarConfirmacionYappy(){
-  const msg = document.getElementById('pf-yappy-msg');
-  if (msg){ msg.style.color = '#159A61'; msg.textContent = 'Pago recibido. Confirmando tu membresía…'; }
+async function esperarConfirmacionYappy(o){
+  const msg = document.getElementById(o.msgId);
+  if (msg){ msg.style.color = '#159A61'; msg.textContent = o.modulo ? 'Pago recibido. Activando tu módulo…' : 'Pago recibido. Confirmando tu membresía…'; }
   const id = window._yappyPagoId;
   for (let i = 0; i < 60 && id; i++){
     try {
       const { data } = await sbClient.rpc('estado_pago_plataforma', { p_id: id });
       const p = Array.isArray(data) ? data[0] : data;
-      if (p && p.estado === 'confirmado'){ renderPlan(); setTimeout(() => alert('¡Pago confirmado! Tu membresía quedó activa.'), 300); return; }
+      if (p && p.estado === 'confirmado'){
+        cerrarPagoModulo(); renderPlan();
+        setTimeout(() => alert(o.modulo ? '¡Pago confirmado! Tu módulo quedó activo.' : '¡Pago confirmado! Tu membresía quedó activa.'), 300);
+        return;
+      }
       if (p && p.estado === 'rechazado'){ if (msg){ msg.style.color = '#C2455F'; msg.textContent = 'El pago no se completó.'; } return; }
     } catch(e){ console.error(e); }
     await new Promise(r => setTimeout(r, 3000));
   }
-  if (msg){ msg.style.color = ''; msg.textContent = 'Tu pago está en proceso. Si se completó, tu plan se activará solo en unos minutos.'; }
+  if (msg){ msg.style.color = ''; msg.textContent = o.modulo ? 'Tu pago está en proceso. Si se completó, tu módulo se activará solo en unos minutos.' : 'Tu pago está en proceso. Si se completó, tu plan se activará solo en unos minutos.'; }
   pintarPagoTarjeta();
+}
+
+// =====================================================================
+// AGREGAR UN MÓDULO ADICIONAL: se paga completo (tarjeta o Yappy) y queda activo al confirmarse el pago.
+// En prueba gratis se activa sin cobro (ver activarModuloUI).
+// =====================================================================
+function abrirPagoModulo(code){
+  const m = (CATALOGO_MODULOS || []).find(x => x.code === code);
+  if (!m) return;
+  cerrarPagoModulo();
+  const ov = document.createElement('div');
+  ov.className = 'pm-ov'; ov.id = 'pm-ov';
+  ov.addEventListener('click', e => { if (e.target === ov) cerrarPagoModulo(); });
+  ov.innerHTML = `<div class="pm-box" role="dialog" aria-modal="true">
+    <button type="button" class="pm-x" aria-label="Cerrar" onclick="cerrarPagoModulo()">×</button>
+    <h3>Agregar ${escCat(m.name)}</h3>
+    <p class="pm-precio">${fmtDinero(m.price)}<small> /mes</small></p>
+    <p class="pf-nota" style="margin:0 0 12px;">Pagas ahora y el módulo queda activo en cuanto se confirme el pago. Desde el próximo mes se suma a tu mensualidad.</p>
+    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${code}')"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(m.price)} con tarjeta</span></button>
+    <div class="pf-yappy">
+      <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
+      <input class="fi" id="pm-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
+      <p class="pf-nota" id="pm-yappy-msg" style="min-height:14px;margin:6px 0 8px;"></p>
+      <btn-yappy id="pm-btn-yappy" theme="darkBlue" rounded="true"></btn-yappy>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  conectarBotonYappy(document.getElementById('pm-btn-yappy'), { aliasId: 'pm-yappy-alias', msgId: 'pm-yappy-msg', modulo: code });
+}
+function cerrarPagoModulo(){
+  const ov = document.getElementById('pm-ov');
+  if (ov) ov.remove();
+}
+async function pagarModuloTarjeta(code){
+  const btn = document.getElementById('pm-btn-tarjeta');
+  const antes = btn ? btn.innerHTML : '';
+  const win = abrirVentanaPago(); // se abre ya, en el clic (si se espera, el navegador la bloquea)
+  if (btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i><span>Preparando tu pago…</span>'; }
+  try {
+    const r = await Sheets.crearEnlaceMensualidad(code);
+    if (win && !win.closed){
+      escucharResultadoPago();
+      win.location.href = r.url;
+      if (btn) btn.innerHTML = '<i class="ti ti-external-link"></i><span>Completa el pago en la ventana que se abrió</span>';
+      const t = setInterval(() => { if (win.closed){ clearInterval(t); if (btn){ btn.disabled = false; btn.innerHTML = antes; } renderPlan(); } }, 1000);
+    } else {
+      window.location.href = r.url; // navegador sin ventanas emergentes: se paga en esta misma pestaña
+    }
+  } catch(e){
+    console.error(e);
+    if (win && !win.closed) win.close();
+    alert('No se pudo abrir el pago: ' + (e.message || e));
+    if (btn){ btn.disabled = false; btn.innerHTML = antes; }
+  }
 }
 
 // El pago se abre en una ventana aparte; al terminar, pago.html avisa aquí y se cierra sola
@@ -6103,7 +6176,7 @@ function escucharResultadoPago(){
   ESCUCHA_PAGO = true;
   window.addEventListener('message', ev => {
     if (ev.origin !== window.location.origin || !ev.data || ev.data.tipo !== 'annly-pago') return;
-    if (ev.data.estado === 'confirmado'){ renderPlan(); setTimeout(() => alert('¡Pago confirmado! Tu membresía quedó activa.'), 300); }
+    if (ev.data.estado === 'confirmado'){ cerrarPagoModulo(); renderPlan(); setTimeout(() => alert('¡Pago confirmado! Ya quedó activo.'), 300); }
     else pintarPagoTarjeta();
   });
 }
@@ -6175,7 +6248,7 @@ async function pintarPagosPlataforma(){
   let lista = [];
   try { lista = await Sheets.getAvisosPagoPlataforma(); } catch(e){ console.error(e); }
   const fecha = iso => new Date(iso).toLocaleString('es-PA', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-  const revisar = lista.filter(a => a.estado === 'revisar' || (a.estado === 'pendiente' && a.concepto_code !== 'MENSUALIDAD'));
+  const revisar = lista.filter(a => a.estado === 'revisar' || (a.estado === 'pendiente' && a.concepto_code !== 'MENSUALIDAD' && !String(a.concepto_code || '').startsWith('MODULO:')));
   const recientes = lista.filter(a => a.estado === 'confirmado').slice(0, 8);
   const ESTADO = { confirmado: 'Confirmado', revisar: 'Revisar', pendiente: 'Aviso manual' };
   const fila = (a, conAcciones) => `
@@ -6247,13 +6320,13 @@ async function renderPlan(){
   renderExtraSucursal();
   if (pfPaletaSel !== null && document.getElementById('pf-paleta-grid')) renderPaletaPerfil();
 
-  // Durante el trial, el acceso real queda limitado a lo que trae Basic —
-  // el plan seleccionado y los addons activados quedan "en espera" hasta
-  // que el trial termine y haya una suscripción paga de verdad.
+  // Durante el trial, el plan seleccionado queda "en espera" (el acceso real es el de Basic), pero los
+  // módulos que el negocio agregue SÍ se pueden usar para que conozca la funcionalidad. Al terminar la
+  // prueba se bloquean hasta que pague su mensualidad (suscripción activa).
   if (enPeriodoPrueba()){
     try { FEATURES_FUNCIONALES = await Sheets.getFeaturesDePlanCode('BASIC'); }
     catch(e) { console.error('Error leyendo features de Basic:', e); FEATURES_FUNCIONALES = []; }
-    MODULOS_FUNCIONALES = [];
+    MODULOS_FUNCIONALES = pruebaVencida() ? [] : MODULOS_ACTIVOS;
   } else {
     FEATURES_FUNCIONALES = FEATURES_DEL_PLAN;
     MODULOS_FUNCIONALES = MODULOS_ACTIVOS;
@@ -6353,7 +6426,9 @@ async function renderModulosPlan(){
 
     let estadoHtml;
     if ((incluido || activo) && enPeriodoPrueba() && !disponibleAhora) {
-      estadoHtml = `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Se activa cuando termine tu prueba</div>`;
+      estadoHtml = pruebaVencida()
+        ? `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Bloqueado: paga tu mensualidad para activarlo</div>`
+        : `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Se activa cuando termine tu prueba</div>`;
     } else if (incluido) {
       estadoHtml = `<div class="plan-module-included-badge"><i class="ti ti-check"></i> Incluido en tu plan</div>`;
     } else if (activo && cancelaEl) {
@@ -6855,9 +6930,11 @@ async function activarModuloUI(featureCode){
   }
   const modulo = CATALOGO_MODULOS.find(m => m.code === featureCode);
   if (!modulo) return;
+  // Fuera de la prueba gratis, el módulo se paga al agregarlo (tarjeta o Yappy) y se activa al confirmarse
+  if (!enPeriodoPrueba()){ abrirPagoModulo(featureCode); return; }
   try {
     await Sheets.activarModulo(SUSCRIPCION_ACTUAL.subscriptionId, featureCode, modulo.name, modulo.price);
-    await renderModulosPlan();
+    await renderPlan(); // en prueba el módulo se puede usar ya: se recalcula el acceso
   } catch(e) {
     console.error('Error activando el módulo:', e);
     alert('No se pudo activar el módulo. Intenta de nuevo.');

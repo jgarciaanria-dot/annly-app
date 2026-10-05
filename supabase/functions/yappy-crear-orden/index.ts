@@ -3,7 +3,8 @@
 //
 // El dueño de un negocio toca el botón de Yappy en "Mi plan". Esta función:
 //   1. Confirma que quien llama es dueño del negocio (o Platform Admin).
-//   2. Calcula EN EL SERVIDOR el monto del mes (igual que pf-crear-enlace).
+//   2. Calcula EN EL SERVIDOR el monto: la mensualidad (igual que pf-crear-enlace) o, si llega `modulo`,
+//      el precio completo de ese módulo adicional (no aplica en prueba gratis; el módulo se activa al confirmarse el pago).
 //   3. Registra el pago (pagos_plataforma, estado 'pendiente', referencia 'YAPPY:<orderId>').
 //   4. Valida el comercio en Yappy y crea la orden (payments/validate/merchant + payments/payment-wc).
 //   5. Devuelve { body: { transactionId, documentName, token } } para btn-yappy.eventPayment().
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return resp({ ok: true, funcion: "yappy-crear-orden", ambiente: PRUEBAS ? "pruebas" : "produccion" });
   try {
-    const { negocioId, origen, volverA, aliasYappy } = await req.json();
+    const { negocioId, origen, volverA, aliasYappy, modulo } = await req.json();
     if (!negocioId) return resp({ error: "Falta el negocio." }, 400);
     const base = String(volverA || "").replace(/\/+$/, "");
     if (!ORIGENES.some((r) => r.test(base))) return resp({ error: "Dirección de retorno no permitida." }, 400);
@@ -110,29 +111,52 @@ Deno.serve(async (req) => {
 
     const sb = createClient(URL_SB, SERVICE);
 
-    // 2) Monto del mes, calculado aquí (misma regla que pf-crear-enlace)
-    const plan = (sub as any).plans || {};
     const hoy = new Date().toISOString().slice(0, 10);
-    const { data: items } = await sb.from("subscription_items")
-      .select("item_code, description, unit_price, quantity, cancela_el")
-      .eq("subscription_id", sub.id).eq("is_active", true);
-    const detalle = [{ code: plan.code, nombre: "Plan " + (plan.name || plan.code), monto: r2(Number(plan.monthly_price) || 0) }];
-    for (const it of items || []) {
-      if (it.cancela_el && it.cancela_el < hoy) continue;
-      const m = r2((Number(it.unit_price) || 0) * (Number(it.quantity) || 1));
-      if (m > 0) detalle.push({ code: it.item_code, nombre: (it.description || it.item_code) + ((Number(it.quantity) || 1) > 1 ? " × " + it.quantity : ""), monto: m });
-    }
-    const monto = r2(detalle.reduce((s, d) => s + d.monto, 0));
-    if (monto < 1) return resp({ error: "No hay nada que cobrar este mes." }, 400);
+    let detalle: any[] = [];
+    let monto = 0;
+    let concepto = "";
+    let conceptoCode = "MENSUALIDAD";
 
-    const vence = sub.current_period_end ? String(sub.current_period_end).slice(0, 10) : "";
-    const desde = vence && vence > hoy ? new Date(vence + "T12:00:00") : new Date();
-    const concepto = `Mensualidad ${MESES[desde.getMonth()]} ${desde.getFullYear()}`;
+    if (modulo) {
+      // 2) Módulo adicional: precio completo del catálogo (features), calculado aquí. En prueba gratis no se cobra.
+      if ((sub as any).status === "trial") return resp({ error: "En tu prueba gratis el módulo se activa sin cobro." }, 400);
+      const codigo = String(modulo).toUpperCase();
+      if (["PROFESIONAL_ADICIONAL", "SUCURSAL_ADICIONAL", "AGENTE_AI"].includes(codigo)) return resp({ error: "Ese módulo no se paga desde aquí." }, 400);
+      const { data: f } = await sb.from("features").select("code, name, monthly_price")
+        .eq("code", codigo).eq("is_addon", true).eq("is_active", true).eq("producto", esPedidos ? "pedidos" : "agenda").maybeSingle();
+      if (!f) return resp({ error: "Módulo no disponible." }, 400);
+      const { data: ya } = await sb.from("subscription_items").select("cancela_el")
+        .eq("subscription_id", sub.id).eq("item_type", "addon").eq("item_code", codigo).eq("is_active", true);
+      if ((ya || []).some((r: any) => !r.cancela_el || r.cancela_el >= hoy)) return resp({ error: "Ese módulo ya está activo." }, 400);
+      monto = r2(Number(f.monthly_price) || 0);
+      if (monto < 1) return resp({ error: "Ese módulo no tiene costo." }, 400);
+      concepto = `Módulo ${f.name}`;
+      conceptoCode = "MODULO:" + codigo;
+      detalle = [{ tipo: "modulo", code: codigo, nombre: f.name, monto, subscription_id: sub.id }];
+    } else {
+      // 2) Monto del mes, calculado aquí (misma regla que pf-crear-enlace)
+      const plan = (sub as any).plans || {};
+      const { data: items } = await sb.from("subscription_items")
+        .select("item_code, description, unit_price, quantity, cancela_el")
+        .eq("subscription_id", sub.id).eq("is_active", true);
+      detalle = [{ code: plan.code, nombre: "Plan " + (plan.name || plan.code), monto: r2(Number(plan.monthly_price) || 0) }];
+      for (const it of items || []) {
+        if (it.cancela_el && it.cancela_el < hoy) continue;
+        const m = r2((Number(it.unit_price) || 0) * (Number(it.quantity) || 1));
+        if (m > 0) detalle.push({ code: it.item_code, nombre: (it.description || it.item_code) + ((Number(it.quantity) || 1) > 1 ? " × " + it.quantity : ""), monto: m });
+      }
+      monto = r2(detalle.reduce((s, d) => s + d.monto, 0));
+      if (monto < 1) return resp({ error: "No hay nada que cobrar este mes." }, 400);
+
+      const vence = sub.current_period_end ? String(sub.current_period_end).slice(0, 10) : "";
+      const desde = vence && vence > hoy ? new Date(vence + "T12:00:00") : new Date();
+      concepto = `Mensualidad ${MESES[desde.getMonth()]} ${desde.getFullYear()}`;
+    }
 
     // 3) Registrar el pago (pendiente). Cada intento lleva su propio orderId: Yappy rechaza repetidos (E007).
     const orderId = nuevoOrderId();
     const { data: pago, error: errP } = await sb.from("pagos_plataforma").insert([{
-      business_id: negocioId, concepto_code: "MENSUALIDAD", concepto, monto, estado: "pendiente",
+      business_id: negocioId, concepto_code: conceptoCode, concepto, monto, estado: "pendiente",
       origen: esPedidos ? "pedidos" : "agenda", detalle, volver_a: base, referencia: "YAPPY:" + orderId,
     }]).select("id").single();
     if (errP) throw errP;

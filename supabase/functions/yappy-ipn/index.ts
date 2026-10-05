@@ -6,7 +6,7 @@
 //   - corresponde a una orden nuestra (pagos_plataforma.referencia = 'YAPPY:<orderId>'),
 //   - y dice que fue ejecutada (status = E),
 // se marca el pago como confirmado. Si es MENSUALIDAD, el plan queda pagado un mes más
-// (misma regla que pf-webhook). R / C / X (rechazada, cancelada, expirada) → 'rechazado'.
+// (misma regla que pf-webhook). Si es un módulo adicional (concepto_code 'MODULO:<code>'), lo activa. R / C / X (rechazada, cancelada, expirada) → 'rechazado'.
 // El monto es el que se pidió al crear la orden (el aviso no trae monto).
 //
 // "Verify JWT" APAGADO (quien llama es Yappy). La seguridad es la firma: sin hash válido no se hace nada.
@@ -76,6 +76,22 @@ async function leerAviso(req: Request): Promise<Record<string, string>> {
   return o;
 }
 
+// Módulo adicional pagado: se agrega a la suscripción (si no estaba ya vigente)
+async function activarModulo(pago: any): Promise<string | null> {
+  const mod = Array.isArray(pago.detalle) ? pago.detalle.find((d: any) => d && d.tipo === "modulo") : null;
+  if (!mod || !mod.code || !mod.subscription_id) return "Pago de módulo sin datos del módulo";
+  const hoy = new Date().toISOString().slice(0, 10);
+  const { data: ya, error: errYa } = await sb.from("subscription_items").select("cancela_el")
+    .eq("subscription_id", mod.subscription_id).eq("item_type", "addon").eq("item_code", mod.code).eq("is_active", true);
+  if (errYa) return errYa.message;
+  if ((ya || []).some((r: any) => !r.cancela_el || r.cancela_el >= hoy)) return null; // ya estaba activo
+  const { error } = await sb.from("subscription_items").insert([{
+    subscription_id: mod.subscription_id, item_type: "addon", item_code: mod.code,
+    description: mod.nombre || mod.code, quantity: 1, unit_price: Number(mod.monto) || Number(pago.monto), is_active: true,
+  }]);
+  return error ? error.message : null;
+}
+
 async function aRevision(id: string, nota: string, extra: Record<string, unknown> = {}) {
   const { error } = await sb.from("pagos_plataforma").update({ estado: "revisar", nota, ...extra }).eq("id", id);
   if (error) console.error("yappy-ipn: no se pudo pasar a revisión", id, error);
@@ -138,6 +154,17 @@ Deno.serve(async (req) => {
     }).eq("id", pago.id).neq("estado", "confirmado").select("id");
     if (errTomar) throw errTomar;
     if (!tomado || !tomado.length) return ok({ yaConfirmado: true });
+
+    // 2a) Módulo adicional: queda activo
+    if (String(pago.concepto_code || "").startsWith("MODULO:")) {
+      const errMod = await activarModulo(pago);
+      if (errMod) {
+        console.error("yappy-ipn: pago de módulo confirmado pero no se activó", pago.id, errMod);
+        await aRevision(pago.id, "Pago confirmado, pero no se pudo activar el módulo: " + errMod);
+        return ok({ revisar: true, motivo: "módulo no activado" });
+      }
+      return ok({ confirmado: true, modulo: true });
+    }
 
     // 2) Mensualidad: el plan queda pagado un mes más
     if (sub && hasta) {
