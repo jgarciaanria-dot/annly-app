@@ -10,8 +10,9 @@
 //
 // La confirmación del pago NO se hace aquí ni en el navegador: la hace el aviso IPN de Yappy.
 // "Verify JWT" APAGADO (igual que pf-crear-enlace): la seguridad está adentro, con la sesión del usuario.
-// Secretos: YAPPY_MERCHANT_ID, YAPPY_DOMAIN_AGENDA, YAPPY_DOMAIN_PEDIDOS (o YAPPY_DOMAIN para ambos),
-//           YAPPY_AMBIENTE ('produccion' | 'pruebas').
+// Secretos (un botón de Yappy por app): YAPPY_MERCHANT_ID_AGENDA / YAPPY_MERCHANT_ID_PEDIDOS,
+//           YAPPY_DOMAIN_AGENDA / YAPPY_DOMAIN_PEDIDOS, YAPPY_AMBIENTE ('produccion' | 'pruebas').
+//           (YAPPY_MERCHANT_ID y YAPPY_DOMAIN sirven de respaldo si ambas apps comparten botón.)
 // =========================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -19,7 +20,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const URL_SB = Deno.env.get("SUPABASE_URL")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MERCHANT_ID = Deno.env.get("YAPPY_MERCHANT_ID") || "";
 const PRUEBAS = (Deno.env.get("YAPPY_AMBIENTE") || "produccion") === "pruebas";
 const YAPPY_API = PRUEBAS ? "https://api-comecom-uat.yappycloud.com" : "https://apipagosbg.bgeneral.cloud";
 const IPN_URL = `${URL_SB}/functions/v1/yappy-ipn`;
@@ -86,7 +86,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return resp({ ok: true, funcion: "yappy-crear-orden", ambiente: PRUEBAS ? "pruebas" : "produccion" });
   try {
-    if (!MERCHANT_ID) return resp({ error: "Falta configurar YAPPY_MERCHANT_ID en los secretos de Supabase." }, 500);
     const { negocioId, origen, volverA, aliasYappy } = await req.json();
     if (!negocioId) return resp({ error: "Falta el negocio." }, 400);
     const base = String(volverA || "").replace(/\/+$/, "");
@@ -94,8 +93,10 @@ Deno.serve(async (req) => {
     const alias = limpiarAlias(aliasYappy);
     if (!alias) return resp({ error: "Ingresa tu número Yappy (8 dígitos, sin +507).", code: "ALIAS" }, 400);
 
-    // Dominio configurado en el botón de Yappy Comercial (debe coincidir exacto)
+    // Botón de Yappy de cada app: ID de comercio y dominio configurados en Yappy Comercial (deben coincidir exacto)
     const esPedidos = origen === "pedidos";
+    const MERCHANT_ID = (esPedidos ? Deno.env.get("YAPPY_MERCHANT_ID_PEDIDOS") : Deno.env.get("YAPPY_MERCHANT_ID_AGENDA")) || Deno.env.get("YAPPY_MERCHANT_ID") || "";
+    if (!MERCHANT_ID) return resp({ error: "Falta configurar el ID de comercio de Yappy en los secretos de Supabase." }, 500);
     const domain = (esPedidos ? Deno.env.get("YAPPY_DOMAIN_PEDIDOS") : Deno.env.get("YAPPY_DOMAIN_AGENDA")) || Deno.env.get("YAPPY_DOMAIN") || "";
     if (!domain) return resp({ error: "Falta configurar el dominio de Yappy en los secretos de Supabase." }, 500);
 

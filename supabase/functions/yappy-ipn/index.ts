@@ -11,7 +11,8 @@
 //
 // "Verify JWT" APAGADO (quien llama es Yappy). La seguridad es la firma: sin hash válido no se hace nada.
 // Secretos: YAPPY_CLAVE_SECRETA (la clave secreta del botón, tal como la da Yappy Comercial),
-//           YAPPY_DOMAIN_AGENDA / YAPPY_DOMAIN_PEDIDOS (o YAPPY_DOMAIN).
+//           (un botón por app) YAPPY_CLAVE_SECRETA_AGENDA / YAPPY_CLAVE_SECRETA_PEDIDOS con sus dominios
+//           YAPPY_DOMAIN_AGENDA / YAPPY_DOMAIN_PEDIDOS. YAPPY_CLAVE_SECRETA y YAPPY_DOMAIN sirven de respaldo.
 //
 // Formato del aviso (manual del Botón de Pago, sección IPN): GET a <ipnUrl>?orderId=..&hash=..&status=..&domain=..
 //   hash = HMAC-SHA256( orderId + status + domain , secreto ) en hex, donde
@@ -22,8 +23,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-const CLAVE = Deno.env.get("YAPPY_CLAVE_SECRETA") || "";
-const DOMINIOS = [Deno.env.get("YAPPY_DOMAIN_AGENDA"), Deno.env.get("YAPPY_DOMAIN_PEDIDOS"), Deno.env.get("YAPPY_DOMAIN")].filter(Boolean) as string[];
+const env = (k: string) => Deno.env.get(k) || "";
+const norm = (d: string) => d.trim().toLowerCase().replace(/\/+$/, "");
+// Un botón por app: cada uno con su dominio y su clave secreta
+const BOTONES = [
+  { dominio: env("YAPPY_DOMAIN_AGENDA"), clave: env("YAPPY_CLAVE_SECRETA_AGENDA") },
+  { dominio: env("YAPPY_DOMAIN_PEDIDOS"), clave: env("YAPPY_CLAVE_SECRETA_PEDIDOS") },
+  { dominio: env("YAPPY_DOMAIN"), clave: env("YAPPY_CLAVE_SECRETA") },
+].filter((b) => b.dominio && b.clave);
 const ok = (obj: unknown) => new Response(JSON.stringify(obj), { status: 200, headers: { "Content-Type": "application/json" } });
 
 function masUnMes(iso: string) {
@@ -35,8 +42,8 @@ function masUnMes(iso: string) {
 }
 
 // Secreto de firma: parte antes del primer "." de la clave secreta decodificada de base64
-function secreto(): string {
-  try { return atob(CLAVE.trim()).split(".")[0]; } catch (_) { return ""; }
+function secreto(clave: string): string {
+  try { return atob(clave.trim()).split(".")[0]; } catch (_) { return ""; }
 }
 async function hmacHex(secreto: string, mensaje: string) {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secreto), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -48,10 +55,14 @@ function igual(a: string, b: string) { // comparación sin cortar al primer erro
   let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return r === 0;
 }
+// La firma solo vale si el dominio del aviso es el de un botón nuestro y se firmó con la clave de ESE botón
 async function firmaValida(orderId: string, status: string, domain: string, hash: string) {
-  const sec = secreto();
-  if (!sec) return false;
-  return igual(await hmacHex(sec, orderId + status + domain), hash.toLowerCase());
+  for (const b of BOTONES) {
+    if (norm(b.dominio) !== norm(domain)) continue;
+    const sec = secreto(b.clave);
+    if (sec && igual(await hmacHex(sec, orderId + status + domain), hash.toLowerCase())) return true;
+  }
+  return false;
 }
 
 // El aviso puede venir en la URL (GET) o en el cuerpo (POST JSON o formulario)
@@ -72,7 +83,7 @@ async function aRevision(id: string, nota: string, extra: Record<string, unknown
 
 Deno.serve(async (req) => {
   try {
-    if (!CLAVE) { console.error("yappy-ipn: falta YAPPY_CLAVE_SECRETA"); return new Response("Sin configurar", { status: 500 }); }
+    if (!BOTONES.length) { console.error("yappy-ipn: faltan los secretos de Yappy (clave y dominio)"); return new Response("Sin configurar", { status: 500 }); }
     const a = await leerAviso(req);
     const orderId = String(a.orderId || "");
     const status = String(a.status || "").toUpperCase();
@@ -84,7 +95,6 @@ Deno.serve(async (req) => {
       console.warn("yappy-ipn: firma inválida o aviso incompleto");
       return new Response("No autorizado", { status: 401 });
     }
-    if (DOMINIOS.length && !DOMINIOS.includes(domain)) { console.warn("yappy-ipn: dominio inesperado", domain); return ok({ ignorado: true, motivo: "dominio" }); }
 
     const { data: pago, error: errPago } = await sb.from("pagos_plataforma").select("*").eq("referencia", "YAPPY:" + orderId).maybeSingle();
     if (errPago) throw errPago;
