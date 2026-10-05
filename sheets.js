@@ -4173,6 +4173,7 @@ const Sheets = {
       try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch(_){}
       throw new Error(msg);
     }
+    if (modulo && !/^m[oó]dulo/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar módulos. Intenta en unos minutos o escríbenos.');
     if (!data || !data.url) throw new Error((data && data.error) || 'No se pudo crear el enlace de pago.');
     return data;
   },
@@ -4187,6 +4188,7 @@ const Sheets = {
       try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch(_){}
       throw new Error(msg);
     }
+    if (modulo && !/^m[oó]dulo/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar módulos. Intenta en unos minutos o escríbenos.');
     if (!data || !data.body || !data.body.token) throw new Error((data && data.error) || 'No se pudo crear la orden de pago.');
     return data;
   },

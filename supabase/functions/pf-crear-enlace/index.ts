@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     const { data: previo } = await sb.from("pagos_plataforma").select("id, enlace_url")
       .eq("business_id", negocioId).eq("estado", "pendiente").eq("monto", monto).eq("concepto", concepto).gte("creado_en", hace50)
       .not("enlace_url", "is", null).order("creado_en", { ascending: false }).limit(1).maybeSingle();
-    if (previo?.enlace_url) return resp({ url: previo.enlace_url, pagoId: previo.id, monto });
+    if (previo?.enlace_url) return resp({ url: previo.enlace_url, pagoId: previo.id, monto, concepto });
 
     // 3) Registrar el pago
     const { data: pago, error: errP } = await sb.from("pagos_plataforma").insert([{
