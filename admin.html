@@ -5975,6 +5975,12 @@ function getPlanActualUI(){
 function enPeriodoPrueba(){
   return !!(SUSCRIPCION_ACTUAL && SUSCRIPCION_ACTUAL.status === 'trial');
 }
+// La prueba ya pasó su fecha de fin y no se ha pagado: los módulos agregados quedan bloqueados
+function pruebaVencida(){
+  if (!enPeriodoPrueba()) return false;
+  const fin = String(SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd || '').slice(0, 10);
+  return !!fin && fin < new Date().toISOString().slice(0, 10);
+}
 
 const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function formatFechaCorta(fechaISO){
@@ -6314,13 +6320,13 @@ async function renderPlan(){
   renderExtraSucursal();
   if (pfPaletaSel !== null && document.getElementById('pf-paleta-grid')) renderPaletaPerfil();
 
-  // Durante el trial, el acceso real queda limitado a lo que trae Basic —
-  // el plan seleccionado y los addons activados quedan "en espera" hasta
-  // que el trial termine y haya una suscripción paga de verdad.
+  // Durante el trial, el plan seleccionado queda "en espera" (el acceso real es el de Basic), pero los
+  // módulos que el negocio agregue SÍ se pueden usar para que conozca la funcionalidad. Al terminar la
+  // prueba se bloquean hasta que pague su mensualidad (suscripción activa).
   if (enPeriodoPrueba()){
     try { FEATURES_FUNCIONALES = await Sheets.getFeaturesDePlanCode('BASIC'); }
     catch(e) { console.error('Error leyendo features de Basic:', e); FEATURES_FUNCIONALES = []; }
-    MODULOS_FUNCIONALES = [];
+    MODULOS_FUNCIONALES = pruebaVencida() ? [] : MODULOS_ACTIVOS;
   } else {
     FEATURES_FUNCIONALES = FEATURES_DEL_PLAN;
     MODULOS_FUNCIONALES = MODULOS_ACTIVOS;
@@ -6420,7 +6426,9 @@ async function renderModulosPlan(){
 
     let estadoHtml;
     if ((incluido || activo) && enPeriodoPrueba() && !disponibleAhora) {
-      estadoHtml = `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Se activa cuando termine tu prueba</div>`;
+      estadoHtml = pruebaVencida()
+        ? `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Bloqueado: paga tu mensualidad para activarlo</div>`
+        : `<div class="plan-module-pending-badge"><i class="ti ti-lock"></i> Se activa cuando termine tu prueba</div>`;
     } else if (incluido) {
       estadoHtml = `<div class="plan-module-included-badge"><i class="ti ti-check"></i> Incluido en tu plan</div>`;
     } else if (activo && cancelaEl) {
@@ -6926,7 +6934,7 @@ async function activarModuloUI(featureCode){
   if (!enPeriodoPrueba()){ abrirPagoModulo(featureCode); return; }
   try {
     await Sheets.activarModulo(SUSCRIPCION_ACTUAL.subscriptionId, featureCode, modulo.name, modulo.price);
-    await renderModulosPlan();
+    await renderPlan(); // en prueba el módulo se puede usar ya: se recalcula el acceso
   } catch(e) {
     console.error('Error activando el módulo:', e);
     alert('No se pudo activar el módulo. Intenta de nuevo.');
