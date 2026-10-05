@@ -13,12 +13,10 @@
 // Secretos: YAPPY_CLAVE_SECRETA (la clave secreta del botón, tal como la da Yappy Comercial),
 //           YAPPY_DOMAIN_AGENDA / YAPPY_DOMAIN_PEDIDOS (o YAPPY_DOMAIN).
 //
-// ⚠ FORMATO DEL AVISO (a confirmar con el manual del IPN de Yappy): se asume un GET a
-//   <ipnUrl>?orderId=..&hash=..&status=..&domain=.. con
+// Formato del aviso (manual del Botón de Pago, sección IPN): GET a <ipnUrl>?orderId=..&hash=..&status=..&domain=..
 //   hash = HMAC-SHA256( orderId + status + domain , secreto ) en hex, donde
 //   secreto = parte antes del primer "." de base64decode(YAPPY_CLAVE_SECRETA).
-//   Si Yappy lo manda distinto, los pagos reales NO se confirman (falla del lado seguro) y quedan
-//   pendientes; el aviso recibido queda en los Logs de la función para ajustarla.
+//   status: E ejecutado · R rechazado · C cancelado · X expirado.
 // =========================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -36,12 +34,9 @@ function masUnMes(iso: string) {
   return d.toISOString().slice(0, 10);
 }
 
-// Secretos candidatos para firmar: la parte útil de la clave decodificada, o la clave tal cual
-function secretos(): string[] {
-  const c: string[] = [];
-  try { const d = atob(CLAVE.trim()); const p = d.split(".")[0]; if (p) c.push(p); } catch (_) { /* no es base64 */ }
-  if (CLAVE) c.push(CLAVE.trim());
-  return c;
+// Secreto de firma: parte antes del primer "." de la clave secreta decodificada de base64
+function secreto(): string {
+  try { return atob(CLAVE.trim()).split(".")[0]; } catch (_) { return ""; }
 }
 async function hmacHex(secreto: string, mensaje: string) {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secreto), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -54,9 +49,9 @@ function igual(a: string, b: string) { // comparación sin cortar al primer erro
   return r === 0;
 }
 async function firmaValida(orderId: string, status: string, domain: string, hash: string) {
-  const h = hash.toLowerCase();
-  for (const s of secretos()) if (igual(await hmacHex(s, orderId + status + domain), h)) return true;
-  return false;
+  const sec = secreto();
+  if (!sec) return false;
+  return igual(await hmacHex(sec, orderId + status + domain), hash.toLowerCase());
 }
 
 // El aviso puede venir en la URL (GET) o en el cuerpo (POST JSON o formulario)
