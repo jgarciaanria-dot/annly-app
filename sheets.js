@@ -4170,6 +4170,20 @@ const Sheets = {
     if (!data || !data.url) throw new Error((data && data.error) || 'No se pudo crear el enlace de pago.');
     return data;
   },
+  // Pago de la mensualidad con Yappy: el servidor calcula el monto y crea la orden en Yappy
+  async crearOrdenYappyMensualidad(aliasYappy) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.functions.invoke('yappy-crear-orden', {
+      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, aliasYappy }
+    });
+    if (error) {
+      let msg = error.message;
+      try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch(_){}
+      throw new Error(msg);
+    }
+    if (!data || !data.body || !data.body.token) throw new Error((data && data.error) || 'No se pudo crear la orden de pago.');
+    return data;
+  },
   async resolverAvisoPago(id, estado, referencia, nota) {
     await window.AnnlyReady;
     const { error } = await sbClient.from('pagos_plataforma').update({

@@ -526,6 +526,11 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .pf-nota{font-size:11.5px;color:var(--ink-soft,#8A8796);margin:10px 0 0;}
 .pf-total{background:#FAF7FE;border-color:#EFE8F8;}
 .pf-box .pf-pagar{width:100%;height:46px;margin-top:12px;font-size:14px;}
+.pf-yappy{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line,#ECE8F2);}
+.pf-yappy-hdr{display:flex;flex-direction:column;gap:2px;margin-bottom:8px;}
+.pf-yappy-hdr b{font-size:13.5px;}
+.pf-yappy-hdr span{font-size:12px;color:var(--ink-soft,#77738A);}
+.pf-yappy .fi{width:100%;}
 .pf-hist{margin-top:12px;font-size:12px;color:var(--ink-soft,#77738A);display:flex;flex-direction:column;gap:4px;}
 .pf-hist b{color:var(--ink,#2B2838);font-size:12.5px;}
 .pf-hist i{color:#159A61;margin-right:5px;}
@@ -5027,6 +5032,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
+<script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
 <script src="sheets.js?v=62"></script>
 <script src="horarios.js?v=1"></script>
@@ -6022,11 +6028,65 @@ async function pintarPagoTarjeta(){
     </div>
     <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
     <p class="pf-nota">Pago seguro con tarjeta de crédito o débito (PagueloFácil). Se abre en una ventana aparte y, al terminar, tu membresía se actualiza sola aquí.</p>
+    <div class="pf-yappy" id="pf-yappy">
+      <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
+      <input class="fi" id="pf-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
+      <p class="pf-nota" id="pf-yappy-msg" style="min-height:14px;margin:6px 0 8px;"></p>
+      <btn-yappy id="pf-btn-yappy" theme="darkBlue" rounded="true"></btn-yappy>
+    </div>
     ${enRevision.length ? `<div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
       ${enRevision.map(a => `<span>${escCat(a.concepto)} · ${fmtDinero(a.monto)}</span>`).join('')}
       <small>Los estamos revisando; no necesitas hacer nada.</small></div></div>` : ''}
     ${confirmados.length ? `<div class="pf-hist"><b>Últimos pagos</b>${confirmados.map(p => `<span><i class="ti ti-circle-check"></i>${escCat(p.concepto)} · ${fmtDinero(p.monto_pagado || p.monto)} · ${fecha(p.resuelto_en || p.creado_en)}</span>`).join('')}</div>` : ''}`;
   box.style.display = '';
+  activarBotonYappy();
+}
+
+// =====================================================================
+// PAGAR CON YAPPY: el botón oficial crea la orden en el servidor (yappy-crear-orden).
+// El navegador NUNCA confirma el pago: lo confirma el aviso IPN de Yappy al servidor.
+// =====================================================================
+function activarBotonYappy(){
+  const btn = document.getElementById('pf-btn-yappy');
+  if (!btn) return;
+  const msg = document.getElementById('pf-yappy-msg');
+  const decir = (t, ok) => { if (msg){ msg.style.color = ok ? '#159A61' : '#C2455F'; msg.textContent = t || ''; } };
+  btn.addEventListener('eventClick', async () => {
+    const alias = document.getElementById('pf-yappy-alias').value;
+    decir('Creando tu orden de pago…', true); msg.style.color = '';
+    try {
+      const r = await Sheets.crearOrdenYappyMensualidad(alias);
+      window._yappyPagoId = r.pagoId;
+      decir('');
+      btn.eventPayment({ transactionId: r.body.transactionId, documentName: r.body.documentName, token: r.body.token });
+    } catch(e){
+      console.error(e);
+      decir(e.message || 'No se pudo crear la orden de pago.');
+      btn.isButtonLoading = false;
+    }
+  });
+  btn.addEventListener('eventSuccess', () => { esperarConfirmacionYappy(); });
+  btn.addEventListener('eventError', () => {
+    decir('El pago no se completó. Puedes intentarlo de nuevo.');
+    btn.isButtonLoading = false;
+  });
+}
+// Yappy ya aprobó en la app; el servidor recibe el IPN y marca el pago. Aquí solo se consulta ese estado.
+async function esperarConfirmacionYappy(){
+  const msg = document.getElementById('pf-yappy-msg');
+  if (msg){ msg.style.color = '#159A61'; msg.textContent = 'Pago recibido. Confirmando tu membresía…'; }
+  const id = window._yappyPagoId;
+  for (let i = 0; i < 60 && id; i++){
+    try {
+      const { data } = await sbClient.rpc('estado_pago_plataforma', { p_id: id });
+      const p = Array.isArray(data) ? data[0] : data;
+      if (p && p.estado === 'confirmado'){ renderPlan(); setTimeout(() => alert('¡Pago confirmado! Tu membresía quedó activa.'), 300); return; }
+      if (p && p.estado === 'rechazado'){ if (msg){ msg.style.color = '#C2455F'; msg.textContent = 'El pago no se completó.'; } return; }
+    } catch(e){ console.error(e); }
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  if (msg){ msg.style.color = ''; msg.textContent = 'Tu pago está en proceso. Si se completó, tu plan se activará solo en unos minutos.'; }
+  pintarPagoTarjeta();
 }
 
 // El pago se abre en una ventana aparte; al terminar, pago.html avisa aquí y se cierra sola
