@@ -1979,14 +1979,20 @@ const Sheets = {
   },
 
   // Cancela aplicando la política (documento "Reglas de negocio para políticas", sección 3):
-  // opciones = { caso: 'a_tiempo'|'tarde'|'no_show'|'negocio', abonoDestino?: 'credito'|'reembolso' (solo 'negocio'), reembolsoMetodo? }
+  // opciones = { caso: 'a_tiempo'|'tarde'|'no_show'|'negocio'|'abono_rechazado', abonoDestino?: 'credito'|'reembolso' (solo 'negocio'), reembolsoMetodo? }
   //  - Certificado: siempre se devuelve al saldo lo descontado (la Cortesía se pierde si no se presentó).
-  //  - Abono: a_tiempo → crédito · tarde/no_show → penalidad · negocio → crédito o reembolso.
+  //  - Abono: a_tiempo → crédito · tarde/no_show → penalidad · abono_rechazado → nada (no hubo dinero).
+  //  - Si el NEGOCIO no puede atender, lo normal es REPROGRAMAR (no pasa por aquí). Solo si el cliente
+  //    no acepta otra fecha se cancela con 'negocio', y el dueño elige EXPRESAMENTE: saldo a favor o
+  //    devolver el dinero (queda en la bitácora con su motivo).
   //  - Crédito y penalidad entran como ingreso hoy; el reembolso queda en la bitácora.
   async cancelarConPolitica(id, motivo, opciones, detalle) {
     await window.AnnlyReady;
     const caso = opciones && opciones.caso;
     if (!['a_tiempo', 'tarde', 'no_show', 'negocio', 'abono_rechazado'].includes(caso)) throw new Error('Elige el caso de la cancelación.');
+    if (caso === 'negocio' && !['credito', 'reembolso'].includes(opciones.abonoDestino)) {
+      throw new Error('Si el negocio no puede atender, primero ofrece reprogramar. Si el cliente no acepta, elige saldo a favor o devolver el dinero.');
+    }
     if (!motivo || !motivo.trim()) throw new Error('Indica el motivo de la cancelación.');
 
     const { data: actual, error: errA } = await sbClient.from('appointments').select('*').eq('id', id).eq('business_id', BUSINESS_ID).maybeSingle();
