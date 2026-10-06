@@ -100,6 +100,25 @@ body{overflow-x:clip}
 .live-phone .ph-cols.off{opacity:.15;filter:grayscale(1)}
 .ph-toast{position:absolute;left:10px;right:10px;top:46px;z-index:6;background:#201b2b;color:#fff;font-size:.62rem;line-height:1.35;padding:9px 11px;border-radius:12px;opacity:0;transform:translateY(-8px);pointer-events:none;box-shadow:0 8px 18px rgba(0,0,0,.25)}.ph-toast.on{opacity:1;transform:none}
 @media(max-width:860px){.live{display:block;width:auto;left:0;margin:28px 0 8px}.live-left{top:6px;z-index:8;background:#fffdfb;padding:6px 0 8px;margin-bottom:10px}.live-left .phone{height:290px;width:240px;margin:auto}.live-hint{display:none}}
+.hz-body{flex:1;padding:12px 12px 14px;background:#fff;overflow:hidden}
+.hz-title{font:700 .95rem 'Playfair Display',serif;margin-bottom:10px;color:#201b2b}
+.hz-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:.62rem;color:#6b6578;flex-wrap:wrap}
+.hz-row i{font-style:normal;border:1.5px solid #e9e4ed;border-radius:99px;padding:4px 10px;font-weight:700;color:#201b2b;font-size:.64rem;transition:all .35s}
+.hz-row i.on{background:linear-gradient(135deg,var(--purple),var(--pink));border-color:transparent;color:#fff}
+.hz-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:6px 0 10px}
+.hz-days b{display:block;text-align:center;border-radius:10px;border:1.5px solid #e9e4ed;padding:5px 0;font-size:.6rem;line-height:1.3;color:#201b2b;transition:all .35s}
+.hz-days b small{display:block;font-size:.7rem;font-weight:700}
+.hz-days b.sel{background:linear-gradient(135deg,var(--purple),var(--pink));border-color:transparent;color:#fff}
+.hz-days b.off{opacity:.35;background:#f4f1f7}
+.hz-days b.block{background:#fde8ef;border-color:#f6b5cc;color:#b4476b}
+.hz-slots{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-height:150px;align-content:start}
+.hz-slots span{border:1.5px solid #e1d3f3;border-radius:10px;padding:7px 4px;text-align:center;font-size:.64rem;font-weight:700;color:var(--purple);animation:hzIn .35s both}
+.hz-slots span small{display:block;font-weight:400;color:#6b6578;font-size:.54rem}
+.hz-slots span.full{opacity:.4;background:#f4f1f7;color:#8a8496;border-color:#e9e4ed;text-decoration:line-through}
+.hz-slots em{grid-column:1/-1;font-style:normal;text-align:center;font-size:.68rem;color:#b4476b;background:#fde8ef;border-radius:10px;padding:12px 8px}
+@keyframes hzIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.hz-cap{margin-top:10px;font-size:.62rem;line-height:1.4;color:#6b6578;background:#f7f3fb;border-radius:10px;padding:8px 10px;min-height:42px}
+.live-phone.hz{background:#fff}
 .tip{background:var(--lilac);border-radius:14px;padding:14px 16px;margin:22px 0;font-size:.92rem}
 .cta{display:inline-block;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;margin:6px 0 34px}
 footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:.88rem}
@@ -167,15 +186,26 @@ footer a{color:var(--purple)}
       </div>
     </div>
 
+<div class="live" data-live="hz-citas">
+      <div class="live-left"><div class="phone live-phone hz" aria-label="Vista previa de la disponibilidad">
+        <div class="ph-bar"><span>annly.app/estudio-luna</span></div>
+        <div class="hz-body"><div class="hz-title">Elige tu día y hora</div><div class="hz-rows"></div><div class="hz-days"></div><div class="hz-slots"></div><div class="hz-cap"></div></div>
+      </div>
+      <p class="live-hint"><b>Mira cómo cambia</b> lo que ve tu cliente. Toca un paso para verlo.</p></div>
+      <div class="live-body">
     <h2>Tus horarios</h2>
-    <p>Annly solo ofrece a tus clientes los espacios que de verdad tienes libres. Qué horario se usa depende de tu plan.</p>
+    <p>Annly solo ofrece a tus clientes los espacios que de verdad tienes libres. Qué horario se usa depende de tu plan. Baja por los pasos y mira cómo cambia a la izquierda.</p>
     <div class="campos">
-      <div><b>Horario del negocio</b><span>En <b style="display:inline">Perfil, Horario de atención</b> defines Lun-Vie, Sábado y Domingo, o los marcas como Cerrado. Es el horario que se muestra en tu página.</span></div>
-      <div><b>Plan Basic (1 profesional)</b><span>Atiendes con el horario de tu negocio o de tu sucursal. No necesitas configurar nada más.</span></div>
-      <div><b>Con más profesionales</b><span>Con Medium, Ultimate o <b style="display:inline">Profesional adicional</b>, cada profesional puede tener su propio horario. En <b style="display:inline">Equipo</b>, al crear o editar un profesional, activa <b style="display:inline">Horario propio</b> y elige sus días y horas. Si no lo activas, usa el horario de la sucursal.</span></div>
-      <div><b>Sucursales</b><span>Si tienes <b style="display:inline">Sucursal adicional</b>, cada sede tiene su propio horario en <b style="display:inline">Sucursales</b>, y cada profesional puede tener uno distinto en cada sede.</span></div>
+      <div data-step="negocio"><b>Horario del negocio</b><span>En <b style="display:inline">Perfil, Horario de atención</b> defines Lun-Vie, Sábado y Domingo, o los marcas como Cerrado. Es el horario que se muestra en tu página.</span></div>
+      <div data-step="basic"><b>Plan Basic (1 profesional)</b><span>Atiendes con el horario de tu negocio o de tu sucursal. No necesitas configurar nada más.</span></div>
+      <div data-step="mas"><b>Con más profesionales</b><span>Con Medium, Ultimate o <b style="display:inline">Profesional adicional</b>, cada profesional puede tener su propio horario. En <b style="display:inline">Equipo</b>, al crear o editar un profesional, activa <b style="display:inline">Horario propio</b> y elige sus días y horas. Si no lo activas, usa el horario de la sucursal.</span></div>
+      <div data-step="suc"><b>Sucursales</b><span>Si tienes <b style="display:inline">Sucursal adicional</b>, cada sede tiene su propio horario en <b style="display:inline">Sucursales</b>, y cada profesional puede tener uno distinto en cada sede.</span></div>
+      <div data-step="bloqueos"><b>Feriados y vacaciones</b><span>Para cerrar un día, como un feriado o tus vacaciones, usa <b style="display:inline">Bloqueos</b>. No cambia tu horario: solo quita esos días de lo que ve tu cliente.</span></div>
     </div>
-    <div class="tip"><b>Cómo se decide:</b> Annly usa primero el horario propio del profesional en esa sucursal; si no tiene, el de la sucursal; y si tampoco, el del negocio. Para bloquear un día, como un feriado o vacaciones, usa <b>Bloqueos</b>.</div>
+    <div class="tip"><b>Cómo se decide:</b> Annly usa primero el horario propio del profesional en esa sucursal; si no tiene, el de la sucursal; y si tampoco, el del negocio.</div>
+    <p style="font-size:.82rem;color:var(--muted)">Ejemplo ilustrativo con datos inventados.</p>
+      </div>
+    </div>
     <h2>Notificaciones</h2>
     <p>Annly avisa por correo cada vez que pasa algo con una cita, para que ni tú ni tu cliente se pierdan nada.</p>
     <div class="nt">
@@ -238,13 +268,23 @@ footer a{color:var(--purple)}
     <p style="font-size:.82rem;color:var(--muted)">Ejemplo ilustrativo con datos inventados.</p>
       </div>
     </div>
+<div class="live" data-live="hz-tienda">
+      <div class="live-left"><div class="phone live-phone hz" aria-label="Vista previa de la disponibilidad">
+        <div class="ph-bar"><span>annly.app/flores-del-valle</span></div>
+        <div class="hz-body"><div class="hz-title">¿Para cuándo?</div><div class="hz-rows"></div><div class="hz-days"></div><div class="hz-slots"></div><div class="hz-cap"></div></div>
+      </div>
+      <p class="live-hint"><b>Mira cómo cambia</b> lo que ve tu cliente. Toca un paso para verlo.</p></div>
+      <div class="live-body">
     <h2>Entregas y horarios</h2>
-    <p>En <b>Entregas y horarios</b> defines cuándo y cómo recibe el cliente su pedido.</p>
+    <p>En <b>Entregas y horarios</b> defines cuándo y cómo recibe el cliente su pedido. Baja por los pasos y mira cómo cambia a la izquierda.</p>
     <div class="campos">
-      <div><b>Retiro y domicilio</b><span>Activa <b style="display:inline">Retiro en tienda</b>, <b style="display:inline">Entrega a domicilio</b> o ambos. Para domicilio, crea tus <b style="display:inline">zonas</b> con su costo de envío.</span></div>
-      <div><b>Franjas de entrega</b><span>Cada franja es un horario de entrega o retiro, por ejemplo de 9:00 a 12:00, con el número de pedidos que puedes atender en ella. Cuando se llena, deja de ofrecerse.</span></div>
-      <div><b>Fechas sin pedidos</b><span>Bloquea feriados o días que no trabajas con <b style="display:inline">Bloquear fecha</b>.</span></div>
-      <div><b>Anticipación</b><span>En <b style="display:inline">Configuración</b> defines el tiempo mínimo de preparación y cuántos días hacia adelante pueden pedir tus clientes.</span></div>
+      <div data-step="modos"><b>Retiro y domicilio</b><span>Activa <b style="display:inline">Retiro en tienda</b>, <b style="display:inline">Entrega a domicilio</b> o ambos. Para domicilio, crea tus <b style="display:inline">zonas</b> con su costo de envío.</span></div>
+      <div data-step="franjas"><b>Franjas de entrega</b><span>Cada franja es un horario de entrega o retiro, por ejemplo de 9:00 a 12:00, con el número de pedidos que puedes atender en ella. Cuando se llena, deja de ofrecerse.</span></div>
+      <div data-step="fechas"><b>Fechas sin pedidos</b><span>Bloquea feriados o días que no trabajas con <b style="display:inline">Bloquear fecha</b>.</span></div>
+      <div data-step="antelacion"><b>Anticipación</b><span>En <b style="display:inline">Configuración</b> defines el tiempo mínimo de preparación y cuántos días hacia adelante pueden pedir tus clientes.</span></div>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted)">Ejemplo ilustrativo con datos inventados.</p>
+      </div>
     </div>
     <h2>Notificaciones</h2>
     <p>Cada pedido nuevo te llega por correo, y tu cliente recibe su aviso.</p>
@@ -284,6 +324,45 @@ footer a{color:var(--purple)}
 
 (function(){
   var vm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function hh(h){var p=h%12||12;return p+':00 '+(h>=12?'p. m.':'a. m.')}
+  function rng(a,b){var r=[];for(var h=a;h<b;h++)r.push({t:hh(h)});return r}
+  function draw(ph,c){
+    var rows='';(c.rows||[]).forEach(function(r){rows+='<div class="hz-row"><span>'+r.l+'</span>'+r.items.map(function(x,k){return '<i class="'+(k===r.sel?'on':'')+'">'+x+'</i>'}).join('')+'</div>'});
+    ph.querySelector('.hz-rows').innerHTML=rows;
+    ph.querySelector('.hz-days').innerHTML=c.days.map(function(d,k){return '<b class="'+(d[2]||'')+(k===c.sel?' sel':'')+'">'+d[0]+'<small>'+d[1]+'</small></b>'}).join('');
+    var sl=ph.querySelector('.hz-slots');
+    sl.innerHTML=c.msg?'<em>'+c.msg+'</em>':c.slots.map(function(x,k){return '<span class="'+(x.full?'full':'')+'" style="animation-delay:'+(k*35)+'ms">'+x.t+(x.sub?'<small>'+x.sub+'</small>':'')+'</span>'}).join('');
+    ph.querySelector('.hz-cap').textContent=c.cap;
+  }
+  var SEM=[['L',5],['M',6],['X',7],['J',8],['V',9],['S',10],['D',11]];
+  function dias(abiertos,bloq){return SEM.map(function(d,k){return [d[0],d[1],bloq&&bloq.indexOf(k)>=0?'block':(abiertos.indexOf(k)>=0?'':'off')]})}
+  function loop(live,fn,ms){var n=0;fn(n++);live._t=setInterval(function(){fn(n++)},ms)}
+  var H={
+    'hz-citas':function(i,k,ph,live){
+      var NEG=function(sel){return {sel:sel,days:dias([0,1,2,3,4,5]),slots:sel===5?rng(9,14):rng(9,18)}};
+      if(k==='basic'){var c=NEG(0);c.rows=[{l:'Con',items:['Laura'],sel:0}];c.cap='Plan Basic: 1 profesional, con el horario del negocio.';draw(ph,c);return}
+      if(k==='mas'){loop(live,function(n){var m=n%2===1,c;
+        if(m){c={sel:1,days:dias([1,3]),slots:rng(12,20),cap:'Marta tiene horario propio: solo martes y jueves, de 12 a 8 PM.'}}
+        else{c=NEG(0);c.cap='Laura usa el horario de la sucursal.'}
+        c.rows=[{l:'Con',items:['Laura','Marta'],sel:m?1:0}];draw(ph,c)},2400);return}
+      if(k==='suc'){loop(live,function(n){var m=n%2===1,c;
+        if(m){c={sel:0,days:dias([0,1,2,3,4,5]),slots:rng(10,19),cap:'Costa del Este atiende de lunes a sábado, de 10 AM a 7 PM.'}}
+        else{c=NEG(0);c.cap='Sede Principal: lunes a viernes, de 9 AM a 6 PM.'}
+        c.rows=[{l:'Sede',items:['Principal','Costa del Este'],sel:m?1:0}];draw(ph,c)},2400);return}
+      if(k==='bloqueos'){draw(ph,{rows:[{l:'Sede',items:['Principal','Costa del Este'],sel:0}],sel:3,days:dias([0,1,2,3,4,5],[3]),msg:'Jueves 8: día bloqueado (feriado). Tus clientes no pueden reservar.',slots:[],cap:'Con Bloqueos cierras uno o varios días sin tocar tu horario.'});return}
+      loop(live,function(n){var s=n%2===1?5:0;var c=NEG(s);c.cap=s===5?'Sábado: 9 AM a 2 PM.':'Lunes a viernes: 9 AM a 6 PM. Domingo cerrado.';draw(ph,c)},2400);
+    },
+    'hz-tienda':function(i,k,ph,live){
+      var DIAS=[['Hoy',6],['Mié',7],['Jue',8],['Vie',9],['Sáb',10],['Dom',11],['Lun',12]];
+      var dd=function(o){return DIAS.map(function(d,j){return [d[0],d[1],o[j]||'']})};
+      if(k==='franjas'){loop(live,function(n){var q=n%3;
+        draw(ph,{rows:[{l:'Entrega',items:['Retiro','Domicilio'],sel:1}],sel:3,days:dd(['','','','','','','']),slots:[{t:'9:00 a 12:00',sub:'Quedan '+(q===2?1:3)+' cupos'},{t:'2:00 a 6:00',sub:q===2?'Agotada':'Quedan '+(q===1?1:2)+' cupos',full:q===2}],cap:q===2?'La franja se llenó: ya no se ofrece.':'Cada franja tiene su cupo de pedidos.'})},2200);return}
+      if(k==='fechas'){draw(ph,{rows:[{l:'Entrega',items:['Retiro','Domicilio'],sel:1}],sel:3,days:dd(['','','','','block','','']),slots:[{t:'9:00 a 12:00',sub:'Quedan 3 cupos'},{t:'2:00 a 6:00',sub:'Quedan 2 cupos'}],cap:'Sábado 10: sin pedidos (feriado). No se puede elegir.'});return}
+      if(k==='antelacion'){draw(ph,{rows:[{l:'Entrega',items:['Retiro','Domicilio'],sel:1}],sel:3,days:dd(['off','off','','','','','']),slots:[{t:'9:00 a 12:00',sub:'Quedan 3 cupos'},{t:'2:00 a 6:00',sub:'Quedan 2 cupos'}],cap:'Tiempo mínimo de preparación: 48 h. Hoy y mañana no están disponibles.'});return}
+      loop(live,function(n){var dom=n%2===1;
+        draw(ph,{rows:[{l:'Entrega',items:['Retiro','Domicilio'],sel:dom?1:0}].concat(dom?[{l:'Zona',items:['Obarrio $3','Costa del Este $5'],sel:0}]:[]),sel:3,days:dd(['','','','','','','']),slots:[{t:'9:00 a 12:00',sub:'Quedan 3 cupos'},{t:'2:00 a 6:00',sub:'Quedan 2 cupos'}],cap:dom?'Domicilio: el envío se suma según la zona.':'Retiro en tienda: sin costo de envío.'})},2400)
+    }
+  };
   document.querySelectorAll('[data-live]').forEach(function(live){
     var cards=[].slice.call(live.querySelectorAll('[data-step]')),keys=cards.map(function(c){return c.dataset.step});
     var phone=live.querySelector('.live-phone'),sc=live.querySelector('.ph-scroll');
@@ -307,6 +386,8 @@ footer a{color:var(--purple)}
       cards.forEach(function(c,j){c.classList.toggle('act',j===i);c.classList.toggle('done',j<i)});
       if(i>=0&&sc){sc.scrollTo({top:cards[i].dataset.go==='bottom'?sc.scrollHeight:0,behavior:vm?'auto':'smooth'})}
       theme();
+      clearInterval(live._t);
+      if(H[live.dataset.live])H[live.dataset.live](i,keys[i],phone,live);
     }
     function onScroll(){
       if(!live.offsetParent)return;
