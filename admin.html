@@ -6115,16 +6115,26 @@ async function esperarConfirmacionYappy(o){
 function abrirPagoModulo(code){
   const m = (CATALOGO_MODULOS || []).find(x => x.code === code);
   if (!m) return;
+  abrirModalPago({ titulo: 'Agregar ' + m.name, monto: m.price, modulo: code,
+    nota: 'Pagas ahora y el módulo queda activo en cuanto se confirme el pago. Desde el próximo mes se suma a tu mensualidad.' });
+}
+// Terminar la prueba y activar el plan ahora: se paga la mensualidad completa (plan + módulos)
+function abrirPagoMensualidad(){
+  const total = conceptosAPagar().reduce((s, i) => s + i.precio * i.cant, 0);
+  abrirModalPago({ titulo: 'Activar mi plan ahora', monto: total, modulo: null,
+    nota: 'Pagas tu mensualidad ahora y tu plan queda activo en cuanto se confirme el pago, con todos tus módulos.' });
+}
+function abrirModalPago(o){
   cerrarPagoModulo();
   const ov = document.createElement('div');
   ov.className = 'pm-ov'; ov.id = 'pm-ov';
   ov.addEventListener('click', e => { if (e.target === ov) cerrarPagoModulo(); });
   ov.innerHTML = `<div class="pm-box" role="dialog" aria-modal="true">
     <button type="button" class="pm-x" aria-label="Cerrar" onclick="cerrarPagoModulo()">×</button>
-    <h3>Agregar ${escCat(m.name)}</h3>
-    <p class="pm-precio">${fmtDinero(m.price)}<small> /mes</small></p>
-    <p class="pf-nota" style="margin:0 0 12px;">Pagas ahora y el módulo queda activo en cuanto se confirme el pago. Desde el próximo mes se suma a tu mensualidad.</p>
-    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${code}')"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(m.price)} con tarjeta</span></button>
+    <h3>${escCat(o.titulo)}</h3>
+    <p class="pm-precio">${fmtDinero(o.monto)}<small> /mes</small></p>
+    <p class="pf-nota" style="margin:0 0 12px;">${escCat(o.nota)}</p>
+    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${o.modulo || ''}')"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(o.monto)} con tarjeta</span></button>
     <div class="pf-yappy">
       <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
       <input class="fi" id="pm-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
@@ -6133,7 +6143,7 @@ function abrirPagoModulo(code){
     </div>
   </div>`;
   document.body.appendChild(ov);
-  conectarBotonYappy(document.getElementById('pm-btn-yappy'), { aliasId: 'pm-yappy-alias', msgId: 'pm-yappy-msg', modulo: code });
+  conectarBotonYappy(document.getElementById('pm-btn-yappy'), { aliasId: 'pm-yappy-alias', msgId: 'pm-yappy-msg', modulo: o.modulo || undefined });
 }
 function cerrarPagoModulo(){
   const ov = document.getElementById('pm-ov');
@@ -6145,7 +6155,7 @@ async function pagarModuloTarjeta(code){
   const win = abrirVentanaPago(); // se abre ya, en el clic (si se espera, el navegador la bloquea)
   if (btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i><span>Preparando tu pago…</span>'; }
   try {
-    const r = await Sheets.crearEnlaceMensualidad(code);
+    const r = await Sheets.crearEnlaceMensualidad(code || undefined);
     if (win && !win.closed){
       escucharResultadoPago();
       win.location.href = r.url;
@@ -6980,21 +6990,10 @@ function closeUpgrade(){
 // Escenario de prueba: el dueño termina su periodo de prueba con un click,
 // sin pago real todavía — cuando se conecte la pasarela, este click se
 // reemplaza por el flujo de pago + confirmación.
+// Terminar la prueba: ya no se activa gratis; se paga la mensualidad (tarjeta o Yappy) y el plan queda activo al confirmarse
 async function activarSuscripcionUI(){
   if (!SUSCRIPCION_ACTUAL) return;
-  if (!confirm('¿Terminar tu prueba y activar tu plan ahora? (Por ahora, sin cobro — es un escenario de prueba)')) return;
-
-  const btn = document.getElementById('btn-activar-suscripcion');
-  if (btn){ btn.disabled = true; btn.textContent = 'Activando...'; }
-
-  try {
-    await Sheets.activarSuscripcion(SUSCRIPCION_ACTUAL.subscriptionId);
-    await renderPlan();
-  } catch(e) {
-    console.error('Error activando la suscripción:', e);
-    alert('No se pudo activar la suscripción. Intenta de nuevo.');
-    if (btn){ btn.disabled = false; btn.textContent = 'Terminar mi prueba ahora y activar mi plan'; }
-  }
+  abrirPagoMensualidad();
 }
 
 
