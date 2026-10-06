@@ -633,7 +633,7 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
   --annly-mint-dark:#159A61;--annly-line:#ECE8F2;--annly-text:#17172B;--annly-muted:#77758A;
   --annly-shadow:0 8px 28px rgba(45,32,75,.07);--annly-shadow-lg:0 20px 55px rgba(45,32,75,.14);
 }
-html,body{background:#fff;min-width:0;overflow-x:hidden!important;} body{color:var(--annly-text);}
+html,body{background:#fff;min-width:0;}html{overflow-x:hidden!important;}body{overflow-x:clip!important;} body{color:var(--annly-text);}
 .adm-tabs{display:none!important;}
 .adm-sidebar{position:fixed;inset:0 auto 0 0;width:300px;z-index:80;background:#fff;border-right:1px solid var(--annly-line);display:flex;flex-direction:column;padding:18px 14px 16px;}
 .adm-sidebar{overflow:hidden;min-height:0;}
@@ -3645,6 +3645,16 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   .pg-head>div:nth-child(2){flex:1;min-width:0}
   .pg-act{margin-left:0;width:100%;justify-content:flex-start}
   #panel-finanzas .fin-page-title{font-size:22px}
+}
+
+/* Menú superior siempre visible: html/body no deben ser contenedores de scroll (rompían el sticky) */
+.adm-hdr{position:sticky!important;top:0;z-index:60;background:rgba(255,255,255,.98)!important}
+/* Botones de pago de la membresía: ancho cómodo y centrados en PC */
+@media(min-width:700px){
+  .pf-box .pf-pagar{max-width:360px;margin-left:auto;margin-right:auto;display:flex}
+  .pf-box .pf-yappy{max-width:360px;margin-left:auto;margin-right:auto}
+  .pf-box .pf-yappy btn-yappy{display:block;width:100%}
+  .pf-box .pf-nota{text-align:center}
 }
 </style>
 
