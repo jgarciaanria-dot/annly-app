@@ -3676,6 +3676,10 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 #pf-pagar .pf-yappy{margin-top:0;padding:18px;border-top:1px solid #E6DCF8}
 @media(max-width:1100px){#pf-pagar .pf-grid{grid-template-columns:1fr 1fr}#pf-pagar .pf-grid>.pf-card:first-child{grid-column:1/-1}}
 @media(max-width:700px){#pf-pagar .pf-grid{grid-template-columns:1fr}}
+
+/* Botón de tarjeta con la misma forma que el de Yappy */
+.pf-box .pf-pagar,#pf-pagar .pf-card .pf-pagar{height:46px;border-radius:999px;font-weight:700;font-size:14.5px;gap:8px;justify-content:center;align-items:center}
+.pf-box .pf-pagar i{font-size:19px}
 </style>
 
 </head>
@@ -6197,7 +6201,7 @@ async function pintarPagoTarjeta(){
       <h3>Paga con tarjeta</h3>
       <p class="pf-desc">Tarjeta de crédito o débito, con pago seguro de PagueloFácil. Se abre en una ventana aparte y, al terminar, tu membresía se actualiza sola aquí.</p>
       <div class="pf-monto">${fmtDinero(total)}<small>al mes</small></div>
-      <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
+      <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-credit-card"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
     </div>
     <div class="pf-card pf-yappy" id="pf-yappy">
       <div class="pf-card-ico yappy"><i class="ti ti-device-mobile"></i></div>
@@ -6301,7 +6305,7 @@ function abrirModalPago(o){
     <h3>${escCat(o.titulo)}</h3>
     <p class="pm-precio">${fmtDinero(o.monto)}<small> /mes</small></p>
     <p class="pf-nota" style="margin:0 0 12px;">${escCat(o.nota)}</p>
-    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${o.modulo || ''}', '${o.extra || ''}', '${o.plan || ''}')"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(o.monto)} con tarjeta</span></button>
+    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${o.modulo || ''}', '${o.extra || ''}', '${o.plan || ''}')"><i class="ti ti-credit-card"></i><span>Pagar ${fmtDinero(o.monto)} con tarjeta</span></button>
     <div class="pf-yappy">
       <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
       <input class="fi" id="pm-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
