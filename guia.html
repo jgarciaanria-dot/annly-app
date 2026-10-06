@@ -28,21 +28,33 @@ ol.pasos h3{font-size:1.05rem;margin-bottom:4px}
 ol.pasos p{color:var(--muted);font-size:.95rem}
 h2{font:700 1.5rem/1.2 'Playfair Display',serif;margin:34px 0 6px}h2+p{color:var(--muted);margin-bottom:16px}
 .campos{display:grid;gap:10px;margin-bottom:6px}.campos div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 16px;font-size:.94rem}.campos b{display:block;color:var(--ink);margin-bottom:2px}.campos span{color:var(--muted)}
-.mock{display:grid;grid-template-columns:260px 1fr;gap:26px;align-items:start;margin:18px 0 8px}
-.phone{background:#fff;border:8px solid #201b2b;border-radius:34px;overflow:hidden;box-shadow:0 18px 40px rgba(32,27,43,.18)}
-.ph-top{padding:18px 14px 14px;text-align:center;background:linear-gradient(160deg,#fbf5f3,#f4eaff)}
-.ph-logo{width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;color:#fff;font:700 1.3rem 'Playfair Display',serif;background:linear-gradient(135deg,var(--purple),var(--pink))}
-.ph-top b{display:block;font:700 1.05rem 'Playfair Display',serif}.ph-top small{display:block;color:var(--muted);font-size:.74rem;margin-top:1px}
-.ph-btns{display:flex;gap:6px;justify-content:center;margin-top:10px}.ph-btns i{font-style:normal;font-size:.7rem;font-weight:700;padding:5px 10px;border-radius:99px;background:#fff;border:1px solid var(--line)}
-.ph-info{padding:10px 14px;font-size:.72rem;color:var(--muted);border-bottom:1px solid var(--line);display:grid;gap:3px}
-.ph-svc{padding:8px 14px}.ph-svc div{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;padding:7px 0;border-bottom:1px solid #f3eff8}.ph-svc div span{color:var(--muted)}
-.ph-pay{padding:10px 14px 14px;font-size:.7rem}.ph-pay em{font-style:normal;display:inline-block;margin:2px 3px 0 0;padding:4px 9px;border-radius:99px;background:var(--lilac);color:var(--purple);font-weight:700}
-.ph-go{margin:0 14px 14px;text-align:center;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;font-weight:700;font-size:.8rem;padding:9px;border-radius:99px}
+.mock{display:grid;grid-template-columns:300px 1fr;gap:26px;align-items:start;margin:18px 0 8px}
+.phone{position:relative;background:#fff;border:8px solid #201b2b;border-radius:34px;overflow:hidden;box-shadow:0 18px 40px rgba(32,27,43,.18);background:#efe7fb}
+.ph-hero{padding:20px 14px 16px;text-align:center;background:linear-gradient(180deg,#dccbf5,#e6dbf8)}
+.ph-logo{width:84px;height:84px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;background:#fff;box-shadow:0 0 0 6px rgba(124,58,237,.15);font:700 .8rem 'Playfair Display',serif;color:#8a6d3b;text-align:center;line-height:1.1}
+.ph-name{font:600 .95rem 'DM Sans',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#201b2b}
+.ph-sub{font-size:.58rem;letter-spacing:.2em;color:#6b6578;margin:7px 0 6px;text-transform:uppercase}
+.ph-tag{font:700 .82rem/1.25 'DM Sans',sans-serif;background:linear-gradient(100deg,#ef3d87,#7424d4);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ph-card{margin:10px 10px 0;background:#fff;border:1px solid #f3c4dc;border-radius:14px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.6rem;color:#ef3d87;font-weight:700;letter-spacing:.04em}
+.ph-card b{display:block;color:#201b2b;font-size:.82rem;letter-spacing:0}
+.ph-card i{font-style:normal;background:#ef3d87;color:#fff;border-radius:99px;padding:6px 10px;font-size:.62rem;white-space:nowrap}
+.ph-cert{margin:10px 10px 0;background:#dccbf5;border-radius:14px;padding:10px 12px;font-size:.62rem;color:#6b6578}.ph-cert b{display:block;color:#201b2b;font-size:.9rem}
+.ph-cat{margin:12px 12px 6px;font-size:.58rem;letter-spacing:.18em;font-weight:700;color:#201b2b;border-left:3px solid #7424d4;padding-left:7px;text-transform:uppercase}
+.ph-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 10px}
+.ph-svc{background:#fff;border-radius:12px;padding:9px}
+.ph-svc b{display:block;font-size:.72rem;line-height:1.2;color:#201b2b}.ph-svc small{display:block;color:#8a8496;font-size:.58rem;margin:3px 0 5px}
+.ph-svc em{font-style:normal;display:flex;justify-content:space-between;font-size:.72rem;font-weight:700;color:#ef3d87}.ph-svc em span{font-weight:400;color:#8a8496;font-size:.58rem}
+.ph-ig{margin:14px auto 4px;width:max-content;background:#e6dbf8;border-radius:99px;padding:7px 14px;font-size:.66rem;font-weight:600}
+.ph-foot{background:#f7f3fb;margin-top:10px;padding:10px 12px 14px;text-align:center;font-size:.6rem;color:#6b6578}
+.ph-foot .t{letter-spacing:.14em;text-transform:uppercase;font-size:.55rem;margin-bottom:8px}
+.ph-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ph-cols b{display:block;letter-spacing:.14em;text-transform:uppercase;font-size:.52rem;color:#201b2b;margin-bottom:3px}
+.ph-wa{position:absolute;right:10px;bottom:12px;width:32px;height:32px;border-radius:50%;background:#25d366;display:grid;place-items:center;color:#fff;font-size:.9rem;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+.ph-n{position:absolute;z-index:3;width:18px;height:18px;border-radius:50%;background:#ef3d87;color:#fff;font:700 .66rem 'DM Sans',sans-serif;display:grid;place-items:center;box-shadow:0 0 0 2px #fff}
 .mk{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font:700 .68rem 'DM Sans',sans-serif;vertical-align:middle;margin-right:4px}
 .leyenda{display:grid;gap:10px;font-size:.93rem}.leyenda div{display:flex;gap:9px}.leyenda span.t{color:var(--muted)}
 .ejemplo{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
 .pagos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.pagos article{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.pagos article h3{font-size:1rem;margin-bottom:6px}.pagos article.on{border-color:#d9b8f5;background:#fdfaff}.pagos ul{padding-left:18px;color:var(--muted);font-size:.92rem}.pagos p{font-size:.92rem;color:var(--muted)}
-@media(max-width:640px){.mock{grid-template-columns:1fr}.phone{max-width:280px;margin:auto}.pagos{grid-template-columns:1fr}}
+@media(max-width:640px){.mock{grid-template-columns:1fr}.phone{max-width:300px;margin:auto}.pagos{grid-template-columns:1fr}}
 .tip{background:var(--lilac);border-radius:14px;padding:14px 16px;margin:22px 0;font-size:.92rem}
 .cta{display:inline-block;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;margin:6px 0 34px}
 footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:.88rem}
@@ -86,22 +98,37 @@ footer a{color:var(--purple)}
     <span class="ejemplo">EJEMPLO DE UN PERFIL LISTO</span>
     <div class="mock">
       <div class="phone" aria-label="Ejemplo de agenda con el perfil configurado">
-        <div class="ph-top"><div class="ph-logo">L</div><b>Estudio Luna</b><small>Cuidamos tu estilo, a tu ritmo</small><div class="ph-btns"><i>WhatsApp</i><i>Instagram</i></div></div>
-        <div class="ph-info"><span>Calle 50, Obarrio, local 12</span><span>Lun a Sáb · 9:00 a. m. a 6:00 p. m.</span></div>
-        <div class="ph-svc"><div>Corte y peinado<span>$25 · 45 min</span></div><div>Color completo<span>$60 · 2 h</span></div><div>Manicure<span>$15 · 30 min</span></div></div>
-        <div class="ph-pay">Formas de pago:<br><em>Yappy</em><em>Transferencia</em></div>
-        <div class="ph-go">Reservar</div>
+        <div class="ph-hero"><span class="ph-n" style="left:12px;top:14px">1</span><div class="ph-logo">Tu logo</div><div class="ph-name">Estudio Luna</div><div class="ph-sub">Reserva tu cita en línea</div><div class="ph-tag">Cuidamos tu estilo, a tu ritmo.</div></div>
+        <div class="ph-card"><div>ESTÁS RESERVANDO EN<b>Sede Principal</b></div><i>Cambiar sede</i></div>
+        <div class="ph-cert"><span class="ph-n" style="position:static;display:inline-grid;margin-right:4px">5</span><b>Certificado de regalo</b>Regala una experiencia Estudio Luna</div>
+        <div class="ph-cat">Cabello <span class="ph-n" style="position:static;display:inline-grid;margin-left:4px">4</span></div>
+        <div class="ph-grid"><div class="ph-svc"><b>Corte y peinado</b><small>Corte a tu medida…</small><em>$25.00<span>45 min</span></em></div><div class="ph-svc"><b>Color completo</b><small>Tinte y brillo…</small><em>$60.00<span>2 horas</span></em></div></div>
+        <div class="ph-cat">Uñas</div>
+        <div class="ph-grid"><div class="ph-svc"><b>Manicure clásico</b><small>Tratamiento tradicional…</small><em>$15.00<span>30 min</span></em></div></div>
+        <div class="ph-ig">Instagram · @estudioluna <span class="ph-n" style="position:static;display:inline-grid;margin-left:4px">2</span></div>
+        <div class="ph-foot"><div class="t">Tu estilo es nuestra inspiración</div><div class="ph-cols"><div><b>Ubicación <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Calle 50, Obarrio<br>Local 12</div><div><b>Horario <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Lun-Vie 9AM-6PM<br>Sáb 9AM-2PM<br>Domingo cerrado</div></div></div>
+        <div class="ph-wa">✆</div>
       </div>
       <div class="leyenda">
-        <div><span class="mk">1</span><span><b>Logo, nombre y frase.</b> <span class="t">Lo primero que ve tu cliente.</span></span></div>
-        <div><span class="mk">2</span><span><b>WhatsApp e Instagram.</b> <span class="t">Botones para que te escriban con un toque.</span></span></div>
-        <div><span class="mk">3</span><span><b>Dirección y horario.</b> <span class="t">Así saben dónde y cuándo atiendes.</span></span></div>
-        <div><span class="mk">4</span><span><b>Servicios con precio y duración.</b> <span class="t">Los que creaste en el paso 1.</span></span></div>
-        <div><span class="mk">5</span><span><b>Formas de pago.</b> <span class="t">Solo aparecen las que configuraste.</span></span></div>
+        <div><span class="mk">1</span><span><b>Logo, nombre y frase.</b> <span class="t">Lo primero que ve tu cliente. La frase es la que va junto al logo.</span></span></div>
+        <div><span class="mk">2</span><span><b>Instagram y WhatsApp.</b> <span class="t">Tu usuario sin el @ y el botón verde de WhatsApp, siempre a la vista.</span></span></div>
+        <div><span class="mk">3</span><span><b>Dirección y horario.</b> <span class="t">Aparecen al final de la página. El horario sale de Perfil, Horario de atención.</span></span></div>
+        <div><span class="mk">4</span><span><b>Servicios por categoría.</b> <span class="t">Con precio y duración. Los creas en el paso 1.</span></span></div>
+        <div><span class="mk">5</span><span><b>Certificado de regalo.</b> <span class="t">Aparece si tienes ese módulo activo. Si no, no se muestra.</span></span></div>
+        <div><span class="mk">6</span><span><b>Sede.</b> <span class="t">Si tienes más de una sucursal, el cliente elige dónde reservar.</span></span></div>
       </div>
     </div>
-    <p style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Ejemplo ilustrativo con datos inventados. Tu agenda usará tu logo, tus datos y los colores que elijas.</p>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Ejemplo ilustrativo con datos inventados, basado en cómo se ve una agenda configurada. La tuya usará tu logo, tus datos y los colores que elijas.</p>
 
+    <h2>Tus horarios</h2>
+    <p>Annly solo ofrece a tus clientes los espacios que de verdad tienes libres. Qué horario se usa depende de tu plan.</p>
+    <div class="campos">
+      <div><b>Horario del negocio</b><span>En <b style="display:inline">Perfil, Horario de atención</b> defines Lun-Vie, Sábado y Domingo, o los marcas como Cerrado. Es el horario que se muestra en tu página.</span></div>
+      <div><b>Plan Basic (1 profesional)</b><span>Atiendes con el horario de tu negocio o de tu sucursal. No necesitas configurar nada más.</span></div>
+      <div><b>Con más profesionales</b><span>Con Medium, Ultimate o <b style="display:inline">Profesional adicional</b>, cada profesional puede tener su propio horario. En <b style="display:inline">Equipo</b>, al crear o editar un profesional, activa <b style="display:inline">Horario propio</b> y elige sus días y horas. Si no lo activas, usa el horario de la sucursal.</span></div>
+      <div><b>Sucursales</b><span>Si tienes <b style="display:inline">Sucursal adicional</b>, cada sede tiene su propio horario en <b style="display:inline">Sucursales</b>, y cada profesional puede tener uno distinto en cada sede.</span></div>
+    </div>
+    <div class="tip"><b>Cómo se decide:</b> Annly usa primero el horario propio del profesional en esa sucursal; si no tiene, el de la sucursal; y si tampoco, el del negocio. Para bloquear un día, como un feriado o vacaciones, usa <b>Bloqueos</b>.</div>
     <h2>Cómo te pagan tus clientes</h2>
     <p>Hay dos formas de cobrar. Puedes empezar con la manual hoy mismo y pasar a la automática cuando quieras.</p>
     <div class="pagos">
@@ -125,21 +152,32 @@ footer a{color:var(--purple)}
     <span class="ejemplo">EJEMPLO DE UNA TIENDA LISTA</span>
     <div class="mock">
       <div class="phone" aria-label="Ejemplo de tienda configurada">
-        <div class="ph-top"><div class="ph-logo">F</div><b>Flores del Valle</b><small>Detalles que dicen más que mil palabras</small><div class="ph-btns"><i>WhatsApp</i><i>Instagram</i></div></div>
-        <div class="ph-info"><span>Retiro: Calle 50, Obarrio, local 12</span><span>Entregas: Lun a Sáb</span></div>
-        <div class="ph-svc"><div>Ramo de rosas<span>$45</span></div><div>Caja floral<span>$60</span></div><div>Globo y tarjeta<span>+$8</span></div></div>
-        <div class="ph-pay">Formas de pago:<br><em>Yappy</em><em>Transferencia</em></div>
-        <div class="ph-go">Hacer mi pedido</div>
+        <div class="ph-hero"><span class="ph-n" style="left:12px;top:14px">1</span><div class="ph-logo">Tu logo</div><div class="ph-name">Flores del Valle</div><div class="ph-sub">Haz tu pedido en línea</div><div class="ph-tag">Detalles que dicen más que mil palabras.</div></div>
+        <div class="ph-card"><div>RECIBE TU PEDIDO<b>Retiro o domicilio</b></div><i>Elegir</i></div>
+        <div class="ph-cat">Ramos <span class="ph-n" style="position:static;display:inline-grid;margin-left:4px">4</span></div>
+        <div class="ph-grid"><div class="ph-svc"><b>Ramo de rosas</b><small>Docena de rosas…</small><em>$45.00<span>Hoy</span></em></div><div class="ph-svc"><b>Caja floral</b><small>Arreglo en caja…</small><em>$60.00<span>24 h</span></em></div></div>
+        <div class="ph-cat">Extras</div>
+        <div class="ph-grid"><div class="ph-svc"><b>Globo y tarjeta</b><small>Dedicatoria incluida</small><em>+$8.00<span></span></em></div></div>
+        <div class="ph-ig">Instagram · @floresdelvalle <span class="ph-n" style="position:static;display:inline-grid;margin-left:4px">2</span></div>
+        <div class="ph-foot"><div class="t">Detalles hechos con cariño</div><div class="ph-cols"><div><b>Retiro <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Calle 50, Obarrio<br>Local 12</div><div><b>Entregas <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Lun-Sáb<br>9:00 a 12:00<br>2:00 a 6:00</div></div></div>
+        <div class="ph-wa">✆</div>
       </div>
       <div class="leyenda">
         <div><span class="mk">1</span><span><b>Logo, nombre y frase.</b> <span class="t">La primera impresión de tu tienda.</span></span></div>
-        <div><span class="mk">2</span><span><b>WhatsApp e Instagram.</b> <span class="t">Para dudas y personalizaciones.</span></span></div>
-        <div><span class="mk">3</span><span><b>Retiro y entregas.</b> <span class="t">Dirección de retiro y los días que entregas.</span></span></div>
+        <div><span class="mk">2</span><span><b>Instagram y WhatsApp.</b> <span class="t">Para dudas y personalizaciones.</span></span></div>
+        <div><span class="mk">3</span><span><b>Retiro y entregas.</b> <span class="t">Dirección de retiro y las franjas en que entregas.</span></span></div>
         <div><span class="mk">4</span><span><b>Productos y extras.</b> <span class="t">Con foto, nombre y precio.</span></span></div>
-        <div><span class="mk">5</span><span><b>Formas de pago.</b> <span class="t">Solo aparecen las que configuraste.</span></span></div>
       </div>
     </div>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Ejemplo ilustrativo con datos inventados.</p>
+    <h2>Entregas y horarios</h2>
+    <p>En <b>Entregas y horarios</b> defines cuándo y cómo recibe el cliente su pedido.</p>
+    <div class="campos">
+      <div><b>Retiro y domicilio</b><span>Activa <b style="display:inline">Retiro en tienda</b>, <b style="display:inline">Entrega a domicilio</b> o ambos. Para domicilio, crea tus <b style="display:inline">zonas</b> con su costo de envío.</span></div>
+      <div><b>Franjas de entrega</b><span>Cada franja es un horario de entrega o retiro, por ejemplo de 9:00 a 12:00, con el número de pedidos que puedes atender en ella. Cuando se llena, deja de ofrecerse.</span></div>
+      <div><b>Fechas sin pedidos</b><span>Bloquea feriados o días que no trabajas con <b style="display:inline">Bloquear fecha</b>.</span></div>
+      <div><b>Anticipación</b><span>En <b style="display:inline">Configuración</b> defines el tiempo mínimo de preparación y cuántos días hacia adelante pueden pedir tus clientes.</span></div>
+    </div>
     <h2>Cómo te pagan tus clientes</h2>
     <div class="pagos">
       <article><h3>Yappy</h3><p>Escribe tu número de Yappy en <b>Configuración</b>. El cliente ve el monto y deja su comprobante.</p></article>
