@@ -15,7 +15,15 @@ Extras que se pueden sumar a cualquier plan:
 
 - **Profesional adicional:** +$7/mes cada uno.
 - **Sucursal adicional:** +$14/mes cada una, incluye 1 profesional.
-- **Módulos sueltos** (por ejemplo Pagos, Finanzas, Certificados, Propinas): se contratan aparte desde "Mi plan". Su precio está en `features.monthly_price`.
+
+Módulos sueltos de Agenda (se contratan desde "Mi plan"; si el plan ya los incluye, no se cobran):
+
+| Módulo | Precio | Notas |
+|---|---|---|
+| Pagos en línea (`PAGOS`) | $5/mes | Yappy Comercial con confirmación automática. Otras pasarelas (Tilopay, PagueloFácil, Tafi u otra) se integran a pedido. Incluido en Medium y Ultimate. |
+| Certificados (`CERTIFICADOS`) | $6/mes | Incluido en Ultimate. |
+| Finanzas (`FINANZAS`) | $12/mes | Incluido en Ultimate. |
+| Agente AI (`AGENTE_AI`) | desde $12/mes | Opcional y cotizado aparte. El botón "Quiero información" envía la consulta a soporte@annly.app (función `consulta-modulo`) para saber quiénes están interesados. |
 
 ## 2. Qué incluye cada plan
 
@@ -70,8 +78,11 @@ Una pestaña sin la función incluida muestra una vitrina con "Ver planes". En l
 
 ## 5. Annly Tiendas (pedidos)
 
-- Plan de lanzamiento único: tienda con logo y colores, catálogo con extras y dedicatoria, fechas y franjas con cupo, retiro o entrega por zonas, pago por Yappy o transferencia (confirmado a mano), avisos por correo, inventario y hoja de preparación.
-- 14 días gratis. El precio de lanzamiento se da por consulta.
+- **Plan inicial: $14/mes.** Tienda con logo y colores, catálogo con extras y dedicatoria, fechas y franjas con cupo, retiro o entrega por zonas, pago por Yappy o transferencia (confirmado a mano), avisos por correo, inventario y hoja de preparación.
+- **Módulos opcionales: $6/mes cada uno.**
+  - Ventas e Inventario (`PEDIDOS_REPORTES`): reportes de ventas, productos más vendidos, inventario valorizado, ganancia por producto y exportar a Excel.
+  - Programa de clientes (`PEDIDOS_CLIENTES`): inscripción de compradores con cumpleaños y consentimiento. **Próximamente**: está definido en la base de datos pero inactivo hasta que se construya.
+- 14 días gratis.
 - Se cuenta y se cobra por separado de Agenda (cuenta propia).
 
 ## 6. Dónde se define cada cosa
@@ -102,7 +113,8 @@ where is_addon = true
 order by producto, code;
 ```
 
-## 8. Por confirmar
-- Que la lista de funciones por plan de la consulta coincida con la sección 2.
-- Precios de los módulos sueltos (sección 1) y cuáles están a la venta hoy.
-- Si Basic en prueba debe poder activar módulos sueltos o solo al pagar.
+## 8. Pendiente
+- Construir el Programa de clientes para Tiendas y activar `PEDIDOS_CLIENTES`.
+- Confirmar con la consulta de la sección 7 que la lista de funciones por plan coincide con la sección 2.
+- Pagos en línea: hoy solo Yappy Comercial se configura desde el panel. Las demás pasarelas son trabajo a pedido.
+- Precios en la base de datos: ejecutar `supabase/sql/precios_modulos.sql`.

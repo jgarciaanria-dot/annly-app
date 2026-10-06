@@ -4639,6 +4639,14 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 </div>
 
+
+<div class="ov" id="ov-consulta-modulo">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="cm-titulo">Quiero información</span><button class="modal-close" onclick="cerrarConsultaModulo()">×</button></div>
+    <div class="modal-body" id="cm-body"></div>
+  </div>
+</div>
+
 <!-- MODAL AGREGAR CITA (cliente que llega al local o reserva por teléfono) -->
 <div class="ov" id="ov-agregar-cita">
   <div class="modal annly-modal cita-modal">
@@ -5181,7 +5189,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=65"></script>
+<script src="sheets.js?v=66"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -6755,10 +6763,7 @@ async function renderModulosPlan(){
     } else if (activo) {
       estadoHtml = `<div class="plan-module-active-badge"><i class="ti ti-circle-check-filled"></i> Activo</div><button type="button" class="plan-module-link" style="border:none;background:none;cursor:pointer;padding:0;" onclick="cancelarModuloUI('${m.code}','${m.name.replace(/'/g,"\\'")}')">Cancelar</button>`;
     } else if (esAgenteAI) {
-      const b=window.ANNLY_BUSINESS || {};
-      const subject=encodeURIComponent('Consulta sobre Agente AI — Annly');
-      const body=encodeURIComponent(`Hola equipo Annly,\n\nQuiero más información sobre el Agente AI para mi negocio.\n\nNegocio: ${b.nombre || ''}\nCorreo: ${window.ANNLY_USER_EMAIL || ''}\n\nGracias.`);
-      estadoHtml = `<a href="mailto:soporte@annly.app?subject=${subject}&body=${body}" class="plan-module-link">Más información <i class="ti ti-arrow-right"></i></a>`;
+      estadoHtml = `<button type="button" class="plan-module-link" style="border:none;background:none;cursor:pointer;padding:0;" onclick="abrirConsultaModulo('${m.code}','${m.name.replace(/'/g,"\\'")}')">Quiero información <i class="ti ti-arrow-right"></i></button>`;
     } else {
       estadoHtml = `<button type="button" onclick="activarModuloUI('${m.code}')">Agregar por $${m.price.toFixed(0)}/mes</button>`;
     }
@@ -13805,6 +13810,35 @@ document.addEventListener('visibilitychange', () => {
     });
   });
 })();
+
+// ===== Consulta de un módulo que se cotiza aparte (Agente AI) =====
+let CONSULTA_MODULO = null;
+function abrirConsultaModulo(code, nombre){
+  CONSULTA_MODULO = code;
+  document.getElementById('cm-titulo').textContent = nombre;
+  document.getElementById('cm-body').innerHTML = `
+    <p style="font-size:13px;line-height:1.55;color:var(--ink-soft);margin:0 0 12px;">Cuéntanos qué te gustaría que haga. Te escribiremos al correo de tu cuenta con la información y el precio para tu negocio.</p>
+    <div class="fg"><label class="flbl">Mensaje (opcional)</label><textarea class="fi" id="cm-mensaje" rows="3" maxlength="1500" style="resize:vertical;" placeholder="Ej: quiero que responda preguntas de precios y horarios"></textarea></div>
+    <p id="cm-msg" style="font-size:12px;min-height:16px;margin:6px 0;"></p>
+    <button class="btn-save" id="cm-enviar" onclick="enviarConsultaModulo()"><i class="ti ti-send" style="font-size:17px;"></i> Enviar consulta</button>`;
+  document.getElementById('ov-consulta-modulo').classList.add('open');
+}
+function cerrarConsultaModulo(){ document.getElementById('ov-consulta-modulo').classList.remove('open'); }
+async function enviarConsultaModulo(){
+  const btn = document.getElementById('cm-enviar'), msg = document.getElementById('cm-msg');
+  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Enviando...';
+  try {
+    await Sheets.consultarModulo(CONSULTA_MODULO, document.getElementById('cm-mensaje').value.trim());
+    document.getElementById('cm-body').innerHTML = `<div style="text-align:center;padding:1rem .5rem;">
+      <div style="width:52px;height:52px;border-radius:50%;background:#E4F5EC;color:#1D7A46;display:grid;place-items:center;font-size:24px;margin:0 auto 12px;"><i class="ti ti-check"></i></div>
+      <b style="font-size:16px;">¡Recibimos tu consulta!</b>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:6px 0 14px;">Te escribiremos pronto al correo de tu cuenta.</p>
+      <button class="btn-save" onclick="cerrarConsultaModulo()">Cerrar</button></div>`;
+  } catch(e){
+    console.error(e);
+    btn.disabled = false; msg.style.color = '#C2695A'; msg.textContent = e.message || 'No se pudo enviar. Intenta de nuevo.';
+  }
+}
 </script>
 </body>
 </html>
