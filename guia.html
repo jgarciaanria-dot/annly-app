@@ -26,6 +26,8 @@ ol.pasos li{counter-increment:p;position:relative;background:#fff;border:1px sol
 ol.pasos li::before{content:counter(p);position:absolute;left:18px;top:18px;width:32px;height:32px;border-radius:50%;background:var(--lilac);color:var(--purple);font-weight:700;display:grid;place-items:center}
 ol.pasos h3{font-size:1.05rem;margin-bottom:4px}
 ol.pasos p{color:var(--muted);font-size:.95rem}
+h2{font:700 1.5rem/1.2 'Playfair Display',serif;margin:34px 0 6px}h2+p{color:var(--muted);margin-bottom:16px}
+.campos{display:grid;gap:10px;margin-bottom:6px}.campos div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 16px;font-size:.94rem}.campos b{display:block;color:var(--ink);margin-bottom:2px}.campos span{color:var(--muted)}
 .tip{background:var(--lilac);border-radius:14px;padding:14px 16px;margin:22px 0;font-size:.92rem}
 .cta{display:inline-block;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;margin:6px 0 34px}
 footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:.88rem}
@@ -43,7 +45,7 @@ footer a{color:var(--purple)}
   <ol class="pasos" data-p="citas">
     <li><h3>Crea tus servicios</h3><p>En tu panel, entra a <b>Servicios</b> y toca <b>Agregar nuevo servicio</b>. Escribe el nombre, el precio y cuánto dura. Empieza con los 3 o 4 que más vendes.</p></li>
     <li><h3>Define tus horarios</h3><p>En <b>Equipo</b> elige tus días y horas de atención. Annly solo ofrece a tus clientes los espacios que de verdad tienes libres.</p></li>
-    <li><h3>Personaliza tu perfil</h3><p>En <b>Perfil</b> sube tu logo y confirma tu WhatsApp. Así tu agenda se ve con tu marca.</p></li>
+    <li><h3>Personaliza tu perfil</h3><p>En <b>Perfil</b> sube tu logo y confirma tu WhatsApp. Más abajo te explicamos cada campo.</p></li>
     <li><h3>Comparte tu enlace</h3><p>Usa el botón <b>Copiar enlace</b> del panel y pégalo en tu bio de Instagram, en Google y en tus mensajes de WhatsApp.</p></li>
   </ol>
 
@@ -54,14 +56,40 @@ footer a{color:var(--purple)}
     <li><h3>Comparte tu enlace</h3><p>Copia el enlace de tu tienda y compártelo en Instagram, Google y WhatsApp.</p></li>
   </ol>
 
+  <section data-p="citas">
+    <h2>Configura tu perfil</h2>
+    <p>Entra a <b>Perfil</b> en tu panel. Esto es lo que verán tus clientes en tu agenda, así que vale la pena dedicarle unos minutos.</p>
+    <div class="campos">
+      <div><b>Logo</b><span>Toca <b style="display:inline">Subir logo</b> y elige una imagen cuadrada o redonda, con buena luz. Es lo primero que ve tu cliente.</span></div>
+      <div><b>Nombre y frase</b><span>El nombre de tu negocio y una frase corta que va junto al logo, por ejemplo "Calidad y confianza en cada visita".</span></div>
+      <div><b>WhatsApp</b><span>Escríbelo con el código de país, sin espacios ni signos (en Panamá empieza con 507). Tus clientes lo usan para escribirte desde la agenda.</span></div>
+      <div><b>Instagram, dirección y horario de atención</b><span>Instagram sin el @. La dirección ayuda a que te encuentren, y el horario de atención se muestra en tu página.</span></div>
+      <div><b>Cómo te pagan</b><span>En <b style="display:inline">Pagos</b> agrega tu número de Yappy y/o los datos de tu cuenta bancaria. Si dejas uno en blanco, esa opción no aparece. Solo se muestran los métodos que configures.</span></div>
+      <div><b>Colores y estilo</b><span>Elige la paleta que mejor va con tu marca. Si algún texto se ve poco legible, cambia el color del texto del pie de página.</span></div>
+    </div>
+    <div class="tip"><b>No olvides guardar.</b> Al terminar, pulsa el botón de guardar al final del perfil. Después abre tu enlace en el celular para ver cómo quedó.</div>
+  </section>
+  <section data-p="pedidos" hidden>
+    <h2>Configura tu tienda</h2>
+    <p>Entra a <b>Configuración</b> en tu panel. Esto es lo que verán tus clientes en tu tienda.</p>
+    <div class="campos">
+      <div><b>Nombre, frase y logo</b><span>El nombre de tu negocio, una frase corta y tu logo, para que tu tienda se vea con tu marca.</span></div>
+      <div><b>WhatsApp e Instagram</b><span>El WhatsApp con código de país y sin signos (en Panamá empieza con 507). Instagram sin el @.</span></div>
+      <div><b>Dirección de la tienda</b><span>Se usa cuando el cliente elige retirar su pedido.</span></div>
+      <div><b>Cómo te pagan</b><span>Agrega tu número de Yappy y/o tu cuenta bancaria. Solo se muestran los métodos que configures.</span></div>
+      <div><b>Correo para avisos de pedidos</b><span>El correo donde quieres recibir cada pedido nuevo.</span></div>
+      <div><b>Tiempos del pedido</b><span>El tiempo mínimo de preparación y las horas que das al cliente para confirmar el pago.</span></div>
+    </div>
+    <div class="tip"><b>No olvides guardar.</b> Después abre el enlace de tu tienda en el celular y haz un pedido de prueba para ver cómo se ve.</div>
+  </section>
   <div class="tip"><b>Un consejo:</b> haz una prueba como si fueras tu cliente. Abre tu enlace en el celular y completa una reserva o un pedido para ver cómo se ve.</div>
   <a class="cta" href="admin.html">Ir a mi panel</a>
 </main>
 <footer><div class="wrap">¿Necesitas ayuda? Escríbenos a <a href="mailto:soporte@annly.app">soporte@annly.app</a>.</div></footer>
 <script>
 (function(){
-  var b=document.querySelectorAll('.tabs button'),p=document.querySelectorAll('ol.pasos');
-  function ver(t){b.forEach(function(x){x.classList.toggle('on',x.dataset.t===t)});p.forEach(function(o){o.hidden=o.dataset.p!==t})}
+  var b=document.querySelectorAll('.tabs button');
+  function ver(t){b.forEach(function(x){x.classList.toggle('on',x.dataset.t===t)});document.querySelectorAll('[data-p]').forEach(function(o){o.hidden=o.dataset.p!==t})}
   b.forEach(function(x){x.addEventListener('click',function(){ver(x.dataset.t)})});
   if(/tipo=pedidos/.test(location.search))ver('pedidos');
 })();
