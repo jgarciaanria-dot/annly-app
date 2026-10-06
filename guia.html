@@ -99,7 +99,7 @@ body{overflow-x:clip}
 .live-phone .ph-wa.off,.live-phone .ph-ig.off,.live-phone .ph-pay.off,.live-phone .ph-chip.off{opacity:.1}
 .live-phone .ph-cols.off{opacity:.15;filter:grayscale(1)}
 .ph-toast{position:absolute;left:10px;right:10px;top:46px;z-index:6;background:#201b2b;color:#fff;font-size:.62rem;line-height:1.35;padding:9px 11px;border-radius:12px;opacity:0;transform:translateY(-8px);pointer-events:none;box-shadow:0 8px 18px rgba(0,0,0,.25)}.ph-toast.on{opacity:1;transform:none}
-@media(max-width:860px){.live{display:block;width:auto;left:0;margin:28px 0 8px}.live-left{top:6px;z-index:8;background:#fffdfb;padding:6px 0 8px;margin-bottom:10px}.live-left .phone{height:290px;width:240px;margin:auto}.live-hint{display:none}}
+@media(max-width:860px){.live{display:block;width:auto;left:0;margin:28px 0 8px}.live-left{top:0;z-index:8;background:#fffdfb;padding:8px 0 10px;margin-bottom:10px;box-shadow:0 8px 10px -8px rgba(32,27,43,.2)}.live-left .phone{height:250px;width:210px;margin:auto;border-width:6px;border-radius:26px}.live-hint{display:none}.hz-title{display:none}.hz-body{padding:8px 8px 6px}.hz-slots{min-height:0}.hz-slots span:nth-child(n+5){display:none}.hz-cap{min-height:0;margin-top:6px}.hz-days{margin:4px 0 6px}.live-phone .ph-hero{padding-top:12px}.live-phone .ph-logo{width:64px;height:64px}}
 .hz-body{flex:1;padding:12px 12px 14px;background:#fff;overflow:hidden}
 .hz-title{font:700 .95rem 'Playfair Display',serif;margin-bottom:10px;color:#201b2b}
 .hz-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:.62rem;color:#6b6578;flex-wrap:wrap}
@@ -171,7 +171,7 @@ footer a{color:var(--purple)}
       <p class="live-hint"><b>Tu página se arma aquí</b> mientras avanzas. Toca un paso para verlo.</p></div>
       <div class="live-body">
     <h2>Configura tu perfil</h2>
-    <p>Entra a <b>Perfil</b> en tu panel. Esto es lo que verán tus clientes en tu agenda. Baja por los pasos y mira cómo se va armando a la izquierda.</p>
+    <p>Entra a <b>Perfil</b> en tu panel. Esto es lo que verán tus clientes en tu agenda. Baja por los pasos y mira cómo se va armando en el celular de ejemplo.</p>
     <div class="campos">
       <div data-step="logo" data-go="top"><b>Logo</b><span>Toca <b style="display:inline">Subir logo</b> y elige una imagen cuadrada o redonda, con buena luz. Es lo primero que ve tu cliente.</span></div>
       <div data-step="nombre" data-go="top"><b>Nombre y frase</b><span>El nombre de tu negocio y una frase corta que va junto al logo, por ejemplo "Calidad y confianza en cada visita".</span></div>
@@ -194,7 +194,7 @@ footer a{color:var(--purple)}
       <p class="live-hint"><b>Mira cómo cambia</b> lo que ve tu cliente. Toca un paso para verlo.</p></div>
       <div class="live-body">
     <h2>Tus horarios</h2>
-    <p>Annly solo ofrece a tus clientes los espacios que de verdad tienes libres. Qué horario se usa depende de tu plan. Baja por los pasos y mira cómo cambia a la izquierda.</p>
+    <p>Annly solo ofrece a tus clientes los espacios que de verdad tienes libres. Qué horario se usa depende de tu plan. Baja por los pasos y mira cómo cambia en el celular de ejemplo.</p>
     <div class="campos">
       <div data-step="negocio"><b>Horario del negocio</b><span>En <b style="display:inline">Perfil, Horario de atención</b> defines Lun-Vie, Sábado y Domingo, o los marcas como Cerrado. Es el horario que se muestra en tu página.</span></div>
       <div data-step="basic"><b>Plan Basic (1 profesional)</b><span>Atiendes con el horario de tu negocio o de tu sucursal. No necesitas configurar nada más.</span></div>
@@ -255,7 +255,7 @@ footer a{color:var(--purple)}
       <p class="live-hint"><b>Tu página se arma aquí</b> mientras avanzas. Toca un paso para verlo.</p></div>
       <div class="live-body">
     <h2>Configura tu tienda</h2>
-    <p>Entra a <b>Configuración</b> en tu panel. Esto es lo que verán tus clientes en tu tienda. Baja por los pasos y mira cómo se va armando a la izquierda.</p>
+    <p>Entra a <b>Configuración</b> en tu panel. Esto es lo que verán tus clientes en tu tienda. Baja por los pasos y mira cómo se va armando en el celular de ejemplo.</p>
     <div class="campos">
       <div data-step="logo" data-go="top"><b>Nombre, frase y logo</b><span>El nombre de tu negocio, una frase corta y tu logo, para que tu tienda se vea con tu marca.</span></div>
       <div data-step="wa" data-go="bottom"><b>WhatsApp e Instagram</b><span>El WhatsApp con código de país y sin signos (en Panamá empieza con 507). Instagram sin el @.</span></div>
@@ -276,7 +276,7 @@ footer a{color:var(--purple)}
       <p class="live-hint"><b>Mira cómo cambia</b> lo que ve tu cliente. Toca un paso para verlo.</p></div>
       <div class="live-body">
     <h2>Entregas y horarios</h2>
-    <p>En <b>Entregas y horarios</b> defines cuándo y cómo recibe el cliente su pedido. Baja por los pasos y mira cómo cambia a la izquierda.</p>
+    <p>En <b>Entregas y horarios</b> defines cuándo y cómo recibe el cliente su pedido. Baja por los pasos y mira cómo cambia en el celular de ejemplo.</p>
     <div class="campos">
       <div data-step="modos"><b>Retiro y domicilio</b><span>Activa <b style="display:inline">Retiro en tienda</b>, <b style="display:inline">Entrega a domicilio</b> o ambos. Para domicilio, crea tus <b style="display:inline">zonas</b> con su costo de envío.</span></div>
       <div data-step="franjas"><b>Franjas de entrega</b><span>Cada franja es un horario de entrega o retiro, por ejemplo de 9:00 a 12:00, con el número de pedidos que puedes atender en ella. Cuando se llena, deja de ofrecerse.</span></div>
