@@ -16,21 +16,6 @@ Annly utiliza un modelo de:
 - Módulos adicionales
 - Add-ons
 
-## Planes
+## Planes y módulos
 
-### BASIC
-$14/mes
-
-### MEDIUM
-$29/mes
-
-### ULTIMATE
-$49/mes
-
-## Módulos
-
-Los módulos pueden estar incluidos en un plan o contratarse de manera independiente.
-
-Ejemplo:
-
-Finanzas → +$20/mes 
+El detalle de qué incluye cada plan, los límites, los módulos y las reglas de cobro está en [docs/PLANES.md](docs/PLANES.md).
