@@ -28,6 +28,21 @@ ol.pasos h3{font-size:1.05rem;margin-bottom:4px}
 ol.pasos p{color:var(--muted);font-size:.95rem}
 h2{font:700 1.5rem/1.2 'Playfair Display',serif;margin:34px 0 6px}h2+p{color:var(--muted);margin-bottom:16px}
 .campos{display:grid;gap:10px;margin-bottom:6px}.campos div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 16px;font-size:.94rem}.campos b{display:block;color:var(--ink);margin-bottom:2px}.campos span{color:var(--muted)}
+.mock{display:grid;grid-template-columns:260px 1fr;gap:26px;align-items:start;margin:18px 0 8px}
+.phone{background:#fff;border:8px solid #201b2b;border-radius:34px;overflow:hidden;box-shadow:0 18px 40px rgba(32,27,43,.18)}
+.ph-top{padding:18px 14px 14px;text-align:center;background:linear-gradient(160deg,#fbf5f3,#f4eaff)}
+.ph-logo{width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;color:#fff;font:700 1.3rem 'Playfair Display',serif;background:linear-gradient(135deg,var(--purple),var(--pink))}
+.ph-top b{display:block;font:700 1.05rem 'Playfair Display',serif}.ph-top small{display:block;color:var(--muted);font-size:.74rem;margin-top:1px}
+.ph-btns{display:flex;gap:6px;justify-content:center;margin-top:10px}.ph-btns i{font-style:normal;font-size:.7rem;font-weight:700;padding:5px 10px;border-radius:99px;background:#fff;border:1px solid var(--line)}
+.ph-info{padding:10px 14px;font-size:.72rem;color:var(--muted);border-bottom:1px solid var(--line);display:grid;gap:3px}
+.ph-svc{padding:8px 14px}.ph-svc div{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;padding:7px 0;border-bottom:1px solid #f3eff8}.ph-svc div span{color:var(--muted)}
+.ph-pay{padding:10px 14px 14px;font-size:.7rem}.ph-pay em{font-style:normal;display:inline-block;margin:2px 3px 0 0;padding:4px 9px;border-radius:99px;background:var(--lilac);color:var(--purple);font-weight:700}
+.ph-go{margin:0 14px 14px;text-align:center;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;font-weight:700;font-size:.8rem;padding:9px;border-radius:99px}
+.mk{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font:700 .68rem 'DM Sans',sans-serif;vertical-align:middle;margin-right:4px}
+.leyenda{display:grid;gap:10px;font-size:.93rem}.leyenda div{display:flex;gap:9px}.leyenda span.t{color:var(--muted)}
+.ejemplo{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.pagos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.pagos article{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.pagos article h3{font-size:1rem;margin-bottom:6px}.pagos article.on{border-color:#d9b8f5;background:#fdfaff}.pagos ul{padding-left:18px;color:var(--muted);font-size:.92rem}.pagos p{font-size:.92rem;color:var(--muted)}
+@media(max-width:640px){.mock{grid-template-columns:1fr}.phone{max-width:280px;margin:auto}.pagos{grid-template-columns:1fr}}
 .tip{background:var(--lilac);border-radius:14px;padding:14px 16px;margin:22px 0;font-size:.92rem}
 .cta{display:inline-block;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;margin:6px 0 34px}
 footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:.88rem}
@@ -68,6 +83,32 @@ footer a{color:var(--purple)}
       <div><b>Colores y estilo</b><span>Elige la paleta que mejor va con tu marca. Si algún texto se ve poco legible, cambia el color del texto del pie de página.</span></div>
     </div>
     <div class="tip"><b>No olvides guardar.</b> Al terminar, pulsa el botón de guardar al final del perfil. Después abre tu enlace en el celular para ver cómo quedó.</div>
+    <span class="ejemplo">EJEMPLO DE UN PERFIL LISTO</span>
+    <div class="mock">
+      <div class="phone" aria-label="Ejemplo de agenda con el perfil configurado">
+        <div class="ph-top"><div class="ph-logo">L</div><b>Estudio Luna</b><small>Cuidamos tu estilo, a tu ritmo</small><div class="ph-btns"><i>WhatsApp</i><i>Instagram</i></div></div>
+        <div class="ph-info"><span>Calle 50, Obarrio, local 12</span><span>Lun a Sáb · 9:00 a. m. a 6:00 p. m.</span></div>
+        <div class="ph-svc"><div>Corte y peinado<span>$25 · 45 min</span></div><div>Color completo<span>$60 · 2 h</span></div><div>Manicure<span>$15 · 30 min</span></div></div>
+        <div class="ph-pay">Formas de pago:<br><em>Yappy</em><em>Transferencia</em></div>
+        <div class="ph-go">Reservar</div>
+      </div>
+      <div class="leyenda">
+        <div><span class="mk">1</span><span><b>Logo, nombre y frase.</b> <span class="t">Lo primero que ve tu cliente.</span></span></div>
+        <div><span class="mk">2</span><span><b>WhatsApp e Instagram.</b> <span class="t">Botones para que te escriban con un toque.</span></span></div>
+        <div><span class="mk">3</span><span><b>Dirección y horario.</b> <span class="t">Así saben dónde y cuándo atiendes.</span></span></div>
+        <div><span class="mk">4</span><span><b>Servicios con precio y duración.</b> <span class="t">Los que creaste en el paso 1.</span></span></div>
+        <div><span class="mk">5</span><span><b>Formas de pago.</b> <span class="t">Solo aparecen las que configuraste.</span></span></div>
+      </div>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Ejemplo ilustrativo con datos inventados. Tu agenda usará tu logo, tus datos y los colores que elijas.</p>
+
+    <h2>Cómo te pagan tus clientes</h2>
+    <p>Hay dos formas de cobrar. Puedes empezar con la manual hoy mismo y pasar a la automática cuando quieras.</p>
+    <div class="pagos">
+      <article><h3>Pago manual</h3><ul><li><b>Yappy:</b> escribe tu número en <b>Perfil, Pagos</b>.</li><li><b>Transferencia:</b> banco, tipo de cuenta, número y titular.</li></ul><p style="margin-top:8px">Tu cliente ve el monto exacto y deja su comprobante. <b>Tú confirmas</b> que el pago es real antes de atender. Está incluido en todos los planes.</p></article>
+      <article class="on"><h3>Pago en línea con Yappy Comercial</h3><ul><li>Botón oficial de Yappy en tu agenda.</li><li>El pago se <b>confirma solo</b>, sin comprobantes.</li></ul><p style="margin-top:8px">Necesitas una cuenta de Yappy Comercial (Banco General). En <b>Perfil, Yappy Comercial</b> pones tu Merchant ID, tu dominio y tu Secret, y activas el botón. Viene en los planes Medium y Ultimate, o como módulo <b>Pagos</b> en Basic.</p></article>
+    </div>
+    <div class="tip">Si dejas un método en blanco, no aparece en tu página. Si la configuración del botón de Yappy Comercial no te queda clara, escríbenos y te ayudamos.</div>
   </section>
   <section data-p="pedidos" hidden>
     <h2>Configura tu tienda</h2>
@@ -81,6 +122,30 @@ footer a{color:var(--purple)}
       <div><b>Tiempos del pedido</b><span>El tiempo mínimo de preparación y las horas que das al cliente para confirmar el pago.</span></div>
     </div>
     <div class="tip"><b>No olvides guardar.</b> Después abre el enlace de tu tienda en el celular y haz un pedido de prueba para ver cómo se ve.</div>
+    <span class="ejemplo">EJEMPLO DE UNA TIENDA LISTA</span>
+    <div class="mock">
+      <div class="phone" aria-label="Ejemplo de tienda configurada">
+        <div class="ph-top"><div class="ph-logo">F</div><b>Flores del Valle</b><small>Detalles que dicen más que mil palabras</small><div class="ph-btns"><i>WhatsApp</i><i>Instagram</i></div></div>
+        <div class="ph-info"><span>Retiro: Calle 50, Obarrio, local 12</span><span>Entregas: Lun a Sáb</span></div>
+        <div class="ph-svc"><div>Ramo de rosas<span>$45</span></div><div>Caja floral<span>$60</span></div><div>Globo y tarjeta<span>+$8</span></div></div>
+        <div class="ph-pay">Formas de pago:<br><em>Yappy</em><em>Transferencia</em></div>
+        <div class="ph-go">Hacer mi pedido</div>
+      </div>
+      <div class="leyenda">
+        <div><span class="mk">1</span><span><b>Logo, nombre y frase.</b> <span class="t">La primera impresión de tu tienda.</span></span></div>
+        <div><span class="mk">2</span><span><b>WhatsApp e Instagram.</b> <span class="t">Para dudas y personalizaciones.</span></span></div>
+        <div><span class="mk">3</span><span><b>Retiro y entregas.</b> <span class="t">Dirección de retiro y los días que entregas.</span></span></div>
+        <div><span class="mk">4</span><span><b>Productos y extras.</b> <span class="t">Con foto, nombre y precio.</span></span></div>
+        <div><span class="mk">5</span><span><b>Formas de pago.</b> <span class="t">Solo aparecen las que configuraste.</span></span></div>
+      </div>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Ejemplo ilustrativo con datos inventados.</p>
+    <h2>Cómo te pagan tus clientes</h2>
+    <div class="pagos">
+      <article><h3>Yappy</h3><p>Escribe tu número de Yappy en <b>Configuración</b>. El cliente ve el monto y deja su comprobante.</p></article>
+      <article><h3>Transferencia bancaria</h3><p>Agrega banco, tipo y número de cuenta y titular. Es opcional.</p></article>
+    </div>
+    <div class="tip">Tú confirmas cada pago revisando el comprobante, antes de preparar el pedido. Si quieres recibir un anticipo, define el <b>abono</b> en Configuración: el cliente aparta pagando una parte y el resto al recibir.</div>
   </section>
   <div class="tip"><b>Un consejo:</b> haz una prueba como si fueras tu cliente. Abre tu enlace en el celular y completa una reserva o un pedido para ver cómo se ve.</div>
   <a class="cta" href="admin.html">Ir a mi panel</a>
