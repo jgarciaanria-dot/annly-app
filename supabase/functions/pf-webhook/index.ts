@@ -65,6 +65,17 @@ async function activarModulo(pago: any): Promise<string | null> {
   return error ? error.message : null;
 }
 
+// Extra por cantidad pagado (profesional o sede adicional): se suma 1 unidad a la suscripción. Devuelve el error o null.
+async function activarExtra(pago: any): Promise<string | null> {
+  const ex = Array.isArray(pago.detalle) ? pago.detalle.find((d: any) => d && d.tipo === "extra") : null;
+  if (!ex || !ex.code || !ex.subscription_id) return "Pago de extra sin datos del extra";
+  const { error } = await sb.from("subscription_items").insert([{
+    subscription_id: ex.subscription_id, item_type: "addon", item_code: ex.code,
+    description: ex.nombre || ex.code, quantity: 1, unit_price: Number(ex.monto) || Number(pago.monto), is_active: true,
+  }]);
+  return error ? error.message : null;
+}
+
 Deno.serve(async (req) => {
   try {
     if (!CLAVE || new URL(req.url).searchParams.get("k") !== CLAVE) {
@@ -150,6 +161,17 @@ Deno.serve(async (req) => {
         return ok({ revisar: true, motivo: "módulo no activado" });
       }
       return ok({ confirmado: true, modulo: true });
+    }
+
+    // 2b) Extra por cantidad: se suma a la suscripción
+    if (String(pago.concepto_code || "").startsWith("EXTRA:")) {
+      const errEx = await activarExtra(pago);
+      if (errEx) {
+        console.error("pf-webhook: pago de extra confirmado pero no se activó", pago.id, errEx);
+        await aRevision(pago.id, "Pago confirmado, pero no se pudo activar el extra: " + errEx);
+        return ok({ revisar: true, motivo: "extra no activado" });
+      }
+      return ok({ confirmado: true, extra: true });
     }
 
     // 2) Mensualidad: el plan queda pagado un mes más
