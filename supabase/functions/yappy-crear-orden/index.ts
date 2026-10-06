@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return resp({ ok: true, funcion: "yappy-crear-orden", ambiente: PRUEBAS ? "pruebas" : "produccion" });
   try {
-    const { negocioId, origen, volverA, aliasYappy, modulo } = await req.json();
+    const { negocioId, origen, volverA, aliasYappy, modulo, extra } = await req.json();
     if (!negocioId) return resp({ error: "Falta el negocio." }, 400);
     const base = String(volverA || "").replace(/\/+$/, "");
     if (!ORIGENES.some((r) => r.test(base))) return resp({ error: "Dirección de retorno no permitida." }, 400);
@@ -133,6 +133,19 @@ Deno.serve(async (req) => {
       concepto = `Módulo ${f.name}`;
       conceptoCode = "MODULO:" + codigo;
       detalle = [{ tipo: "modulo", code: codigo, nombre: f.name, monto, subscription_id: sub.id }];
+    } else if (extra) {
+      // 2) Extra por cantidad (profesional o sede adicional): 1 unidad al precio del catálogo. No aplica en prueba gratis.
+      if (esPedidos) return resp({ error: "Ese extra no está disponible aquí." }, 400);
+      if ((sub as any).status === "trial") return resp({ error: "Podrás agregar extras cuando termine tu prueba." }, 400);
+      const codigo = String(extra).toUpperCase();
+      if (!["PROFESIONAL_ADICIONAL", "SUCURSAL_ADICIONAL"].includes(codigo)) return resp({ error: "Extra no válido." }, 400);
+      const { data: f } = await sb.from("features").select("code, name, monthly_price").eq("code", codigo).eq("is_active", true).maybeSingle();
+      if (!f) return resp({ error: "Extra no disponible." }, 400);
+      monto = r2(Number(f.monthly_price) || 0);
+      if (monto < 1) return resp({ error: "Ese extra no tiene precio configurado." }, 400);
+      concepto = codigo === "PROFESIONAL_ADICIONAL" ? "Profesional adicional" : "Sede adicional";
+      conceptoCode = "EXTRA:" + codigo;
+      detalle = [{ tipo: "extra", code: codigo, nombre: concepto, monto, subscription_id: sub.id }];
     } else {
       // 2) Monto del mes, calculado aquí (misma regla que pf-crear-enlace)
       const plan = (sub as any).plans || {};
