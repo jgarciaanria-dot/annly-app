@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return resp({ ok: true, funcion: "yappy-crear-orden", ambiente: PRUEBAS ? "pruebas" : "produccion" });
   try {
-    const { negocioId, origen, volverA, aliasYappy, modulo, extra } = await req.json();
+    const { negocioId, origen, volverA, aliasYappy, modulo, extra, plan: cambioPlan } = await req.json();
     if (!negocioId) return resp({ error: "Falta el negocio." }, 400);
     const base = String(volverA || "").replace(/\/+$/, "");
     if (!ORIGENES.some((r) => r.test(base))) return resp({ error: "Dirección de retorno no permitida." }, 400);
@@ -146,6 +146,20 @@ Deno.serve(async (req) => {
       concepto = codigo === "PROFESIONAL_ADICIONAL" ? "Profesional adicional" : "Sede adicional";
       conceptoCode = "EXTRA:" + codigo;
       detalle = [{ tipo: "extra", code: codigo, nombre: concepto, monto, subscription_id: sub.id }];
+    } else if (cambioPlan) {
+      // 2) Subir de plan: se cobra la DIFERENCIA entre el plan nuevo y el actual (precios del catálogo). No aplica en prueba gratis.
+      if (esPedidos) return resp({ error: "Ese cambio no está disponible aquí." }, 400);
+      if ((sub as any).status === "trial") return resp({ error: "En tu prueba gratis el plan se cambia sin cobro." }, 400);
+      const codigo = String(cambioPlan).toUpperCase();
+      if (!["BASIC", "MEDIUM", "ULTIMATE"].includes(codigo)) return resp({ error: "Plan no válido." }, 400);
+      const { data: nuevo } = await sb.from("plans").select("id, code, name, monthly_price").eq("code", codigo).maybeSingle();
+      if (!nuevo) return resp({ error: "Plan no disponible." }, 400);
+      const actualPlan = (sub as any).plans || {};
+      monto = r2((Number(nuevo.monthly_price) || 0) - (Number(actualPlan.monthly_price) || 0));
+      if (monto < 1) return resp({ error: "Ese plan no cuesta más que el actual: se cambia sin cobro." }, 400);
+      concepto = `Cambio a plan ${nuevo.name}`;
+      conceptoCode = "PLAN:" + codigo;
+      detalle = [{ tipo: "plan", code: codigo, nombre: nuevo.name, monto, subscription_id: sub.id, plan_id: nuevo.id }];
     } else {
       // 2) Monto del mes, calculado aquí (misma regla que pf-crear-enlace)
       const plan = (sub as any).plans || {};

@@ -114,6 +114,7 @@ window.PAGO_CFG = (window.PEDIDOS_CONFIG && window.PEDIDOS_CONFIG.SUPABASE_URL)
     if (p && p.estado === 'confirmado'){
       if (/^m[oó]dulo/i.test(p.concepto || '')) pintar('ok', 'check', '¡Pago confirmado!', 'Gracias. Tu módulo ya está activo.');
       else if (/adicional/i.test(p.concepto || '')) pintar('ok', 'check', '¡Pago confirmado!', 'Gracias. Tu extra ya está activo.');
+      else if (/^cambio a plan/i.test(p.concepto || '')) pintar('ok', 'check', '¡Pago confirmado!', 'Gracias. Tu plan ya cambió.');
       else pintar('ok', 'check', '¡Pago confirmado!', 'Gracias. Tu membresía está pagada' + (p.periodo_hasta ? ' hasta el <b>' + fechaLarga(p.periodo_hasta) + '</b>' : '') + '.');
       resumen(p); $('ayuda').textContent = 'Te llegará el recibo de PagueloFácil a tu correo.'; boton(p, 'confirmado'); return;
     }

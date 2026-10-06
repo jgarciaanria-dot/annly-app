@@ -65,6 +65,23 @@ async function activarModulo(pago: any): Promise<string | null> {
   return error ? error.message : null;
 }
 
+// Cambio de plan pagado: el plan de la suscripción pasa al nuevo y se desactivan los módulos que ya vienen incluidos en él
+// (para no cobrarlos dos veces). Devuelve el error o null.
+async function activarPlan(pago: any): Promise<string | null> {
+  const pl = Array.isArray(pago.detalle) ? pago.detalle.find((d: any) => d && d.tipo === "plan") : null;
+  if (!pl || !pl.plan_id || !pl.subscription_id) return "Pago de plan sin datos del plan";
+  const { error } = await sb.from("subscriptions").update({ plan_id: pl.plan_id }).eq("id", pl.subscription_id);
+  if (error) return error.message;
+  const { data: incl } = await sb.from("plan_features").select("features(code)").eq("plan_id", pl.plan_id);
+  const codigos = (incl || []).map((r: any) => r.features && r.features.code).filter(Boolean);
+  if (codigos.length) {
+    const { error: errItems } = await sb.from("subscription_items").update({ is_active: false })
+      .eq("subscription_id", pl.subscription_id).eq("item_type", "addon").eq("is_active", true).in("item_code", codigos);
+    if (errItems) console.error("No se pudieron desactivar los módulos ya incluidos en el plan nuevo:", errItems);
+  }
+  return null;
+}
+
 // Extra por cantidad pagado (profesional o sede adicional): se suma 1 unidad a la suscripción. Devuelve el error o null.
 async function activarExtra(pago: any): Promise<string | null> {
   const ex = Array.isArray(pago.detalle) ? pago.detalle.find((d: any) => d && d.tipo === "extra") : null;
@@ -172,6 +189,17 @@ Deno.serve(async (req) => {
         return ok({ revisar: true, motivo: "extra no activado" });
       }
       return ok({ confirmado: true, extra: true });
+    }
+
+    // 2c) Cambio de plan: el plan de la suscripción pasa al nuevo
+    if (String(pago.concepto_code || "").startsWith("PLAN:")) {
+      const errPl = await activarPlan(pago);
+      if (errPl) {
+        console.error("pf-webhook: pago de plan confirmado pero no se cambió el plan", pago.id, errPl);
+        await aRevision(pago.id, "Pago confirmado, pero no se pudo cambiar el plan: " + errPl);
+        return ok({ revisar: true, motivo: "plan no cambiado" });
+      }
+      return ok({ confirmado: true, plan: true });
     }
 
     // 2) Mensualidad: el plan queda pagado un mes más
