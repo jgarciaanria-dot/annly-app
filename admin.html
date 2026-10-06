@@ -537,6 +537,7 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .pm-x{position:absolute;top:10px;right:12px;border:0;background:none;font-size:26px;line-height:1;cursor:pointer;color:var(--ink-soft,#77738A);}
 .pm-precio{font-size:26px;font-weight:800;margin:0 0 8px;}
 .pm-precio small{font-size:13px;font-weight:600;color:var(--ink-soft,#77738A);}
+.pm-lbl{display:block;font-size:12px;font-weight:700;margin:12px 0 5px;color:var(--ink-soft,#77738A);}
 /* Mientras el recuadro de pago de Yappy está abierto, el menú y el encabezado quedan por debajo */
 .yappy-abierto .adm-sidebar,.yappy-abierto .adm-hdr{z-index:0 !important;}
 .pf-hist{margin-top:12px;font-size:12px;color:var(--ink-soft,#77738A);display:flex;flex-direction:column;gap:4px;}
@@ -6025,6 +6026,13 @@ async function pintarPagoTarjeta(){
   const total = items.reduce((s, i) => s + i.precio * i.cant, 0);
   const fecha = iso => new Date(String(iso).length <= 10 ? iso + 'T12:00:00' : iso).toLocaleDateString('es-PA', { day: 'numeric', month: 'long', year: 'numeric' });
   const hasta = SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd;
+  // Cuenta de cortesía / acuerdo comercial: sin pagos pendientes ni vencimiento
+  if (annlyEsCortesia(hasta)){
+    box.innerHTML = `<div class="pf-hdr"><div><h3><i class="ti ti-heart-handshake"></i> Plan de cortesía</h3>
+      <p>Tu cuenta cuenta con un acuerdo comercial de Annly: tu plan está activo, sin pagos pendientes y sin fecha de vencimiento.</p></div></div>`;
+    box.style.display = '';
+    return;
+  }
   const enPrueba = enPeriodoPrueba();
   const confirmados = pagos.filter(p => p.estado === 'confirmado').slice(0, 3);
   // "Pagada" solo si un pago confirmado cubre la fecha; si no, la fecha es solo el vencimiento
@@ -6338,35 +6346,61 @@ function filtrarCuentasPlataforma(){
       </div></div>`;
   }).join('') || '<p class="pf-nota" style="margin:0;">Sin resultados.</p>';
 }
-async function aplicarExtension(c, hasta, activar, etiqueta){
-  const motivo = prompt(`Motivo de la ${etiqueta} para "${c.nombre}" (queda registrado):`);
-  if (!motivo || motivo.trim().length < 3) return;
-  try {
-    await Sheets.extenderCuenta(c.id, hasta, motivo.trim(), activar);
-    alert('Listo: ' + c.nombre + (hasta >= '2099-01-01' ? ' queda como cortesía sin vencimiento.' : ' queda hasta el ' + hasta + '.'));
-    pintarCuentasPlataforma();
-  } catch(e){ console.error(e); alert('No se pudo guardar: ' + (e.message || e)); }
+// Ventana de la app (mismo estilo del pago) para pedir motivo y, si hace falta, fecha
+function modalCuenta(o){
+  cerrarPagoModulo();
+  const ov = document.createElement('div');
+  ov.className = 'pm-ov'; ov.id = 'pm-ov';
+  ov.addEventListener('click', e => { if (e.target === ov) cerrarPagoModulo(); });
+  ov.innerHTML = `<div class="pm-box" role="dialog" aria-modal="true">
+    <button type="button" class="pm-x" aria-label="Cerrar" onclick="cerrarPagoModulo()">×</button>
+    <h3>${escCat(o.titulo)}</h3>
+    <p class="pf-nota" style="margin:0 0 6px;">${escCat(o.texto)}</p>
+    ${o.pedirFecha ? `<label class="pm-lbl" for="mc-fecha">Nueva fecha de fin</label><input class="fi" type="date" id="mc-fecha" value="${escCat(o.fecha || '')}" style="width:100%;">` : ''}
+    <label class="pm-lbl" for="mc-motivo">Motivo (queda registrado)</label>
+    <textarea class="fi" id="mc-motivo" rows="3" placeholder="Ej.: prórroga acordada por WhatsApp, acuerdo comercial…" style="width:100%;resize:vertical;font:inherit;"></textarea>
+    <p class="pf-nota" id="mc-err" style="color:#C2455F;min-height:16px;margin:6px 0 10px;"></p>
+    <div style="display:flex;gap:8px;">
+      <button type="button" class="cbtn" style="flex:1;" onclick="cerrarPagoModulo()"><span>Cancelar</span></button>
+      <button type="button" class="cbtn cbtn-ok" id="mc-ok" style="flex:1;"><i class="ti ti-check"></i><span>${escCat(o.boton || 'Guardar')}</span></button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const err = document.getElementById('mc-err');
+  document.getElementById('mc-ok').onclick = async () => {
+    const motivo = document.getElementById('mc-motivo').value.trim();
+    const fecha = o.pedirFecha ? document.getElementById('mc-fecha').value : o.fecha;
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ err.textContent = 'Elige una fecha.'; return; }
+    if (motivo.length < 3){ err.textContent = 'Escribe el motivo.'; return; }
+    const btn = document.getElementById('mc-ok'); btn.disabled = true; err.textContent = '';
+    try {
+      await Sheets.extenderCuenta(o.cuenta.id, fecha, motivo, o.activar);
+      cerrarPagoModulo();
+      const t = document.createElement('div');
+      t.className = 'cuenta-toast';
+      t.textContent = fecha >= '2099-01-01' ? o.cuenta.nombre + ' quedó como cortesía sin vencimiento.' : o.cuenta.nombre + ' quedó hasta el ' + fecha + '.';
+      document.body.appendChild(t); setTimeout(() => t.remove(), 4500);
+      pintarCuentasPlataforma();
+    } catch(e){ console.error(e); err.textContent = 'No se pudo guardar: ' + (e.message || e); btn.disabled = false; }
+  };
+  setTimeout(() => { const f = document.getElementById(o.pedirFecha ? 'mc-fecha' : 'mc-motivo'); if (f) f.focus(); }, 50);
 }
 function prorrogarCuenta(id, dias){
   const c = CUENTAS_PLAT.find(x => x.id === id);
   if (!c) return;
-  let hasta;
+  const actual = String(c.hasta || '').slice(0, 10);
   if (dias > 0){
-    const actual = String(c.hasta || '').slice(0, 10);
     const base = actual && actual > fechaPanama(0) && actual < '2099-01-01' ? actual : fechaPanama(0);
-    hasta = new Date(Date.parse(base + 'T12:00:00Z') + dias * 86400000).toISOString().slice(0, 10);
+    const hasta = new Date(Date.parse(base + 'T12:00:00Z') + dias * 86400000).toISOString().slice(0, 10);
+    modalCuenta({ titulo: 'Prórroga de ' + dias + ' días', texto: c.nombre + ' quedará hasta el ' + hasta + '.', cuenta: c, fecha: hasta, activar: false, boton: 'Dar prórroga' });
   } else {
-    hasta = prompt('Nueva fecha de fin (AAAA-MM-DD):', String(c.hasta || fechaPanama(7)).slice(0, 10));
-    if (!hasta || !/^\d{4}-\d{2}-\d{2}$/.test(hasta.trim())) return;
-    hasta = hasta.trim();
+    modalCuenta({ titulo: 'Elegir fecha de fin', texto: c.nombre + ' — fecha actual: ' + (actual && actual < '2099-01-01' ? actual : (actual ? 'sin vencimiento' : 'sin fecha')) + '.', cuenta: c, pedirFecha: true, fecha: actual && actual < '2099-01-01' ? actual : fechaPanama(7), activar: false, boton: 'Guardar fecha' });
   }
-  aplicarExtension(c, hasta, false, 'prórroga');
 }
 function cortesiaCuenta(id){
   const c = CUENTAS_PLAT.find(x => x.id === id);
   if (!c) return;
-  if (!confirm(`¿Marcar a "${c.nombre}" como cortesía SIN vencimiento? Tendrá su plan completo sin pagar hasta que le pongas una fecha.`)) return;
-  aplicarExtension(c, '2099-12-31', true, 'cortesía');
+  modalCuenta({ titulo: 'Marcar como cortesía', texto: c.nombre + ' tendrá su plan completo activo, sin pagos ni vencimiento, hasta que le pongas una fecha.', cuenta: c, fecha: '2099-12-31', activar: true, boton: 'Marcar cortesía' });
 }
 
 async function renderPlan(){
@@ -7035,8 +7069,9 @@ async function activarModuloUI(featureCode){
   }
   const modulo = CATALOGO_MODULOS.find(m => m.code === featureCode);
   if (!modulo) return;
-  // Fuera de la prueba gratis, el módulo se paga al agregarlo (tarjeta o Yappy) y se activa al confirmarse
-  if (!enPeriodoPrueba()){ abrirPagoModulo(featureCode); return; }
+  // Fuera de la prueba gratis, el módulo se paga al agregarlo (tarjeta o Yappy) y se activa al confirmarse.
+  // En prueba gratis y en cuentas de cortesía se activa directo, sin cobro.
+  if (!enPeriodoPrueba() && !annlyEsCortesia(SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd)){ abrirPagoModulo(featureCode); return; }
   try {
     await Sheets.activarModulo(SUSCRIPCION_ACTUAL.subscriptionId, featureCode, modulo.name, modulo.price);
     await renderPlan(); // en prueba el módulo se puede usar ya: se recalcula el acceso
