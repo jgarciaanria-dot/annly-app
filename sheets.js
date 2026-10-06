@@ -2647,6 +2647,20 @@ const Sheets = {
     if (error) throw error;
   },
 
+  // Un módulo que se cotiza aparte (Agente AI): avisa a soporte@annly.app para saber quién está interesado
+  async consultarModulo(modulo, mensaje) {
+    await window.AnnlyReady;
+    const { data: ses } = await sbClient.auth.getSession();
+    if (!ses || !ses.session) throw new Error('Inicia sesión de nuevo.');
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/consulta-modulo`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + ses.session.access_token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessId: BUSINESS_ID, modulo, mensaje: mensaje || '' })
+    });
+    if (!resp.ok) throw new Error('No se pudo enviar tu consulta. Intenta de nuevo.');
+    return true;
+  },
+
   // Agenda pública: ¿se muestra el botón para inscribirse?
   async inscripcionClientesActiva() {
     await window.AnnlyReady;
