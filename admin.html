@@ -6039,7 +6039,7 @@ async function pintarPagoTarjeta(){
   const hoyIso = new Date().toISOString().slice(0, 10);
   const pagadoHasta = pagos.filter(p => p.estado === 'confirmado' && p.periodo_hasta && p.periodo_hasta >= hoyIso)
     .map(p => p.periodo_hasta).sort().pop();
-  const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD' && !String(p.concepto_code || '').startsWith('MODULO:') && !String(p.concepto_code || '').startsWith('EXTRA:')));
+  const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD' && !String(p.concepto_code || '').startsWith('MODULO:') && !String(p.concepto_code || '').startsWith('EXTRA:') && !String(p.concepto_code || '').startsWith('PLAN:')));
   box.innerHTML = `
     <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Tu mensualidad</h3>
       <p>${pagadoHasta ? 'Tu membresía está pagada hasta el <b>' + fecha(pagadoHasta) + '</b>.'
@@ -6084,7 +6084,7 @@ function conectarBotonYappy(btn, o){
     const alias = document.getElementById(o.aliasId).value;
     decir('Creando tu orden de pago…', true); if (msg) msg.style.color = '';
     try {
-      const r = await Sheets.crearOrdenYappyMensualidad(alias, o.modulo, o.extra);
+      const r = await Sheets.crearOrdenYappyMensualidad(alias, o.modulo, o.extra, o.plan);
       window._yappyPagoId = r.pagoId;
       decir('');
       btn.eventPayment({ transactionId: r.body.transactionId, documentName: r.body.documentName, token: r.body.token });
@@ -6105,22 +6105,22 @@ function conectarBotonYappy(btn, o){
 // Yappy ya aprobó en la app; el servidor recibe el IPN y marca el pago. Aquí solo se consulta ese estado.
 async function esperarConfirmacionYappy(o){
   const msg = document.getElementById(o.msgId);
-  if (msg){ msg.style.color = '#159A61'; msg.textContent = o.extra ? 'Pago recibido. Activando tu extra…' : (o.modulo ? 'Pago recibido. Activando tu módulo…' : 'Pago recibido. Confirmando tu membresía…'); }
+  if (msg){ msg.style.color = '#159A61'; msg.textContent = o.plan ? 'Pago recibido. Cambiando tu plan…' : o.extra ? 'Pago recibido. Activando tu extra…' : (o.modulo ? 'Pago recibido. Activando tu módulo…' : 'Pago recibido. Confirmando tu membresía…'); }
   const id = window._yappyPagoId;
   for (let i = 0; i < 60 && id; i++){
     try {
       const { data } = await sbClient.rpc('estado_pago_plataforma', { p_id: id });
       const p = Array.isArray(data) ? data[0] : data;
       if (p && p.estado === 'confirmado'){
-        cerrarPagoModulo(); renderPlan();
-        setTimeout(() => alert(o.extra ? '¡Pago confirmado! Tu extra quedó activo.' : (o.modulo ? '¡Pago confirmado! Tu módulo quedó activo.' : '¡Pago confirmado! Tu membresía quedó activa.')), 300);
+        cerrarPagoModulo(); closeUpgrade(); renderPlan();
+        setTimeout(() => alert(o.plan ? '¡Pago confirmado! Tu plan ya cambió.' : o.extra ? '¡Pago confirmado! Tu extra quedó activo.' : (o.modulo ? '¡Pago confirmado! Tu módulo quedó activo.' : '¡Pago confirmado! Tu membresía quedó activa.')), 300);
         return;
       }
       if (p && p.estado === 'rechazado'){ if (msg){ msg.style.color = '#C2455F'; msg.textContent = 'El pago no se completó.'; } return; }
     } catch(e){ console.error(e); }
     await new Promise(r => setTimeout(r, 3000));
   }
-  if (msg){ msg.style.color = ''; msg.textContent = (o.modulo || o.extra) ? 'Tu pago está en proceso. Si se completó, se activará solo en unos minutos.' : 'Tu pago está en proceso. Si se completó, tu plan se activará solo en unos minutos.'; }
+  if (msg){ msg.style.color = ''; msg.textContent = (o.modulo || o.extra || o.plan) ? 'Tu pago está en proceso. Si se completó, se activará solo en unos minutos.' : 'Tu pago está en proceso. Si se completó, tu plan se activará solo en unos minutos.'; }
   pintarPagoTarjeta();
 }
 
@@ -6150,7 +6150,7 @@ function abrirModalPago(o){
     <h3>${escCat(o.titulo)}</h3>
     <p class="pm-precio">${fmtDinero(o.monto)}<small> /mes</small></p>
     <p class="pf-nota" style="margin:0 0 12px;">${escCat(o.nota)}</p>
-    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${o.modulo || ''}', '${o.extra || ''}')"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(o.monto)} con tarjeta</span></button>
+    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${o.modulo || ''}', '${o.extra || ''}', '${o.plan || ''}')"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(o.monto)} con tarjeta</span></button>
     <div class="pf-yappy">
       <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
       <input class="fi" id="pm-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
@@ -6159,19 +6159,19 @@ function abrirModalPago(o){
     </div>
   </div>`;
   document.body.appendChild(ov);
-  conectarBotonYappy(document.getElementById('pm-btn-yappy'), { aliasId: 'pm-yappy-alias', msgId: 'pm-yappy-msg', modulo: o.modulo || undefined, extra: o.extra || undefined });
+  conectarBotonYappy(document.getElementById('pm-btn-yappy'), { aliasId: 'pm-yappy-alias', msgId: 'pm-yappy-msg', modulo: o.modulo || undefined, extra: o.extra || undefined, plan: o.plan || undefined });
 }
 function cerrarPagoModulo(){
   const ov = document.getElementById('pm-ov');
   if (ov) ov.remove();
 }
-async function pagarModuloTarjeta(code, extra){
+async function pagarModuloTarjeta(code, extra, plan){
   const btn = document.getElementById('pm-btn-tarjeta');
   const antes = btn ? btn.innerHTML : '';
   const win = abrirVentanaPago(); // se abre ya, en el clic (si se espera, el navegador la bloquea)
   if (btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i><span>Preparando tu pago…</span>'; }
   try {
-    const r = await Sheets.crearEnlaceMensualidad(code || undefined, extra || undefined);
+    const r = await Sheets.crearEnlaceMensualidad(code || undefined, extra || undefined, plan || undefined);
     if (win && !win.closed){
       escucharResultadoPago();
       win.location.href = r.url;
@@ -6274,7 +6274,7 @@ async function pintarPagosPlataforma(){
   let lista = [];
   try { lista = await Sheets.getAvisosPagoPlataforma(); } catch(e){ console.error(e); }
   const fecha = iso => new Date(iso).toLocaleString('es-PA', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-  const revisar = lista.filter(a => a.estado === 'revisar' || (a.estado === 'pendiente' && a.concepto_code !== 'MENSUALIDAD' && !String(a.concepto_code || '').startsWith('MODULO:') && !String(a.concepto_code || '').startsWith('EXTRA:')));
+  const revisar = lista.filter(a => a.estado === 'revisar' || (a.estado === 'pendiente' && a.concepto_code !== 'MENSUALIDAD' && !String(a.concepto_code || '').startsWith('MODULO:') && !String(a.concepto_code || '').startsWith('EXTRA:') && !String(a.concepto_code || '').startsWith('PLAN:')));
   const recientes = lista.filter(a => a.estado === 'confirmado').slice(0, 8);
   const ESTADO = { confirmado: 'Confirmado', revisar: 'Revisar', pendiente: 'Aviso manual' };
   const fila = (a, conAcciones) => `
@@ -7114,12 +7114,27 @@ function openUpgrade(planKey){
     msgEl.innerHTML = `⚠️ Tienes ${empleadosActuales} empleados activos, y ${p.name} solo incluye ${p.professionals}. Nadie se elimina automáticamente, pero deberás desactivar ${empleadosActuales - p.professionals} para quedar dentro del límite del plan nuevo.`;
     msgEl.style.color = '#C2695A';
   } else {
-    msgEl.textContent = 'El cambio se aplica de inmediato. Por ahora no se realiza ningún cobro — la pasarela de pago se conecta próximamente.';
+    const dif = diferenciaCambioPlan(planKey);
+    msgEl.textContent = dif > 0
+      ? `Pagas la diferencia de $${dif.toFixed(2)} (${p.name} cuesta $${p.price} y tu plan actual, $${p.price - dif}). El cambio se aplica en cuanto se confirme el pago.`
+      : (enPeriodoPrueba() ? 'Estás en tu prueba gratis: el cambio es inmediato y no se cobra. El plan se cobra cuando termines la prueba.' : 'El cambio se aplica de inmediato.');
     msgEl.style.color = '';
   }
   document.getElementById('modal-upgrade-btn').disabled = false;
-  document.getElementById('modal-upgrade-btn').innerHTML='<i class="ti ti-arrow-up-right"></i> Confirmar cambio de plan';
+  document.getElementById('modal-upgrade-btn').innerHTML = diferenciaCambioPlan(planKey) > 0
+    ? '<i class="ti ti-credit-card"></i> Continuar al pago'
+    : '<i class="ti ti-arrow-up-right"></i> Confirmar cambio de plan';
   document.getElementById('ov-modal-upgrade').classList.add('open');
+}
+
+// Cuánto se paga al cambiar a otro plan: la diferencia de precio si SUBE y la cuenta ya está activa (fuera de prueba y de cortesía)
+function diferenciaCambioPlan(planKey){
+  const p = ANNLY_PLANES_UI[planKey];
+  if (!p || !SUSCRIPCION_ACTUAL || enPeriodoPrueba()) return 0;
+  if (annlyEsCortesia(SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd)) return 0;
+  const actual = SUSCRIPCION_ACTUAL.plan ? Number(SUSCRIPCION_ACTUAL.plan.price) : 0;
+  const dif = Math.round((p.price - actual) * 100) / 100;
+  return dif >= 1 ? dif : 0;
 }
 
 function closeUpgrade(){
@@ -7143,6 +7158,15 @@ async function solicitarUpgrade(){
   if(!key || !ANNLY_PLANES_UI[key]) return;
   if (!SUSCRIPCION_ACTUAL){
     alert('Todavía no tienes una suscripción configurada. Escríbenos a soporte@annly.app.');
+    return;
+  }
+  // Subir de plan se paga (la diferencia): se abre la ventana de pago y el plan cambia al confirmarse
+  const dif = diferenciaCambioPlan(key);
+  if (dif > 0){
+    const p = ANNLY_PLANES_UI[key];
+    closeUpgrade();
+    abrirModalPago({ titulo: 'Cambiar a ' + p.name, monto: dif, plan: key.toUpperCase(),
+      nota: 'Pagas la diferencia entre tu plan actual y ' + p.name + '. Tu plan cambia en cuanto se confirme el pago; desde el próximo mes pagas el precio de ' + p.name + '.' });
     return;
   }
   const btn = document.getElementById('modal-upgrade-btn');

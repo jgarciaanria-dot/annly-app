@@ -4308,16 +4308,17 @@ const Sheets = {
     return data || [];
   },
   // Etapa 2: crea en el servidor un enlace único de PagueloFácil por la mensualidad completa y devuelve la URL
-  async crearEnlaceMensualidad(modulo, extra) {
+  async crearEnlaceMensualidad(modulo, extra, plan) {
     await window.AnnlyReady;
     const { data, error } = await sbClient.functions.invoke('pf-crear-enlace', {
-      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, modulo: modulo || undefined, extra: extra || undefined }
+      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, modulo: modulo || undefined, extra: extra || undefined, plan: plan || undefined }
     });
     if (error) {
       let msg = error.message;
       try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch(_){}
       throw new Error(msg);
     }
+    if (plan && !/^cambio a plan/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar cambios de plan. Intenta en unos minutos o escríbenos.');
     if (extra && !/adicional/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar extras. Intenta en unos minutos o escríbenos.');
     if (modulo && !/^m[oó]dulo/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar módulos. Intenta en unos minutos o escríbenos.');
     if (!data || !data.url) throw new Error((data && data.error) || 'No se pudo crear el enlace de pago.');
@@ -4355,16 +4356,17 @@ const Sheets = {
   },
 
   // Pago de la mensualidad con Yappy: el servidor calcula el monto y crea la orden en Yappy
-  async crearOrdenYappyMensualidad(aliasYappy, modulo, extra) {
+  async crearOrdenYappyMensualidad(aliasYappy, modulo, extra, plan) {
     await window.AnnlyReady;
     const { data, error } = await sbClient.functions.invoke('yappy-crear-orden', {
-      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, aliasYappy, modulo: modulo || undefined, extra: extra || undefined }
+      body: { negocioId: BUSINESS_ID, origen: 'agenda', volverA: window.location.origin, aliasYappy, modulo: modulo || undefined, extra: extra || undefined, plan: plan || undefined }
     });
     if (error) {
       let msg = error.message;
       try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch(_){}
       throw new Error(msg);
     }
+    if (plan && !/^cambio a plan/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar cambios de plan. Intenta en unos minutos o escríbenos.');
     if (extra && !/adicional/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar extras. Intenta en unos minutos o escríbenos.');
     if (modulo && !/^m[oó]dulo/i.test((data && data.concepto) || '')) throw new Error('El servidor todavía no está actualizado para cobrar módulos. Intenta en unos minutos o escríbenos.');
     if (!data || !data.body || !data.body.token) throw new Error((data && data.error) || 'No se pudo crear la orden de pago.');

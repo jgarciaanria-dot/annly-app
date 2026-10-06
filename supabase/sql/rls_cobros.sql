@@ -54,7 +54,7 @@ with check (
 create policy subscriptions_delete on public.subscriptions for delete to public
 using (public.is_platform_admin());
 
--- El dueño NO puede cambiar el estado ni la fecha de fin (eso lo hacen los pagos y el equipo de Annly)
+-- El dueño NO puede cambiar el estado ni la fecha de fin, ni SUBIR de plan sin pagar (ver también rls_cambio_plan.sql)
 create or replace function public.subscriptions_guard()
 returns trigger language plpgsql as $$
 begin
@@ -63,6 +63,12 @@ begin
        or new.current_period_end is distinct from old.current_period_end
        or new.business_id is distinct from old.business_id then
       raise exception 'El estado y la fecha de la suscripción solo cambian con un pago confirmado o por el equipo de Annly';
+    end if;
+    if new.plan_id is distinct from old.plan_id and old.status <> 'trial' then
+      if coalesce((select monthly_price from public.plans where id = new.plan_id), 0)
+         > coalesce((select monthly_price from public.plans where id = old.plan_id), 0) then
+        raise exception 'Subir de plan requiere un pago confirmado';
+      end if;
     end if;
   end if;
   return new;
