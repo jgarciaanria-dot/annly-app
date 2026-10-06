@@ -4174,6 +4174,8 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         </div>
         <div class="fg"><label class="flbl">Instagram (sin @)</label><input class="fi" id="pf-instagram" placeholder="minegocio"/></div>
         <div class="fg"><label class="flbl">Dirección</label><input class="fi" id="pf-direccion" placeholder="Obarrio, Salón Plaza, Suite 113"/></div>
+        <div class="fg"><label class="flbl">Correo extra para avisos (opcional)</label><input class="fi" id="pf-correo-avisos" type="email" maxlength="120" placeholder="citas@minegocio.com"/>
+          <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">Los avisos de citas siempre llegan a tu correo de acceso. Si agregas otro, llegan a los dos.</p></div>
         <div class="fg">
           <label class="flbl">Horario de atención</label>
           <div style="display:flex;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
@@ -9886,6 +9888,7 @@ async function loadPerfil(){
   document.getElementById('pf-whatsapp').value = b.whatsapp || '';
   document.getElementById('pf-instagram').value = b.instagram || '';
   document.getElementById('pf-direccion').value = b.direccion || '';
+  document.getElementById('pf-correo-avisos').value = b.correo_avisos || '';
   cargarHorarioEstructurado(b.horario_estructurado);
   document.getElementById('pf-modo-oscuro').checked = b.modo_fondo === 'oscuro';
   pfFooterTextoSel = b.footer_texto === 'claro' ? 'claro' : 'oscuro';
@@ -10056,6 +10059,12 @@ async function guardarPerfil(){
   msgEl.style.color = 'var(--ink-soft)';
   msgEl.textContent = 'Guardando...';
 
+  const correoAvisos = document.getElementById('pf-correo-avisos').value.trim();
+  if (correoAvisos && !/^\S+@\S+\.\S+$/.test(correoAvisos)) {
+    msgEl.style.color = '#C2695A';
+    msgEl.textContent = 'Revisa el correo extra para avisos.';
+    return;
+  }
   const horarioEstructurado = leerHorarioEstructurado();
   const datos = {
     nombre: document.getElementById('pf-nombre').value.trim(),
@@ -10075,6 +10084,8 @@ async function guardarPerfil(){
     modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro',
     footer_texto: pfFooterTextoSel
   };
+  // Solo se envía si cambió (así guardar el perfil no depende de la columna hasta que se use)
+  if (correoAvisos !== ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.correo_avisos) || '')) datos.correo_avisos = correoAvisos || null;
   if(pfPaletaSel !== null && pfPaletaSel >= 0 && paletasDesbloqueadas()){
     datos.color_primario = PALETAS_PERFIL[pfPaletaSel].primario;
     datos.color_secundario = PALETAS_PERFIL[pfPaletaSel].secundario;
