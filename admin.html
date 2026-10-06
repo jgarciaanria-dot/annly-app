@@ -3595,7 +3595,6 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   .adm-hdr-actions .adm-hdr-back{width:35px!important;height:35px!important;padding:0!important;justify-content:center;}
   .adm-hdr-title{font-size:14px!important;}
   .svc-row>div:first-child{width:42px!important;height:42px!important;}
-  .svc-toggle{display:none;}
 }
 
 /* Login: alterna notificaciones de citas y pedidos, y evita que el pie se corte */
@@ -3685,6 +3684,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 .club-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .club-txt b{font-size:14.5px}.club-txt span{font-size:12.5px;line-height:1.5;color:var(--ink-soft,#77738A)}
 .club-txt small{font-size:11.5px;color:#7424d4;font-weight:600}
+.club-sw{display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;border-radius:12px;background:#F7F3FB;font-size:13px;font-weight:600;color:#201b2b}
 .club-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .club-filtros button{font:600 12px 'DM Sans',sans-serif;border:1.5px solid var(--line,#E6DCF8);background:#fff;color:var(--ink,#2B2838);padding:7px 13px;border-radius:999px;cursor:pointer}
 .club-filtros button.on{background:#F4EAFF;border-color:#7424d4;color:#7424d4}
@@ -9288,8 +9288,8 @@ function renderClubCard(){
     <div class="club-txt"><b>Programa de clientes</b>
       <span>Muestra en tu agenda el botón <b>"Recibe descuentos y regalos"</b>. Quienes se inscriben quedan en tu lista de clientes, con su cumpleaños y su permiso para recibir promociones.</span>
       <small id="club-stats">${inscritos} inscrito${inscritos === 1 ? '' : 's'} · ${cumples} cumpleaños este mes</small>
-      <small id="club-msg" style="min-height:14px;"></small></div>
-    <label class="svc-toggle" title="Mostrar el botón en mi agenda"><input type="checkbox" id="club-toggle" ${on ? 'checked' : ''} onchange="toggleClub(this.checked)"/><div class="svc-toggle-track"></div><div class="svc-toggle-thumb"></div></label>`;
+      <div class="club-sw"><label class="svc-toggle"><input type="checkbox" id="club-toggle" ${on ? 'checked' : ''} onchange="toggleClub(this.checked)"/><div class="svc-toggle-track"></div><div class="svc-toggle-thumb"></div></label><span id="club-sw-txt">${on ? 'Botón activado en tu agenda' : 'Activar el botón en mi agenda'}</span></div>
+      <small id="club-msg" style="min-height:14px;"></small></div>`;
 }
 
 async function toggleClub(v){
@@ -9297,6 +9297,7 @@ async function toggleClub(v){
   try {
     await Sheets.actualizarPerfil({ inscripcion_clientes: v });
     if (msg){ msg.style.color = '#4A9D6E'; msg.textContent = v ? 'Listo: el botón ya aparece en tu agenda.' : 'Listo: el botón se quitó de tu agenda.'; }
+    const sw = document.getElementById('club-sw-txt'); if (sw) sw.textContent = v ? 'Botón activado en tu agenda' : 'Activar el botón en mi agenda';
   } catch(e){
     console.error(e);
     const t = document.getElementById('club-toggle'); if (t) t.checked = !v;
