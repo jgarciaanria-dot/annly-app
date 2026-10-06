@@ -81,7 +81,7 @@ Una pestaña sin la función incluida muestra una vitrina con "Ver planes". En l
 - **Plan inicial: $14/mes.** Tienda con logo y colores, catálogo con extras y dedicatoria, fechas y franjas con cupo, retiro o entrega por zonas, pago por Yappy o transferencia (confirmado a mano), avisos por correo, inventario y hoja de preparación.
 - **Módulos opcionales: $6/mes cada uno.**
   - Ventas e Inventario (`PEDIDOS_REPORTES`): reportes de ventas, productos más vendidos, inventario valorizado, ganancia por producto y exportar a Excel.
-  - Programa de clientes (`PEDIDOS_CLIENTES`): inscripción de compradores con cumpleaños y consentimiento. **Próximamente**: está definido en la base de datos pero inactivo hasta que se construya.
+  - Programa de clientes (`PEDIDOS_CLIENTES`): botón "Recibe descuentos y regalos" en la tienda, con formulario (nombre, WhatsApp, correo opcional, cumpleaños opcional y consentimiento). En el panel, pestaña Clientes con interruptor, filtros (inscritos y cumpleaños del mes) y descarga en CSV. Es la base para promociones, descuentos de cumpleaños y ruleta más adelante.
 - 14 días gratis.
 - Se cuenta y se cobra por separado de Agenda (cuenta propia).
 
@@ -114,7 +114,7 @@ order by producto, code;
 ```
 
 ## 8. Pendiente
-- Construir el Programa de clientes para Tiendas y activar `PEDIDOS_CLIENTES`.
+- Usar la base de clientes: descuentos de cumpleaños, promos por cliente y ruleta.
 - Confirmar con la consulta de la sección 7 que la lista de funciones por plan coincide con la sección 2.
 - Pagos en línea: hoy solo Yappy Comercial se configura desde el panel. Las demás pasarelas son trabajo a pedido.
-- Precios en la base de datos: ejecutar `supabase/sql/precios_modulos.sql`.
+- Precios en la base de datos: ejecutar `supabase/sql/precios_modulos.sql` y, para el Programa de clientes de Tiendas, `supabase/sql/clientes_pedidos.sql`.
