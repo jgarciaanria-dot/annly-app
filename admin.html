@@ -3656,6 +3656,26 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   .pf-box .pf-yappy btn-yappy{display:block;width:100%}
   .pf-box .pf-nota{text-align:center}
 }
+
+/* Pago de la membresía en tarjetas separadas (resumen, tarjeta y Yappy) */
+#pf-pagar.pf-box{background:none;border:0;padding:0;margin:14px 0;box-shadow:none}
+#pf-pagar .pf-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:14px;align-items:stretch}
+#pf-pagar .pf-card{background:#fff;border:1px solid #E6DCF8;border-radius:18px;padding:18px;display:flex;flex-direction:column;min-width:0}
+#pf-pagar .pf-card.wide{margin-top:14px}
+#pf-pagar .pf-card .pf-hdr{margin-bottom:12px}
+#pf-pagar .pf-card .pf-lista{margin-top:2px}
+.pf-card-ico{width:42px;height:42px;border-radius:12px;background:#F4EAFF;color:#7424d4;display:grid;place-items:center;font-size:21px;margin-bottom:12px}
+.pf-card-ico.yappy{background:#E3F0FF;color:#1676D8}
+#pf-pagar .pf-card h3{margin:0 0 4px;font-size:16px;display:block}
+#pf-pagar .pf-desc{font-size:12.5px;line-height:1.5;color:var(--ink-soft,#77738A);margin:0 0 14px}
+.pf-monto{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;line-height:1;margin:0 0 14px;color:#201b2b}
+.pf-monto small{font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;color:var(--ink-soft,#77738A);margin-left:6px}
+#pf-pagar .pf-card .pf-pagar{max-width:none;width:100%;margin:auto 0 0;display:flex}
+#pf-pagar .pf-card btn-yappy{display:block;width:100%;margin-top:auto}
+#pf-pagar .pf-card .pf-nota{text-align:left}
+#pf-pagar .pf-yappy{margin-top:0;padding:18px;border-top:1px solid #E6DCF8}
+@media(max-width:1100px){#pf-pagar .pf-grid{grid-template-columns:1fr 1fr}#pf-pagar .pf-grid>.pf-card:first-child{grid-column:1/-1}}
+@media(max-width:700px){#pf-pagar .pf-grid{grid-template-columns:1fr}}
 </style>
 
 </head>
@@ -6148,8 +6168,8 @@ async function pintarPagoTarjeta(){
   const hasta = SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd;
   // Cuenta de cortesía / acuerdo comercial: sin pagos pendientes ni vencimiento
   if (annlyEsCortesia(hasta)){
-    box.innerHTML = `<div class="pf-hdr"><div><h3><i class="ti ti-heart-handshake"></i> Plan de cortesía</h3>
-      <p>Esta cuenta tiene un acuerdo comercial con Annly: el plan está activo, sin pagos pendientes y sin fecha de vencimiento.</p></div></div>`;
+    box.innerHTML = `<div class="pf-card wide"><div class="pf-hdr"><div><h3><i class="ti ti-heart-handshake"></i> Plan de cortesía</h3>
+      <p>Esta cuenta tiene un acuerdo comercial con Annly: el plan está activo, sin pagos pendientes y sin fecha de vencimiento.</p></div></div></div>`;
     box.style.display = '';
     return;
   }
@@ -6161,26 +6181,37 @@ async function pintarPagoTarjeta(){
     .map(p => p.periodo_hasta).sort().pop();
   const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD' && !String(p.concepto_code || '').startsWith('MODULO:') && !String(p.concepto_code || '').startsWith('EXTRA:') && !String(p.concepto_code || '').startsWith('PLAN:')));
   box.innerHTML = `
-    <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Tu mensualidad</h3>
-      <p>${pagadoHasta ? 'Tu membresía está pagada hasta el <b>' + fecha(pagadoHasta) + '</b>.'
-        : enPrueba ? 'Estás en tu prueba gratis' + (hasta ? ' hasta el <b>' + fecha(hasta) + '</b>' : '') + '. Al pagar, tu membresía queda activa de inmediato.'
-        : (hasta ? 'Tu membresía vence el <b>' + fecha(hasta) + '</b>. Paga para mantenerla activa.' : 'Paga tu membresía con tarjeta, de forma segura.')}</p></div></div>
-    <div class="pf-lista">${items.map(i => `
-      <div class="pf-item"><div><b>${escCat(i.nombre)}</b><span>${i.cant > 1 ? i.cant + ' × ' + fmtDinero(i.precio) : 'Mensual'}</span></div><b>${fmtDinero(i.precio * i.cant)}</b></div>`).join('')}
-      <div class="pf-item pf-total"><div><b>Total del mes</b></div><b>${fmtDinero(total)}</b></div>
+    <div class="pf-grid">
+    <div class="pf-card">
+      <div class="pf-hdr"><div><h3><i class="ti ti-receipt"></i> Tu mensualidad</h3>
+        <p>${pagadoHasta ? 'Tu membresía está pagada hasta el <b>' + fecha(pagadoHasta) + '</b>.'
+          : enPrueba ? 'Estás en tu prueba gratis' + (hasta ? ' hasta el <b>' + fecha(hasta) + '</b>' : '') + '. Al pagar, tu membresía queda activa de inmediato.'
+          : (hasta ? 'Tu membresía vence el <b>' + fecha(hasta) + '</b>. Paga para mantenerla activa.' : 'Paga tu membresía con tarjeta, de forma segura.')}</p></div></div>
+      <div class="pf-lista">${items.map(i => `
+        <div class="pf-item"><div><b>${escCat(i.nombre)}</b><span>${i.cant > 1 ? i.cant + ' × ' + fmtDinero(i.precio) : 'Mensual'}</span></div><b>${fmtDinero(i.precio * i.cant)}</b></div>`).join('')}
+        <div class="pf-item pf-total"><div><b>Total del mes</b></div><b>${fmtDinero(total)}</b></div>
+      </div>
     </div>
-    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
-    <p class="pf-nota">Pago seguro con tarjeta de crédito o débito (PagueloFácil). Se abre en una ventana aparte y, al terminar, tu membresía se actualiza sola aquí.</p>
-    <div class="pf-yappy" id="pf-yappy">
-      <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
+    <div class="pf-card">
+      <div class="pf-card-ico"><i class="ti ti-credit-card"></i></div>
+      <h3>Paga con tarjeta</h3>
+      <p class="pf-desc">Tarjeta de crédito o débito, con pago seguro de PagueloFácil. Se abre en una ventana aparte y, al terminar, tu membresía se actualiza sola aquí.</p>
+      <div class="pf-monto">${fmtDinero(total)}<small>al mes</small></div>
+      <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
+    </div>
+    <div class="pf-card pf-yappy" id="pf-yappy">
+      <div class="pf-card-ico yappy"><i class="ti ti-device-mobile"></i></div>
+      <h3>Paga con Yappy</h3>
+      <p class="pf-desc">Escribe tu número y aprueba el cobro en tu app Yappy.</p>
       <input class="fi" id="pf-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
       <p class="pf-nota" id="pf-yappy-msg" style="min-height:14px;margin:6px 0 8px;"></p>
       <btn-yappy id="pf-btn-yappy" theme="darkBlue" rounded="true"></btn-yappy>
     </div>
-    ${enRevision.length ? `<div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
+    </div>
+    ${enRevision.length ? `<div class="pf-card wide"><div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
       ${enRevision.map(a => `<span>${escCat(a.concepto)} · ${fmtDinero(a.monto)}</span>`).join('')}
-      <small>Los estamos revisando; no necesitas hacer nada.</small></div></div>` : ''}
-    ${confirmados.length ? `<div class="pf-hist"><b>Últimos pagos</b>${confirmados.map(p => `<span><i class="ti ti-circle-check"></i>${escCat(p.concepto)} · ${fmtDinero(p.monto_pagado || p.monto)} · ${fecha(p.resuelto_en || p.creado_en)}</span>`).join('')}</div>` : ''}`;
+      <small>Los estamos revisando; no necesitas hacer nada.</small></div></div></div>` : ''}
+    ${confirmados.length ? `<div class="pf-card wide"><div class="pf-hist"><b>Últimos pagos</b>${confirmados.map(p => `<span><i class="ti ti-circle-check"></i>${escCat(p.concepto)} · ${fmtDinero(p.monto_pagado || p.monto)} · ${fecha(p.resuelto_en || p.creado_en)}</span>`).join('')}</div></div>` : ''}`;
   box.style.display = '';
   activarBotonYappy();
 }
@@ -6410,8 +6441,8 @@ async function pintarPagosPlataforma(){
     <div class="pf-hdr"><div><h3><i class="ti ti-shield-check"></i> Cobros de Annly</h3>
       <p>Solo tú ves esto. Los pagos con tarjeta se confirman solos; aquí solo revisas lo que no cuadra.</p></div>
       <a class="cbtn" href="https://app.paguelofacil.com/movements" target="_blank" rel="noopener"><i class="ti ti-external-link"></i><span>Abrir PagueloFácil</span></a></div>
-    ${revisar.length ? `<div class="pf-sub">Para revisar</div><div class="pf-lista">${revisar.map(a => fila(a, true)).join('')}</div>` : '<p class="pf-nota" style="margin-top:0;">Nada por revisar.</p>'}
-    ${recientes.length ? `<div class="pf-sub">Confirmados automáticamente</div><div class="pf-lista">${recientes.map(a => fila(a, false)).join('')}</div>` : ''}`;
+    ${revisar.length ? `<div class="pf-desc">Para revisar</div><div class="pf-lista">${revisar.map(a => fila(a, true)).join('')}</div>` : '<p class="pf-nota" style="margin-top:0;">Nada por revisar.</p>'}
+    ${recientes.length ? `<div class="pf-desc">Confirmados automáticamente</div><div class="pf-lista">${recientes.map(a => fila(a, false)).join('')}</div>` : ''}`;
   box.style.display = '';
 }
 
