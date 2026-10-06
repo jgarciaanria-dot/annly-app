@@ -60,6 +60,18 @@ h2{font:700 1.5rem/1.2 'Playfair Display',serif;margin:34px 0 6px}h2+p{color:var
 .ejemplo{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
 .pagos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.pagos article{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.pagos article h3{font-size:1rem;margin-bottom:6px}.pagos article.on{border-color:#d9b8f5;background:#fdfaff}.pagos ul{padding-left:18px;color:var(--muted);font-size:.92rem}.pagos p{font-size:.92rem;color:var(--muted)}
 @media(max-width:640px){.mock{grid-template-columns:1fr}.phone{max-width:300px;margin:auto}.pagos{grid-template-columns:1fr}}
+.nt{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 8px}
+.nt figure{text-align:center}.nt figcaption{font-weight:700;font-size:.9rem;margin-top:10px}.nt figcaption span{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+.nt-phone{width:230px;height:400px;margin:auto;border:8px solid #201b2b;border-radius:32px;background:linear-gradient(170deg,#dccbf5,#f6dff0);overflow:hidden;position:relative;box-shadow:0 14px 30px rgba(32,27,43,.18);padding:18px 10px;text-align:left}
+.nt-time{text-align:center;color:#201b2b;margin-bottom:14px}.nt-time b{display:block;font:600 2.2rem/1 'DM Sans',sans-serif}.nt-time small{font-size:.66rem;letter-spacing:.06em}
+.nt-card{background:rgba(255,255,255,.94);border-radius:14px;padding:9px 11px;margin-bottom:8px;box-shadow:0 6px 14px rgba(32,27,43,.12);opacity:0;transform:translateY(16px)}
+.nt-card .a{display:flex;align-items:center;gap:6px;font-size:.58rem;color:#6b6578;margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}.nt-card .a i{width:14px;height:14px;border-radius:4px;background:linear-gradient(135deg,#7424d4,#ef3d87);display:inline-block}
+.nt-card b{display:block;font-size:.74rem;line-height:1.25;color:#201b2b}.nt-card span.p{display:block;font-size:.66rem;color:#6b6578;margin-top:2px}
+.nt-c1{animation:ntA 14s ease-in-out infinite}.nt-c2{animation:ntB 14s ease-in-out infinite}
+@keyframes ntA{0%,4%{opacity:0;transform:translateY(16px)}10%,90%{opacity:1;transform:none}96%,100%{opacity:0;transform:translateY(-6px)}}
+@keyframes ntB{0%,34%{opacity:0;transform:translateY(16px)}40%,90%{opacity:1;transform:none}96%,100%{opacity:0;transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.nt-card{animation:none!important;opacity:1;transform:none}}
+@media(max-width:640px){.nt{grid-template-columns:1fr}}
 .tip{background:var(--lilac);border-radius:14px;padding:14px 16px;margin:22px 0;font-size:.92rem}
 .cta{display:inline-block;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;margin:6px 0 34px}
 footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:.88rem}
@@ -137,6 +149,24 @@ footer a{color:var(--purple)}
       <div><b>Sucursales</b><span>Si tienes <b style="display:inline">Sucursal adicional</b>, cada sede tiene su propio horario en <b style="display:inline">Sucursales</b>, y cada profesional puede tener uno distinto en cada sede.</span></div>
     </div>
     <div class="tip"><b>Cómo se decide:</b> Annly usa primero el horario propio del profesional en esa sucursal; si no tiene, el de la sucursal; y si tampoco, el del negocio. Para bloquear un día, como un feriado o vacaciones, usa <b>Bloqueos</b>.</div>
+    <h2>Notificaciones</h2>
+    <p>Annly avisa por correo cada vez que pasa algo con una cita, para que ni tú ni tu cliente se pierdan nada.</p>
+    <div class="nt">
+      <figure><div class="nt-phone" aria-hidden="true"><div class="nt-time"><b>9:41</b><small>Sábado, 10 de octubre</small></div>
+        <div class="nt-card nt-c1"><div class="a"><i></i>Correo · Estudio Luna</div><b>Tu cita ha sido confirmada</b><span class="p">Te esperamos el sábado a las 10:00 a. m.</span></div>
+        <div class="nt-card nt-c2"><div class="a"><i></i>Correo · Estudio Luna</div><b>Tu cita cambió de horario</b><span class="p">Ahora es el domingo a las 11:00 a. m.</span></div></div>
+        <figcaption>Tu cliente<span>Recibe avisos en su correo</span></figcaption></figure>
+      <figure><div class="nt-phone" aria-hidden="true"><div class="nt-time"><b>9:41</b><small>Sábado, 10 de octubre</small></div>
+        <div class="nt-card nt-c1"><div class="a"><i></i>Correo · Annly</div><b>Nueva cita agendada: Andrea M.</b><span class="p">Sábado 10:00 a. m. · Corte y peinado</span></div>
+        <div class="nt-card nt-c2"><div class="a"><i></i>Correo · Annly</div><b>Cita reprogramada: Andrea M.</b><span class="p">Ahora el domingo 11:00 a. m.</span></div></div>
+        <figcaption>Tú, el negocio<span>Recibes cada aviso en tu correo</span></figcaption></figure>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">Ejemplo ilustrativo. Los textos reales llevan el nombre de tu negocio y los datos de la cita.</p>
+    <div class="campos">
+      <div><b>Tu correo de avisos</b><span>Los avisos de citas nuevas, cambios y cancelaciones llegan al <b style="display:inline">correo con el que te registraste</b>, el mismo con el que entras a tu panel. Usa uno que revises todos los días. Si necesitas cambiarlo, escríbenos a soporte@annly.app.</span></div>
+      <div><b>El correo de tu cliente</b><span>Tu cliente recibe la confirmación, el cambio de horario o la cancelación en el correo que deje al reservar. Si no deja correo, no recibe el aviso, pero tú sí.</span></div>
+      <div><b>Que no caigan en spam</b><span>Los avisos salen de <b style="display:inline">notificaciones@annly.app</b>. Si no los ves, revisa spam y márcalos como seguros. Pídele lo mismo a tus clientes.</span></div>
+    </div>
     <h2>Cómo te pagan tus clientes</h2>
     <p>Hay dos formas de cobrar. Puedes empezar con la manual hoy mismo y pasar a la automática cuando quieras.</p>
     <div class="pagos">
@@ -188,6 +218,23 @@ footer a{color:var(--purple)}
       <div><b>Franjas de entrega</b><span>Cada franja es un horario de entrega o retiro, por ejemplo de 9:00 a 12:00, con el número de pedidos que puedes atender en ella. Cuando se llena, deja de ofrecerse.</span></div>
       <div><b>Fechas sin pedidos</b><span>Bloquea feriados o días que no trabajas con <b style="display:inline">Bloquear fecha</b>.</span></div>
       <div><b>Anticipación</b><span>En <b style="display:inline">Configuración</b> defines el tiempo mínimo de preparación y cuántos días hacia adelante pueden pedir tus clientes.</span></div>
+    </div>
+    <h2>Notificaciones</h2>
+    <p>Cada pedido nuevo te llega por correo, y tu cliente recibe su aviso.</p>
+    <div class="nt">
+      <figure><div class="nt-phone" aria-hidden="true"><div class="nt-time"><b>9:41</b><small>Jueves, 2 de octubre</small></div>
+        <div class="nt-card nt-c1"><div class="a"><i></i>Correo · Flores del Valle</div><b>Recibimos tu pedido #000012</b><span class="p">Entrega viernes · 9:00 a. m.</span></div>
+        <div class="nt-card nt-c2"><div class="a"><i></i>Correo · Flores del Valle</div><b>Tu pedido está confirmado</b><span class="p">Gracias por tu compra</span></div></div>
+        <figcaption>Tu cliente<span>Recibe avisos por correo y WhatsApp</span></figcaption></figure>
+      <figure><div class="nt-phone" aria-hidden="true"><div class="nt-time"><b>9:41</b><small>Jueves, 2 de octubre</small></div>
+        <div class="nt-card nt-c1"><div class="a"><i></i>Correo · Annly</div><b>Nuevo pedido #000012</b><span class="p">Entrega viernes 9:00 a. m. · a domicilio</span></div>
+        <div class="nt-card nt-c2"><div class="a"><i></i>Correo · Annly</div><b>Pago por confirmar</b><span class="p">Revisa el comprobante en tu panel</span></div></div>
+        <figcaption>Tú, el negocio<span>Recibes cada pedido en tu correo</span></figcaption></figure>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">Ejemplo ilustrativo. Los textos reales pueden variar.</p>
+    <div class="campos">
+      <div><b>Correo para avisos de pedidos</b><span>En <b style="display:inline">Configuración</b> escribe el correo donde quieres recibir cada pedido nuevo. Si lo dejas vacío, llegan al <b style="display:inline">correo con el que te registraste</b>, el mismo con el que entras a tu panel.</span></div>
+      <div><b>Tu cliente</b><span>Recibe el aviso de su pedido por correo y por WhatsApp, con los datos que dejó al comprar.</span></div>
     </div>
     <h2>Cómo te pagan tus clientes</h2>
     <div class="pagos">
