@@ -15,14 +15,14 @@
   body.modo-oscuro{background-color:var(--bg-page,#0d0c0b);}
   html body .hdr{max-width:none;}
   html body .marcas-strip,html body footer{max-width:none;}
-  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:720px;margin-left:auto;margin-right:auto;background-color:transparent;}
+  html body #serviceList,html body #cert-link-wrap,html body #club-link-wrap,html body #suc-chip{max-width:720px;margin-left:auto;margin-right:auto;background-color:transparent;}
   html body #serviceList{padding-left:1.25rem;padding-right:1.25rem;}
 }
 @media(min-width:900px){
   /* Compacto y centrado: las reservas se hacen sobre todo desde el celular */
-  html body #serviceList,html body #cert-link-wrap,html body #suc-chip{max-width:960px;}
+  html body #serviceList,html body #cert-link-wrap,html body #club-link-wrap,html body #suc-chip{max-width:960px;}
   html body #serviceList{padding-left:1.5rem;padding-right:1.5rem;padding-bottom:2.5rem;}
-  html body #cert-link-wrap{padding-left:1.5rem;padding-right:1.5rem;}
+  html body #cert-link-wrap,html body #club-link-wrap{padding-left:1.5rem;padding-right:1.5rem;}
   /* La tarjeta de sede con el mismo ancho que la del certificado */
   html body #suc-chip{padding-left:calc(1.5rem + 14px);padding-right:calc(1.5rem + 14px);}
   html body .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
@@ -227,7 +227,7 @@ function hexToRgb(hex){
 window.AnnlyReady.then(() => Sheets.negocioSuspendido()).then(suspendido => {
   if (!suspendido) return;
   annlyModoVista('Por el momento este negocio no está recibiendo reservas.');
-  ['openCal', 'confirmar', 'confirmarDoble', 'confirmarCitaConfirmada', 'abrirModalComprarCertificado', 'enviarCompraCertificado'].forEach(n => {
+  ['openCal', 'confirmar', 'confirmarDoble', 'confirmarCitaConfirmada', 'abrirModalComprarCertificado', 'enviarCompraCertificado', 'abrirModalInscripcion', 'enviarInscripcion'].forEach(n => {
     const f = window[n];
     if (typeof f !== 'function') return;
     window[n] = function () { alert('Por el momento este negocio no está recibiendo reservas.'); };
@@ -1892,6 +1892,72 @@ function errorAlGuardarCita(err, ordenPagada){
   }
   el.innerHTML=`<i class="ti ti-alert-triangle" aria-hidden="true"></i><span>${msg}</span>`;
   el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+// ===== Inscripción de clientes (plan Medium o Ultimate, si el negocio la activa) =====
+window.AnnlyReady.then(() => Sheets.inscripcionClientesActiva()).then(activa => {
+  const w = document.getElementById('club-link-wrap');
+  if (activa && w) w.style.display = '';
+}).catch(() => {});
+
+function abrirModalInscripcion(){
+  const nombreNegocio = (window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.nombre) || 'este negocio';
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  document.getElementById('inscripcion-body').innerHTML = `
+    <p style="font-size:13.5px;line-height:1.55;margin:0 0 14px;color:var(--ink,#2c2c2a);">¿Te gustaría recibir <b>descuentos, regalos y promociones</b>? Déjanos tus datos y ${esc(nombreNegocio)} te tendrá en cuenta.</p>
+    <div class="fg"><label class="flbl">Tu nombre</label><input class="fi" id="insc-nombre" maxlength="80" autocomplete="name"/></div>
+    <div class="fg"><label class="flbl">Tu WhatsApp</label><input class="fi" id="insc-telefono" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="6000-0000"/></div>
+    <div class="fg"><label class="flbl">Tu correo (opcional)</label><input class="fi" id="insc-correo" type="email" maxlength="120" autocomplete="email" placeholder="tu@correo.com"/></div>
+    <div class="fg"><label class="flbl">Tu cumpleaños (opcional, para sorprenderte)</label>
+      <div style="display:flex;gap:8px;">
+        <select class="fi" id="insc-dia" style="flex:1;"><option value="">Día</option>${Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select>
+        <select class="fi" id="insc-mes" style="flex:2;"><option value="">Mes</option>${meses.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('')}</select>
+      </div></div>
+    <input id="insc-web" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;" aria-hidden="true"/>
+    <label style="display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;margin:10px 0;cursor:pointer;">
+      <input type="checkbox" id="insc-acepta" style="margin-top:3px;flex-shrink:0;"/>
+      <span>Acepto que ${esc(nombreNegocio)} me contacte con promociones y beneficios. Puedo pedir que me quiten cuando quiera.</span>
+    </label>
+    <p id="insc-msg" style="font-size:11.5px;color:#c0392b;min-height:16px;margin:4px 0 8px;"></p>
+    <button class="btn-main" id="btnInscripcion" onclick="enviarInscripcion()">Inscribirme</button>`;
+  openOv('ov-inscripcion');
+}
+
+async function enviarInscripcion(){
+  const msg = document.getElementById('insc-msg');
+  const btn = document.getElementById('btnInscripcion');
+  const v = id => (document.getElementById(id).value || '').trim();
+  if (v('insc-web')) return; // trampa para programas automáticos
+  const nombre = v('insc-nombre'), telefono = v('insc-telefono'), correo = v('insc-correo');
+  const dia = parseInt(v('insc-dia'), 10) || null, mes = parseInt(v('insc-mes'), 10) || null;
+  if (nombre.length < 2) { msg.textContent = 'Escribe tu nombre.'; return; }
+  if (telefono.replace(/\D/g, '').length < 7) { msg.textContent = 'Escribe tu número de WhatsApp.'; return; }
+  if (correo && !/^\S+@\S+\.\S+$/.test(correo)) { msg.textContent = 'Revisa tu correo.'; return; }
+  if ((dia && !mes) || (!dia && mes)) { msg.textContent = 'Elige el día y el mes de tu cumpleaños, o deja los dos vacíos.'; return; }
+  if (!document.getElementById('insc-acepta').checked) { msg.textContent = 'Marca la casilla para poder inscribirte.'; return; }
+  msg.textContent = '';
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    const r = await Sheets.inscribirCliente({ nombre, telefono, correo, cumpleDia: dia, cumpleMes: mes, acepta: true });
+    if (!r || !r.ok) {
+      const errores = { cumple: 'Revisa la fecha de tu cumpleaños.', correo: 'Revisa tu correo.', telefono: 'Revisa tu número de WhatsApp.', nombre: 'Escribe tu nombre.', no_disponible: 'Por ahora no está disponible la inscripción.' };
+      msg.textContent = errores[r && r.error] || 'No se pudo completar la inscripción. Intenta de nuevo.';
+      btn.disabled = false; btn.textContent = 'Inscribirme';
+      return;
+    }
+    document.getElementById('inscripcion-body').innerHTML = `
+      <div style="text-align:center;padding:1.2rem .5rem 1rem;">
+        <div style="width:54px;height:54px;border-radius:50%;background:rgba(var(--gold-dark-rgb),.12);color:var(--gold-dark);display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px;"><i class="ti ti-check" aria-hidden="true"></i></div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:6px;">¡Listo, ya estás inscrito(a)!</div>
+        <p style="font-size:13px;color:var(--ink-soft,#6b6b66);line-height:1.5;margin:0 0 16px;">Gracias por unirte. Pronto sabrás de nuestras promociones y sorpresas.</p>
+        <button class="btn-main" onclick="closeOv('ov-inscripcion')">Cerrar</button>
+      </div>`;
+  } catch(e) {
+    console.error(e);
+    msg.textContent = 'No se pudo completar la inscripción. Intenta de nuevo.';
+    btn.disabled = false; btn.textContent = 'Inscribirme';
+  }
 }
 
 function openOv(id){document.getElementById(id).classList.add('open');}

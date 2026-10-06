@@ -3678,6 +3678,21 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 /* Botón de tarjeta con la misma forma que el de Yappy */
 .pf-box .pf-pagar,#pf-pagar .pf-card .pf-pagar{height:46px;border-radius:999px;font-weight:700;font-size:14.5px;gap:8px;justify-content:center;align-items:center}
 .pf-box .pf-pagar i{font-size:19px}
+
+/* Programa de clientes (inscripción desde la agenda) */
+.club-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line,#E6DCF8);border-radius:18px;padding:16px 18px;margin-bottom:14px}
+.club-ico{width:46px;height:46px;border-radius:14px;background:var(--accent-soft);color:var(--charcoal);display:grid;place-items:center;font-size:23px;flex:none}
+.club-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.club-txt b{font-size:14.5px}.club-txt span{font-size:12.5px;line-height:1.5;color:var(--ink-soft,#77738A)}
+.club-txt small{font-size:11.5px;color:#7424d4;font-weight:600}
+.club-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.club-filtros button{font:600 12px 'DM Sans',sans-serif;border:1.5px solid var(--line,#E6DCF8);background:#fff;color:var(--ink,#2B2838);padding:7px 13px;border-radius:999px;cursor:pointer}
+.club-filtros button.on{background:#F4EAFF;border-color:#7424d4;color:#7424d4}
+.club-filtros .club-csv{margin-left:auto;display:inline-flex;gap:6px;align-items:center}
+.club-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.club-tag{display:inline-flex;gap:4px;align-items:center;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:#F4EAFF;color:#7424d4}
+.club-tag.cumple{background:#FDE8EF;color:#B4476B}
+@media(max-width:700px){.club-card{flex-wrap:wrap}.club-filtros .club-csv{margin-left:0}}
 </style>
 
 </head>
@@ -4151,13 +4166,20 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 
   <div id="panel-clientas" style="display:none;">
+    <div id="club-card" class="club-card"></div>
     <div class="adm-sec">
       <div class="adm-sec-hdr">
         <span class="adm-sec-title">Clientes</span>
         <button class="btn-add" onclick="openModalClienta(null)"><i class="ti ti-plus"></i> Agregar</button>
       </div>
       <div style="padding:1rem;">
-        <input class="fi" id="buscar-clienta" placeholder="Buscar por nombre o teléfono..." oninput="renderClientas()" style="margin-bottom:12px;">
+        <input class="fi" id="buscar-clienta" placeholder="Buscar por nombre o teléfono..." oninput="renderClientas()" style="margin-bottom:10px;">
+        <div class="club-filtros" id="club-filtros">
+          <button type="button" class="on" data-f="todos" onclick="setFiltroClientas('todos')">Todos</button>
+          <button type="button" data-f="inscritos" onclick="setFiltroClientas('inscritos')">Inscritos</button>
+          <button type="button" data-f="cumple" onclick="setFiltroClientas('cumple')">Cumpleaños del mes</button>
+          <button type="button" class="club-csv" onclick="exportarInscritosCSV()"><i class="ti ti-download"></i> Descargar inscritos</button>
+        </div>
         <div id="lista-clientas"></div>
       </div>
     </div>
@@ -4606,6 +4628,11 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="mc-nombre"/></div>
       <div class="fg"><label class="flbl">Teléfono / WhatsApp</label><input class="fi" id="mc-telefono"/></div>
       <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="mc-correo"/></div>
+      <div class="fg"><label class="flbl">Cumpleaños (opcional)</label>
+        <div style="display:flex;gap:8px;">
+          <select class="fi" id="mc-cumple-dia" style="flex:1;"><option value="">Día</option></select>
+          <select class="fi" id="mc-cumple-mes" style="flex:2;"><option value="">Mes</option></select>
+        </div></div>
       <div class="fg"><label class="flbl">Notas (opcional)</label><textarea class="fi" id="mc-notas" rows="2" style="resize:vertical;"></textarea></div>
       <button class="btn-save" onclick="guardarClientaModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cliente</button>
     </div>
@@ -5154,7 +5181,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=64"></script>
+<script src="sheets.js?v=65"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -9237,12 +9264,62 @@ async function loadClientas(){
   renderClientas();
 }
 
+const MESES_CLUB = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let FILTRO_CLIENTAS = 'todos';
+
+function clubDisponible(){ return ['medium','ultimate'].includes(planActualParaUI()); }
+function mesActualPanama(){ return new Date(Date.now() - 5 * 3600000).getUTCMonth() + 1; }
+function textoCumple(c){ return c.cumpleDia && c.cumpleMes ? c.cumpleDia + ' de ' + MESES_CLUB[c.cumpleMes - 1].toLowerCase() : ''; }
+
+function renderClubCard(){
+  const el = document.getElementById('club-card');
+  if (!el) return;
+  const inscritos = CLIENTAS.filter(c => c.aceptaPromos).length;
+  const cumples = CLIENTAS.filter(c => c.cumpleMes === mesActualPanama()).length;
+  if (!clubDisponible()){
+    el.innerHTML = `<div class="club-ico"><i class="ti ti-heart-handshake"></i></div>
+      <div class="club-txt"><b>Programa de clientes</b>
+      <span>Deja un botón en tu agenda para que tus clientes se inscriban y recibir descuentos, regalos y promociones. Así armas tu base de clientes y puedes sorprenderlos en su cumpleaños.</span></div>
+      <button type="button" class="btn-add" onclick="switchTab('plan')"><i class="ti ti-lock"></i> Disponible desde Medium</button>`;
+    return;
+  }
+  const on = !!(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.inscripcion_clientes);
+  el.innerHTML = `<div class="club-ico"><i class="ti ti-heart-handshake"></i></div>
+    <div class="club-txt"><b>Programa de clientes</b>
+      <span>Muestra en tu agenda el botón <b>"Recibe descuentos y regalos"</b>. Quienes se inscriben quedan en tu lista de clientes, con su cumpleaños y su permiso para recibir promociones.</span>
+      <small id="club-stats">${inscritos} inscrito${inscritos === 1 ? '' : 's'} · ${cumples} cumpleaños este mes</small>
+      <small id="club-msg" style="min-height:14px;"></small></div>
+    <label class="svc-toggle" title="Mostrar el botón en mi agenda"><input type="checkbox" id="club-toggle" ${on ? 'checked' : ''} onchange="toggleClub(this.checked)"/><div class="svc-toggle-track"></div><div class="svc-toggle-thumb"></div></label>`;
+}
+
+async function toggleClub(v){
+  const msg = document.getElementById('club-msg');
+  try {
+    await Sheets.actualizarPerfil({ inscripcion_clientes: v });
+    if (msg){ msg.style.color = '#4A9D6E'; msg.textContent = v ? 'Listo: el botón ya aparece en tu agenda.' : 'Listo: el botón se quitó de tu agenda.'; }
+  } catch(e){
+    console.error(e);
+    const t = document.getElementById('club-toggle'); if (t) t.checked = !v;
+    if (msg){ msg.style.color = '#C2695A'; msg.textContent = 'No se pudo guardar. Intenta de nuevo.'; }
+  }
+}
+
+function setFiltroClientas(f){
+  FILTRO_CLIENTAS = f;
+  document.querySelectorAll('#club-filtros button[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f));
+  renderClientas();
+}
+
 function renderClientas(){
   const cont = document.getElementById('lista-clientas');
   const filtro = (document.getElementById('buscar-clienta').value || '').toLowerCase().trim();
-  const filtradas = CLIENTAS.filter(c =>
-    !filtro || c.nombre.toLowerCase().includes(filtro) || (c.telefono||'').includes(filtro)
-  );
+  const mes = mesActualPanama();
+  const filtradas = CLIENTAS.filter(c => {
+    if (FILTRO_CLIENTAS === 'inscritos' && !c.aceptaPromos) return false;
+    if (FILTRO_CLIENTAS === 'cumple' && c.cumpleMes !== mes) return false;
+    return !filtro || c.nombre.toLowerCase().includes(filtro) || (c.telefono||'').includes(filtro);
+  });
+  renderClubCard();
 
   if (filtradas.length === 0){
     cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay clientes para mostrar.</p>';
@@ -9255,11 +9332,14 @@ function renderClientas(){
     const esRosa = i%2===1;
     const avBg = esRosa?'var(--accent2-soft)':'var(--accent-soft)';
     const avFg = esRosa?'var(--accent2)':'var(--charcoal)';
+    const cumple = textoCumple(c);
+    const insignias = (c.aceptaPromos ? '<span class="club-tag"><i class="ti ti-heart"></i> Inscrito</span>' : '') + (cumple ? '<span class="club-tag cumple"><i class="ti ti-cake"></i> ' + cumple + '</span>' : '');
     return `<div class="svc-row" style="padding:.75rem 0;">
       <div style="width:36px;height:36px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:${avFg};">${inicial}</div>
       <div class="svc-info">
         <div class="svc-nm">${c.nombre}</div>
         <div class="svc-meta">${c.telefono}${c.correo ? ' · '+c.correo : ''}${c.notas ? ' · '+c.notas : ''}</div>
+        ${insignias ? '<div class="club-tags">' + insignias + '</div>' : ''}
       </div>
       <div class="svc-actions">
         <button class="btn-ico" onclick="abrirModalReservar(${idxReal})" title="Reservar"><i class="ti ti-calendar-plus"></i></button>
@@ -9270,21 +9350,31 @@ function renderClientas(){
   }).join('');
 }
 
-function eliminarClienta(idx){
-  if (!confirm('¿Eliminar este cliente de la lista?')) return;
-  CLIENTAS.splice(idx, 1);
-  Sheets.guardarClientas(CLIENTAS);
-  renderClientas();
+async function eliminarClienta(idx){
+  const c = CLIENTAS[idx];
+  if (!c || !confirm('¿Eliminar este cliente de la lista?')) return;
+  try { if (c.id) await Sheets.eliminarClienta(c.id); }
+  catch(e){ console.error(e); alert('No se pudo eliminar. Intenta de nuevo.'); return; }
+  await loadClientas();
+}
+
+function llenarSelectoresCumple(){
+  const d = document.getElementById('mc-cumple-dia'), m = document.getElementById('mc-cumple-mes');
+  if (d && d.options.length < 2) for (let i = 1; i <= 31; i++) d.add(new Option(i, i));
+  if (m && m.options.length < 2) MESES_CLUB.forEach((n, i) => m.add(new Option(n, i + 1)));
 }
 
 function openModalClienta(idx){
   editClientaIdx = idx;
+  llenarSelectoresCumple();
   const c = idx !== null ? CLIENTAS[idx] : null;
   document.getElementById('modal-clienta-title').textContent = c ? 'Editar cliente' : 'Nuevo cliente';
   document.getElementById('mc-nombre').value = c ? c.nombre : '';
   document.getElementById('mc-telefono').value = c ? c.telefono : '';
   document.getElementById('mc-correo').value = c ? (c.correo||'') : '';
   document.getElementById('mc-notas').value = c ? (c.notas||'') : '';
+  document.getElementById('mc-cumple-dia').value = c && c.cumpleDia ? c.cumpleDia : '';
+  document.getElementById('mc-cumple-mes').value = c && c.cumpleMes ? c.cumpleMes : '';
   document.getElementById('ov-modal-clienta').classList.add('open');
 }
 
@@ -9292,22 +9382,35 @@ function closeModalClienta(){
   document.getElementById('ov-modal-clienta').classList.remove('open');
 }
 
-function guardarClientaModal(){
+async function guardarClientaModal(){
   const nombre = document.getElementById('mc-nombre').value.trim();
   const telefono = document.getElementById('mc-telefono').value.trim();
   const correo = document.getElementById('mc-correo').value.trim();
   const notas = document.getElementById('mc-notas').value.trim();
+  const dia = parseInt(document.getElementById('mc-cumple-dia').value, 10) || null;
+  const mes = parseInt(document.getElementById('mc-cumple-mes').value, 10) || null;
   if (!nombre || !telefono){ alert('Nombre y teléfono son obligatorios.'); return; }
+  if ((dia && !mes) || (!dia && mes)){ alert('Elige el día y el mes del cumpleaños, o deja los dos vacíos.'); return; }
 
-  const clienta = { nombre, telefono, correo, notas };
-  if (editClientaIdx !== null){
-    CLIENTAS[editClientaIdx] = clienta;
-  } else {
-    CLIENTAS.push(clienta);
-  }
-  Sheets.guardarClientas(CLIENTAS);
+  const previo = editClientaIdx !== null ? CLIENTAS[editClientaIdx] : null;
+  const clienta = { id: previo ? previo.id : undefined, nombre, telefono, correo, notas, cumpleDia: dia, cumpleMes: mes, tieneCumple: !!(previo && (previo.cumpleDia || previo.cumpleMes)) };
+  try { await Sheets.guardarClienta(clienta); }
+  catch(e){ console.error(e); alert('No se pudo guardar. Intenta de nuevo.'); return; }
   closeModalClienta();
-  renderClientas();
+  await loadClientas();
+}
+
+function exportarInscritosCSV(){
+  const lista = CLIENTAS.filter(c => c.aceptaPromos);
+  if (!lista.length){ alert('Todavía no tienes clientes inscritos.'); return; }
+  const q = t => '"' + String(t == null ? '' : t).replace(/"/g, '""') + '"';
+  const filas = [['Nombre','Teléfono','Correo','Cumpleaños'].map(q).join(',')]
+    .concat(lista.map(c => [c.nombre, c.telefono, c.correo || '', textoCumple(c)].map(q).join(',')));
+  const blob = new Blob(['﻿' + filas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'clientes-inscritos.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 // ===== EQUIPO =====
