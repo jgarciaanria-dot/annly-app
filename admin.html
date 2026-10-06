@@ -3611,6 +3611,21 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   .login-photo-foot{margin-top:auto !important;padding-top:.8rem !important}
 }
 @media (min-width:861px) and (max-height:820px){.login-quote{display:none}.login-features{margin-top:.7rem !important;gap:7px !important}}
+
+.pp-card{background:#fff;border:1px solid var(--line,#EDE9F5);border-radius:18px;padding:18px 18px 12px;margin:10px 0 18px;box-shadow:0 8px 24px -16px rgba(116,36,212,.35)}
+.pp-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.pp-top h3{font-family:'Playfair Display',serif;font-size:1.15rem;color:#1A1625;margin:0}
+.pp-top p{font-size:12.5px;color:#6b6578;margin:2px 0 0}
+.pp-x{background:none;border:0;color:#8A8378;cursor:pointer;font-size:12px;text-decoration:underline;padding:2px}
+.pp-bar{height:6px;background:#f1ebf8;border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.pp-bar i{display:block;height:100%;background:linear-gradient(100deg,#7424d4,#ef3d87);border-radius:99px}
+.pp-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #f3eff8;font-size:14px;color:#1A1625}
+.pp-chk{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #d9cdea;display:grid;place-items:center;color:#fff;font-size:13px}
+.pp-item.ok .pp-chk{background:#7424d4;border-color:#7424d4}
+.pp-item.ok .pp-t{color:#8A8378;text-decoration:line-through}
+.pp-t{flex:1}
+.pp-go{font-size:12.5px;font-weight:700;color:#7424d4;background:none;border:0;cursor:pointer;padding:4px 6px}
+.pp-guia{display:block;text-align:center;font-size:13px;font-weight:700;color:#7424d4;padding:10px 0 4px;text-decoration:none}
 </style>
 
 </head>
@@ -3790,6 +3805,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
           <button class="adm-tab" id="legacy-tab-citas" onclick="switchTab('citas')">Citas</button>
         </div>
   <div id="panel-servicios">
+    <div id="primeros-pasos" class="pp-card" hidden></div>
     <div id="seccionesServicios"></div>
     <div style="text-align:center;padding:1rem 0;">
       <button class="btn-add" onclick="openModal(null)" style="margin:auto;padding:10px 20px;font-size:13px;">
@@ -5456,6 +5472,7 @@ function copiarLinkNegocio(){
   const b = window.ANNLY_BUSINESS;
   if (!b || !b.slug) return;
   const url = window.location.origin + '/' + b.slug;
+  ppSet('enlace'); renderPrimerosPasos();
   navigator.clipboard.writeText(url).then(() => {
     const btn = document.getElementById('adm-hdr-copiar-link');
     const txt = btn.querySelector('.hdr-btn-txt');
@@ -5501,16 +5518,47 @@ let categoriasRender=[];
 let catsModal=[];
 let editId=null;
 
+
+// ===== Primeros pasos (negocio nuevo) =====
+function ppClave(k){ const b = window.ANNLY_BUSINESS; return 'annly_pp_' + (b && b.id) + '_' + k; }
+function ppGet(k){ try { return localStorage.getItem(ppClave(k)) === '1'; } catch(e){ return false; } }
+function ppSet(k){ try { localStorage.setItem(ppClave(k), '1'); } catch(e){} }
+function ppMarcar(k){ ppSet(k); renderPrimerosPasos(); }
+function ppCerrar(){ ppSet('cerrado'); renderPrimerosPasos(); }
+function renderPrimerosPasos(){
+  const el = document.getElementById('primeros-pasos');
+  const b = window.ANNLY_BUSINESS;
+  if (!el || !b) return;
+  // Solo para negocios nuevos: se activa al verlos sin servicios (los que ya tienen catálogo no la ven)
+  if (Array.isArray(SERVICES) && SERVICES.length === 0) ppSet('activo');
+  if (ppGet('cerrado') || !ppGet('activo')) { el.hidden = true; return; }
+  const pasos = [
+    { k:'servicio', t:'Crea tu primer servicio', ok: Array.isArray(SERVICES) && SERVICES.length > 0, ir:"switchTab('servicios');openModal(null)", b:'Crear' },
+    { k:'horario', t:'Define tus horarios', ok: ppGet('horario'), ir:"ppMarcar('horario');switchTab('equipo')", b:'Configurar' },
+    { k:'perfil', t:'Sube tu logo y revisa tu perfil', ok: !!b.logo_url || ppGet('perfil'), ir:"ppMarcar('perfil');switchTab('perfil')", b:'Abrir' },
+    { k:'enlace', t:'Comparte tu enlace en Instagram y WhatsApp', ok: ppGet('enlace'), ir:"ppMarcar('enlace');copiarLinkNegocio()", b:'Copiar enlace' }
+  ];
+  const hechos = pasos.filter(p => p.ok).length;
+  if (hechos === pasos.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="pp-top"><div><h3>Primeros pasos</h3><p>${hechos} de ${pasos.length} listos. Así tu enlace queda listo para compartir.</p></div><button class="pp-x" onclick="ppCerrar()">Ocultar</button></div>
+    <div class="pp-bar"><i style="width:${Math.round(hechos / pasos.length * 100)}%"></i></div>` +
+    pasos.map(p => `<div class="pp-item${p.ok ? ' ok' : ''}"><span class="pp-chk">${p.ok ? '✓' : ''}</span><span class="pp-t">${p.t}</span>${p.ok ? '' : `<button class="pp-go" onclick="${p.ir}">${p.b}</button>`}</div>`).join('') +
+    `<a class="pp-guia" href="guia.html" target="_blank" rel="noopener">Ver la guía rápida: empieza en 5 minutos</a>`;
+}
+
 // ===== FIX: ahora lee de Supabase vía Sheets.getServicios() =====
 async function loadServices(){
   try {
     const servicios = await Sheets.getServicios();
     if(servicios && servicios.length > 0){
       SERVICES = servicios;
+      renderPrimerosPasos();
       return;
     }
   } catch(e) { console.error('Error cargando de Supabase:', e); }
   SERVICES = []; // negocio nuevo: catálogo vacío de verdad
+  renderPrimerosPasos();
 }
 
 function getDefaultServices(){

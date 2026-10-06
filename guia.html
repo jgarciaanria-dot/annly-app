@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Guía rápida — Annly</title>
+<meta name="description" content="Crea tus servicios o carga tus productos en Annly en 5 minutos."/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#201b2b;--muted:#6b6578;--line:#e9e4ed;--lilac:#f4eaff;--purple:#7424d4;--pink:#ef3d87}
+body{font:16px/1.6 'DM Sans',sans-serif;color:var(--ink);background:#fffdfb}
+.wrap{width:min(760px,calc(100% - 32px));margin:auto}
+header{padding:18px 0;border-bottom:1px solid var(--line);background:#fff}
+header .wrap{display:flex;justify-content:space-between;align-items:center}
+header a.logo{font:700 1.5rem 'Playfair Display',serif;color:var(--ink);text-decoration:none}
+header a.panel{font-weight:700;font-size:.9rem;color:var(--purple);text-decoration:none}
+h1{font:700 clamp(2rem,5vw,2.8rem)/1.1 'Playfair Display',serif;letter-spacing:-.03em;margin:34px 0 10px}
+h1 em{font-style:italic;background:linear-gradient(100deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--muted);margin-bottom:24px}
+.tabs{display:flex;gap:8px;margin-bottom:22px}
+.tabs button{font:700 .9rem 'DM Sans',sans-serif;border:1.5px solid var(--line);background:#fff;color:var(--ink);padding:10px 16px;border-radius:999px;cursor:pointer}
+.tabs button.on{background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;border-color:transparent}
+ol.pasos{list-style:none;counter-reset:p;display:grid;gap:14px}
+ol.pasos li{counter-increment:p;position:relative;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 18px 18px 64px}
+ol.pasos li::before{content:counter(p);position:absolute;left:18px;top:18px;width:32px;height:32px;border-radius:50%;background:var(--lilac);color:var(--purple);font-weight:700;display:grid;place-items:center}
+ol.pasos h3{font-size:1.05rem;margin-bottom:4px}
+ol.pasos p{color:var(--muted);font-size:.95rem}
+.tip{background:var(--lilac);border-radius:14px;padding:14px 16px;margin:22px 0;font-size:.92rem}
+.cta{display:inline-block;background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:999px;margin:6px 0 34px}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:.88rem}
+footer a{color:var(--purple)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="logo" href="/">Annly</a><a class="panel" href="admin.html">Entrar a mi panel</a></div></header>
+<main class="wrap">
+  <h1>Empieza en <em>5 minutos.</em></h1>
+  <p class="lead">Sigue estos pasos y tu enlace quedará listo para compartir. Puedes cambiar todo después.</p>
+  <div class="tabs" role="tablist"><button class="on" data-t="citas" role="tab">Agenda de citas</button><button data-t="pedidos" role="tab">Tienda de pedidos</button></div>
+
+  <ol class="pasos" data-p="citas">
+    <li><h3>Crea tus servicios</h3><p>En tu panel, entra a <b>Servicios</b> y toca <b>Agregar nuevo servicio</b>. Escribe el nombre, el precio y cuánto dura. Empieza con los 3 o 4 que más vendes.</p></li>
+    <li><h3>Define tus horarios</h3><p>En <b>Equipo</b> elige tus días y horas de atención. Annly solo ofrece a tus clientes los espacios que de verdad tienes libres.</p></li>
+    <li><h3>Personaliza tu perfil</h3><p>En <b>Perfil</b> sube tu logo y confirma tu WhatsApp. Así tu agenda se ve con tu marca.</p></li>
+    <li><h3>Comparte tu enlace</h3><p>Usa el botón <b>Copiar enlace</b> del panel y pégalo en tu bio de Instagram, en Google y en tus mensajes de WhatsApp.</p></li>
+  </ol>
+
+  <ol class="pasos" data-p="pedidos" hidden>
+    <li><h3>Sube tus productos</h3><p>En tu panel, entra a <b>Catálogo</b> y agrega cada producto con foto, nombre y precio. Suma extras como tarjetas o globos si los ofreces.</p></li>
+    <li><h3>Configura la entrega</h3><p>En <b>Zonas de entrega</b> define tus zonas con su costo de envío. Si también haces retiro en tienda, actívalo.</p></li>
+    <li><h3>Define franjas y cupos</h3><p>En <b>Franjas de entrega</b> indica los horarios y cuántos pedidos puedes preparar en cada una.</p></li>
+    <li><h3>Comparte tu enlace</h3><p>Copia el enlace de tu tienda y compártelo en Instagram, Google y WhatsApp.</p></li>
+  </ol>
+
+  <div class="tip"><b>Un consejo:</b> haz una prueba como si fueras tu cliente. Abre tu enlace en el celular y completa una reserva o un pedido para ver cómo se ve.</div>
+  <a class="cta" href="admin.html">Ir a mi panel</a>
+</main>
+<footer><div class="wrap">¿Necesitas ayuda? Escríbenos a <a href="mailto:soporte@annly.app">soporte@annly.app</a>.</div></footer>
+<script>
+(function(){
+  var b=document.querySelectorAll('.tabs button'),p=document.querySelectorAll('ol.pasos');
+  function ver(t){b.forEach(function(x){x.classList.toggle('on',x.dataset.t===t)});p.forEach(function(o){o.hidden=o.dataset.p!==t})}
+  b.forEach(function(x){x.addEventListener('click',function(){ver(x.dataset.t)})});
+  if(/tipo=pedidos/.test(location.search))ver('pedidos');
+})();
+</script>
+</body>
+</html>

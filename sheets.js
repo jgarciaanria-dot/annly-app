@@ -1097,6 +1097,18 @@ async resetPassword(email) {
     }
 
 
+    // Correo de bienvenida (una sola vez; si falla, el registro sigue igual)
+    try {
+      const { data: ses } = await sbClient.auth.getSession();
+      if (ses && ses.session) {
+        fetch(`${SUPABASE_URL}/functions/v1/enviar-bienvenida`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + ses.session.access_token, 'Content-Type': 'application/json' },
+          body: '{}'
+        }).catch(() => {});
+      }
+    } catch (e) { console.error('Correo de bienvenida:', e); }
+
     BUSINESS_ID =
       negocio.id;
 
