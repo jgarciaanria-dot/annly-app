@@ -3597,6 +3597,20 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   .svc-row>div:first-child{width:42px!important;height:42px!important;}
   .svc-toggle{display:none;}
 }
+
+/* Login: alterna notificaciones de citas y pedidos, y evita que el pie se corte */
+.rot{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:0;animation:annlyRot 12s ease-in-out infinite}
+.rot-b{animation-delay:-6s}
+@keyframes annlyRot{0%{opacity:0}6%,44%{opacity:1}50%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.rot{animation:none}.rot-a{opacity:1}.rot-b{display:none}}
+@media (min-width:861px){
+  .login-photo{overflow-y:auto !important;height:100vh !important}
+  .login-photo-content{min-height:100%;display:flex;flex-direction:column}
+  .login-collage{height:clamp(200px,42vh,420px) !important;flex:none}
+  .login-collage img.femenino{height:100% !important}
+  .login-photo-foot{margin-top:auto !important;padding-top:.8rem !important}
+}
+@media (min-width:861px) and (max-height:820px){.login-quote{display:none}.login-features{margin-top:.7rem !important;gap:7px !important}}
 </style>
 
 </head>
@@ -3614,6 +3628,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="login-collage">
         <img class="femenino" src="login-estilista-annly.webp" alt="Profesional de belleza revisando su agenda"/>
         <img class="masculino" src="login-cliente-annly.webp" alt="Cliente confirmando su cita desde el celular"/>
+        <div class="rot rot-a">
         <div class="gift-floating-notice" aria-hidden="true">
           <span class="gift-floating-icon"><i class="ti ti-gift"></i></span>
           <span class="gift-floating-text">
@@ -3638,9 +3653,36 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
             <span>Cliente confirmado</span>
           </div>
         </div>
+        </div>
+        <div class="rot rot-b" aria-hidden="true">
+        <div class="gift-floating-notice" aria-hidden="true">
+          <span class="gift-floating-icon"><i class="ti ti-package"></i></span>
+          <span class="gift-floating-text">
+            <b>Nuevo pedido #000012</b>
+            <small>Entrega viernes · 9:00 a. m.</small>
+          </span>
+        </div>
+
+        <div class="login-floating-notice notice-1">
+          <span class="notice-icon"><i class="ti ti-shopping-bag"></i></span>
+          <div>
+            <strong>Pedido recibido</strong>
+            <span>Pago confirmado</span>
+          </div>
+          <span class="notice-check"><i class="ti ti-check"></i></span>
+        </div>
+
+        <div class="login-floating-notice notice-2">
+          <span class="notice-icon"><i class="ti ti-gift"></i></span>
+          <div>
+            <strong>Ramo de rosas</strong>
+            <span>Listo para entregar</span>
+          </div>
+        </div>
+        </div>
       </div>
-      <h1 class="login-tagline">Tu negocio.<br>Tu agenda.<br><em>Así de fácil.</em></h1>
-      <p class="login-tagline-sub">La plataforma todo en uno para gestionar tus citas, clientes y servicios.</p>
+      <h1 class="login-tagline">Tu negocio.<br>Tus citas y pedidos.<br><em>Así de fácil.</em></h1>
+      <p class="login-tagline-sub">La plataforma todo en uno para gestionar tus citas, pedidos, clientes y servicios.</p>
       <ul class="login-features">
         <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-clock"></i></span><div><b>Más tiempo</b><span>para lo que te importa</span></div></li>
         <li class="login-feature"><span class="login-feature-ico"><i class="ti ti-users"></i></span><div><b>Clientes más felices</b><span>y siempre conectados</span></div></li>
