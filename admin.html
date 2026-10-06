@@ -4250,6 +4250,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
     </div>
 
     <div id="pf-admin" class="pf-box" style="display:none;"></div>
+    <div id="pf-cuentas" class="pf-box" style="display:none;"></div>
     <div id="pf-pagar" class="pf-box" style="display:none;"></div>
 
     <div class="plan-grid">
@@ -6286,6 +6287,88 @@ async function pintarPagosPlataforma(){
   box.style.display = '';
 }
 
+// =====================================================================
+// Solo Annly (Platform Admin): prórrogas de pago, cortesías y acuerdos comerciales
+// =====================================================================
+let CUENTAS_PLAT = [];
+function fechaPanama(offsetDias){
+  const d = new Date(Date.now() - 5 * 3600000 + (offsetDias || 0) * 86400000); // hora de Panamá (UTC-5)
+  return d.toISOString().slice(0, 10);
+}
+function estadoCuentaTexto(c){
+  const hasta = String(c.hasta || '').slice(0, 10);
+  if (!hasta) return { t: 'Sin fecha', k: '' };
+  if (hasta >= '2099-01-01') return { t: 'Cortesía', k: 'ok' };
+  const e = annlyEstadoCuenta(hasta);
+  if (e.fase === 'gracia') return { t: 'En gracia', k: 'warn' };
+  if (e.fase === 'suspendida') return { t: 'Suspendida', k: 'mal' };
+  return { t: c.status === 'trial' ? 'En prueba' : 'Al día', k: 'ok' };
+}
+async function pintarCuentasPlataforma(){
+  const box = document.getElementById('pf-cuentas');
+  if (!box) return;
+  if (!window.ANNLY_PLATFORM_ADMIN){ box.style.display = 'none'; return; }
+  try { CUENTAS_PLAT = await Sheets.getCuentasPlataforma(); } catch(e){ console.error(e); CUENTAS_PLAT = []; }
+  box.innerHTML = `
+    <div class="pf-hdr"><div><h3><i class="ti ti-users"></i> Cuentas de clientes</h3>
+      <p>Solo tú ves esto. Da una prórroga o marca una cortesía; queda registrado con su motivo.</p></div></div>
+    <input class="fi" id="cuentas-buscar" placeholder="Buscar negocio…" oninput="filtrarCuentasPlataforma()" style="width:100%;margin-bottom:8px;">
+    <div class="pf-lista" id="cuentas-lista"></div>`;
+  filtrarCuentasPlataforma();
+  box.style.display = '';
+}
+function filtrarCuentasPlataforma(){
+  const q = (document.getElementById('cuentas-buscar') || {}).value || '';
+  const lista = document.getElementById('cuentas-lista');
+  if (!lista) return;
+  const filas = CUENTAS_PLAT.filter(c => (c.nombre + ' ' + c.slug).toLowerCase().includes(q.toLowerCase()));
+  const colores = { ok: '#159A61', warn: '#B7791F', mal: '#C2455F', '': '#77738A' };
+  lista.innerHTML = filas.map(c => {
+    const e = estadoCuentaTexto(c);
+    const hasta = String(c.hasta || '').slice(0, 10);
+    return `<div class="pf-item" style="align-items:flex-start;flex-wrap:wrap;gap:8px;">
+      <div style="min-width:180px;flex:1;"><b>${escCat(c.nombre)}</b>
+        <span>${escCat(c.tipo || '')} · ${escCat(c.status || 'sin plan')} · ${hasta ? (hasta >= '2099-01-01' ? 'sin vencimiento' : 'hasta ' + hasta) : 'sin fecha'}</span></div>
+      <span class="pf-estado" style="color:${colores[e.k]};font-weight:800;">${e.t}</span>
+      <div class="pf-acc" style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="cbtn" onclick="prorrogarCuenta('${c.id}', 7)"><span>+7 días</span></button>
+        <button type="button" class="cbtn" onclick="prorrogarCuenta('${c.id}', 30)"><span>+30 días</span></button>
+        <button type="button" class="cbtn" onclick="prorrogarCuenta('${c.id}', 0)"><span>Elegir fecha</span></button>
+        <button type="button" class="cbtn cbtn-ok" onclick="cortesiaCuenta('${c.id}')"><span>Cortesía</span></button>
+      </div></div>`;
+  }).join('') || '<p class="pf-nota" style="margin:0;">Sin resultados.</p>';
+}
+async function aplicarExtension(c, hasta, activar, etiqueta){
+  const motivo = prompt(`Motivo de la ${etiqueta} para "${c.nombre}" (queda registrado):`);
+  if (!motivo || motivo.trim().length < 3) return;
+  try {
+    await Sheets.extenderCuenta(c.id, hasta, motivo.trim(), activar);
+    alert('Listo: ' + c.nombre + (hasta >= '2099-01-01' ? ' queda como cortesía sin vencimiento.' : ' queda hasta el ' + hasta + '.'));
+    pintarCuentasPlataforma();
+  } catch(e){ console.error(e); alert('No se pudo guardar: ' + (e.message || e)); }
+}
+function prorrogarCuenta(id, dias){
+  const c = CUENTAS_PLAT.find(x => x.id === id);
+  if (!c) return;
+  let hasta;
+  if (dias > 0){
+    const actual = String(c.hasta || '').slice(0, 10);
+    const base = actual && actual > fechaPanama(0) && actual < '2099-01-01' ? actual : fechaPanama(0);
+    hasta = new Date(Date.parse(base + 'T12:00:00Z') + dias * 86400000).toISOString().slice(0, 10);
+  } else {
+    hasta = prompt('Nueva fecha de fin (AAAA-MM-DD):', String(c.hasta || fechaPanama(7)).slice(0, 10));
+    if (!hasta || !/^\d{4}-\d{2}-\d{2}$/.test(hasta.trim())) return;
+    hasta = hasta.trim();
+  }
+  aplicarExtension(c, hasta, false, 'prórroga');
+}
+function cortesiaCuenta(id){
+  const c = CUENTAS_PLAT.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm(`¿Marcar a "${c.nombre}" como cortesía SIN vencimiento? Tendrá su plan completo sin pagar hasta que le pongas una fecha.`)) return;
+  aplicarExtension(c, '2099-12-31', true, 'cortesía');
+}
+
 async function renderPlan(){
   try {
     SUSCRIPCION_ACTUAL = await Sheets.getSuscripcionActual();
@@ -6422,7 +6505,7 @@ async function renderModulosPlan(){
       SUSCRIPCION_ACTUAL ? Sheets.getModulosActivosDetalle(SUSCRIPCION_ACTUAL.subscriptionId) : Promise.resolve([])
     ]);
     CATALOGO_MODULOS = catalogo; FEATURES_DEL_PLAN = features; MODULOS_ACTIVOS = activos; modulosDetalle = detalle;
-    setTimeout(() => { pintarPagoTarjeta(); pintarPagosPlataforma(); }, 0);
+    setTimeout(() => { pintarPagoTarjeta(); pintarPagosPlataforma(); pintarCuentasPlataforma(); }, 0);
   } catch(e) {
     console.error('Error cargando módulos:', e);
     cont.innerHTML = '<p style="font-size:11px;color:var(--ink-soft);">No se pudieron cargar los módulos.</p>';
