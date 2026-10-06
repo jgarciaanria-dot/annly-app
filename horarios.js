@@ -13,6 +13,10 @@
 
   const PASO_MIN = 30;                                  // cada cuánto se ofrece una hora
   const POR_DEFECTO = { abre: '8:00', cierra: '16:00' }; // si el negocio aún no configuró horario
+  // Regla de cierre: la hora de cierre es la última hora en que se RECIBE un cliente, y un
+  // servicio puede terminar como máximo este tiempo después del cierre.
+  // Ej. cierre 6:00 PM: manicure de 1 h → hasta 6:00 PM · servicio de 2 h → hasta 5:00 PM.
+  const EXTRA_TRAS_CIERRE_MIN = 60;
 
   function timeToMin(t) {
     const [h, m] = String(t || '0:00').split(':').map(Number);
@@ -75,14 +79,21 @@
   }
 
   // Horas del día: [{ key:'9:30', lbl:'9:30 AM' }, …] cada 30 min, desde la apertura
-  // hasta la hora de cierre inclusive (regla actual de Annly).
+  // hasta la hora de cierre inclusive.
+  // durMin: duración del servicio. Si se pasa, solo se ofrecen horas en que el servicio termina
+  // a más tardar EXTRA_TRAS_CIERRE_MIN después del cierre. Sin durMin (p. ej. la grilla de
+  // Bloqueos) se listan todas las horas del día.
   // fecha: Date del día. Si es hoy, solo se ofrecen horas que aún no pasaron (salvo incluirPasadas).
-  function generarSlots({ horarios, fecha, modo = 'interseccion', incluirPasadas = false, ahora = new Date() }) {
+  function generarSlots({ horarios, fecha, modo = 'interseccion', incluirPasadas = false, ahora = new Date(), durMin = null }) {
     const dow = fecha.getDay();
     const r = rangoDelDia(horarios, dow, modo);
     if (!r) return [];
+    const dur = parseInt(durMin, 10) || 0;
     const slots = [];
-    for (let t = r.ini; t <= r.fin; t += PASO_MIN) slots.push({ key: minToKey(t), lbl: minToLabel(t) });
+    for (let t = r.ini; t <= r.fin; t += PASO_MIN) {
+      if (dur && t + dur > r.fin + EXTRA_TRAS_CIERRE_MIN) break;
+      slots.push({ key: minToKey(t), lbl: minToLabel(t) });
+    }
     const esHoy = fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth() && fecha.getDate() === ahora.getDate();
     if (esHoy && !incluirPasadas) {
       const nowMin = ahora.getHours() * 60 + ahora.getMinutes();
@@ -104,7 +115,7 @@
   }
 
   global.AnnlyHorarios = {
-    PASO_MIN, timeToMin, minToKey, minToLabel,
+    PASO_MIN, EXTRA_TRAS_CIERRE_MIN, timeToMin, minToKey, minToLabel,
     bloqueDelDia, cfgDia, diaCerrado, rangoDelDia, generarSlots, solapa
   };
 })(window);

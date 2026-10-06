@@ -1190,7 +1190,7 @@ function timeToMin(t){ return HOR.timeToMin(t); }
 function genSlots(){
   const cfg = horariosParaCalendario();
   if (!cfg) return [];
-  return HOR.generarSlots({ horarios: cfg.horarios, fecha: new Date(calY, calM, selectedDay), modo: cfg.modoRango });
+  return HOR.generarSlots({ horarios: cfg.horarios, fecha: new Date(calY, calM, selectedDay), modo: cfg.modoRango, durMin: (curSvc && curSvc.durMin) || 60 });
 }
 
 function isBlocked(slotKey, citas, durSvc){ return HOR.solapa(slotKey, citas, durSvc); }
@@ -1702,7 +1702,12 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
     certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
     certificadoSaldoRestante: montoCertAplicado>0 ? (certAplicado.unSoloUso ? 0 : Math.max(0, certAplicado.saldoDisponible - montoCertAplicado)) : null};
   let appointmentId=null;
-  try{ appointmentId=await Sheets.guardarCita(cita); }catch(e){console.error(e);}
+  try{ appointmentId=await Sheets.guardarCita(cita); }
+  catch(e){
+    console.error('Error guardando la cita:', e);
+    errorAlGuardarCita(e, pagoVerificado ? ref : null);
+    return;
+  }
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
   if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
   let certFallo=false;
@@ -1823,7 +1828,8 @@ async function finalizarCitaDoble(dayStr, ref){
     abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2,
     abonoPorConfirmar: tieneAbono };
 
-  try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }catch(e){ console.error('Error guardando la cita doble:', e); }
+  try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }
+  catch(e){ console.error('Error guardando la cita doble:', e); errorAlGuardarCita(e, null); return; }
   try{ await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); }catch(e){}
   try{ await Sheets.upsertClienteDesdeReserva(nombre2, tel2, correo2); }catch(e){}
 
@@ -1835,7 +1841,7 @@ async function finalizarCitaDoble(dayStr, ref){
   await new Promise(r=>setTimeout(r,900));
 
   const abonoLine = tieneAbono
-    ? `<strong>Abono pagado:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span><br><strong>Comprobante:</strong> ${ref}<br>`
+    ? `<strong>Abono enviado (por validar):</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span><br><strong>Comprobante:</strong> ${ref}<br>`
     : '';
   document.getElementById('form-body').innerHTML=`
     <div class="success-wrap">
@@ -1853,6 +1859,39 @@ async function finalizarCitaDoble(dayStr, ref){
       <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
       <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
+}
+
+// Si la cita no se guardó no se muestra éxito ni se mandan correos.
+// err: el error de la base. ordenPagada: orderId de Yappy cuando el cliente YA pagó
+// (no se le pide reintentar: se le da el número para que el negocio lo agende).
+function errorAlGuardarCita(err, ordenPagada){
+  const ocupado = /HORARIO_OCUPADO/.test((err && (err.message || err.details)) || '');
+  const btnC=document.getElementById('btnConfirmar');
+  const b=window.ANNLY_BUSINESS||{};
+  const wa=b.whatsapp?` por WhatsApp al <a href="https://wa.me/${b.whatsapp}" target="_blank" rel="noopener">${b.whatsapp}</a>`:'';
+  let msg;
+  if(ordenPagada){
+    msg = `Recibimos tu pago (orden <strong>${ordenPagada}</strong>), pero ${ocupado ? 'ese horario se acaba de ocupar' : 'no pudimos guardar tu cita'}. Escríbenos${wa} con ese número y te agendamos de inmediato.`;
+  } else if(ocupado){
+    msg = 'Alguien acaba de reservar ese horario. Elige otra hora, tus datos se mantienen.';
+  } else {
+    msg = 'No pudimos guardar tu cita. Revisa tu conexión e inténtalo de nuevo.';
+  }
+  if(btnC && !ordenPagada){
+    btnC.disabled=false;
+    btnC.textContent = ocupado ? 'Elegir otra hora' : 'Confirmar mi cita';
+    if(ocupado){ btnC.onclick = () => { closeOv('ov-form'); openCal(); }; }
+  }
+  let el=document.getElementById('errorCita');
+  if(!el){
+    el=document.createElement('div');
+    el.id='errorCita'; el.className='note-box-warn'; el.style.marginTop='.875rem';
+    const ancla=btnC||document.getElementById('pagoWrap');
+    if(ancla) ancla.insertAdjacentElement('beforebegin', el);
+    else document.getElementById('form-body').appendChild(el);
+  }
+  el.innerHTML=`<i class="ti ti-alert-triangle" aria-hidden="true"></i><span>${msg}</span>`;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
 function openOv(id){document.getElementById(id).classList.add('open');}

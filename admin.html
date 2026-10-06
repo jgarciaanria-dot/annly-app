@@ -8528,7 +8528,7 @@ function rpHorariosCita(){
 }
 
 function genSlots(){
-  return window.AnnlyHorarios.generarSlots({ horarios: rpHorariosCita(), fecha: new Date(rpCalY, rpCalM, rpSelectedDay), modo: 'interseccion' });
+  return window.AnnlyHorarios.generarSlots({ horarios: rpHorariosCita(), fecha: new Date(rpCalY, rpCalM, rpSelectedDay), modo: 'interseccion', durMin: rpDurMin || 60 });
 }
 
 function isBlocked(slotKey, citas, durSvc){ return window.AnnlyHorarios.solapa(slotKey, citas, durSvc); }
@@ -8684,7 +8684,7 @@ const CASOS_CX = {
   a_tiempo: { t:'Canceló a tiempo', d:'Avisó con la anticipación mínima o más' },
   tarde:    { t:'Canceló tarde', d:'Avisó con menos anticipación de la mínima' },
   no_show:  { t:'No se presentó', d:'No llegó y no avisó' },
-  negocio:  { t:'Cancela el negocio', d:'La cancelamos nosotros' }
+  negocio:  { t:'El negocio no puede atender', d:'Primero se ofrece reprogramar' }
 };
 
 async function cancelarCitaAdmin(id, nombre){
@@ -8718,7 +8718,22 @@ async function cancelarCitaAdmin(id, nombre){
   elFin('ov-cancelar').classList.add('open');
 }
 
-function cxElegir(caso){ if (CX){ CX.caso = caso; cxRender(); } }
+function cxElegir(caso){ if (CX){ CX.caso = caso; CX.noAcepta = false; cxRender(); } }
+function cxNoAcepta(){ if (CX){ CX.noAcepta = true; cxRender(); } }
+
+// "El negocio no puede atender" → se cierra Cancelar y se abre Reprogramar con la misma cita
+function cxIrAReprogramar(){
+  if (!CX) return;
+  const { c, esDoble, parDoble } = CX;
+  cerrarModalCancelar();
+  if (esDoble){
+    const p = parDoble.find(x => x.grupoPrincipal) || parDoble[0];
+    const o = parDoble.find(x => x !== p);
+    abrirModalReprogramar(p.id, c.fechaISO, c.horaISO, parDoble.map(x => x.nombre).join(' y '), c.duracion || 60, p.empleadoId || null, (o && o.empleadoId) || null);
+  } else {
+    abrirModalReprogramar(c.id, c.fechaISO, c.horaISO, c.nombre || '', c.duracion || 60, c.empleadoId || null);
+  }
+}
 
 function cxRender(){
   if (!CX) return;
@@ -8728,6 +8743,20 @@ function cxRender(){
       ${CX.sug.caso === k ? '<span class="cx-sug">Sugerido</span>' : ''}
     </button>`).join('');
   const esNeg = CX.caso === 'negocio';
+  // El negocio no puede atender: primero se ofrece reprogramar (el abono se mantiene).
+  // Solo si el cliente no acepta otra fecha se muestran las opciones de cancelación.
+  const soloOfrecer = esNeg && !CX.noAcepta;
+  elFin('cx-btn').style.display = soloOfrecer ? 'none' : '';
+  elFin('cx-motivo').closest('.fg').style.display = soloOfrecer ? 'none' : '';
+  if (soloOfrecer){
+    elFin('cx-negocio').style.display = 'none';
+    elFin('cx-reemb-wrap').style.display = 'none';
+    elFin('cx-efecto').innerHTML = 'Lo recomendado es <strong>reprogramar</strong> la cita a otro horario'
+      + (CX.abono > 0 ? `: el abono de <strong>${fmtDinero(CX.abono)}</strong> se mantiene` : '') + '.'
+      + '<br><button type="button" class="btn-save" style="margin-top:10px;width:100%;" onclick="cxIrAReprogramar()"><i class="ti ti-calendar-time" style="font-size:17px;"></i> Reprogramar esta cita</button>'
+      + '<button type="button" class="btn-add" style="margin-top:8px;width:100%;" onclick="cxNoAcepta()">El cliente no acepta reprogramar</button>';
+    return;
+  }
   elFin('cx-negocio').style.display = (esNeg && CX.abono > 0) ? 'block' : 'none';
   const destinoNeg = (document.querySelector('input[name="cx-destino"]:checked') || {}).value || 'credito';
   elFin('cx-reemb-wrap').style.display = (esNeg && destinoNeg === 'reembolso') ? 'block' : 'none';
@@ -8737,7 +8766,7 @@ function cxRender(){
     const destino = CX.caso === 'a_tiempo' ? 'credito' : (esNeg ? destinoNeg : 'penalidad');
     if (destino === 'credito') lineas.push(`<strong>Abono:</strong> ${fmtDinero(CX.abono)} queda como <strong>saldo a favor</strong> con un código que le llega por correo, válido ${CX.sug.creditoVigencia} días. Entra como ingreso hoy.`);
     else if (destino === 'penalidad') lineas.push(`<strong>Abono:</strong> ${fmtDinero(CX.abono)} <strong>no se devuelve</strong> y entra como ingreso "Penalidad por cancelación".`);
-    else lineas.push(`<strong>Abono:</strong> se le <strong>devuelven</strong> ${fmtDinero(CX.abono)}. No es ingreso; queda en la bitácora. Recuerda hacer la devolución.`);
+    else lineas.push(`<strong>Abono:</strong> se le <strong>devuelven</strong> ${fmtDinero(CX.abono)}. No es ingreso; queda en la bitácora con el motivo. Recuerda hacer la devolución.`);
   } else lineas.push('<strong>Abono:</strong> esta cita no tiene abono.');
   CX.certs.forEach(x => {
     lineas.push(CX.caso === 'no_show'
