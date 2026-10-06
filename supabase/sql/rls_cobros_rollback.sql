@@ -5,6 +5,7 @@ drop trigger if exists subscriptions_guard on public.subscriptions;
 drop trigger if exists subscription_items_guard on public.subscription_items;
 drop function if exists public.subscriptions_guard();
 drop function if exists public.subscription_items_guard();
+drop function if exists public.negocio_tiene_suscripcion(uuid);
 
 drop policy if exists subscriptions_select on public.subscriptions;
 drop policy if exists subscriptions_insert on public.subscriptions;

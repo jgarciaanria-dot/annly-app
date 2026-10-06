@@ -13,6 +13,13 @@
 begin;
 
 -- ---------- subscriptions ----------
+-- (Una política no puede consultar su propia tabla: daría "infinite recursion". Por eso va en una función security definer.)
+create or replace function public.negocio_tiene_suscripcion(p_negocio uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.subscriptions where business_id = p_negocio);
+$$;
+grant execute on function public.negocio_tiene_suscripcion(uuid) to anon, authenticated;
+
 drop policy if exists subscriptions_access on public.subscriptions;
 
 create policy subscriptions_select on public.subscriptions for select to public
@@ -30,7 +37,7 @@ with check (
     and subscriptions.status = 'trial'
     and exists (select 1 from public.plans p where p.id = subscriptions.plan_id and p.code in ('BASIC', 'PEDIDOS_BASIC'))
     and subscriptions.current_period_end <= (now() + interval '16 days')
-    and not exists (select 1 from public.subscriptions x where x.business_id = subscriptions.business_id)
+    and not public.negocio_tiene_suscripcion(subscriptions.business_id)
   )
 );
 
