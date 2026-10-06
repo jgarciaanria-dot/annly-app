@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Admin — Annly</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.48.0/dist/tabler-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -20,7 +20,7 @@
   --shadow-md:0 8px 24px -8px rgba(46,43,43,.14);
 }
 html{scroll-behavior:smooth;}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
 
 /* ---------- LOGIN ---------- */
 .login-bg{position:fixed;inset:0;z-index:2000;display:grid;grid-template-columns:1fr 1fr;background:#fff;overflow:hidden;font-family:'DM Sans',sans-serif;}
@@ -66,7 +66,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .login-feature b{display:block;font-size:12.5px;font-weight:700;color:#1A1625;}
 .login-feature span{display:block;font-size:11px;color:#8A8378;}
 
-.login-quote{font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:#5B21B6;margin-top:1.4rem;transform:rotate(-1.5deg);line-height:1.5;}
+.login-quote{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:#5B21B6;margin-top:1.4rem;transform:rotate(-1.5deg);line-height:1.5;}
 .login-quote i{font-size:12px;color:#EC4899;font-style:normal;}
 
 .login-photo-foot{font-size:9.5px;letter-spacing:.1em;color:#8A8378;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:auto;padding-top:1.4rem;border-top:1px solid rgba(124,58,237,.14);}
@@ -159,7 +159,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .plan-hero{background:linear-gradient(135deg,#fff 0%,#fbf7ff 58%,#fff6fb 100%);border:1px solid var(--line);border-radius:22px;padding:1.25rem;box-shadow:var(--shadow-md);margin-bottom:1rem;overflow:hidden;position:relative;}
 .plan-hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;right:-80px;top:-90px;background:radial-gradient(circle,rgba(236,72,153,.14),transparent 68%);pointer-events:none;}
 .plan-kicker{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--charcoal);}
-.plan-title{font-family:'Cormorant Garamond',serif;font-size:31px;line-height:1.05;font-weight:700;color:var(--ink);margin-top:4px;}
+.plan-title{font-family:'Playfair Display',serif;font-size:31px;line-height:1.05;font-weight:700;color:var(--ink);margin-top:4px;}
 .plan-sub{font-size:12px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
 .plan-current{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:1rem;padding:13px 15px;background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:15px;position:relative;z-index:1;}
 .plan-current-label{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
@@ -212,7 +212,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
   position:relative;
 }
 .adm-hdr::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(to right,transparent,var(--charcoal) 20%,var(--accent2) 50%,var(--charcoal) 80%,transparent);}
-.adm-hdr-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700;color:var(--ink);letter-spacing:.01em;}
+.adm-hdr-title{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--ink);letter-spacing:.01em;}
 .adm-hdr-sub{font-size:10px;color:var(--charcoal);margin-top:3px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;}
 .adm-hdr-back{color:var(--ink-soft);font-size:12.5px;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;padding:7px 13px;border:1px solid var(--line);border-radius:999px;}
 .adm-hdr-back:hover{color:var(--charcoal);border-color:var(--charcoal);}
@@ -321,7 +321,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 @media(min-width:500px){.modal{border-radius:var(--radius-lg);}}
 @keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
 .modal-hdr{padding:1.1rem 1.25rem;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--paper);z-index:1;}
-.modal-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:700;color:var(--ink);}
+.modal-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--ink);}
 .modal-close{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;transition:background .15s;}
 .modal-close:hover{background:var(--line);}
 .modal-body{padding:1.25rem;}
@@ -337,7 +337,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .btn-rem-incl:hover{border-color:#E8A99B;color:#C2695A;background:#FDF4F2;}
 .btn-add-incl{display:flex;align-items:center;gap:6px;padding:9px 10px;background:transparent;border:1.5px dashed var(--line);border-radius:var(--radius);font-size:12.5px;color:var(--gold-dark);cursor:pointer;width:100%;justify-content:center;transition:all .15s;}
 .btn-add-incl:hover{background:#FBF8F1;border-color:var(--gold);}
-.btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--charcoal),var(--charcoal2));color:var(--gold-light);border:none;border-radius:var(--radius);font-family:'Cormorant Garamond',serif;font-size:16.5px;font-weight:700;cursor:pointer;margin-top:.6rem;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;}
+.btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--charcoal),var(--charcoal2));color:var(--gold-light);border:none;border-radius:var(--radius);font-family:'Playfair Display',serif;font-size:16.5px;font-weight:700;cursor:pointer;margin-top:.6rem;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;}
 .btn-save:hover{transform:translateY(-1px);box-shadow:0 6px 16px -4px rgba(124,58,237,.35);}
 .btn-save:active{transform:translateY(0);}
 .btn-save:disabled{opacity:.4;cursor:default;transform:none;box-shadow:none;}
@@ -633,7 +633,7 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
   --annly-mint-dark:#159A61;--annly-line:#ECE8F2;--annly-text:#17172B;--annly-muted:#77758A;
   --annly-shadow:0 8px 28px rgba(45,32,75,.07);--annly-shadow-lg:0 20px 55px rgba(45,32,75,.14);
 }
-html,body{background:#fff;min-width:0;overflow-x:hidden!important;} body{color:var(--annly-text);}
+html,body{background:#fff;min-width:0;}html{overflow-x:hidden!important;}body{overflow-x:clip!important;} body{color:var(--annly-text);}
 .adm-tabs{display:none!important;}
 .adm-sidebar{position:fixed;inset:0 auto 0 0;width:300px;z-index:80;background:#fff;border-right:1px solid var(--annly-line);display:flex;flex-direction:column;padding:18px 14px 16px;}
 .adm-sidebar{overflow:hidden;min-height:0;}
@@ -2175,7 +2175,7 @@ img{max-width:100%;}
   cursor:pointer;font-size:16px;color:#6D6677;
 }
 .annly-calendar-nav span{
-  font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:#272331;
+  font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#272331;
 }
 .annly-calendar-grid{
   display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
@@ -3595,7 +3595,6 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   .adm-hdr-actions .adm-hdr-back{width:35px!important;height:35px!important;padding:0!important;justify-content:center;}
   .adm-hdr-title{font-size:14px!important;}
   .svc-row>div:first-child{width:42px!important;height:42px!important;}
-  .svc-toggle{display:none;}
 }
 
 /* Login: alterna notificaciones de citas y pedidos, y evita que el pie se corte */
@@ -3611,6 +3610,89 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   .login-photo-foot{margin-top:auto !important;padding-top:.8rem !important}
 }
 @media (min-width:861px) and (max-height:820px){.login-quote{display:none}.login-features{margin-top:.7rem !important;gap:7px !important}}
+
+.pp-card{background:#fff;border:1px solid var(--line,#EDE9F5);border-radius:18px;padding:18px 18px 12px;margin:10px 0 18px;box-shadow:0 8px 24px -16px rgba(116,36,212,.35)}
+.pp-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.pp-top h3{font-family:'Playfair Display',serif;font-size:1.15rem;color:#1A1625;margin:0}
+.pp-top p{font-size:12.5px;color:#6b6578;margin:2px 0 0}
+.pp-x{background:none;border:0;color:#8A8378;cursor:pointer;font-size:12px;text-decoration:underline;padding:2px}
+.pp-bar{height:6px;background:#f1ebf8;border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.pp-bar i{display:block;height:100%;background:linear-gradient(100deg,#7424d4,#ef3d87);border-radius:99px}
+.pp-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #f3eff8;font-size:14px;color:#1A1625}
+.pp-chk{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #d9cdea;display:grid;place-items:center;color:#fff;font-size:13px}
+.pp-item.ok .pp-chk{background:#7424d4;border-color:#7424d4}
+.pp-item.ok .pp-t{color:#8A8378;text-decoration:line-through}
+.pp-t{flex:1}
+.pp-go{font-size:12.5px;font-weight:700;color:#7424d4;background:none;border:0;cursor:pointer;padding:4px 6px}
+.pp-guia{display:block;text-align:center;font-size:13px;font-weight:700;color:#7424d4;padding:10px 0 4px;text-decoration:none}
+
+/* ===== Encabezado de página unificado (Fase D) ===== */
+#panel-servicios::before,#panel-servicios::after{content:none!important;display:none!important}
+.pg-head{display:flex;align-items:center;gap:14px;margin:4px 0 18px}
+.pg-ico{width:48px;height:48px;border-radius:14px;background:var(--accent-soft);display:grid;place-items:center;flex:none}
+.pg-ico i{font-size:24px;color:var(--charcoal)}
+.pg-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;line-height:1.2;color:var(--ink);letter-spacing:-.01em}
+.pg-sub{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4}
+.pg-act{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex:none}
+#panel-finanzas .fin-page-title{font-family:'Playfair Display',serif;font-weight:700;font-size:26px;line-height:1.2;letter-spacing:-.01em}
+.plan-title{font-size:30px}
+.btn-save{font-family:'DM Sans',sans-serif!important;font-weight:700!important;letter-spacing:.01em}
+@media(max-width:700px){
+  .pg-head{gap:11px;flex-wrap:wrap;margin-bottom:14px}
+  .pg-ico{width:42px;height:42px;border-radius:12px}.pg-ico i{font-size:21px}
+  .pg-title{font-size:22px}
+  .pg-head>div:nth-child(2){flex:1;min-width:0}
+  .pg-act{margin-left:0;width:100%;justify-content:flex-start}
+  #panel-finanzas .fin-page-title{font-size:22px}
+}
+
+/* Menú superior siempre visible: html/body no deben ser contenedores de scroll (rompían el sticky) */
+.adm-hdr{position:sticky!important;top:0;z-index:60;background:rgba(255,255,255,.98)!important}
+/* Botones de pago de la membresía: ancho cómodo y centrados en PC */
+@media(min-width:700px){
+  .pf-box .pf-nota{text-align:center}
+}
+
+/* Pago de la membresía en tarjetas separadas (resumen, tarjeta y Yappy) */
+#pf-pagar.pf-box{background:none;border:0;padding:0;margin:14px 0;box-shadow:none}
+#pf-pagar .pf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
+#pf-pagar .pf-card{background:#fff;border:1px solid #E6DCF8;border-radius:18px;padding:18px;display:flex;flex-direction:column;min-width:0}
+#pf-pagar .pf-card.wide{margin-top:12px}
+#pf-pagar .pf-card .pf-hdr{margin-bottom:12px}
+#pf-pagar .pf-card .pf-lista{margin-top:2px}
+.pf-card-ico{width:42px;height:42px;border-radius:12px;background:#F4EAFF;color:#7424d4;display:grid;place-items:center;font-size:21px;margin-bottom:12px}
+.pf-card-ico.yappy{background:#E3F0FF;color:#1676D8}
+#pf-pagar .pf-card h3{margin:0 0 4px;font-size:16px;display:block}
+#pf-pagar .pf-desc{font-size:12.5px;line-height:1.5;color:var(--ink-soft,#77738A);margin:0 0 14px}
+.pf-monto{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;line-height:1;margin:0 0 14px;color:#201b2b}
+.pf-monto small{font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;color:var(--ink-soft,#77738A);margin-left:6px}
+#pf-pagar .pf-card .pf-pagar{max-width:none;width:100%;margin:auto 0 0;display:flex}
+#pf-pagar .pf-card btn-yappy{display:block;width:100%;max-width:100%;margin:auto 0 0}
+#pf-pagar .pf-card btn-yappy,#pf-pagar .pf-card .pf-pagar{box-sizing:border-box}
+#pf-pagar .pf-card .pf-nota{text-align:left}
+#pf-pagar .pf-yappy{margin:0;max-width:none;padding:18px;border-top:1px solid #E6DCF8}
+@media(max-width:1100px){#pf-pagar .pf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#pf-pagar .pf-grid>.pf-card:first-child{grid-column:1/-1}}
+@media(max-width:700px){#pf-pagar .pf-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Botón de tarjeta con la misma forma que el de Yappy */
+.pf-box .pf-pagar,#pf-pagar .pf-card .pf-pagar{height:46px;border-radius:999px;font-weight:700;font-size:14.5px;gap:8px;justify-content:center;align-items:center}
+.pf-box .pf-pagar i{font-size:19px}
+
+/* Programa de clientes (inscripción desde la agenda) */
+.club-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line,#E6DCF8);border-radius:18px;padding:16px 18px;margin-bottom:14px}
+.club-ico{width:46px;height:46px;border-radius:14px;background:var(--accent-soft);color:var(--charcoal);display:grid;place-items:center;font-size:23px;flex:none}
+.club-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.club-txt b{font-size:14.5px}.club-txt span{font-size:12.5px;line-height:1.5;color:var(--ink-soft,#77738A)}
+.club-txt small{font-size:11.5px;color:#7424d4;font-weight:600}
+.club-sw{display:flex;align-items:center;gap:10px;margin-top:8px;padding:10px 12px;border-radius:12px;background:#F7F3FB;font-size:13px;font-weight:600;color:#201b2b}
+.club-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.club-filtros button{font:600 12px 'DM Sans',sans-serif;border:1.5px solid var(--line,#E6DCF8);background:#fff;color:var(--ink,#2B2838);padding:7px 13px;border-radius:999px;cursor:pointer}
+.club-filtros button.on{background:#F4EAFF;border-color:#7424d4;color:#7424d4}
+.club-filtros .club-csv{margin-left:auto;display:inline-flex;gap:6px;align-items:center}
+.club-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.club-tag{display:inline-flex;gap:4px;align-items:center;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:#F4EAFF;color:#7424d4}
+.club-tag.cumple{background:#FDE8EF;color:#B4476B}
+@media(max-width:700px){.club-card{flex-wrap:wrap}.club-filtros .club-csv{margin-left:0}}
 </style>
 
 </head>
@@ -3790,6 +3872,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
           <button class="adm-tab" id="legacy-tab-citas" onclick="switchTab('citas')">Citas</button>
         </div>
   <div id="panel-servicios">
+    <div id="primeros-pasos" class="pp-card" hidden></div>
     <div id="seccionesServicios"></div>
     <div style="text-align:center;padding:1rem 0;">
       <button class="btn-add" onclick="openModal(null)" style="margin:auto;padding:10px 20px;font-size:13px;">
@@ -3799,15 +3882,13 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 
   <div id="panel-citas" style="display:none;">
-    <div class="panel-citas-hdr" style="display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;margin-top:10px;">
-      <div style="width:50px;height:50px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <i class="ti ti-calendar-event" style="font-size:24px;color:var(--charcoal);"></i>
-      </div>
+    <div class="pg-head panel-citas-hdr">
+      <div class="pg-ico"><i class="ti ti-calendar-event"></i></div>
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1.3;">Citas</div>
-        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">Gestiona y administra todas las citas del estudio</div>
+        <div class="pg-title">Citas</div>
+        <div class="pg-sub">Gestiona y administra todas las citas del estudio</div>
       </div>
-      <button class="btn-add" style="margin-left:auto;flex-shrink:0;" onclick="abrirModalAgregarCita()"><i class="ti ti-plus"></i> Agregar cita</button>
+      <div class="pg-act"><button class="btn-add" onclick="abrirModalAgregarCita()"><i class="ti ti-plus"></i> Agregar cita</button></div>
     </div>
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Citas</span></div>
@@ -4085,13 +4166,20 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 
   <div id="panel-clientas" style="display:none;">
+    <div id="club-card" class="club-card"></div>
     <div class="adm-sec">
       <div class="adm-sec-hdr">
         <span class="adm-sec-title">Clientes</span>
         <button class="btn-add" onclick="openModalClienta(null)"><i class="ti ti-plus"></i> Agregar</button>
       </div>
       <div style="padding:1rem;">
-        <input class="fi" id="buscar-clienta" placeholder="Buscar por nombre o teléfono..." oninput="renderClientas()" style="margin-bottom:12px;">
+        <input class="fi" id="buscar-clienta" placeholder="Buscar por nombre o teléfono..." oninput="renderClientas()" style="margin-bottom:10px;">
+        <div class="club-filtros" id="club-filtros">
+          <button type="button" class="on" data-f="todos" onclick="setFiltroClientas('todos')">Todos</button>
+          <button type="button" data-f="inscritos" onclick="setFiltroClientas('inscritos')">Inscritos</button>
+          <button type="button" data-f="cumple" onclick="setFiltroClientas('cumple')">Cumpleaños del mes</button>
+          <button type="button" class="club-csv" onclick="exportarInscritosCSV()"><i class="ti ti-download"></i> Descargar inscritos</button>
+        </div>
         <div id="lista-clientas"></div>
       </div>
     </div>
@@ -4158,6 +4246,8 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         </div>
         <div class="fg"><label class="flbl">Instagram (sin @)</label><input class="fi" id="pf-instagram" placeholder="minegocio"/></div>
         <div class="fg"><label class="flbl">Dirección</label><input class="fi" id="pf-direccion" placeholder="Obarrio, Salón Plaza, Suite 113"/></div>
+        <div class="fg"><label class="flbl">Correo extra para avisos (opcional)</label><input class="fi" id="pf-correo-avisos" type="email" maxlength="120" placeholder="citas@minegocio.com"/>
+          <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">Los avisos de citas siempre llegan a tu correo de acceso. Si agregas otro, llegan a los dos.</p></div>
         <div class="fg">
           <label class="flbl">Horario de atención</label>
           <div style="display:flex;flex-direction:column;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
@@ -4327,7 +4417,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
           <li><i class="ti ti-check"></i><span>Sistema de promociones</span></li>
           <li><i class="ti ti-check"></i><span>Ruleta de premios</span></li>
           <li><i class="ti ti-check"></i><span>Paleta de colores a escoger</span></li>
-          <li><i class="ti ti-check"></i><span>Pagos en línea — Yappy Comercial y pasarela de pago</span></li>
+          <li><i class="ti ti-check"></i><span>Pagos en línea — Yappy Comercial (y tu pasarela propia, si ya tienes una)</span></li>
         </ul>
         <button class="plan-cta primary" id="plan-btn-medium" onclick="openUpgrade('medium')">Subir a Medium</button>
       </article>
@@ -4538,9 +4628,22 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="fg"><label class="flbl">Nombre</label><input class="fi" id="mc-nombre"/></div>
       <div class="fg"><label class="flbl">Teléfono / WhatsApp</label><input class="fi" id="mc-telefono"/></div>
       <div class="fg"><label class="flbl">Correo (opcional)</label><input class="fi" id="mc-correo"/></div>
+      <div class="fg"><label class="flbl">Cumpleaños (opcional)</label>
+        <div style="display:flex;gap:8px;">
+          <select class="fi" id="mc-cumple-dia" style="flex:1;"><option value="">Día</option></select>
+          <select class="fi" id="mc-cumple-mes" style="flex:2;"><option value="">Mes</option></select>
+        </div></div>
       <div class="fg"><label class="flbl">Notas (opcional)</label><textarea class="fi" id="mc-notas" rows="2" style="resize:vertical;"></textarea></div>
       <button class="btn-save" onclick="guardarClientaModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cliente</button>
     </div>
+  </div>
+</div>
+
+
+<div class="ov" id="ov-consulta-modulo">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="cm-titulo">Quiero información</span><button class="modal-close" onclick="cerrarConsultaModulo()">×</button></div>
+    <div class="modal-body" id="cm-body"></div>
   </div>
 </div>
 
@@ -5061,7 +5164,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
     <div class="modal-body">
       <div class="cal-nav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <button class="cal-nb" onclick="chMoAdmin(-1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">‹</button>
-        <span class="cal-mo" id="calMoLblAdmin" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;"></span>
+        <span class="cal-mo" id="calMoLblAdmin" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;"></span>
         <button class="cal-nb" onclick="chMoAdmin(1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">›</button>
       </div>
       <div class="cal-g" id="calGridAdmin" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
@@ -5086,7 +5189,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=64"></script>
+<script src="sheets.js?v=66"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -5456,6 +5559,7 @@ function copiarLinkNegocio(){
   const b = window.ANNLY_BUSINESS;
   if (!b || !b.slug) return;
   const url = window.location.origin + '/' + b.slug;
+  ppSet('enlace'); renderPrimerosPasos();
   navigator.clipboard.writeText(url).then(() => {
     const btn = document.getElementById('adm-hdr-copiar-link');
     const txt = btn.querySelector('.hdr-btn-txt');
@@ -5501,16 +5605,47 @@ let categoriasRender=[];
 let catsModal=[];
 let editId=null;
 
+
+// ===== Primeros pasos (negocio nuevo) =====
+function ppClave(k){ const b = window.ANNLY_BUSINESS; return 'annly_pp_' + (b && b.id) + '_' + k; }
+function ppGet(k){ try { return localStorage.getItem(ppClave(k)) === '1'; } catch(e){ return false; } }
+function ppSet(k){ try { localStorage.setItem(ppClave(k), '1'); } catch(e){} }
+function ppMarcar(k){ ppSet(k); renderPrimerosPasos(); }
+function ppCerrar(){ ppSet('cerrado'); renderPrimerosPasos(); }
+function renderPrimerosPasos(){
+  const el = document.getElementById('primeros-pasos');
+  const b = window.ANNLY_BUSINESS;
+  if (!el || !b) return;
+  // Solo para negocios nuevos: se activa al verlos sin servicios (los que ya tienen catálogo no la ven)
+  if (Array.isArray(SERVICES) && SERVICES.length === 0) ppSet('activo');
+  if (ppGet('cerrado') || !ppGet('activo')) { el.hidden = true; return; }
+  const pasos = [
+    { k:'servicio', t:'Crea tu primer servicio', ok: Array.isArray(SERVICES) && SERVICES.length > 0, ir:"switchTab('servicios');openModal(null)", b:'Crear' },
+    { k:'horario', t:'Define tus horarios', ok: ppGet('horario'), ir:"ppMarcar('horario');switchTab('equipo')", b:'Configurar' },
+    { k:'perfil', t:'Sube tu logo y revisa tu perfil', ok: !!b.logo_url || ppGet('perfil'), ir:"ppMarcar('perfil');switchTab('perfil')", b:'Abrir' },
+    { k:'enlace', t:'Comparte tu enlace en Instagram y WhatsApp', ok: ppGet('enlace'), ir:"ppMarcar('enlace');copiarLinkNegocio()", b:'Copiar enlace' }
+  ];
+  const hechos = pasos.filter(p => p.ok).length;
+  if (hechos === pasos.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="pp-top"><div><h3>Primeros pasos</h3><p>${hechos} de ${pasos.length} listos. Así tu enlace queda listo para compartir.</p></div><button class="pp-x" onclick="ppCerrar()">Ocultar</button></div>
+    <div class="pp-bar"><i style="width:${Math.round(hechos / pasos.length * 100)}%"></i></div>` +
+    pasos.map(p => `<div class="pp-item${p.ok ? ' ok' : ''}"><span class="pp-chk">${p.ok ? '✓' : ''}</span><span class="pp-t">${p.t}</span>${p.ok ? '' : `<button class="pp-go" onclick="${p.ir}">${p.b}</button>`}</div>`).join('') +
+    `<a class="pp-guia" href="guia.html" target="_blank" rel="noopener">Ver la guía rápida: empieza en 5 minutos</a>`;
+}
+
 // ===== FIX: ahora lee de Supabase vía Sheets.getServicios() =====
 async function loadServices(){
   try {
     const servicios = await Sheets.getServicios();
     if(servicios && servicios.length > 0){
       SERVICES = servicios;
+      renderPrimerosPasos();
       return;
     }
   } catch(e) { console.error('Error cargando de Supabase:', e); }
   SERVICES = []; // negocio nuevo: catálogo vacío de verdad
+  renderPrimerosPasos();
 }
 
 function getDefaultServices(){
@@ -5999,7 +6134,7 @@ function switchTab(tab){
 // ===== PLAN / UPGRADE =====
 const ANNLY_PLANES_UI = {
   basic:    {name:'BASIC', price:14, professionals:1, branches:1, features:['Agenda 24/7','Citas y servicios ilimitados','Notificaciones personalizadas','Recordatorios automáticos','Reagendar y cancelar citas','Sistema de abono','Horarios personalizados','Bloqueo de horas o días por disponibilidad','Botón de WhatsApp','Diseño profesional incluido']},
-  medium:  {name:'MEDIUM', price:24, professionals:2, branches:1, features:['Todo lo de Basic','Sistema de promociones','Ruleta de premios','Paleta de colores a escoger','Pagos en línea — Yappy Comercial y pasarela de pago']},
+  medium:  {name:'MEDIUM', price:24, professionals:2, branches:1, features:['Todo lo de Basic','Sistema de promociones','Ruleta de premios','Paleta de colores a escoger','Pagos en línea — Yappy Comercial (y tu pasarela propia, si ya tienes una)','Programa de clientes: inscripción, cumpleaños y promociones']},
   ultimate:{name:'ULTIMATE',price:49, professionals:3, branches:1, features:['Todo lo de Medium','Finanzas & Reportes','Certificados de regalo','Gestión de pagos y comisiones por profesional','Propinas y anticipos','Cierres quincenales','Comprobante de pago digital','Dashboard financiero']}
 };
 let UPGRADE_PLAN_SELECCIONADO = null;
@@ -6070,8 +6205,8 @@ async function pintarPagoTarjeta(){
   const hasta = SUSCRIPCION_ACTUAL.periodoHasta || SUSCRIPCION_ACTUAL.currentPeriodEnd;
   // Cuenta de cortesía / acuerdo comercial: sin pagos pendientes ni vencimiento
   if (annlyEsCortesia(hasta)){
-    box.innerHTML = `<div class="pf-hdr"><div><h3><i class="ti ti-heart-handshake"></i> Plan de cortesía</h3>
-      <p>Esta cuenta tiene un acuerdo comercial con Annly: el plan está activo, sin pagos pendientes y sin fecha de vencimiento.</p></div></div>`;
+    box.innerHTML = `<div class="pf-card wide"><div class="pf-hdr"><div><h3><i class="ti ti-heart-handshake"></i> Plan de cortesía</h3>
+      <p>Esta cuenta tiene un acuerdo comercial con Annly: el plan está activo, sin pagos pendientes y sin fecha de vencimiento.</p></div></div></div>`;
     box.style.display = '';
     return;
   }
@@ -6083,26 +6218,37 @@ async function pintarPagoTarjeta(){
     .map(p => p.periodo_hasta).sort().pop();
   const enRevision = pagos.filter(p => p.estado === 'revisar' || (p.estado === 'pendiente' && p.concepto_code !== 'MENSUALIDAD' && !String(p.concepto_code || '').startsWith('MODULO:') && !String(p.concepto_code || '').startsWith('EXTRA:') && !String(p.concepto_code || '').startsWith('PLAN:')));
   box.innerHTML = `
-    <div class="pf-hdr"><div><h3><i class="ti ti-credit-card"></i> Tu mensualidad</h3>
-      <p>${pagadoHasta ? 'Tu membresía está pagada hasta el <b>' + fecha(pagadoHasta) + '</b>.'
-        : enPrueba ? 'Estás en tu prueba gratis' + (hasta ? ' hasta el <b>' + fecha(hasta) + '</b>' : '') + '. Al pagar, tu membresía queda activa de inmediato.'
-        : (hasta ? 'Tu membresía vence el <b>' + fecha(hasta) + '</b>. Paga para mantenerla activa.' : 'Paga tu membresía con tarjeta, de forma segura.')}</p></div></div>
-    <div class="pf-lista">${items.map(i => `
-      <div class="pf-item"><div><b>${escCat(i.nombre)}</b><span>${i.cant > 1 ? i.cant + ' × ' + fmtDinero(i.precio) : 'Mensual'}</span></div><b>${fmtDinero(i.precio * i.cant)}</b></div>`).join('')}
-      <div class="pf-item pf-total"><div><b>Total del mes</b></div><b>${fmtDinero(total)}</b></div>
+    <div class="pf-grid">
+    <div class="pf-card">
+      <div class="pf-hdr"><div><h3><i class="ti ti-receipt"></i> Tu mensualidad</h3>
+        <p>${pagadoHasta ? 'Tu membresía está pagada hasta el <b>' + fecha(pagadoHasta) + '</b>.'
+          : enPrueba ? 'Estás en tu prueba gratis' + (hasta ? ' hasta el <b>' + fecha(hasta) + '</b>' : '') + '. Al pagar, tu membresía queda activa de inmediato.'
+          : (hasta ? 'Tu membresía vence el <b>' + fecha(hasta) + '</b>. Paga para mantenerla activa.' : 'Paga tu membresía con tarjeta, de forma segura.')}</p></div></div>
+      <div class="pf-lista">${items.map(i => `
+        <div class="pf-item"><div><b>${escCat(i.nombre)}</b><span>${i.cant > 1 ? i.cant + ' × ' + fmtDinero(i.precio) : 'Mensual'}</span></div><b>${fmtDinero(i.precio * i.cant)}</b></div>`).join('')}
+        <div class="pf-item pf-total"><div><b>Total del mes</b></div><b>${fmtDinero(total)}</b></div>
+      </div>
     </div>
-    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
-    <p class="pf-nota">Pago seguro con tarjeta de crédito o débito (PagueloFácil). Se abre en una ventana aparte y, al terminar, tu membresía se actualiza sola aquí.</p>
-    <div class="pf-yappy" id="pf-yappy">
-      <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
+    <div class="pf-card">
+      <div class="pf-card-ico"><i class="ti ti-credit-card"></i></div>
+      <h3>Paga con tarjeta</h3>
+      <p class="pf-desc">Tarjeta de crédito o débito, con pago seguro de PagueloFácil. Se abre en una ventana aparte y, al terminar, tu membresía se actualiza sola aquí.</p>
+      <div class="pf-monto">${fmtDinero(total)}<small>al mes</small></div>
+      <button type="button" class="cbtn cbtn-ok pf-pagar" id="pf-btn-pagar" onclick="pagarMensualidad()"><i class="ti ti-credit-card"></i><span>Pagar ${fmtDinero(total)} con tarjeta</span></button>
+    </div>
+    <div class="pf-card pf-yappy" id="pf-yappy">
+      <div class="pf-card-ico yappy"><i class="ti ti-device-mobile"></i></div>
+      <h3>Paga con Yappy</h3>
+      <p class="pf-desc">Escribe tu número y aprueba el cobro en tu app Yappy.</p>
       <input class="fi" id="pf-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
       <p class="pf-nota" id="pf-yappy-msg" style="min-height:14px;margin:6px 0 8px;"></p>
       <btn-yappy id="pf-btn-yappy" theme="darkBlue" rounded="true"></btn-yappy>
     </div>
-    ${enRevision.length ? `<div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
+    </div>
+    ${enRevision.length ? `<div class="pf-card wide"><div class="pf-revision"><i class="ti ti-hourglass"></i><div><b>Pagos en revisión</b>
       ${enRevision.map(a => `<span>${escCat(a.concepto)} · ${fmtDinero(a.monto)}</span>`).join('')}
-      <small>Los estamos revisando; no necesitas hacer nada.</small></div></div>` : ''}
-    ${confirmados.length ? `<div class="pf-hist"><b>Últimos pagos</b>${confirmados.map(p => `<span><i class="ti ti-circle-check"></i>${escCat(p.concepto)} · ${fmtDinero(p.monto_pagado || p.monto)} · ${fecha(p.resuelto_en || p.creado_en)}</span>`).join('')}</div>` : ''}`;
+      <small>Los estamos revisando; no necesitas hacer nada.</small></div></div></div>` : ''}
+    ${confirmados.length ? `<div class="pf-card wide"><div class="pf-hist"><b>Últimos pagos</b>${confirmados.map(p => `<span><i class="ti ti-circle-check"></i>${escCat(p.concepto)} · ${fmtDinero(p.monto_pagado || p.monto)} · ${fecha(p.resuelto_en || p.creado_en)}</span>`).join('')}</div></div>` : ''}`;
   box.style.display = '';
   activarBotonYappy();
 }
@@ -6192,7 +6338,7 @@ function abrirModalPago(o){
     <h3>${escCat(o.titulo)}</h3>
     <p class="pm-precio">${fmtDinero(o.monto)}<small> /mes</small></p>
     <p class="pf-nota" style="margin:0 0 12px;">${escCat(o.nota)}</p>
-    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${o.modulo || ''}', '${o.extra || ''}', '${o.plan || ''}')"><i class="ti ti-lock"></i><span>Pagar ${fmtDinero(o.monto)} con tarjeta</span></button>
+    <button type="button" class="cbtn cbtn-ok pf-pagar" id="pm-btn-tarjeta" onclick="pagarModuloTarjeta('${o.modulo || ''}', '${o.extra || ''}', '${o.plan || ''}')"><i class="ti ti-credit-card"></i><span>Pagar ${fmtDinero(o.monto)} con tarjeta</span></button>
     <div class="pf-yappy">
       <div class="pf-yappy-hdr"><b>O paga con Yappy</b><span>Aprueba el cobro en tu app Yappy</span></div>
       <input class="fi" id="pm-yappy-alias" inputmode="numeric" maxlength="12" placeholder="Tu número Yappy (8 dígitos, sin +507)" autocomplete="tel">
@@ -6332,8 +6478,8 @@ async function pintarPagosPlataforma(){
     <div class="pf-hdr"><div><h3><i class="ti ti-shield-check"></i> Cobros de Annly</h3>
       <p>Solo tú ves esto. Los pagos con tarjeta se confirman solos; aquí solo revisas lo que no cuadra.</p></div>
       <a class="cbtn" href="https://app.paguelofacil.com/movements" target="_blank" rel="noopener"><i class="ti ti-external-link"></i><span>Abrir PagueloFácil</span></a></div>
-    ${revisar.length ? `<div class="pf-sub">Para revisar</div><div class="pf-lista">${revisar.map(a => fila(a, true)).join('')}</div>` : '<p class="pf-nota" style="margin-top:0;">Nada por revisar.</p>'}
-    ${recientes.length ? `<div class="pf-sub">Confirmados automáticamente</div><div class="pf-lista">${recientes.map(a => fila(a, false)).join('')}</div>` : ''}`;
+    ${revisar.length ? `<div class="pf-desc">Para revisar</div><div class="pf-lista">${revisar.map(a => fila(a, true)).join('')}</div>` : '<p class="pf-nota" style="margin-top:0;">Nada por revisar.</p>'}
+    ${recientes.length ? `<div class="pf-desc">Confirmados automáticamente</div><div class="pf-lista">${recientes.map(a => fila(a, false)).join('')}</div>` : ''}`;
   box.style.display = '';
 }
 
@@ -6617,10 +6763,7 @@ async function renderModulosPlan(){
     } else if (activo) {
       estadoHtml = `<div class="plan-module-active-badge"><i class="ti ti-circle-check-filled"></i> Activo</div><button type="button" class="plan-module-link" style="border:none;background:none;cursor:pointer;padding:0;" onclick="cancelarModuloUI('${m.code}','${m.name.replace(/'/g,"\\'")}')">Cancelar</button>`;
     } else if (esAgenteAI) {
-      const b=window.ANNLY_BUSINESS || {};
-      const subject=encodeURIComponent('Consulta sobre Agente AI — Annly');
-      const body=encodeURIComponent(`Hola equipo Annly,\n\nQuiero más información sobre el Agente AI para mi negocio.\n\nNegocio: ${b.nombre || ''}\nCorreo: ${window.ANNLY_USER_EMAIL || ''}\n\nGracias.`);
-      estadoHtml = `<a href="mailto:soporte@annly.app?subject=${subject}&body=${body}" class="plan-module-link">Más información <i class="ti ti-arrow-right"></i></a>`;
+      estadoHtml = `<button type="button" class="plan-module-link" style="border:none;background:none;cursor:pointer;padding:0;" onclick="abrirConsultaModulo('${m.code}','${m.name.replace(/'/g,"\\'")}')">Quiero información <i class="ti ti-arrow-right"></i></button>`;
     } else {
       estadoHtml = `<button type="button" onclick="activarModuloUI('${m.code}')">Agregar por $${m.price.toFixed(0)}/mes</button>`;
     }
@@ -9126,12 +9269,63 @@ async function loadClientas(){
   renderClientas();
 }
 
+const MESES_CLUB = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let FILTRO_CLIENTAS = 'todos';
+
+function clubDisponible(){ return ['medium','ultimate'].includes(planActualParaUI()); }
+function mesActualPanama(){ return new Date(Date.now() - 5 * 3600000).getUTCMonth() + 1; }
+function textoCumple(c){ return c.cumpleDia && c.cumpleMes ? c.cumpleDia + ' de ' + MESES_CLUB[c.cumpleMes - 1].toLowerCase() : ''; }
+
+function renderClubCard(){
+  const el = document.getElementById('club-card');
+  if (!el) return;
+  const inscritos = CLIENTAS.filter(c => c.aceptaPromos).length;
+  const cumples = CLIENTAS.filter(c => c.cumpleMes === mesActualPanama()).length;
+  if (!clubDisponible()){
+    el.innerHTML = `<div class="club-ico"><i class="ti ti-heart-handshake"></i></div>
+      <div class="club-txt"><b>Programa de clientes</b>
+      <span>Deja un botón en tu agenda para que tus clientes se inscriban y recibir descuentos, regalos y promociones. Así armas tu base de clientes y puedes sorprenderlos en su cumpleaños.</span></div>
+      <button type="button" class="btn-add" onclick="switchTab('plan')"><i class="ti ti-lock"></i> Disponible desde Medium</button>`;
+    return;
+  }
+  const on = !!(window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.inscripcion_clientes);
+  el.innerHTML = `<div class="club-ico"><i class="ti ti-heart-handshake"></i></div>
+    <div class="club-txt"><b>Programa de clientes</b>
+      <span>Muestra en tu agenda el botón <b>"Recibe descuentos y regalos"</b>. Quienes se inscriben quedan en tu lista de clientes, con su cumpleaños y su permiso para recibir promociones.</span>
+      <small id="club-stats">${inscritos} inscrito${inscritos === 1 ? '' : 's'} · ${cumples} cumpleaños este mes</small>
+      <div class="club-sw"><label class="svc-toggle"><input type="checkbox" id="club-toggle" ${on ? 'checked' : ''} onchange="toggleClub(this.checked)"/><div class="svc-toggle-track"></div><div class="svc-toggle-thumb"></div></label><span id="club-sw-txt">${on ? 'Botón activado en tu agenda' : 'Activar el botón en mi agenda'}</span></div>
+      <small id="club-msg" style="min-height:14px;"></small></div>`;
+}
+
+async function toggleClub(v){
+  const msg = document.getElementById('club-msg');
+  try {
+    await Sheets.actualizarPerfil({ inscripcion_clientes: v });
+    if (msg){ msg.style.color = '#4A9D6E'; msg.textContent = v ? 'Listo: el botón ya aparece en tu agenda.' : 'Listo: el botón se quitó de tu agenda.'; }
+    const sw = document.getElementById('club-sw-txt'); if (sw) sw.textContent = v ? 'Botón activado en tu agenda' : 'Activar el botón en mi agenda';
+  } catch(e){
+    console.error(e);
+    const t = document.getElementById('club-toggle'); if (t) t.checked = !v;
+    if (msg){ msg.style.color = '#C2695A'; msg.textContent = 'No se pudo guardar. Intenta de nuevo.'; }
+  }
+}
+
+function setFiltroClientas(f){
+  FILTRO_CLIENTAS = f;
+  document.querySelectorAll('#club-filtros button[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f));
+  renderClientas();
+}
+
 function renderClientas(){
   const cont = document.getElementById('lista-clientas');
   const filtro = (document.getElementById('buscar-clienta').value || '').toLowerCase().trim();
-  const filtradas = CLIENTAS.filter(c =>
-    !filtro || c.nombre.toLowerCase().includes(filtro) || (c.telefono||'').includes(filtro)
-  );
+  const mes = mesActualPanama();
+  const filtradas = CLIENTAS.filter(c => {
+    if (FILTRO_CLIENTAS === 'inscritos' && !c.aceptaPromos) return false;
+    if (FILTRO_CLIENTAS === 'cumple' && c.cumpleMes !== mes) return false;
+    return !filtro || c.nombre.toLowerCase().includes(filtro) || (c.telefono||'').includes(filtro);
+  });
+  renderClubCard();
 
   if (filtradas.length === 0){
     cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No hay clientes para mostrar.</p>';
@@ -9144,11 +9338,14 @@ function renderClientas(){
     const esRosa = i%2===1;
     const avBg = esRosa?'var(--accent2-soft)':'var(--accent-soft)';
     const avFg = esRosa?'var(--accent2)':'var(--charcoal)';
+    const cumple = textoCumple(c);
+    const insignias = (c.aceptaPromos ? '<span class="club-tag"><i class="ti ti-heart"></i> Inscrito</span>' : '') + (cumple ? '<span class="club-tag cumple"><i class="ti ti-cake"></i> ' + cumple + '</span>' : '');
     return `<div class="svc-row" style="padding:.75rem 0;">
       <div style="width:36px;height:36px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:${avFg};">${inicial}</div>
       <div class="svc-info">
         <div class="svc-nm">${c.nombre}</div>
         <div class="svc-meta">${c.telefono}${c.correo ? ' · '+c.correo : ''}${c.notas ? ' · '+c.notas : ''}</div>
+        ${insignias ? '<div class="club-tags">' + insignias + '</div>' : ''}
       </div>
       <div class="svc-actions">
         <button class="btn-ico" onclick="abrirModalReservar(${idxReal})" title="Reservar"><i class="ti ti-calendar-plus"></i></button>
@@ -9159,21 +9356,31 @@ function renderClientas(){
   }).join('');
 }
 
-function eliminarClienta(idx){
-  if (!confirm('¿Eliminar este cliente de la lista?')) return;
-  CLIENTAS.splice(idx, 1);
-  Sheets.guardarClientas(CLIENTAS);
-  renderClientas();
+async function eliminarClienta(idx){
+  const c = CLIENTAS[idx];
+  if (!c || !confirm('¿Eliminar este cliente de la lista?')) return;
+  try { if (c.id) await Sheets.eliminarClienta(c.id); }
+  catch(e){ console.error(e); alert('No se pudo eliminar. Intenta de nuevo.'); return; }
+  await loadClientas();
+}
+
+function llenarSelectoresCumple(){
+  const d = document.getElementById('mc-cumple-dia'), m = document.getElementById('mc-cumple-mes');
+  if (d && d.options.length < 2) for (let i = 1; i <= 31; i++) d.add(new Option(i, i));
+  if (m && m.options.length < 2) MESES_CLUB.forEach((n, i) => m.add(new Option(n, i + 1)));
 }
 
 function openModalClienta(idx){
   editClientaIdx = idx;
+  llenarSelectoresCumple();
   const c = idx !== null ? CLIENTAS[idx] : null;
   document.getElementById('modal-clienta-title').textContent = c ? 'Editar cliente' : 'Nuevo cliente';
   document.getElementById('mc-nombre').value = c ? c.nombre : '';
   document.getElementById('mc-telefono').value = c ? c.telefono : '';
   document.getElementById('mc-correo').value = c ? (c.correo||'') : '';
   document.getElementById('mc-notas').value = c ? (c.notas||'') : '';
+  document.getElementById('mc-cumple-dia').value = c && c.cumpleDia ? c.cumpleDia : '';
+  document.getElementById('mc-cumple-mes').value = c && c.cumpleMes ? c.cumpleMes : '';
   document.getElementById('ov-modal-clienta').classList.add('open');
 }
 
@@ -9181,22 +9388,35 @@ function closeModalClienta(){
   document.getElementById('ov-modal-clienta').classList.remove('open');
 }
 
-function guardarClientaModal(){
+async function guardarClientaModal(){
   const nombre = document.getElementById('mc-nombre').value.trim();
   const telefono = document.getElementById('mc-telefono').value.trim();
   const correo = document.getElementById('mc-correo').value.trim();
   const notas = document.getElementById('mc-notas').value.trim();
+  const dia = parseInt(document.getElementById('mc-cumple-dia').value, 10) || null;
+  const mes = parseInt(document.getElementById('mc-cumple-mes').value, 10) || null;
   if (!nombre || !telefono){ alert('Nombre y teléfono son obligatorios.'); return; }
+  if ((dia && !mes) || (!dia && mes)){ alert('Elige el día y el mes del cumpleaños, o deja los dos vacíos.'); return; }
 
-  const clienta = { nombre, telefono, correo, notas };
-  if (editClientaIdx !== null){
-    CLIENTAS[editClientaIdx] = clienta;
-  } else {
-    CLIENTAS.push(clienta);
-  }
-  Sheets.guardarClientas(CLIENTAS);
+  const previo = editClientaIdx !== null ? CLIENTAS[editClientaIdx] : null;
+  const clienta = { id: previo ? previo.id : undefined, nombre, telefono, correo, notas, cumpleDia: dia, cumpleMes: mes, tieneCumple: !!(previo && (previo.cumpleDia || previo.cumpleMes)) };
+  try { await Sheets.guardarClienta(clienta); }
+  catch(e){ console.error(e); alert('No se pudo guardar. Intenta de nuevo.'); return; }
   closeModalClienta();
-  renderClientas();
+  await loadClientas();
+}
+
+function exportarInscritosCSV(){
+  const lista = CLIENTAS.filter(c => c.aceptaPromos);
+  if (!lista.length){ alert('Todavía no tienes clientes inscritos.'); return; }
+  const q = t => '"' + String(t == null ? '' : t).replace(/"/g, '""') + '"';
+  const filas = [['Nombre','Teléfono','Correo','Cumpleaños'].map(q).join(',')]
+    .concat(lista.map(c => [c.nombre, c.telefono, c.correo || '', textoCumple(c)].map(q).join(',')));
+  const blob = new Blob(['﻿' + filas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'clientes-inscritos.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 // ===== EQUIPO =====
@@ -9838,6 +10058,7 @@ async function loadPerfil(){
   document.getElementById('pf-whatsapp').value = b.whatsapp || '';
   document.getElementById('pf-instagram').value = b.instagram || '';
   document.getElementById('pf-direccion').value = b.direccion || '';
+  document.getElementById('pf-correo-avisos').value = b.correo_avisos || '';
   cargarHorarioEstructurado(b.horario_estructurado);
   document.getElementById('pf-modo-oscuro').checked = b.modo_fondo === 'oscuro';
   pfFooterTextoSel = b.footer_texto === 'claro' ? 'claro' : 'oscuro';
@@ -10008,6 +10229,12 @@ async function guardarPerfil(){
   msgEl.style.color = 'var(--ink-soft)';
   msgEl.textContent = 'Guardando...';
 
+  const correoAvisos = document.getElementById('pf-correo-avisos').value.trim();
+  if (correoAvisos && !/^\S+@\S+\.\S+$/.test(correoAvisos)) {
+    msgEl.style.color = '#C2695A';
+    msgEl.textContent = 'Revisa el correo extra para avisos.';
+    return;
+  }
   const horarioEstructurado = leerHorarioEstructurado();
   const datos = {
     nombre: document.getElementById('pf-nombre').value.trim(),
@@ -10027,6 +10254,8 @@ async function guardarPerfil(){
     modo_fondo: document.getElementById('pf-modo-oscuro').checked ? 'oscuro' : 'claro',
     footer_texto: pfFooterTextoSel
   };
+  // Solo se envía si cambió (así guardar el perfil no depende de la columna hasta que se use)
+  if (correoAvisos !== ((window.ANNLY_BUSINESS && window.ANNLY_BUSINESS.correo_avisos) || '')) datos.correo_avisos = correoAvisos || null;
   if(pfPaletaSel !== null && pfPaletaSel >= 0 && paletasDesbloqueadas()){
     datos.color_primario = PALETAS_PERFIL[pfPaletaSel].primario;
     datos.color_secundario = PALETAS_PERFIL[pfPaletaSel].secundario;
@@ -13543,6 +13772,73 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // El arranque ahora ocurre en verificarSesionInicial() / hacerLogin(), al inicio del archivo
+
+// ===== Encabezados de página unificados =====
+(function injectPageHeads(){
+  const PAGES = {
+    servicios:    { i:'briefcase',      t:'Servicios',        s:'Lo que ofreces, con su precio y duración.' },
+    bloqueos:     { i:'calendar-off',   t:'Bloqueos',         s:'Cierra días u horas en los que no atiendes.' },
+    promo:        { i:'speakerphone',   t:'Promoción',        s:'Una oferta destacada cuando tus clientes entran a tu sitio.' },
+    ruleta:       { i:'rotate-clockwise', t:'Ruleta de premios', s:'Tus clientes ganan un premio al confirmar su cita.' },
+    certificados: { i:'gift',           t:'Certificados',     s:'Vende o regala certificados con saldo.' },
+    clientas:     { i:'users',          t:'Clientes',         s:'Tus clientes y su historial.' },
+    equipo:       { i:'user-star',      t:'Equipo',           s:'Tu equipo, sus servicios y sus horarios.' },
+    sucursales:   { i:'map-pin',        t:'Sucursales',       s:'Cada sede con su horario.' },
+    perfil:       { i:'building-store', t:'Perfil',           s:'Lo que ven tus clientes en tu página.' }
+  };
+  Object.keys(PAGES).forEach(k => {
+    const panel = document.getElementById('panel-' + k);
+    if (!panel || panel.querySelector(':scope > .pg-head')) return;
+    const c = PAGES[k];
+    const head = document.createElement('div');
+    head.className = 'pg-head';
+    head.innerHTML = '<div class="pg-ico"><i class="ti ti-' + c.i + '"></i></div><div><div class="pg-title">' + c.t + '</div><div class="pg-sub">' + c.s + '</div></div><div class="pg-act"></div>';
+    panel.insertBefore(head, panel.firstChild);
+  });
+  // Si la primera tarjeta repite el título de la página, sus botones suben al encabezado y se oculta esa barra
+  ['servicios','citas','bloqueos','promo','ruleta','certificados','clientas','equipo','sucursales','perfil'].forEach(k => {
+    const panel = document.getElementById('panel-' + k);
+    const head = panel && panel.querySelector('.pg-head');
+    if (!head) return;
+    const titulo = (head.querySelector('.pg-title').textContent || '').trim().toLowerCase();
+    const act = head.querySelector('.pg-act');
+    panel.querySelectorAll('.adm-sec-hdr').forEach(h => {
+      const t = h.querySelector('.adm-sec-title');
+      if (!t || t.textContent.trim().toLowerCase() !== titulo) return;
+      h.querySelectorAll('button').forEach(b => act && act.appendChild(b));
+      h.style.display = 'none';
+    });
+  });
+})();
+
+// ===== Consulta de un módulo que se cotiza aparte (Agente AI) =====
+let CONSULTA_MODULO = null;
+function abrirConsultaModulo(code, nombre){
+  CONSULTA_MODULO = code;
+  document.getElementById('cm-titulo').textContent = nombre;
+  document.getElementById('cm-body').innerHTML = `
+    <p style="font-size:13px;line-height:1.55;color:var(--ink-soft);margin:0 0 12px;">Cuéntanos qué te gustaría que haga. Te escribiremos al correo de tu cuenta con la información y el precio para tu negocio.</p>
+    <div class="fg"><label class="flbl">Mensaje (opcional)</label><textarea class="fi" id="cm-mensaje" rows="3" maxlength="1500" style="resize:vertical;" placeholder="Ej: quiero que responda preguntas de precios y horarios"></textarea></div>
+    <p id="cm-msg" style="font-size:12px;min-height:16px;margin:6px 0;"></p>
+    <button class="btn-save" id="cm-enviar" onclick="enviarConsultaModulo()"><i class="ti ti-send" style="font-size:17px;"></i> Enviar consulta</button>`;
+  document.getElementById('ov-consulta-modulo').classList.add('open');
+}
+function cerrarConsultaModulo(){ document.getElementById('ov-consulta-modulo').classList.remove('open'); }
+async function enviarConsultaModulo(){
+  const btn = document.getElementById('cm-enviar'), msg = document.getElementById('cm-msg');
+  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Enviando...';
+  try {
+    await Sheets.consultarModulo(CONSULTA_MODULO, document.getElementById('cm-mensaje').value.trim());
+    document.getElementById('cm-body').innerHTML = `<div style="text-align:center;padding:1rem .5rem;">
+      <div style="width:52px;height:52px;border-radius:50%;background:#E4F5EC;color:#1D7A46;display:grid;place-items:center;font-size:24px;margin:0 auto 12px;"><i class="ti ti-check"></i></div>
+      <b style="font-size:16px;">¡Recibimos tu consulta!</b>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:6px 0 14px;">Te escribiremos pronto al correo de tu cuenta.</p>
+      <button class="btn-save" onclick="cerrarConsultaModulo()">Cerrar</button></div>`;
+  } catch(e){
+    console.error(e);
+    btn.disabled = false; msg.style.color = '#C2695A'; msg.textContent = e.message || 'No se pudo enviar. Intenta de nuevo.';
+  }
+}
 </script>
 </body>
 </html>

@@ -66,11 +66,12 @@
 </div>
 
 <style>
-#cert-link-wrap{padding-top:1rem;}
-@media(min-width:600px){#cert-link-wrap{max-width:480px;margin-left:auto;margin-right:auto;background-color:var(--bg-page);}}
-@media(min-width:900px){#cert-link-wrap{max-width:760px;}}
-#cert-link-wrap .eval-card{cursor:pointer;}
-#cert-link-wrap .eval-right i{font-size:16px;color:var(--gold-dark);}
+#cert-link-wrap,#club-link-wrap{padding-top:1rem;}
+#club-link-wrap{padding-top:.25rem;}
+@media(min-width:600px){#cert-link-wrap,#club-link-wrap{max-width:480px;margin-left:auto;margin-right:auto;background-color:var(--bg-page);}}
+@media(min-width:900px){#cert-link-wrap,#club-link-wrap{max-width:760px;}}
+#cert-link-wrap .eval-card,#club-link-wrap .eval-card{cursor:pointer;}
+#cert-link-wrap .eval-right i,#club-link-wrap .eval-right i{font-size:16px;color:var(--gold-dark);}
 .emp-bio{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(var(--gold-dark-rgb),.08);border:1px solid rgba(var(--gold-dark-rgb),.25);text-align:left;}
 .emp-bio-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
 .emp-bio-foto{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(var(--gold-dark-rgb),.35);}
@@ -105,7 +106,24 @@
   </div>
 </div>
 
+<div id="club-link-wrap" style="display:none;">
+  <div class="eval-wrap">
+    <div class="eval-card" onclick="abrirModalInscripcion()">
+      <div class="eval-icon"><i class="ti ti-heart-handshake" aria-hidden="true"></i></div>
+      <div><div class="eval-name">Recibe descuentos y regalos</div><div class="eval-sub">Inscríbete y entérate de promociones</div></div>
+      <div class="eval-right"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+    </div>
+  </div>
+</div>
+
 <div id="serviceList"></div>
+
+<div class="ov" id="ov-inscripcion">
+  <div class="panel">
+    <div class="phdr"><span class="ptitle">Inscríbete</span><button class="pclose" onclick="closeOv('ov-inscripcion')">×</button></div>
+    <div class="pbody" id="inscripcion-body"></div>
+  </div>
+</div>
 
 <div class="ov" id="ov-comprar-certificado">
   <div class="panel">
@@ -233,10 +251,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script src="config.js?v=4"></script>
-<script src="sheets.js?v=64"></script>
+<script src="sheets.js?v=66"></script>
 <script src="ruleta-frontend.js?v=1"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="horarios.js?v=1"></script>
-<script src="agenda.js?v=29"></script>
+<script src="agenda.js?v=30"></script>
 </body>
 </html>
