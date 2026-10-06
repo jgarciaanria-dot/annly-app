@@ -223,6 +223,17 @@ function hexToRgb(hex){
   return m.slice(0,3).map(h=>parseInt(h,16)).join(',');
 }
 
+// Cuenta suspendida por falta de pago: la agenda pública queda en solo vista (sin reservas)
+window.AnnlyReady.then(() => Sheets.negocioSuspendido()).then(suspendido => {
+  if (!suspendido) return;
+  annlyModoVista('Por el momento este negocio no está recibiendo reservas.');
+  ['openCal', 'confirmar', 'confirmarDoble', 'confirmarCitaConfirmada', 'abrirModalComprarCertificado', 'enviarCompraCertificado'].forEach(n => {
+    const f = window[n];
+    if (typeof f !== 'function') return;
+    window[n] = function () { alert('Por el momento este negocio no está recibiendo reservas.'); };
+  });
+}).catch(() => {});
+
 window.AnnlyReady.then(() => {
   const b = window.ANNLY_BUSINESS;
   if (b) {
