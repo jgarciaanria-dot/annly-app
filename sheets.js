@@ -2613,9 +2613,57 @@ const Sheets = {
           c.email,
 
         notas:
-          c.notas
+          c.notas,
+
+        id: c.id,
+        aceptaPromos: !!c.acepta_promos,
+        cumpleDia: c.cumple_dia || null,
+        cumpleMes: c.cumple_mes || null,
+        origen: c.origen || null,
+        inscritoEn: c.inscrito_en || null
 
       }));
+  },
+
+
+  // Guarda un solo cliente (sin tocar a los demás). Con id actualiza; sin id crea.
+  async guardarClienta(c) {
+    await window.AnnlyReady;
+    const datos = { nombre: c.nombre, telefono: c.telefono, email: c.correo || null, notas: c.notas || null };
+    // El cumpleaños solo se envía si se usa (así guardar no depende de las columnas nuevas)
+    if (c.cumpleDia || c.cumpleMes || c.tieneCumple) { datos.cumple_dia = c.cumpleDia || null; datos.cumple_mes = c.cumpleMes || null; }
+    if (c.id) {
+      const { error } = await sbClient.from('clients').update(datos).eq('id', c.id).eq('business_id', BUSINESS_ID);
+      if (error) throw error;
+      return;
+    }
+    const { error } = await sbClient.from('clients').insert([{ ...datos, business_id: BUSINESS_ID }]);
+    if (error) throw error;
+  },
+
+  async eliminarClienta(id) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('clients').delete().eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) throw error;
+  },
+
+  // Agenda pública: ¿se muestra el botón para inscribirse?
+  async inscripcionClientesActiva() {
+    await window.AnnlyReady;
+    if (!BUSINESS_ID) return false;
+    const { data, error } = await sbClient.rpc('inscripcion_clientes_activa', { p_business: BUSINESS_ID });
+    if (error) { console.error('Inscripción de clientes:', error); return false; }
+    return data === true;
+  },
+
+  async inscribirCliente(d) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.rpc('inscribir_cliente', {
+      p_business: BUSINESS_ID, p_nombre: d.nombre, p_telefono: d.telefono, p_correo: d.correo || null,
+      p_cumple_dia: d.cumpleDia || null, p_cumple_mes: d.cumpleMes || null, p_acepta: !!d.acepta
+    });
+    if (error) throw error;
+    return data;
   },
 
 
