@@ -4317,6 +4317,28 @@ const Sheets = {
     if (!data || !data.url) throw new Error((data && data.error) || 'No se pudo crear el enlace de pago.');
     return data;
   },
+  // Platform Admin: todos los negocios con su suscripción vigente (para prórrogas, cortesías y acuerdos)
+  async getCuentasPlataforma() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.from('businesses')
+      .select('id, nombre, slug, tipo_negocio, subscriptions(status, current_period_end, created_at)')
+      .order('nombre', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(b => {
+      const subs = (b.subscriptions || []).filter(s => s.status !== 'cancelled' && s.status !== 'canceled')
+        .sort((x, y) => String(y.created_at).localeCompare(String(x.created_at)));
+      const s = subs[0] || null;
+      return { id: b.id, nombre: b.nombre, slug: b.slug, tipo: b.tipo_negocio, status: s ? s.status : null, hasta: s ? s.current_period_end : null };
+    });
+  },
+  // Platform Admin: mueve la fecha de fin de un negocio (prórroga / cortesía). Queda registrado con el motivo.
+  async extenderCuenta(negocioId, hasta, motivo, activar) {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient.rpc('admin_extender_cuenta', { p_negocio: negocioId, p_hasta: hasta, p_motivo: motivo, p_activar: !!activar });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   // ¿La cuenta del negocio está suspendida por falta de pago? (agenda pública: solo vista, sin reservas)
   async negocioSuspendido() {
     await window.AnnlyReady;
