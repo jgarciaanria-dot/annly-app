@@ -30,7 +30,12 @@ h2{font:700 1.5rem/1.2 'Playfair Display',serif;margin:34px 0 6px}h2+p{color:var
 .campos{display:grid;gap:10px;margin-bottom:6px}.campos div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 16px;font-size:.94rem}.campos b{display:block;color:var(--ink);margin-bottom:2px}.campos span{color:var(--muted)}
 .mock{display:grid;grid-template-columns:300px 1fr;gap:26px;align-items:start;margin:18px 0 8px}
 .phone{position:relative;background:#fff;border:8px solid #201b2b;border-radius:34px;overflow:hidden;box-shadow:0 18px 40px rgba(32,27,43,.18);background:#efe7fb}
-.ph-hero{padding:20px 14px 16px;text-align:center;background:linear-gradient(180deg,#dccbf5,#e6dbf8)}
+.phone{height:560px;display:flex;flex-direction:column}
+.ph-bar{flex:none;background:#fff;padding:8px 12px;text-align:center;border-bottom:1px solid #e9e4ed}.ph-bar span{display:block;background:#f1ecf6;border-radius:99px;padding:4px 10px;font-size:.62rem;color:#6b6578}
+.ph-scroll{flex:1;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#cdbbe8 transparent;-webkit-overflow-scrolling:touch}
+.ph-scroll::-webkit-scrollbar{width:4px}.ph-scroll::-webkit-scrollbar-thumb{background:#cdbbe8;border-radius:4px}
+.ph-hint{font-size:.78rem;color:var(--muted);text-align:center;margin-top:8px}
+.ph-hero{position:relative;padding:20px 14px 16px;text-align:center;background:linear-gradient(180deg,#dccbf5,#e6dbf8)}
 .ph-logo{width:84px;height:84px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;background:#fff;box-shadow:0 0 0 6px rgba(124,58,237,.15);font:700 .8rem 'Playfair Display',serif;color:#8a6d3b;text-align:center;line-height:1.1}
 .ph-name{font:600 .95rem 'DM Sans',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#201b2b}
 .ph-sub{font-size:.58rem;letter-spacing:.2em;color:#6b6578;margin:7px 0 6px;text-transform:uppercase}
@@ -48,7 +53,7 @@ h2{font:700 1.5rem/1.2 'Playfair Display',serif;margin:34px 0 6px}h2+p{color:var
 .ph-foot{background:#f7f3fb;margin-top:10px;padding:10px 12px 14px;text-align:center;font-size:.6rem;color:#6b6578}
 .ph-foot .t{letter-spacing:.14em;text-transform:uppercase;font-size:.55rem;margin-bottom:8px}
 .ph-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ph-cols b{display:block;letter-spacing:.14em;text-transform:uppercase;font-size:.52rem;color:#201b2b;margin-bottom:3px}
-.ph-wa{position:absolute;right:8px;bottom:56px;width:32px;height:32px;border-radius:50%;background:#25d366;display:grid;place-items:center;color:#fff;font-size:.9rem;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+.ph-wa{position:absolute;right:10px;bottom:14px;z-index:4;width:32px;height:32px;border-radius:50%;background:#25d366;display:grid;place-items:center;color:#fff;font-size:.9rem;box-shadow:0 4px 10px rgba(0,0,0,.2)}
 .ph-n{position:absolute;z-index:3;width:18px;height:18px;border-radius:50%;background:#ef3d87;color:#fff;font:700 .66rem 'DM Sans',sans-serif;display:grid;place-items:center;box-shadow:0 0 0 2px #fff}
 .mk{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font:700 .68rem 'DM Sans',sans-serif;vertical-align:middle;margin-right:4px}
 .leyenda{display:grid;gap:10px;font-size:.93rem}.leyenda div{display:flex;gap:9px}.leyenda span.t{color:var(--muted)}
@@ -98,6 +103,8 @@ footer a{color:var(--purple)}
     <span class="ejemplo">EJEMPLO DE UN PERFIL LISTO</span>
     <div class="mock">
       <div class="phone" aria-label="Ejemplo de agenda con el perfil configurado">
+        <div class="ph-bar"><span>annly.app/estudio-luna</span></div>
+        <div class="ph-scroll" tabindex="0" aria-label="Desplázate para ver toda la página de ejemplo">
         <div class="ph-hero"><span class="ph-n" style="left:12px;top:14px">1</span><div class="ph-logo">Tu logo</div><div class="ph-name">Estudio Luna</div><div class="ph-sub">Reserva tu cita en línea</div><div class="ph-tag">Cuidamos tu estilo, a tu ritmo.</div></div>
         <div class="ph-card"><div>ESTÁS RESERVANDO EN<b>Sede Principal <span class="ph-n" style="position:static;display:inline-grid">6</span></b></div><i>Cambiar sede</i></div>
         <div class="ph-cert"><span class="ph-n" style="position:static;display:inline-grid;margin-right:4px">5</span><b>Certificado de regalo</b>Regala una experiencia Estudio Luna</div>
@@ -107,9 +114,10 @@ footer a{color:var(--purple)}
         <div class="ph-grid"><div class="ph-svc"><b>Manicure clásico</b><small>Tratamiento tradicional…</small><em>$15.00<span>30 min</span></em></div></div>
         <div class="ph-ig">Instagram · @estudioluna <span class="ph-n" style="position:static;display:inline-grid;margin-left:4px">2</span></div>
         <div class="ph-foot"><div class="t">Tu estilo es nuestra inspiración</div><div class="ph-cols"><div><b>Ubicación <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Calle 50, Obarrio<br>Local 12</div><div><b>Horario <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Lun-Vie 9AM-6PM<br>Sáb 9AM-2PM<br>Domingo cerrado</div></div></div>
+        </div>
         <div class="ph-wa">✆</div>
       </div>
-      <div class="leyenda">
+      <div class="leyenda"><div style="color:var(--pink);font-weight:700;font-size:.85rem">Desliza dentro del celular para ver toda la página.</div>
         <div><span class="mk">1</span><span><b>Logo, nombre y frase.</b> <span class="t">Lo primero que ve tu cliente. La frase es la que va junto al logo.</span></span></div>
         <div><span class="mk">2</span><span><b>Instagram y WhatsApp.</b> <span class="t">Tu usuario sin el @ y el botón verde de WhatsApp, siempre a la vista.</span></span></div>
         <div><span class="mk">3</span><span><b>Dirección y horario.</b> <span class="t">Aparecen al final de la página. El horario sale de Perfil, Horario de atención.</span></span></div>
@@ -152,6 +160,8 @@ footer a{color:var(--purple)}
     <span class="ejemplo">EJEMPLO DE UNA TIENDA LISTA</span>
     <div class="mock">
       <div class="phone" aria-label="Ejemplo de tienda configurada">
+        <div class="ph-bar"><span>annly.app/flores-del-valle</span></div>
+        <div class="ph-scroll" tabindex="0" aria-label="Desplázate para ver toda la página de ejemplo">
         <div class="ph-hero"><span class="ph-n" style="left:12px;top:14px">1</span><div class="ph-logo">Tu logo</div><div class="ph-name">Flores del Valle</div><div class="ph-sub">Haz tu pedido en línea</div><div class="ph-tag">Detalles que dicen más que mil palabras.</div></div>
         <div class="ph-card"><div>RECIBE TU PEDIDO<b>Retiro o domicilio</b></div><i>Elegir</i></div>
         <div class="ph-cat">Ramos <span class="ph-n" style="position:static;display:inline-grid;margin-left:4px">4</span></div>
@@ -160,9 +170,10 @@ footer a{color:var(--purple)}
         <div class="ph-grid"><div class="ph-svc"><b>Globo y tarjeta</b><small>Dedicatoria incluida</small><em>+$8.00<span></span></em></div></div>
         <div class="ph-ig">Instagram · @floresdelvalle <span class="ph-n" style="position:static;display:inline-grid;margin-left:4px">2</span></div>
         <div class="ph-foot"><div class="t">Detalles hechos con cariño</div><div class="ph-cols"><div><b>Retiro <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Calle 50, Obarrio<br>Local 12</div><div><b>Entregas <span class="ph-n" style="position:static;display:inline-grid">3</span></b>Lun-Sáb<br>9:00 a 12:00<br>2:00 a 6:00</div></div></div>
+        </div>
         <div class="ph-wa">✆</div>
       </div>
-      <div class="leyenda">
+      <div class="leyenda"><div style="color:var(--pink);font-weight:700;font-size:.85rem">Desliza dentro del celular para ver toda la página.</div>
         <div><span class="mk">1</span><span><b>Logo, nombre y frase.</b> <span class="t">La primera impresión de tu tienda.</span></span></div>
         <div><span class="mk">2</span><span><b>Instagram y WhatsApp.</b> <span class="t">Para dudas y personalizaciones.</span></span></div>
         <div><span class="mk">3</span><span><b>Retiro y entregas.</b> <span class="t">Dirección de retiro y las franjas en que entregas.</span></span></div>
