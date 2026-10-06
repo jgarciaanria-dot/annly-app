@@ -2,7 +2,7 @@
 -- La usan la agenda pública (annly.app) y la tienda pública (tienda.annly.app) para quedar en solo vista.
 -- Regla (la misma de annlyEstadoCuenta() en sheets.js y pedidos.js):
 --   vence al terminar el día de current_period_end (hora de Panamá); desde el vencimiento hay 48 horas de gracia;
---   quien ya estaba vencido antes del 2026-10-07 cuenta sus 48 horas desde esa fecha.
+--   (el tope inferior 2026-01-01 no tiene efecto práctico; subirlo daría gracia extra a quienes ya estaban vencidos).
 -- Sin suscripción o sin fecha de fin: no se suspende.
 create or replace function public.negocio_suspendido(p_negocio uuid)
 returns boolean
@@ -15,7 +15,7 @@ as $$
     select (now() at time zone 'America/Panama') >=
            greatest(
              (left(s.current_period_end::text, 10)::date + 1)::timestamp,
-             timestamp '2026-10-07 00:00:00'
+             timestamp '2026-01-01 00:00:00'
            ) + interval '48 hours'
     from subscriptions s
     where s.business_id = p_negocio
