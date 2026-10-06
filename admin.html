@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Admin — Annly</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.48.0/dist/tabler-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -20,7 +20,7 @@
   --shadow-md:0 8px 24px -8px rgba(46,43,43,.14);
 }
 html{scroll-behavior:smooth;}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
 
 /* ---------- LOGIN ---------- */
 .login-bg{position:fixed;inset:0;z-index:2000;display:grid;grid-template-columns:1fr 1fr;background:#fff;overflow:hidden;font-family:'DM Sans',sans-serif;}
@@ -66,7 +66,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .login-feature b{display:block;font-size:12.5px;font-weight:700;color:#1A1625;}
 .login-feature span{display:block;font-size:11px;color:#8A8378;}
 
-.login-quote{font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:#5B21B6;margin-top:1.4rem;transform:rotate(-1.5deg);line-height:1.5;}
+.login-quote{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:#5B21B6;margin-top:1.4rem;transform:rotate(-1.5deg);line-height:1.5;}
 .login-quote i{font-size:12px;color:#EC4899;font-style:normal;}
 
 .login-photo-foot{font-size:9.5px;letter-spacing:.1em;color:#8A8378;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:auto;padding-top:1.4rem;border-top:1px solid rgba(124,58,237,.14);}
@@ -159,7 +159,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .plan-hero{background:linear-gradient(135deg,#fff 0%,#fbf7ff 58%,#fff6fb 100%);border:1px solid var(--line);border-radius:22px;padding:1.25rem;box-shadow:var(--shadow-md);margin-bottom:1rem;overflow:hidden;position:relative;}
 .plan-hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;right:-80px;top:-90px;background:radial-gradient(circle,rgba(236,72,153,.14),transparent 68%);pointer-events:none;}
 .plan-kicker{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--charcoal);}
-.plan-title{font-family:'Cormorant Garamond',serif;font-size:31px;line-height:1.05;font-weight:700;color:var(--ink);margin-top:4px;}
+.plan-title{font-family:'Playfair Display',serif;font-size:31px;line-height:1.05;font-weight:700;color:var(--ink);margin-top:4px;}
 .plan-sub{font-size:12px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
 .plan-current{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:1rem;padding:13px 15px;background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:15px;position:relative;z-index:1;}
 .plan-current-label{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
@@ -212,7 +212,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
   position:relative;
 }
 .adm-hdr::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(to right,transparent,var(--charcoal) 20%,var(--accent2) 50%,var(--charcoal) 80%,transparent);}
-.adm-hdr-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:700;color:var(--ink);letter-spacing:.01em;}
+.adm-hdr-title{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;color:var(--ink);letter-spacing:.01em;}
 .adm-hdr-sub{font-size:10px;color:var(--charcoal);margin-top:3px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;}
 .adm-hdr-back{color:var(--ink-soft);font-size:12.5px;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;padding:7px 13px;border:1px solid var(--line);border-radius:999px;}
 .adm-hdr-back:hover{color:var(--charcoal);border-color:var(--charcoal);}
@@ -321,7 +321,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 @media(min-width:500px){.modal{border-radius:var(--radius-lg);}}
 @keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
 .modal-hdr{padding:1.1rem 1.25rem;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--paper);z-index:1;}
-.modal-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:700;color:var(--ink);}
+.modal-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--ink);}
 .modal-close{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;transition:background .15s;}
 .modal-close:hover{background:var(--line);}
 .modal-body{padding:1.25rem;}
@@ -337,7 +337,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-he
 .btn-rem-incl:hover{border-color:#E8A99B;color:#C2695A;background:#FDF4F2;}
 .btn-add-incl{display:flex;align-items:center;gap:6px;padding:9px 10px;background:transparent;border:1.5px dashed var(--line);border-radius:var(--radius);font-size:12.5px;color:var(--gold-dark);cursor:pointer;width:100%;justify-content:center;transition:all .15s;}
 .btn-add-incl:hover{background:#FBF8F1;border-color:var(--gold);}
-.btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--charcoal),var(--charcoal2));color:var(--gold-light);border:none;border-radius:var(--radius);font-family:'Cormorant Garamond',serif;font-size:16.5px;font-weight:700;cursor:pointer;margin-top:.6rem;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;}
+.btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--charcoal),var(--charcoal2));color:var(--gold-light);border:none;border-radius:var(--radius);font-family:'Playfair Display',serif;font-size:16.5px;font-weight:700;cursor:pointer;margin-top:.6rem;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;}
 .btn-save:hover{transform:translateY(-1px);box-shadow:0 6px 16px -4px rgba(124,58,237,.35);}
 .btn-save:active{transform:translateY(0);}
 .btn-save:disabled{opacity:.4;cursor:default;transform:none;box-shadow:none;}
@@ -2175,7 +2175,7 @@ img{max-width:100%;}
   cursor:pointer;font-size:16px;color:#6D6677;
 }
 .annly-calendar-nav span{
-  font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:#272331;
+  font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#272331;
 }
 .annly-calendar-grid{
   display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
@@ -3626,6 +3626,26 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 .pp-t{flex:1}
 .pp-go{font-size:12.5px;font-weight:700;color:#7424d4;background:none;border:0;cursor:pointer;padding:4px 6px}
 .pp-guia{display:block;text-align:center;font-size:13px;font-weight:700;color:#7424d4;padding:10px 0 4px;text-decoration:none}
+
+/* ===== Encabezado de página unificado (Fase D) ===== */
+#panel-servicios::before,#panel-servicios::after{content:none!important;display:none!important}
+.pg-head{display:flex;align-items:center;gap:14px;margin:4px 0 18px}
+.pg-ico{width:48px;height:48px;border-radius:14px;background:var(--accent-soft);display:grid;place-items:center;flex:none}
+.pg-ico i{font-size:24px;color:var(--charcoal)}
+.pg-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;line-height:1.2;color:var(--ink);letter-spacing:-.01em}
+.pg-sub{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4}
+.pg-act{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex:none}
+#panel-finanzas .fin-page-title{font-family:'Playfair Display',serif;font-weight:700;font-size:26px;line-height:1.2;letter-spacing:-.01em}
+.plan-title{font-size:30px}
+.btn-save{font-family:'DM Sans',sans-serif!important;font-weight:700!important;letter-spacing:.01em}
+@media(max-width:700px){
+  .pg-head{gap:11px;flex-wrap:wrap;margin-bottom:14px}
+  .pg-ico{width:42px;height:42px;border-radius:12px}.pg-ico i{font-size:21px}
+  .pg-title{font-size:22px}
+  .pg-head>div:nth-child(2){flex:1;min-width:0}
+  .pg-act{margin-left:0;width:100%;justify-content:flex-start}
+  #panel-finanzas .fin-page-title{font-size:22px}
+}
 </style>
 
 </head>
@@ -3815,15 +3835,13 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
   </div>
 
   <div id="panel-citas" style="display:none;">
-    <div class="panel-citas-hdr" style="display:flex;align-items:center;gap:14px;margin-bottom:1.25rem;margin-top:10px;">
-      <div style="width:50px;height:50px;border-radius:14px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <i class="ti ti-calendar-event" style="font-size:24px;color:var(--charcoal);"></i>
-      </div>
+    <div class="pg-head panel-citas-hdr">
+      <div class="pg-ico"><i class="ti ti-calendar-event"></i></div>
       <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1.3;">Citas</div>
-        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">Gestiona y administra todas las citas del estudio</div>
+        <div class="pg-title">Citas</div>
+        <div class="pg-sub">Gestiona y administra todas las citas del estudio</div>
       </div>
-      <button class="btn-add" style="margin-left:auto;flex-shrink:0;" onclick="abrirModalAgregarCita()"><i class="ti ti-plus"></i> Agregar cita</button>
+      <div class="pg-act"><button class="btn-add" onclick="abrirModalAgregarCita()"><i class="ti ti-plus"></i> Agregar cita</button></div>
     </div>
     <div class="adm-sec">
       <div class="adm-sec-hdr"><span class="adm-sec-title">Citas</span></div>
@@ -5079,7 +5097,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
     <div class="modal-body">
       <div class="cal-nav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <button class="cal-nb" onclick="chMoAdmin(-1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">‹</button>
-        <span class="cal-mo" id="calMoLblAdmin" style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;"></span>
+        <span class="cal-mo" id="calMoLblAdmin" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;"></span>
         <button class="cal-nb" onclick="chMoAdmin(1)" style="background:none;border:0.5px solid #eee;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;">›</button>
       </div>
       <div class="cal-g" id="calGridAdmin" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
@@ -13602,6 +13620,44 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // El arranque ahora ocurre en verificarSesionInicial() / hacerLogin(), al inicio del archivo
+
+// ===== Encabezados de página unificados =====
+(function injectPageHeads(){
+  const PAGES = {
+    servicios:    { i:'briefcase',      t:'Servicios',        s:'Lo que ofreces, con su precio y duración.' },
+    bloqueos:     { i:'calendar-off',   t:'Bloqueos',         s:'Cierra días u horas en los que no atiendes.' },
+    promo:        { i:'speakerphone',   t:'Promoción',        s:'Una oferta destacada cuando tus clientes entran a tu sitio.' },
+    ruleta:       { i:'rotate-clockwise', t:'Ruleta de premios', s:'Tus clientes ganan un premio al confirmar su cita.' },
+    certificados: { i:'gift',           t:'Certificados',     s:'Vende o regala certificados con saldo.' },
+    clientas:     { i:'users',          t:'Clientes',         s:'Tus clientes y su historial.' },
+    equipo:       { i:'user-star',      t:'Equipo',           s:'Tu equipo, sus servicios y sus horarios.' },
+    sucursales:   { i:'map-pin',        t:'Sucursales',       s:'Cada sede con su horario.' },
+    perfil:       { i:'building-store', t:'Perfil',           s:'Lo que ven tus clientes en tu página.' }
+  };
+  Object.keys(PAGES).forEach(k => {
+    const panel = document.getElementById('panel-' + k);
+    if (!panel || panel.querySelector(':scope > .pg-head')) return;
+    const c = PAGES[k];
+    const head = document.createElement('div');
+    head.className = 'pg-head';
+    head.innerHTML = '<div class="pg-ico"><i class="ti ti-' + c.i + '"></i></div><div><div class="pg-title">' + c.t + '</div><div class="pg-sub">' + c.s + '</div></div><div class="pg-act"></div>';
+    panel.insertBefore(head, panel.firstChild);
+  });
+  // Si la primera tarjeta repite el título de la página, sus botones suben al encabezado y se oculta esa barra
+  ['servicios','citas','bloqueos','promo','ruleta','certificados','clientas','equipo','sucursales','perfil'].forEach(k => {
+    const panel = document.getElementById('panel-' + k);
+    const head = panel && panel.querySelector('.pg-head');
+    if (!head) return;
+    const titulo = (head.querySelector('.pg-title').textContent || '').trim().toLowerCase();
+    const act = head.querySelector('.pg-act');
+    panel.querySelectorAll('.adm-sec-hdr').forEach(h => {
+      const t = h.querySelector('.adm-sec-title');
+      if (!t || t.textContent.trim().toLowerCase() !== titulo) return;
+      h.querySelectorAll('button').forEach(b => act && act.appendChild(b));
+      h.style.display = 'none';
+    });
+  });
+})();
 </script>
 </body>
 </html>
