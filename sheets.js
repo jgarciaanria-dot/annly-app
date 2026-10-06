@@ -973,13 +973,14 @@ async resetPassword(email) {
     }
 
 
-    // Trial de 14 días
+    // Trial de 14 días. Se cuenta con la fecha de Panamá (UTC-5): con la hora UTC, un registro de noche
+    // caía ya en el día siguiente y la prueba salía de 15 días.
 
     const trialVence =
-      new Date();
+      new Date(Date.now() - 5 * 3600000);
 
-    trialVence.setDate(
-      trialVence.getDate() + 14
+    trialVence.setUTCDate(
+      trialVence.getUTCDate() + 14
     );
 
 
