@@ -10135,9 +10135,17 @@ const PALETAS_PERFIL = [
   { nombre:'Esmeralda', primario:'#0F766E', secundario:'#84CC16' },
   { nombre:'Coral', primario:'#E85D4F', secundario:'#F4A261' },
   { nombre:'Marino Elegante', primario:'#1E3A5F', secundario:'#C9A96E' },
-  { nombre:'Carbón & Oro', primario:'#2D2D2D', secundario:'#C9A96E' },
   { nombre:'Rosa Cuarzo', primario:'#D88C9A', secundario:'#6B3F4D' },
-  { nombre:'Lavanda Suave', primario:'#B39DDB', secundario:'#5E3A87' }
+  { nombre:'Lavanda Suave', primario:'#B39DDB', secundario:'#5E3A87' },
+  { nombre:'Orquídea', primario:'#B83280', secundario:'#6B2150' },
+  { nombre:'Salvia', primario:'#5E8B7E', secundario:'#2F4F47' },
+  { nombre:'Peonía', primario:'#E0587A', secundario:'#8E2F4F' },
+  { nombre:'Frambuesa', primario:'#C2185B', secundario:'#7B1040' },
+  { nombre:'Mandarina', primario:'#E67E22', secundario:'#8A4B0F' },
+  { nombre:'Océano', primario:'#06B6D4', secundario:'#075985' },
+  { nombre:'Eléctrico', primario:'#3B5BDB', secundario:'#1B2A6B' },
+  { nombre:'Cielo', primario:'#0EA5E9', secundario:'#0C4A6E' },
+  { nombre:'Celeste', primario:'#7DB9E8', secundario:'#2F5D8A' }
 ];
 let pfPaletaSel = null;
 let pfFooterTextoSel = 'oscuro';
@@ -10206,7 +10214,13 @@ async function loadPerfil(){
   pfFooterTextoSel = b.footer_texto === 'claro' ? 'claro' : 'oscuro';
   renderFooterTextoPerfil();
 
+  // Si el negocio tiene una paleta que ya no está en la lista, se conserva como "Tu paleta actual"
+  for (let k = PALETAS_PERFIL.length - 1; k >= 0; k--) if (PALETAS_PERFIL[k].actual) PALETAS_PERFIL.splice(k, 1);
   pfPaletaSel = PALETAS_PERFIL.findIndex(p => p.primario.toLowerCase() === (b.color_primario||'').toLowerCase());
+  if (pfPaletaSel < 0 && /^#[0-9a-f]{6}$/i.test(b.color_primario||'')){
+    PALETAS_PERFIL.unshift({ nombre:'Tu paleta actual', primario:b.color_primario, secundario:(b.color_secundario||b.color_primario), actual:true });
+    pfPaletaSel = 0;
+  }
   renderPaletaPerfil();
 
   const preview = document.getElementById('pf-logo-preview');
