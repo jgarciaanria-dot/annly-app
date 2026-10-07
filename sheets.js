@@ -1870,6 +1870,9 @@ const Sheets = {
         descuentoCupon:
           c.descuento_cupon,
 
+        descuentoCuponMonto:
+          c.descuento_cupon_monto,
+
         certificadoMonto:
           c.certificado_monto,
 
@@ -2006,6 +2009,9 @@ const Sheets = {
 
         descuento_cupon:
           cita.descuentoCupon,
+
+        // Descuento en dólares del cupón (solo se manda si hay, así la reserva no falla si la columna aún no existe)
+        ...(Number(cita.descuentoCuponMonto) > 0 ? { descuento_cupon_monto: Number(cita.descuentoCuponMonto) } : {}),
 
         precio_final:
           cita.precioFinal,
@@ -2423,7 +2429,7 @@ const Sheets = {
     // Interruptor y regla de la ruleta. Si la base aún no tiene las columnas nuevas, se lee solo el interruptor.
     let { data: feat, error: errFeat } = await sbClient
       .from('business_features')
-      .select('ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple')
+      .select('ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple, ruleta_vigencia_dias')
       .eq('business_id', BUSINESS_ID)
       .maybeSingle();
     if (errFeat) {
@@ -2451,12 +2457,15 @@ const Sheets = {
       hasta: (feat && feat.ruleta_hasta) || '',
       titulo: (feat && feat.ruleta_titulo) || '',
       cumple: (feat && feat.ruleta_cumple) || 'mes',
+      vigencia: (feat && feat.ruleta_vigencia_dias != null) ? feat.ruleta_vigencia_dias : 30,
       premios: (premios || []).map(p => ({
         id: p.id,
         premio: p.nombre,
         probabilidad: p.probabilidad,
         activo: p.activo,
-        stock: p.stock
+        stock: p.stock,
+        tipo: p.tipo || 'otro',
+        valor: p.valor
       }))
     };
   },
@@ -2471,7 +2480,9 @@ const Sheets = {
       nombre: p.premio,
       probabilidad: p.probabilidad,
       activo: !!p.activo,
-      stock: (p.stock === null || p.stock === undefined || p.stock === '') ? null : p.stock
+      stock: (p.stock === null || p.stock === undefined || p.stock === '') ? null : p.stock,
+      tipo: p.tipo || 'otro',
+      valor: (p.tipo && p.tipo !== 'otro') ? p.valor : null
     }));
     const { data, error } = await sbClient.rpc('ruleta_guardar', {
       p_business: BUSINESS_ID, p_activa: !!payload.activa, p_premios: lista,
@@ -2480,7 +2491,8 @@ const Sheets = {
         desde: payload.desde || '',
         hasta: payload.hasta || '',
         titulo: payload.titulo || '',
-        cumple: payload.cumple || 'mes'
+        cumple: payload.cumple || 'mes',
+        vigencia: (payload.vigencia === '' || payload.vigencia == null) ? 30 : payload.vigencia
       }
     });
     if (error) {
@@ -2545,28 +2557,38 @@ const Sheets = {
 
 
 
-  async validarCupon(codigo) {
+  async validarCupon(codigo, telefono) {
     await window.AnnlyReady;
     const cod = (codigo || '').toUpperCase().trim();
     if (!cod) return { valido: false, motivo: 'codigo_vacio' };
-    const { data, error } = await sbClient.rpc('cupon_validar', { p_business: BUSINESS_ID, p_codigo: cod });
+    const args = { p_business: BUSINESS_ID, p_codigo: cod };
+    if (telefono) args.p_telefono = telefono;
+    const { data, error } = await sbClient.rpc('cupon_validar', args);
     if (error || !data) {
       if (error) console.error('Error validando el cupón:', error);
       return { valido: false, motivo: 'codigo_no_encontrado' };
     }
     if (!data.valido) return data;
     const nombre = data.premio || '';
-    const pctMatch = nombre.match(/(\d+)\s*%/);
-    return pctMatch
-      ? { valido: true, tipo: 'porcentaje', valor: parseInt(pctMatch[1]), premio: nombre }
-      : { valido: true, tipo: 'especial', premio: nombre };
+    // La base dice el tipo del premio. Si responde la versión anterior (sin tipo), se deduce del nombre.
+    let tipo = data.tipo, valor = Number(data.valor) || 0;
+    if (!tipo) {
+      const pctMatch = nombre.match(/(\d+(?:\.\d+)?)\s*%/);
+      const monMatch = nombre.match(/\$\s*(\d+(?:\.\d+)?)/);
+      if (pctMatch) { tipo = 'porcentaje'; valor = parseFloat(pctMatch[1]); }
+      else if (monMatch) { tipo = 'monto'; valor = parseFloat(monMatch[1]); }
+      else tipo = 'otro';
+    }
+    return { valido: true, tipo, valor, premio: nombre, venceEn: data.venceEn || null };
   },
 
 
 
-  async marcarCuponCanjeado(codigo) {
+  async marcarCuponCanjeado(codigo, telefono) {
     await window.AnnlyReady;
-    const { error } = await sbClient.rpc('cupon_marcar_usado', { p_business: BUSINESS_ID, p_codigo: codigo || '' });
+    const args = { p_business: BUSINESS_ID, p_codigo: codigo || '' };
+    if (telefono) args.p_telefono = telefono;
+    const { error } = await sbClient.rpc('cupon_marcar_usado', args);
     if (error) console.error('Error marcando el cupón como usado:', error);
     return { ok: !error };
   },
