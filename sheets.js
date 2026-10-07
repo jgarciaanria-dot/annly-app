@@ -2418,116 +2418,90 @@ const Sheets = {
   // =======================================================
 
   async getRuletaConfig() {
-
     await window.AnnlyReady;
 
-
-    const {
-      data: feat
-    } = await sbClient
+    const { data: feat } = await sbClient
       .from('business_features')
       .select('ruleta_premios')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
+      .eq('business_id', BUSINESS_ID)
       .maybeSingle();
 
-
-    const {
-      data: premios
-    } = await sbClient
+    // Los premios quitados de la lista (archivados) no se muestran. Si la base aún no tiene
+    // esa columna, se leen todos para no romper la pantalla.
+    let { data: premios, error } = await sbClient
       .from('roulette_prizes')
       .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
+      .eq('business_id', BUSINESS_ID)
+      .eq('archivado', false)
+      .order('id');
+    if (error) {
+      const r = await sbClient.from('roulette_prizes').select('*').eq('business_id', BUSINESS_ID).order('id');
+      premios = r.data;
+    }
 
     return {
-
-      activa:
-        !!(
-          feat &&
-          feat.ruleta_premios
-        ),
-
-      premios:
-        (premios || [])
-          .map(p => ({
-
-            premio:
-              p.nombre,
-
-            probabilidad:
-              p.probabilidad,
-
-            activo:
-              p.activo,
-
-            stock:
-              p.stock
-
-          }))
-
+      activa: !!(feat && feat.ruleta_premios),
+      premios: (premios || []).map(p => ({
+        id: p.id,
+        premio: p.nombre,
+        probabilidad: p.probabilidad,
+        activo: p.activo,
+        stock: p.stock
+      }))
     };
   },
 
 
+  // Guarda interruptor y premios en una sola operación de la base (todo o nada).
+  // Lanza un error con un mensaje claro si algo falla.
   async guardarRuletaConfig(payload) {
-
     await window.AnnlyReady;
-
-
-    await sbClient
-      .from('business_features')
-      .update({
-        ruleta_premios:
-          payload.activa
-      })
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    await sbClient
-      .from('roulette_prizes')
-      .delete()
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    if (payload.premios?.length) {
-
-      await sbClient
-        .from('roulette_prizes')
-        .insert(
-
-          payload.premios.map(p => ({
-
-            business_id:
-              BUSINESS_ID,
-
-            nombre:
-              p.premio,
-
-            probabilidad:
-              p.probabilidad,
-
-            activo:
-              p.activo,
-
-            stock:
-              p.stock
-
-          }))
-
-        );
+    const lista = (payload.premios || []).map(p => ({
+      id: p.id || null,
+      nombre: p.premio,
+      probabilidad: p.probabilidad,
+      activo: !!p.activo,
+      stock: (p.stock === null || p.stock === undefined || p.stock === '') ? null : p.stock
+    }));
+    const { data, error } = await sbClient.rpc('ruleta_guardar', {
+      p_business: BUSINESS_ID, p_activa: !!payload.activa, p_premios: lista
+    });
+    if (error) {
+      console.error('Error guardando la ruleta:', error);
+      if (/ruleta_guardar/.test(error.message || '') && /function|schema cache/i.test(error.message || '')) {
+        throw new Error('Falta actualizar la base de datos de la ruleta (ruleta.sql). Avísale a soporte.');
+      }
+      throw new Error(error.message || 'No se pudo guardar la ruleta.');
     }
+    return data;
+  },
+
+
+  // Ganadores de la ruleta (el dueño y el Platform Admin pueden verlos)
+  async getGanadoresRuleta() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient
+      .from('roulette_wins')
+      .select('id, nombre, telefono, codigo_cupon, usado, ganado_en, roulette_prizes(nombre)')
+      .eq('business_id', BUSINESS_ID)
+      .order('ganado_en', { ascending: false })
+      .limit(200);
+    if (error) { console.error('Error leyendo los ganadores:', error); throw error; }
+    return (data || []).map(w => ({
+      id: w.id,
+      nombre: w.nombre || '',
+      telefono: w.telefono || '',
+      codigo: w.codigo_cupon || '',
+      usado: !!w.usado,
+      fecha: w.ganado_en,
+      premio: (w.roulette_prizes && w.roulette_prizes.nombre) || ''
+    }));
+  },
+
+  async marcarGanadorRuleta(id, usado) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('roulette_wins').update({ usado: !!usado }).eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) { console.error('Error marcando el premio:', error); throw error; }
   },
 
 
@@ -2543,10 +2517,11 @@ const Sheets = {
 
   async girarRuleta(identificador, nombre, citaId) {
     await window.AnnlyReady;
-    // El premio se sortea en la base (antes lo elegía el navegador)
-    const { data, error } = await sbClient.rpc('ruleta_girar', {
-      p_business: BUSINESS_ID, p_telefono: identificador, p_nombre: nombre
-    });
+    // El premio se sortea en la base. Se manda el id de la cita recién guardada para comprobar la reserva.
+    const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(citaId || ''));
+    const args = { p_business: BUSINESS_ID, p_telefono: identificador, p_nombre: nombre };
+    if (esUuid) args.p_cita = citaId;
+    const { data, error } = await sbClient.rpc('ruleta_girar', args);
     if (error) { console.error('Error girando la ruleta:', error); return { ok: false, motivo: 'error' }; }
     return data || { ok: false, motivo: 'error' };
   },

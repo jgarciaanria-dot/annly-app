@@ -40,6 +40,17 @@ function abrirModalRuleta(identificador, nombre, citaId) {
   resultCard.style.opacity = '0';
   resultCard.style.transform = 'scale(.9)';
 
+  // Logo del negocio en el marcador de la rueda (si no tiene, queda el regalo)
+  const logoBox = document.getElementById('ruletaLogo');
+  const negocio = window.ANNLY_BUSINESS || {};
+  if (logoBox && negocio.logo_url) {
+    const img = document.createElement('img');
+    img.alt = negocio.nombre || '';
+    img.src = negocio.logo_url;
+    logoBox.innerHTML = '';
+    logoBox.appendChild(img);
+  }
+
   modal.classList.add('activo');
   btnGirar.onclick = () => girarRuletaUI(identificador, nombre, citaId);
 }
@@ -85,14 +96,22 @@ async function girarRuletaUI(identificador, nombre, citaId) {
 
   if (!resultado.ok) {
     wheel.style.transform = 'rotate(0deg)';
-    subtitle.textContent = 'No se pudo completar el giro. Intenta más tarde.';
-    btnGirar.style.pointerEvents = 'auto';
+    const motivos = {
+      no_elegible: 'Ya participaste en la ruleta de este negocio. ¡Gracias!',
+      sin_reserva: 'La ruleta es para quienes acaban de reservar una cita.',
+      sin_premios: 'La ruleta no tiene premios disponibles por ahora.'
+    };
+    subtitle.textContent = motivos[resultado.motivo] || 'No se pudo completar el giro. Intenta más tarde.';
+    // Si ya no puede girar, no se vuelve a ofrecer el botón
+    btnGirar.style.pointerEvents = (resultado.motivo === 'error' || !resultado.motivo) ? 'auto' : 'none';
     return;
   }
 
-  const seg = RULETA_SEGMENTOS_ACTIVOS.find(s => s.premio === resultado.premio);
+  // Se busca el segmento por id del premio (el nombre solo sirve de respaldo)
+  const seg = RULETA_SEGMENTOS_ACTIVOS.find(s => resultado.premioId && s.premioId === resultado.premioId)
+           || RULETA_SEGMENTOS_ACTIVOS.find(s => s.premio === resultado.premio);
   if (!seg) {
-    console.error('Premio devuelto por el backend no coincide con ningún segmento activo:', resultado.premio, '— revisa que esté marcado como activo en RuletaConfig');
+    console.error('Premio devuelto por el servidor no coincide con ningún segmento de la rueda:', resultado.premio, '— recarga la página para ver los premios al día');
   }
   const segFinal = seg || RULETA_SEGMENTOS_ACTIVOS[0];
 
@@ -186,10 +205,25 @@ function lanzarConfetti() {
 function mostrarResultadoRuleta(resultado) {
   const resultCard = document.getElementById('ruletaResultCard');
   const resultText = document.getElementById('ruletaResultText');
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-  resultText.textContent = resultado.esPremioReal
-    ? 'Ganaste: ' + resultado.premio + (resultado.codigoCanje ? ' — Código: ' + resultado.codigoCanje : '')
-    : resultado.premio;
+  if (resultado.esPremioReal && resultado.codigoCanje) {
+    resultText.innerHTML =
+      '<span style="display:block;">Ganaste: <strong>' + esc(resultado.premio) + '</strong></span>' +
+      '<span style="display:block;margin-top:8px;font-size:12px;opacity:.85;">Tu código de canje</span>' +
+      '<span id="ruletaCodigo" style="display:inline-block;margin:4px 0 8px;padding:6px 14px;border:1.5px dashed currentColor;border-radius:10px;font-size:20px;font-weight:800;letter-spacing:.12em;">' + esc(resultado.codigoCanje) + '</span>' +
+      '<span style="display:block;font-size:12px;opacity:.85;margin-bottom:8px;">Guárdalo o toma una captura: lo presentas al negocio para canjear tu premio.</span>' +
+      '<button type="button" id="ruletaCopiarBtn" style="border:0;border-radius:20px;padding:7px 16px;font-weight:700;cursor:pointer;background:#241B10;color:#F0DDAE;">Copiar código</button>';
+    const btn = document.getElementById('ruletaCopiarBtn');
+    if (btn) btn.onclick = function () {
+      const cod = resultado.codigoCanje;
+      const listo = () => { btn.textContent = '¡Copiado!'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cod).then(listo, () => { btn.textContent = cod; });
+      else btn.textContent = cod;
+    };
+  } else {
+    resultText.textContent = resultado.premio;
+  }
 
   resultCard.style.opacity = '1';
   resultCard.style.transform = 'scale(1)';

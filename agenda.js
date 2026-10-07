@@ -92,7 +92,8 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
   async function loadRuletaConfig(){
     try {
       const config = await Sheets.getRuletaConfig();
-      const activos = (config.premios || []).filter(p => p.activo);
+      // Solo aparecen en la rueda los premios que de verdad pueden salir: activos, con probabilidad y con stock
+      const activos = (config.premios || []).filter(p => p.activo && Number(p.probabilidad) > 0 && (p.stock === null || p.stock === undefined || p.stock > 0));
       construirRuedaDinamica(activos);
     } catch(e){
       console.error('Error cargando config de ruleta:', e);
@@ -142,7 +143,7 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       ).join('');
       textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
 
-      segmentos.push({ id: segId, premio: premiosActivos[k].premio, angle: midAngle });
+      segmentos.push({ id: segId, premioId: premiosActivos[k].id, premio: premiosActivos[k].premio, angle: midAngle });
     }
 
     const dotsHtml = [
@@ -1764,7 +1765,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
       const check = await Sheets.verificarElegibilidadRuleta(tel);
       if (check && check.elegible) {
         closeOv('ov-form');
-        abrirModalRuleta(tel, nombre, citaId);
+        abrirModalRuleta(tel, nombre, appointmentId);
       }
       // si no es elegible (ya participó o ruleta apagada), el modal de confirmación se queda abierto tal cual
     } catch (err) {
@@ -1828,7 +1829,8 @@ async function finalizarCitaDoble(dayStr, ref){
     abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2,
     abonoPorConfirmar: tieneAbono };
 
-  try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }
+  let citaDobleGuardada=null;
+  try{ citaDobleGuardada = await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }
   catch(e){ console.error('Error guardando la cita doble:', e); errorAlGuardarCita(e, null); return; }
   try{ await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); }catch(e){}
   try{ await Sheets.upsertClienteDesdeReserva(nombre2, tel2, correo2); }catch(e){}
@@ -1859,6 +1861,19 @@ async function finalizarCitaDoble(dayStr, ref){
       <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
       <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
+
+  // Ruleta: gira quien hizo la reserva (la persona principal)
+  setTimeout(async () => {
+    try {
+      const check = await Sheets.verificarElegibilidadRuleta(tel);
+      if (check && check.elegible) {
+        closeOv('ov-form');
+        abrirModalRuleta(tel, nombre, citaDobleGuardada && citaDobleGuardada.idPrincipal);
+      }
+    } catch (err) {
+      console.error('Error verificando elegibilidad de ruleta:', err);
+    }
+  }, 1800);
 }
 
 // Si la cita no se guardó no se muestra éxito ni se mandan correos.
