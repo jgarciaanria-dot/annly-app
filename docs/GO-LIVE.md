@@ -17,7 +17,7 @@ Lista de pendientes. Marcar al terminar cada uno.
 - [ ] Probar el flujo completo de suspensión y reactivación al pagar.
 
 ## Base de datos y funciones (Supabase)
-- [ ] Ejecutar en orden: `bienvenida.sql`, `correo_avisos.sql`, `clientes_inscripcion.sql`, `precios_modulos.sql`, `clientes_pedidos.sql`.
+- [x] Ejecutados y verificados en Supabase: `bienvenida.sql`, `correo_avisos.sql`, `clientes_inscripcion.sql`, `precios_modulos.sql`, `clientes_pedidos.sql` (columnas, funciones y precios en OK; `inscripcion_clientes_activa` en la versión de Tiendas).
 - [x] Desplegadas `enviar-bienvenida`, `consulta-modulo` y la versión nueva de `send-confirmation-email` (Verify JWT apagado). `consulta-modulo` usa el secreto opcional `SOPORTE_EMAIL` (hoy `appannly@gmail.com`).
 - [ ] Revisar por qué `auth.getUser(token)` devolvía 401 en `consulta-modulo` (se resolvió validando la sesión con `is_platform_admin`). Comprobar con una cuenta nueva que `enviar-bienvenida` sí envía la bienvenida; si no, aplicar la misma validación.
 
