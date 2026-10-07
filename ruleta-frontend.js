@@ -56,6 +56,7 @@ function abrirModalRuleta(identificador, nombre, citaId) {
   const ui = (typeof RULETA_UI !== 'undefined' && RULETA_UI) ? RULETA_UI : { modo: 'siempre', titulo: '' };
   if (fest) fest.textContent = ui.titulo || (ui.modo === 'cumple' ? '¡Feliz cumpleaños! Tu regalo te espera' : 'Tu cita tiene premio');
 
+  if (typeof aplicarTemaRuleta === 'function') aplicarTemaRuleta();
   modal.classList.add('activo');
   btnGirar.onclick = () => girarRuletaUI(identificador, nombre, citaId);
 }
@@ -173,14 +174,14 @@ function resaltarSegmentoGanador(segId) {
   const el = document.getElementById(segId);
   if (!el) return;
   el.style.transition = 'filter 0.4s ease';
-  el.style.filter = 'drop-shadow(0 0 10px #F0DDAE) brightness(1.4)';
+  el.style.filter = 'drop-shadow(0 0 10px rgba(255,255,255,.85)) brightness(1.25)';
   setTimeout(() => { el.style.filter = 'none'; }, 1600);
 }
 
 function lanzarConfetti() {
   const layer = document.getElementById('confettiLayer');
   if (!layer) return;
-  const colors = ['#FFD700', '#FFC933', '#FFE9A8', '#F5B942'];
+  const colors = (typeof RULETA_TEMA !== 'undefined' && RULETA_TEMA) ? RULETA_TEMA.confeti : ['#FFD700', '#FFC933', '#FFE9A8', '#F5B942'];
   for (let i = 0; i < 40; i++) {
     const p = document.createElement('div');
     const size = 6 + Math.random() * 6;
@@ -218,7 +219,7 @@ function mostrarResultadoRuleta(resultado) {
       '<span style="display:block;margin-top:8px;font-size:12px;opacity:.85;">Tu código de canje</span>' +
       '<span id="ruletaCodigo" style="display:inline-block;margin:4px 0 8px;padding:6px 14px;border:1.5px dashed currentColor;border-radius:10px;font-size:20px;font-weight:800;letter-spacing:.12em;">' + esc(resultado.codigoCanje) + '</span>' +
       '<span style="display:block;font-size:12px;opacity:.85;margin-bottom:8px;">Guárdalo o toma una captura: lo presentas al negocio para canjear tu premio.</span>' +
-      '<button type="button" id="ruletaCopiarBtn" style="border:0;border-radius:20px;padding:7px 16px;font-weight:700;cursor:pointer;background:#241B10;color:#F0DDAE;">Copiar código</button>';
+      '<button type="button" id="ruletaCopiarBtn" style="border:0;border-radius:20px;padding:7px 16px;font-weight:700;cursor:pointer;background:rgba(0,0,0,.55);color:#fff;">Copiar código</button>';
     const btn = document.getElementById('ruletaCopiarBtn');
     if (btn) btn.onclick = function () {
       const cod = resultado.codigoCanje;

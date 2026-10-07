@@ -56,23 +56,50 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
   let RULETA_SEGMENTOS_ACTIVOS = [];
   let RULETA_UI = { modo: 'siempre', titulo: '' };
 
-  const RULETA_PALETA = [
-    { fill: '#F0D68C', text: '#241B10', muted: '#5C4B22' },
-    { fill: '#C9A24B', text: '#241B10', muted: '#4A3B18' },
-    { fill: '#8A6A24', text: '#F5F1E6', muted: '#D8D4CC' },
-    { fill: '#E3C077', text: '#241B10', muted: '#5C4B22' },
-    { fill: '#B8933D', text: '#241B10', muted: '#4A3B18' },
-    { fill: '#6B5518', text: '#F5F1E6', muted: '#D8D4CC' }
-  ];
+  // ---- Colores de la ruleta: salen de los colores de la marca del negocio ----
+  function rHex(h){ const m = /^#?([0-9a-f]{6})$/i.exec(String(h||'').trim()); if(!m) return null; const n = parseInt(m[1],16); return [n>>16&255, n>>8&255, n&255]; }
+  function rToHex(c){ return '#' + c.map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''); }
+  function rMix(a, b, t){ const A=rHex(a), B=rHex(b); return rToHex(A.map((v,i)=> v + (B[i]-v)*t)); }
+  function rLum(h){ const c=rHex(h).map(v=>{v/=255; return v<=.03928 ? v/12.92 : Math.pow((v+.055)/1.055,2.4);}); return .2126*c[0]+.7152*c[1]+.0722*c[2]; }
+  function rLegible(h, min){ let c=h, i=0; while(rLum(c) < min && i++ < 10) c = rMix(c,'#ffffff',.14); return c; }
+  function rDist(a,b){ const A=rHex(a), B=rHex(b); return Math.sqrt(A.reduce((t,v,i)=>t+Math.pow(v-B[i],2),0)); }
+
+  function ruletaTema(){
+    const neg = window.ANNLY_BUSINESS || {};
+    const p = rHex(neg.color_primario) ? neg.color_primario : '#C9A24B';
+    let s = rHex(neg.color_secundario) ? neg.color_secundario : '#8A6A24';
+    if (rDist(p, s) < 70) s = rMix(p, '#000000', .45);          // colores muy parecidos: se usa una versión más oscura
+    const bg = rMix('#0D0C0A', p, .12);
+    const acc = rLegible(p, .30);                               // color de realce, siempre legible sobre el fondo oscuro
+    const card1 = acc, card2 = rMix(acc, bg, .28);
+    const cardLum = (rLum(card1) + rLum(card2)) / 2;
+    return {
+      bg, acc,
+      titulo: rMix(acc, '#ffffff', .25),
+      muted: rMix(bg, acc, .62),
+      linea: rMix(bg, acc, .30),
+      card1, card2, cardTexto: cardLum > .38 ? '#241D10' : '#FFFFFF',
+      segmentos: [p, rMix(p,'#ffffff',.55), s, rMix(s,'#ffffff',.55)],
+      confeti: [acc, rMix(acc,'#ffffff',.5), p, s]
+    };
+  }
+  let RULETA_TEMA = null;
+  function aplicarTemaRuleta(){
+    RULETA_TEMA = ruletaTema();
+    const m = document.getElementById('ruletaModal'); if(!m) return;
+    const t = RULETA_TEMA;
+    [['--rul-bg',t.bg],['--rul-acc',t.acc],['--rul-title',t.titulo],['--rul-muted',t.muted],['--rul-line',t.linea],
+     ['--rul-card1',t.card1],['--rul-card2',t.card2],['--rul-card-text',t.cardTexto]].forEach(([k,v]) => m.style.setProperty(k, v));
+  }
 
   function ruletaPt(cx, cy, r, angleDeg){
     const rad = angleDeg * Math.PI / 180;
     return { x: (cx + r * Math.sin(rad)).toFixed(1), y: (cy - r * Math.cos(rad)).toFixed(1) };
   }
 
-  function ruletaWordWrap(texto, maxLen){
-    const palabras = texto.split(' ');
-    const lineas = [];
+  function ruletaWordWrap(texto, maxLen, maxLineas){
+    const palabras = String(texto).split(' ');
+    let lineas = [];
     let actual = '';
     palabras.forEach(p => {
       if ((actual + ' ' + p).trim().length > maxLen && actual) {
@@ -83,7 +110,12 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       }
     });
     if (actual) lineas.push(actual);
-    return lineas.slice(0, 2); // máximo 2 líneas para que quepa
+    maxLineas = maxLineas || 2;
+    if (lineas.length > maxLineas) {
+      const resto = lineas.slice(maxLineas - 1).join(' ');
+      lineas = lineas.slice(0, maxLineas - 1).concat([resto.length > maxLen + 2 ? resto.slice(0, maxLen - 1).trim() + '…' : resto]);
+    }
+    return lineas;
   }
 
   function ruletaEscapeHtml(s){
@@ -112,11 +144,12 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       return;
     }
 
+    aplicarTemaRuleta();
+    const T = RULETA_TEMA;
     const cx = 125, cy = 125, R = 118;
     const step = 360 / n;
     const maxLineLen = n <= 4 ? 14 : (n <= 6 ? 11 : 8);
     const fontSize = n <= 4 ? 15 : (n <= 6 ? 12 : 9);
-    const lineHeight = fontSize * 1.15;
 
     let pathsHtml = '';
     let linesHtml = '';
@@ -126,24 +159,31 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
     for (let k = 0; k < n; k++) {
       const p1 = ruletaPt(cx, cy, R, k * step);
       const p2 = ruletaPt(cx, cy, R, (k + 1) * step);
-      const color = RULETA_PALETA[k % RULETA_PALETA.length];
+      let idxColor = k % T.segmentos.length;
+      if (k === n - 1 && n > 1 && idxColor === 0) idxColor = 2;     // el último no repite el color del primero
+      const fillSeg = T.segmentos[idxColor];
+      const color = { fill: fillSeg, text: rLum(fillSeg) > .45 ? '#1B1612' : '#FFFFFF' };
       const segId = 'seg' + k;
 
       pathsHtml += `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
-      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="#C9A24B" stroke-width="0.75" opacity="0.55"/>\n`;
+      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="${T.acc}" stroke-width="0.75" opacity="0.55"/>\n`;
 
       const midAngle = (k + 0.5) * step;
-      const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
+      const nLineasTxt = ruletaWordWrap(premiosActivos[k].premio, maxLineLen, n <= 5 ? 3 : 2).length;
+      const headline = ruletaPt(cx, cy, R * (nLineasTxt >= 3 ? .72 : .62), midAngle);
+      const fontSeg = nLineasTxt >= 3 ? fontSize * .88 : fontSize;
 
       // Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
       const rotDeg = midAngle;
 
-      const lineas = ruletaWordWrap(premiosActivos[k].premio, maxLineLen);
-      const startY = parseFloat(headline.y) - ((lineas.length - 1) * lineHeight) / 2;
+      const maxLineas = n <= 5 ? 3 : 2;
+      const lineas = ruletaWordWrap(premiosActivos[k].premio, maxLineLen, maxLineas);
+      const lh = fontSeg * 1.15;
+      const startY = parseFloat(headline.y) - ((lineas.length - 1) * lh) / 2;
       const tspans = lineas.map((linea, i) =>
-        `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lineHeight}">${ruletaEscapeHtml(linea)}</tspan>`
+        `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lh}">${ruletaEscapeHtml(linea)}</tspan>`
       ).join('');
-      textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
+      textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSeg.toFixed(1)}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
 
       segmentos.push({ id: segId, premioId: premiosActivos[k].id, premio: premiosActivos[k].premio, angle: midAngle });
     }
@@ -152,16 +192,16 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       [125.0,4.0],[162.4,9.9],[196.1,27.1],[222.9,53.9],[240.1,87.6],[246.0,125.0],
       [240.1,162.4],[222.9,196.1],[196.1,222.9],[162.4,240.1],[125.0,246.0],[87.6,240.1],
       [53.9,222.9],[27.1,196.1],[9.9,162.4],[4.0,125.0],[9.9,87.6],[27.1,53.9],[53.9,27.1],[87.6,9.9]
-    ].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="#C9A24B"/>`).join('\n');
+    ].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="${T.acc}"/>`).join('\n');
 
     cont.innerHTML = `<svg id="wheelSvg" viewBox="0 0 250 250" width="250" height="250">
-      <circle cx="125" cy="125" r="122" fill="none" stroke="#C9A24B" stroke-width="1" opacity="0.6"/>
+      <circle cx="125" cy="125" r="122" fill="none" stroke="${T.acc}" stroke-width="1" opacity="0.6"/>
       ${pathsHtml}
-      <circle cx="125" cy="125" r="118" fill="none" stroke="#C9A24B" stroke-width="1.5"/>
+      <circle cx="125" cy="125" r="118" fill="none" stroke="${T.acc}" stroke-width="1.5"/>
       ${linesHtml}
       ${dotsHtml}
       ${textsHtml}
-      <circle cx="125" cy="125" r="34" fill="#0D0C0A" stroke="#C9A24B" stroke-width="2"/>
+      <circle cx="125" cy="125" r="34" fill="${T.bg}" stroke="${T.acc}" stroke-width="2"/>
     </svg>`;
 
     RULETA_SEGMENTOS_ACTIVOS = segmentos;
