@@ -18,7 +18,8 @@ Lista de pendientes. Marcar al terminar cada uno.
 
 ## Base de datos y funciones (Supabase)
 - [ ] Ejecutar en orden: `bienvenida.sql`, `correo_avisos.sql`, `clientes_inscripcion.sql`, `precios_modulos.sql`, `clientes_pedidos.sql`.
-- [ ] Desplegar `enviar-bienvenida`, `consulta-modulo` y la versión nueva de `send-confirmation-email` (Verify JWT apagado).
+- [x] Desplegadas `enviar-bienvenida`, `consulta-modulo` y la versión nueva de `send-confirmation-email` (Verify JWT apagado). `consulta-modulo` usa el secreto opcional `SOPORTE_EMAIL` (hoy `appannly@gmail.com`).
+- [ ] Revisar por qué `auth.getUser(token)` devolvía 401 en `consulta-modulo` (se resolvió validando la sesión con `is_platform_admin`). Comprobar con una cuenta nueva que `enviar-bienvenida` sí envía la bienvenida; si no, aplicar la misma validación.
 
 ## Cuentas
 - [ ] Depurar cuentas de prueba (consulta de cuentas en el SQL Editor).
@@ -26,7 +27,11 @@ Lista de pendientes. Marcar al terminar cada uno.
 
 ## Publicación
 - [ ] Publicar `develop` a `main` en `annly-app` y en `annly-pedidos`.
-- [ ] Soporte: buzón `soporte@annly.app` y número de WhatsApp definitivo en la landing.
+- [ ] Soporte: buzón real para `soporte@annly.app` y número de WhatsApp definitivo en la landing.
+  - Hoy el correo entrante de `annly.app` pasa por ImprovMX (MX y SPF en GoDaddy) y se reenvía a `appannly@gmail.com`. Funciona, pero la IP compartida de ImprovMX estuvo en la lista negra de SpamCop y Gmail rechazó un envío; las respuestas de clientes a `soporte@annly.app` podrían perderse.
+  - Antes de salir, montar un buzón real (Zoho Mail gratis o Google Workspace) y cambiar los MX; entonces se puede quitar el secreto `SOPORTE_EMAIL`.
+  - El envío (Resend) no se ve afectado por el reenvío.
+- Nota: `consulta-modulo` manda un solo correo por negocio, módulo y día; al probar, usar otro negocio o esperar al día siguiente.
 
 ## Después de la salida
 - [ ] Decidir si se comparte la sesión entre annly.app y tienda.annly.app con una cookie en `.annly.app`.
