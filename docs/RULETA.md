@@ -8,6 +8,19 @@ Disponible en **Medium y Ultimate**, con la cuenta activa (no en prueba gratis n
 3. El premio lo sortea la base de datos (`ruleta_girar`), no el navegador. El cliente ve su **código de canje** (`RUL-XXXX`).
 4. El negocio ve a los ganadores en el panel y marca cada premio como **canjeado**.
 
+### Cómo se canjea un premio
+Cada premio tiene un **tipo** que el negocio elige en el panel:
+- **Descuento en %:** al reservar, el cliente escribe su código `RUL-XXXX` y se resta ese porcentaje del precio.
+- **Descuento en $:** se resta esa cantidad del precio (por ejemplo, $10).
+- **Regalo o servicio:** el código queda anotado en la cita y el negocio lo cumple en el local.
+
+Reglas del cupón:
+- Es de **quien lo ganó**: al aplicarlo se compara con el WhatsApp de la reserva. Si es de otra persona, no se acepta.
+- Tiene **vigencia** (30 días por defecto, configurable; 0 = no vence). Se muestra "Válido hasta…" al ganar y al aplicarlo.
+- Se usa **una sola vez**. Si la cita con el cupón se cancela, el cupón vuelve a quedar disponible.
+- Antes de guardar la cita se comprueba otra vez; si dejó de valer, se quita del resumen y se avisa.
+- En el panel, la cita muestra el código y cuánto se descontó.
+
 ### ¿Cuándo aparece? (configurable)
 - **Siempre:** a cada cliente, una sola vez.
 - **En un periodo** (por ejemplo, el mes de aniversario o una promoción): entre dos fechas; cada cliente gira una vez durante ese periodo. Al terminar el periodo la ruleta deja de aparecer; un nuevo periodo vuelve a dar una oportunidad a todos.
@@ -22,7 +35,7 @@ Reglas del sorteo:
 - Al guardar la configuración, los premios se actualizan por id. Un premio que se quita pero ya tiene ganadores se archiva (no se pierde el historial).
 
 ## Piezas
-- Base de datos: `supabase/sql/ruleta.sql` (funciones `ruleta_disponible`, `ruleta_elegible`, `ruleta_girar`, `ruleta_guardar`). Se puede ejecutar más de una vez.
+- Base de datos: `supabase/sql/ruleta.sql` (funciones `ruleta_disponible`, `ruleta_elegible`, `ruleta_girar`, `ruleta_guardar`, `cupon_validar`, `cupon_marcar_usado`). Se puede ejecutar más de una vez.
 - Panel: `admin.html` (pestaña Ruleta) y `sheets.js` (`getRuletaConfig`, `guardarRuletaConfig`, `getGanadoresRuleta`, `marcarGanadorRuleta`).
 - Agenda pública: `agenda.js` (construye la rueda), `ruleta-frontend.js` (giro y pantalla del premio) y el modal de `404.html`.
 
@@ -37,3 +50,5 @@ Reglas del sorteo:
 8. Apagar la ruleta: no debe aparecer al reservar. Con la cuenta en Basic o en prueba: tampoco.
 9. Reserva de cita doble (2 personas): debe aparecer la rueda para quien reservó.
 10. Probar en celular.
+11. Premios con descuento: crear uno en % y otro en $; ganar cada uno y, al reservar otra cita con el mismo WhatsApp, escribir el código. El total debe bajar ese %/$. Con otro WhatsApp debe decir que pertenece a otra persona.
+12. Cancelar la cita que usó un cupón: el cupón debe poder usarse otra vez.

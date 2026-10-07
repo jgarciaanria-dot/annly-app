@@ -11,6 +11,7 @@
 --  · Solo hay ruleta en Medium o Ultimate, con cuenta no suspendida.
 --  · El sorteo devuelve el id del premio y esPremioReal para que la pantalla muestre el código de canje.
 --  · Un premio con probabilidad 0 nunca puede salir.
+--  · Los premios tienen tipo (porcentaje, monto en dólares u otro) y vigencia; el cupón es solo de quien lo ganó y vuelve a quedar disponible si se cancela la cita.
 -- =========================================================
 
 -- 1) Los premios que se quitan de la lista, pero ya tienen ganadores, se archivan en vez de borrarse
@@ -26,6 +27,24 @@ alter table public.business_features
   add column if not exists ruleta_hasta date,
   add column if not exists ruleta_titulo text,
   add column if not exists ruleta_cumple text not null default 'mes';
+
+-- 1c) Tipos de premio y vigencia: el premio ya no se interpreta por su nombre
+--   tipo 'porcentaje' : resta un % del precio de la cita (valor = 10 para 10 %)
+--   tipo 'monto'      : resta una cantidad en dólares del precio (valor = 10 para $10)
+--   tipo 'otro'       : regalo o servicio gratis; se anota en la cita y el negocio lo cumple
+alter table public.roulette_prizes
+  add column if not exists tipo text not null default 'otro',
+  add column if not exists valor numeric;
+alter table public.business_features add column if not exists ruleta_vigencia_dias integer not null default 30;  -- 0 = no vence
+alter table public.appointments add column if not exists descuento_cupon_monto numeric not null default 0;
+
+-- Los premios que ya existen se clasifican por su nombre (una sola vez)
+update public.roulette_prizes
+   set tipo = 'porcentaje', valor = substring(nombre from '(\d+(?:\.\d+)?)\s*%')::numeric
+ where tipo = 'otro' and valor is null and nombre ~ '\d+(\.\d+)?\s*%';
+update public.roulette_prizes
+   set tipo = 'monto', valor = substring(nombre from '\$\s*(\d+(?:\.\d+)?)')::numeric
+ where tipo = 'otro' and valor is null and nombre ~ '\$\s*\d';
 
 -- 2) Teléfono a solo dígitos (para comparar "6815-5141" con "68155141")
 create or replace function public.solo_digitos(t text)
@@ -126,6 +145,8 @@ declare
   v_codigo text;
   v_reserva boolean;
   v_hay boolean := false;
+  v_dias int;
+  v_vence date;
   i int := 0;
 begin
   if char_length(v_tel) < 7 then
@@ -166,7 +187,7 @@ begin
   end if;
 
   v_rand := random() * v_total;
-  for r in select id, nombre, stock, probabilidad as p from roulette_prizes
+  for r in select id, nombre, stock, tipo, valor, probabilidad as p from roulette_prizes
             where business_id = p_business and activo and not archivado
               and coalesce(probabilidad, 0) > 0 and (stock is null or stock > 0)
             order by id for update loop
@@ -193,8 +214,12 @@ begin
     update roulette_prizes set stock = stock - 1 where id = v_elegido.id;
   end if;
 
+  select coalesce(max(ruleta_vigencia_dias), 30) into v_dias from business_features where business_id = p_business;
+  if v_dias > 0 then v_vence := (now() at time zone 'America/Panama')::date + v_dias; end if;
+
   return jsonb_build_object('ok', true, 'esPremioReal', true, 'premioId', v_elegido.id,
-                            'premio', v_elegido.nombre, 'codigoCanje', v_codigo);
+                            'premio', v_elegido.nombre, 'tipo', v_elegido.tipo, 'valor', v_elegido.valor,
+                            'venceEn', v_vence, 'codigoCanje', v_codigo);
 end $$;
 grant execute on function public.ruleta_girar(uuid, text, text, uuid) to anon, authenticated;
 
@@ -220,6 +245,9 @@ declare
   v_hasta date := nullif(p_config->>'hasta', '')::date;
   v_titulo text := nullif(left(btrim(coalesce(p_config->>'titulo', '')), 60), '');
   v_cumple text := coalesce(nullif(p_config->>'cumple', ''), 'mes');
+  v_vigencia int := coalesce(nullif(p_config->>'vigencia', '')::int, 30);
+  v_tipo text;
+  v_valor numeric;
 begin
   if not (public.is_owner(p_business) or public.is_platform_admin()) then
     raise exception 'No tienes permiso para cambiar la ruleta de este negocio.';
@@ -233,6 +261,9 @@ begin
   end if;
   if v_cumple not in ('dia', 'mes') then
     raise exception 'La opción de cumpleaños no es válida.';
+  end if;
+  if v_vigencia < 0 or v_vigencia > 365 then
+    raise exception 'La vigencia del premio debe estar entre 0 y 365 días (0 = no vence).';
   end if;
   if v_modo = 'periodo' then
     if v_desde is null or v_hasta is null then
@@ -259,6 +290,17 @@ begin
     if nullif(e->>'stock', '') is not null and (e->>'stock')::int < 0 then
       raise exception 'El stock no puede ser negativo.';
     end if;
+    v_tipo := coalesce(nullif(e->>'tipo', ''), 'otro');
+    v_valor := nullif(e->>'valor', '')::numeric;
+    if v_tipo not in ('porcentaje', 'monto', 'otro') then
+      raise exception 'El tipo del premio "%" no es válido.', v_nombre;
+    end if;
+    if v_tipo in ('porcentaje', 'monto') and (v_valor is null or v_valor <= 0) then
+      raise exception 'Indica cuánto descuenta el premio "%".', v_nombre;
+    end if;
+    if v_tipo = 'porcentaje' and v_valor > 100 then
+      raise exception 'El porcentaje del premio "%" no puede pasar de 100.', v_nombre;
+    end if;
   end loop;
 
   -- Interruptor de la ruleta
@@ -266,12 +308,12 @@ begin
     update business_features set ruleta_premios = coalesce(p_activa, false), ruleta_modo = v_modo,
            ruleta_desde = case when v_modo = 'periodo' then v_desde end,
            ruleta_hasta = case when v_modo = 'periodo' then v_hasta end,
-           ruleta_titulo = v_titulo, ruleta_cumple = v_cumple
+           ruleta_titulo = v_titulo, ruleta_cumple = v_cumple, ruleta_vigencia_dias = v_vigencia
      where business_id = p_business;
   else
-    insert into business_features (business_id, ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple)
+    insert into business_features (business_id, ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple, ruleta_vigencia_dias)
     values (p_business, coalesce(p_activa, false), v_modo,
-            case when v_modo = 'periodo' then v_desde end, case when v_modo = 'periodo' then v_hasta end, v_titulo, v_cumple);
+            case when v_modo = 'periodo' then v_desde end, case when v_modo = 'periodo' then v_hasta end, v_titulo, v_cumple, v_vigencia);
   end if;
 
   -- Premios: se actualizan por id; los nuevos se crean
@@ -281,12 +323,15 @@ begin
     v_stock := nullif(e->>'stock', '')::int;
     v_activo := coalesce((e->>'activo')::boolean, true);
     v_id := nullif(e->>'id', '')::uuid;
+    v_tipo := coalesce(nullif(e->>'tipo', ''), 'otro');
+    v_valor := case when v_tipo = 'otro' then null else nullif(e->>'valor', '')::numeric end;
     if v_id is not null and exists (select 1 from roulette_prizes where id = v_id and business_id = p_business) then
-      update roulette_prizes set nombre = v_nombre, probabilidad = v_prob, stock = v_stock, activo = v_activo, archivado = false
+      update roulette_prizes set nombre = v_nombre, probabilidad = v_prob, stock = v_stock, activo = v_activo, archivado = false,
+             tipo = v_tipo, valor = v_valor
        where id = v_id;
     else
-      insert into roulette_prizes (business_id, nombre, probabilidad, stock, activo, archivado)
-      values (p_business, v_nombre, v_prob, v_stock, v_activo, false)
+      insert into roulette_prizes (business_id, nombre, probabilidad, stock, activo, archivado, tipo, valor)
+      values (p_business, v_nombre, v_prob, v_stock, v_activo, false, v_tipo, v_valor)
       returning id into v_id;
     end if;
     v_vistos := v_vistos || v_id;
@@ -302,6 +347,76 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 grant execute on function public.ruleta_guardar(uuid, boolean, jsonb, jsonb) to authenticated;
+
+-- 6b) Cupón del premio al reservar: validar y marcar como usado.
+--     Solo lo puede usar quien lo ganó (mismo teléfono), dentro de su vigencia y una sola vez.
+--     Si la cita se cancela, el cupón vuelve a quedar disponible.
+drop function if exists public.cupon_validar(uuid, text);
+create or replace function public.cupon_validar(p_business uuid, p_codigo text, p_telefono text default null)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  w record;
+  p record;
+  v_tel text := public.solo_digitos(p_telefono);
+  v_dias int;
+  v_vence date;
+begin
+  select * into w from roulette_wins where business_id = p_business and codigo_cupon = upper(btrim(p_codigo)) limit 1;
+  if not found then return jsonb_build_object('valido', false, 'motivo', 'codigo_no_encontrado'); end if;
+  if w.usado then return jsonb_build_object('valido', false, 'motivo', 'ya_canjeado'); end if;
+  if char_length(v_tel) >= 7 and public.solo_digitos(w.telefono) <> v_tel then
+    return jsonb_build_object('valido', false, 'motivo', 'otro_cliente');
+  end if;
+  select coalesce(max(ruleta_vigencia_dias), 30) into v_dias from business_features where business_id = p_business;
+  if v_dias > 0 then
+    v_vence := (w.ganado_en at time zone 'America/Panama')::date + v_dias;
+    if (now() at time zone 'America/Panama')::date > v_vence then
+      return jsonb_build_object('valido', false, 'motivo', 'vencido');
+    end if;
+  end if;
+  select nombre, tipo, valor into p from roulette_prizes where id = w.prize_id;
+  return jsonb_build_object('valido', true, 'premio', coalesce(p.nombre, ''), 'tipo', coalesce(p.tipo, 'otro'),
+                            'valor', p.valor, 'venceEn', v_vence);
+end $$;
+grant execute on function public.cupon_validar(uuid, text, text) to anon, authenticated;
+
+drop function if exists public.cupon_marcar_usado(uuid, text);
+create or replace function public.cupon_marcar_usado(p_business uuid, p_codigo text, p_telefono text default null)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_tel text := public.solo_digitos(p_telefono);
+begin
+  update roulette_wins set usado = true
+   where business_id = p_business and codigo_cupon = upper(btrim(p_codigo)) and not usado
+     and (char_length(v_tel) < 7 or public.solo_digitos(telefono) = v_tel);
+  return found;
+end $$;
+grant execute on function public.cupon_marcar_usado(uuid, text, text) to anon, authenticated;
+
+create or replace function public.cupon_liberar_al_cancelar()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.estado = 'cancelada' and old.estado is distinct from 'cancelada' and coalesce(btrim(new.cupon_aplicado), '') <> '' then
+    update roulette_wins set usado = false
+     where business_id = new.business_id and codigo_cupon = upper(btrim(new.cupon_aplicado));
+  end if;
+  return new;
+end $$;
+drop trigger if exists trg_cupon_liberar on public.appointments;
+create trigger trg_cupon_liberar after update of estado on public.appointments
+  for each row execute function public.cupon_liberar_al_cancelar();
 
 -- 7) Limpieza de premios repetidos que dejó el guardado anterior (mismo negocio y mismo nombre).
 --    VISTA PREVIA (no cambia nada): quedan los marcados con rn = 1.

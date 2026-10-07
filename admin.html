@@ -4063,6 +4063,11 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
             </select>
           </div>
           <div class="fg" style="margin:10px 0 0;">
+            <label class="flbl">Vigencia del premio ganado (días)</label>
+            <input class="fi" type="number" min="0" max="365" id="ruleta-vigencia" value="30" placeholder="30">
+            <p style="font-size:11px;color:var(--ink-soft);margin:4px 0 0;">Cuántos días tiene el cliente para usar su cupón. 0 = no vence.</p>
+          </div>
+          <div class="fg" style="margin:10px 0 0;">
             <label class="flbl">Mensaje sobre la rueda (opcional)</label>
             <input class="fi" id="ruleta-titulo" maxlength="60" placeholder="Ej.: ¡Estamos de aniversario! Gira y gana">
           </div>
@@ -5221,7 +5226,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=67"></script>
+<script src="sheets.js?v=68"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -7464,6 +7469,7 @@ async function loadRuleta(){
   document.getElementById('ruleta-hasta').value = RULETA_CONFIG.hasta || '';
   document.getElementById('ruleta-cumple').value = RULETA_CONFIG.cumple || 'mes';
   document.getElementById('ruleta-titulo').value = RULETA_CONFIG.titulo || '';
+  document.getElementById('ruleta-vigencia').value = (RULETA_CONFIG.vigencia == null ? 30 : RULETA_CONFIG.vigencia);
   actualizarModoRuleta();
   renderPremios();
   loadGanadoresRuleta();
@@ -7490,6 +7496,15 @@ function premioRowHtml(p, idx){
         <div class="svc-toggle-thumb"></div>
       </label>
       <button class="btn-ico del" onclick="eliminarPremio(${idx})" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </div>
+    <div class="frow" style="margin-bottom:8px;">
+      <div class="fg" style="margin-bottom:0;"><label class="flbl">Qué da el premio</label>
+        <select class="fi premio-tipo" onchange="cambioTipoPremio(this)">
+          <option value="otro"${(p.tipo||'otro')==='otro'?' selected':''}>Regalo o servicio (lo cumples tú)</option>
+          <option value="porcentaje"${p.tipo==='porcentaje'?' selected':''}>Descuento en %</option>
+          <option value="monto"${p.tipo==='monto'?' selected':''}>Descuento en $</option>
+        </select></div>
+      <div class="fg premio-valor-wrap" style="margin-bottom:0;${(p.tipo==='porcentaje'||p.tipo==='monto')?'':'display:none;'}"><label class="flbl premio-valor-lbl">${p.tipo==='monto'?'Monto ($)':'Porcentaje (%)'}</label><input class="fi premio-valor" type="number" min="0" step="0.01" value="${p.valor==null?'':p.valor}"></div>
     </div>
     <div class="frow">
       <div class="fg" style="margin-bottom:0;"><label class="flbl">Probabilidad</label><input class="fi premio-prob" type="number" min="0" step="1" value="${p.probabilidad||0}"></div>
@@ -7522,10 +7537,19 @@ function actualizarSumaProbabilidades(){
   document.getElementById('ruleta-suma').textContent = suma;
 }
 
+function cambioTipoPremio(sel){
+  const card = sel.closest('.premio-card');
+  const wrap = card.querySelector('.premio-valor-wrap');
+  const lbl = card.querySelector('.premio-valor-lbl');
+  const t = sel.value;
+  wrap.style.display = (t==='porcentaje' || t==='monto') ? '' : 'none';
+  lbl.textContent = t==='monto' ? 'Monto ($)' : 'Porcentaje (%)';
+}
+
 function agregarPremio(){
   // Primero se conserva lo que ya escribiste en los otros premios
   if(document.querySelector('#lista-premios-ruleta .premio-card')) RULETA_CONFIG.premios = recolectarPremiosDesdeDOM();
-  RULETA_CONFIG.premios.push({premio:'Nuevo premio', probabilidad:0, activo:true, stock:null});
+  RULETA_CONFIG.premios.push({premio:'Nuevo premio', probabilidad:0, activo:true, stock:null, tipo:'otro', valor:null});
   renderPremios();
 }
 
@@ -7553,7 +7577,9 @@ function recolectarPremiosDesdeDOM(){
       premio: nombre,
       probabilidad: prob,
       activo: activo,
-      stock: stockRaw === '' ? null : parseInt(stockRaw)
+      stock: stockRaw === '' ? null : parseInt(stockRaw),
+      tipo: row.querySelector('.premio-tipo').value,
+      valor: (function(){ const v = row.querySelector('.premio-valor').value.trim(); return v === '' ? null : parseFloat(v); })()
     });
   });
   return premios;
@@ -7571,6 +7597,10 @@ async function guardarRuleta(){
     alert('Hay dos premios con el nombre "'+repetido+'". Cada premio debe tener un nombre distinto.');
     return;
   }
+  const sinValor = premios.find(p=>(p.tipo==='porcentaje' || p.tipo==='monto') && !(p.valor > 0));
+  if(sinValor){ alert('Indica cuánto descuenta el premio "'+sinValor.premio+'".'); return; }
+  const pasaDe100 = premios.find(p=>p.tipo==='porcentaje' && p.valor > 100);
+  if(pasaDe100){ alert('El porcentaje del premio "'+pasaDe100.premio+'" no puede pasar de 100.'); return; }
   const activa = document.getElementById('ruleta-activa').checked;
   const modo = modoRuletaElegido();
   const desde = document.getElementById('ruleta-desde').value;
@@ -7591,7 +7621,8 @@ async function guardarRuleta(){
       activa, premios, modo,
       desde: modo==='periodo' ? desde : '', hasta: modo==='periodo' ? hasta : '',
       cumple: document.getElementById('ruleta-cumple').value,
-      titulo: document.getElementById('ruleta-titulo').value.trim()
+      titulo: document.getElementById('ruleta-titulo').value.trim(),
+      vigencia: document.getElementById('ruleta-vigencia').value.trim()
     });
     await loadRuleta();   // vuelve a leer: así cada premio queda con su id y se ve lo que de verdad se guardó
     alert('Ruleta actualizada. Los cambios se verán en la rueda la próxima vez que alguien cargue la agenda.');
@@ -12525,12 +12556,13 @@ async function abrirCompletarCita(id){
   const consultar = !!c.precioEsConsultar;
   const base = Number(c.precioTotal) || 0;
   const pct = Number(c.descuentoCupon) || 0;
-  const neto = consultar ? 0 : Math.max(0, base - base*pct/100);
+  const descFijo = Number(c.descuentoCuponMonto) || 0;
+  const neto = consultar ? 0 : Math.max(0, base - base*pct/100 - descFijo);
   COMPLETANDO = { c, consultar, neto, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable'), certExtra:null, certExtraAplicado:0,
     certPorAplicar: !!(c.certificadoCodigo && !(Number(c.certificadoMonto) > 0)) };
   const pistaPrecio = consultar
     ? 'Este servicio era "a consultar": ingresa el precio acordado.'
-    : (pct > 0 ? 'Incluye el descuento del cupón (' + pct + '%). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
+    : ((pct > 0 || descFijo > 0) ? 'Incluye el descuento del cupón (' + (pct > 0 ? pct + '%' : fmtDinero(descFijo)) + '). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
   elFin('fc-body').innerHTML = `
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.7;">
       <strong>${escCat(c.servicio)}</strong><br>
@@ -12938,7 +12970,9 @@ function inicialesCita(n){
 function resumenPagoCita(c){
   const precio = c.precioEsConsultar ? null : (Number(c.precioTotal) || 0);
   const pct = Number(c.descuentoCupon) || 0;
-  const desc = (precio != null && pct > 0) ? Math.round(precio*pct)/100 : 0;
+  const descFijo = Number(c.descuentoCuponMonto) || 0;
+  const descPct = (precio != null && pct > 0) ? Math.round(precio*pct)/100 : 0;
+  const desc = (precio != null) ? Math.min(precio, Math.round((descPct + descFijo)*100)/100) : 0;
   const cert = Number(c.certificadoMonto) || 0;
   const abono = Number(c.abonoMonto) || 0;
   const descontable = c.abonoTipo === 'descontable';
@@ -12949,7 +12983,7 @@ function resumenPagoCita(c){
   const porCobrar = neto != null ? Math.max(0, Math.round((neto - cert - (descontable ? abono : 0))*100)/100) : null;
   // Cobrado de más: lo pagado por adelantado (certificado + abono descontable) supera el servicio
   const excedente = neto != null ? Math.max(0, Math.round((cert + (descontable ? abono : 0) - neto)*100)/100) : 0;
-  return { precio, pct, desc, cert, abono, descontable, neto, porCobrar, excedente };
+  return { precio, pct, descFijo, desc, cert, abono, descontable, neto, porCobrar, excedente };
 }
 
 function metodoAbonoTexto(m){ return m === 'yappy' ? 'Yappy' : (m ? 'Transferencia' : ''); }
@@ -12959,6 +12993,7 @@ function chipsPagoCita(c){
   const chip = (txt, bg, fg) => `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:${bg};color:${fg};">${txt}</span>`;
   const out = [];
   if (r.pct > 0) out.push(chip('Cupón ' + r.pct + '%', '#FBEDEE', '#C2695A'));
+  if (r.descFijo > 0) out.push(chip('Cupón −' + fmtDinero(r.descFijo), '#FBEDEE', '#C2695A'));
   if (r.cert > 0) out.push(chip('Certificado −' + fmtDinero(r.cert), '#E9F6EF', '#159A61'));
   else if (c.certificadoCodigo && !c.completadaEn) out.push(chip('Certificado por aplicar', '#F3EDFB', '#7C4DA0'));
   if (r.abono > 0) out.push(chip('Abono ' + fmtDinero(r.abono) + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
@@ -13197,7 +13232,7 @@ async function abrirDetalleCita(id){
       }
     }
   }
-  if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc), {icon:'ti-discount-2', tone:'neg'});
+  if (r.pct > 0 || r.descFijo > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + (r.pct > 0 ? ' ' + r.pct + '%' : ''), '−' + fmtDinero(r.desc), {icon:'ti-discount-2', tone:'neg'});
   if (r.cert > 0) html += '<div id="cd-cert-fila">' + fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert), {icon:'ti-gift', tone:'neg'}) + '</div>' +
     '<div id="cd-cert-saldo"></div>';
   // Certificado validado al reservar pero todavía sin descontar (precio no fijo)

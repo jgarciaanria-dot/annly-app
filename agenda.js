@@ -811,7 +811,14 @@ let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
 let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={},horariosEmpleadosCache={};
 // Cita doble: un segundo profesional, para la 2da persona de la reserva
 let empleadoSeleccionado2=null,empleadoHorarioCache2=null;
-let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
+let cuponAplicado=null,cuponDescuentoPct=0,cuponDescuentoMonto=0,cuponPremioTexto='';
+
+// Descuento del cupón sobre un precio: primero el porcentaje y luego el monto fijo, sin pasar del precio
+function descuentoDeCupon(precio){
+  const dPct = cuponDescuentoPct>0 ? precio*(cuponDescuentoPct/100) : 0;
+  const dFijo = cuponDescuentoMonto>0 ? Math.min(cuponDescuentoMonto, Math.max(0,precio-dPct)) : 0;
+  return Math.round((dPct+dFijo)*100)/100;
+}
 let certAplicado=null; // {id, codigo, saldoDisponible}
 let pagoRender=null, abonoMostrado=null;
 
@@ -834,7 +841,7 @@ function calcularMontos(){
   const precio=curSvc.price>0?curSvc.price:0;
   const esConsultar=curSvc.price<=0;
   const noFijo=precioNoFijo(curSvc);
-  const descuentoMonto=(!esConsultar&&cuponDescuentoPct>0)?precio*(cuponDescuentoPct/100):0;
+  const descuentoMonto=!esConsultar?descuentoDeCupon(precio):0;
   const precioTrasCupon=Math.max(0,precio-descuentoMonto);
   const certPorAplicar=!!certAplicado && noFijo;
   const montoCert=(certAplicado && !noFijo)?Math.min(certAplicado.saldoDisponible,precioTrasCupon):0;
@@ -1331,7 +1338,7 @@ function chMo(d){
 
 function goForm(){
   closeOv('ov-cal');
-  cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+  cuponAplicado=null; cuponDescuentoPct=0; cuponDescuentoMonto=0; cuponPremioTexto='';
   certAplicado=null;
   const dayStr=`${selectedDay} de ${MESES[calM]} ${calY}`;
   currentDayStr=dayStr;
@@ -1532,26 +1539,35 @@ async function aplicarCupon(){
   const input=document.getElementById('fcupon');
   const msgEl=document.getElementById('cuponMsg');
   const codigo=input.value.trim();
-  if(!codigo){ msgEl.textContent=''; cuponAplicado=null; cuponDescuentoPct=0; actualizarPagoPorCert(); return; }
+  const reset=()=>{ cuponAplicado=null; cuponDescuentoPct=0; cuponDescuentoMonto=0; cuponPremioTexto=''; };
+  if(!codigo){ msgEl.textContent=''; reset(); actualizarPagoPorCert(); return; }
+  // El cupón es de quien ganó el premio: se comprueba con el WhatsApp de la reserva
+  const tel=(document.getElementById('fp')||{}).value||'';
+  if(tel.replace(/\D/g,'').length<7){
+    reset(); msgEl.style.color='#c0392b';
+    msgEl.textContent='Escribe primero tu WhatsApp (el mismo con el que giraste la ruleta).';
+    actualizarPagoPorCert(); return;
+  }
   msgEl.style.color='#999';
   msgEl.textContent='Verificando...';
-  const res=await Sheets.validarCupon(codigo);
+  const res=await Sheets.validarCupon(codigo, tel);
+  reset();
+  const hasta=res.venceEn?` Válido hasta el ${res.venceEn.split('-').reverse().join('/')}.`:'';
   if(res.valido && res.tipo==='porcentaje'){
-    cuponAplicado=codigo.toUpperCase();
-    cuponDescuentoPct=res.valor;
-    cuponPremioTexto=res.premio;
+    cuponAplicado=codigo.toUpperCase(); cuponDescuentoPct=res.valor; cuponPremioTexto=res.premio;
     msgEl.style.color='#3a7a3a';
-    msgEl.textContent=`✓ Cupón válido: ${res.valor}% de descuento.`;
-  } else if(res.valido && res.tipo==='especial'){
-    cuponAplicado=codigo.toUpperCase();
-    cuponDescuentoPct=0;
-    cuponPremioTexto=res.premio;
+    msgEl.textContent=`✓ Cupón válido: ${res.valor}% de descuento.${hasta}`;
+  } else if(res.valido && res.tipo==='monto'){
+    cuponAplicado=codigo.toUpperCase(); cuponDescuentoMonto=res.valor; cuponPremioTexto=res.premio;
     msgEl.style.color='#3a7a3a';
-    msgEl.textContent=`✓ Cupón válido: ${res.premio}. Se coordinará el detalle contigo.`;
+    msgEl.textContent=`✓ Cupón válido: $${Number(res.valor).toFixed(2)} de descuento.${hasta}`;
+  } else if(res.valido){
+    cuponAplicado=codigo.toUpperCase(); cuponPremioTexto=res.premio;
+    msgEl.style.color='#3a7a3a';
+    msgEl.textContent=`✓ Cupón válido: ${res.premio}. Lo recibirás cuando vengas a tu cita.${hasta}`;
   } else {
-    cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
     msgEl.style.color='#c0392b';
-    const motivos={ya_canjeado:'Este cupón ya fue utilizado.',codigo_no_encontrado:'Cupón no válido.',codigo_vacio:'Ingresa un código.'};
+    const motivos={ya_canjeado:'Este cupón ya fue utilizado.',codigo_no_encontrado:'Cupón no válido.',codigo_vacio:'Ingresa un código.',otro_cliente:'Este cupón pertenece a otra persona. Usa el WhatsApp con el que giraste la ruleta.',vencido:'Este cupón ya venció.'};
     msgEl.textContent=motivos[res.motivo]||'Cupón no válido.';
   }
   actualizarPagoPorCert();
@@ -1727,7 +1743,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
   const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
   const citaId = 'cita-' + Date.now();
 
-  const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
+  const descuentoMonto = !esConsultar ? descuentoDeCupon(precio) : 0;
   const precioTrasCupon = Math.max(0, precio - descuentoMonto);
   // Precio fijo: el certificado se descuenta ahora. Precio no fijo ("desde…", "consultar"):
   // solo se valida, y el negocio lo aplica al completar la cita con el precio final. Así, si el
@@ -1743,10 +1759,24 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
     comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
     metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
     abonoPorConfirmar: tieneAbono && !pagoVerificado,
-    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
+    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, descuentoCuponMonto:(!esConsultar && cuponDescuentoMonto>0)?Math.round((descuentoMonto-(cuponDescuentoPct>0?precio*(cuponDescuentoPct/100):0))*100)/100:0, precioFinal:precioFinal,
     certificadoCodigo: (montoCertAplicado>0 || certPorAplicar) ? certAplicado.codigo : null,
     certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
     certificadoSaldoRestante: montoCertAplicado>0 ? (certAplicado.unSoloUso ? 0 : Math.max(0, certAplicado.saldoDisponible - montoCertAplicado)) : null};
+  // El cupón se vuelve a comprobar con los datos finales (teléfono y fecha): es de quien lo ganó y solo vale una vez
+  if(cuponAplicado && !pagoVerificado){
+    let chk={valido:true};
+    try{ chk=await Sheets.validarCupon(cuponAplicado, tel); }catch(e){ console.error(e); }
+    if(!chk.valido){
+      const motivos={ya_canjeado:'ya fue utilizado',otro_cliente:'pertenece a otra persona (usa el WhatsApp con el que giraste la ruleta)',vencido:'ya venció',codigo_no_encontrado:'no es válido'};
+      cuponAplicado=null; cuponDescuentoPct=0; cuponDescuentoMonto=0; cuponPremioTexto='';
+      const el=document.getElementById('fcupon'); if(el) el.value='';
+      const cm=document.getElementById('cuponMsg'); if(cm) cm.textContent='';
+      try{ actualizarPagoPorCert(); }catch(e){}
+      errorAlGuardarCita(null, null, 'Tu cupón '+(motivos[chk.motivo]||'ya no es válido')+'. Lo quitamos del resumen: revisa el total y confirma de nuevo.');
+      return;
+    }
+  }
   let appointmentId=null;
   try{ appointmentId=await Sheets.guardarCita(cita); }
   catch(e){
@@ -1755,7 +1785,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
     return;
   }
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
-  if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
+  if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado, tel);}catch(e){console.error(e);} }
   let certFallo=false;
   if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e); certFallo=true;} }
   const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
@@ -1768,8 +1798,8 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
     : '$'+(tipoAbono==='descontable' ? Math.max(0, precioFinal - montoAbono).toFixed(2) : precioFinal.toFixed(2));
   const abonoLine=tieneAbono?`<strong>Abono ${pagoVerificado ? 'pagado' : 'enviado (por validar)'}:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`
     :(abonoExonerado?`<strong>Abono:</strong> No requerido (cubierto por tu certificado)<br>`:'');
-  const cuponLine = (cuponAplicado && cuponDescuentoPct>0 && !esConsultar)
-    ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
+  const cuponLine = (cuponAplicado && descuentoMonto>0 && !esConsultar)
+    ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">${cuponDescuentoPct>0&&cuponDescuentoMonto<=0?`-${cuponDescuentoPct}% `:''}(-$${descuentoMonto.toFixed(2)})</span><br>`
     : (cuponAplicado ? `<strong>Cupón aplicado:</strong> ${cuponPremioTexto}<br>` : '');
   const certLine = montoCertAplicado>0
     ? `<strong>Certificado aplicado (${certAplicado.codigo}):</strong> <span style="color:#4CAF50;font-weight:600;">-$${montoCertAplicado.toFixed(2)}</span><br>${certFallo
@@ -1924,13 +1954,15 @@ async function finalizarCitaDoble(dayStr, ref){
 // Si la cita no se guardó no se muestra éxito ni se mandan correos.
 // err: el error de la base. ordenPagada: orderId de Yappy cuando el cliente YA pagó
 // (no se le pide reintentar: se le da el número para que el negocio lo agende).
-function errorAlGuardarCita(err, ordenPagada){
+function errorAlGuardarCita(err, ordenPagada, mensajePropio){
   const ocupado = /HORARIO_OCUPADO/.test((err && (err.message || err.details)) || '');
   const btnC=document.getElementById('btnConfirmar');
   const b=window.ANNLY_BUSINESS||{};
   const wa=b.whatsapp?` por WhatsApp al <a href="https://wa.me/${b.whatsapp}" target="_blank" rel="noopener">${b.whatsapp}</a>`:'';
   let msg;
-  if(ordenPagada){
+  if(mensajePropio){
+    msg = mensajePropio;
+  } else if(ordenPagada){
     msg = `Recibimos tu pago (orden <strong>${ordenPagada}</strong>), pero ${ocupado ? 'ese horario se acaba de ocupar' : 'no pudimos guardar tu cita'}. Escríbenos${wa} con ese número y te agendamos de inmediato.`;
   } else if(ocupado){
     msg = 'Alguien acaba de reservar ese horario. Elige otra hora, tus datos se mantienen.';
