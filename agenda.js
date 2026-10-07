@@ -285,9 +285,9 @@ function annlyTexturaBanner(p, s){
   while (rLum(deep) > .16 && i++ < 14) deep = rMix(deep, '#000000', .12);   // el fondo del banner siempre aguanta texto blanco
   // Difusión cálida: de un tono profundo suavizado a un brillo cremoso, sin choques bruscos de claro y oscuro
   const calido = '#FFD9B0';
-  const stops = [rMix(deep, p, .30), rMix(deep, p, .62), p, rMix(p, calido, .30), rMix(p, calido, .52)];
+  const stops = [rMix(deep, p, .55), rMix(deep, p, .78), p, rMix(p, calido, .28), rMix(p, calido, .48)];
   const t = ch => stops.map(c => (rHex(c)[ch]/255).toFixed(3)).join(' ');
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="110" viewBox="0 0 400 110" preserveAspectRatio="none"><defs><filter id="t" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.0032 0.0085" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="6" result="b"/><feColorMatrix in="b" type="matrix" values="3.1 0 0 0 -0.98 3.1 0 0 0 -0.98 3.1 0 0 0 -0.98 0 0 0 0 1" result="g"/><feComponentTransfer in="g"><feFuncR type="table" tableValues="' + t(0) + '"/><feFuncG type="table" tableValues="' + t(1) + '"/><feFuncB type="table" tableValues="' + t(2) + '"/></feComponentTransfer></filter></defs><rect width="400" height="110" filter="url(#t)"/></svg>';
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="110" viewBox="0 0 400 110" preserveAspectRatio="none"><defs><filter id="t" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.0032 0.0085" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="8" result="b"/><feColorMatrix in="b" type="matrix" values="2.3 0 0 0 -0.65 2.3 0 0 0 -0.65 2.3 0 0 0 -0.65 0 0 0 0 1" result="g"/><feComponentTransfer in="g"><feFuncR type="table" tableValues="' + t(0) + '"/><feFuncG type="table" tableValues="' + t(1) + '"/><feFuncB type="table" tableValues="' + t(2) + '"/></feComponentTransfer></filter></defs><rect width="400" height="110" filter="url(#t)"/></svg>';
   return { url: 'data:image/svg+xml,' + encodeURIComponent(svg), deep };
 }
 
@@ -313,7 +313,7 @@ window.AnnlyReady.then(() => {
         rs.setProperty('--banner-tex', 'url("' + tx.url + '")');
         // Velo para que el texto se lea: del mismo color de la marca (no gris), más oscuro a la izquierda
         const d = rHex(rMix(rMix(tx.deep, b.color_primario, .35), '#000000', .28));
-        rs.setProperty('--banner-shade', 'rgba(' + d.join(',') + ',.55)');
+        rs.setProperty('--banner-shade', 'rgba(' + d.join(',') + ',.62)');
       }
     }
     if (b.color_secundario) {
