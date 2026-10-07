@@ -19,10 +19,10 @@ Lista de pendientes. Marcar al terminar cada uno.
 ## Base de datos y funciones (Supabase)
 - [x] Ejecutados y verificados en Supabase: `bienvenida.sql`, `correo_avisos.sql`, `clientes_inscripcion.sql`, `precios_modulos.sql`, `clientes_pedidos.sql` (columnas, funciones y precios en OK; `inscripcion_clientes_activa` en la versión de Tiendas).
 - [x] Desplegadas `enviar-bienvenida`, `consulta-modulo` y la versión nueva de `send-confirmation-email` (Verify JWT apagado). `consulta-modulo` usa el secreto opcional `SOPORTE_EMAIL` (hoy `appannly@gmail.com`).
-- [ ] Revisar por qué `auth.getUser(token)` devolvía 401 en `consulta-modulo` (se resolvió validando la sesión con `is_platform_admin`). Comprobar con una cuenta nueva que `enviar-bienvenida` sí envía la bienvenida; si no, aplicar la misma validación.
+- [x] Correo de bienvenida verificado con una cuenta nueva (7 oct): `enviar-bienvenida` envía bien. En `consulta-modulo` la sesión se valida con `is_platform_admin`, porque `auth.getUser(token)` daba 401 allí.
 
 ## Cuentas
-- [ ] Depurar cuentas de prueba (consulta de cuentas en el SQL Editor).
+- [x] Cuentas de prueba depuradas (7 oct): quedan Angel´s Details, Salud y Belleza Spa y Cliente-Demo (`demo`, sin dueño; la app lo usa como respaldo cuando la página se abre sin enlace de negocio, no borrarlo).
 - [ ] Poner en cortesía las que se quedan sin cobro (por ejemplo Salud y Belleza Spa, usada por el QA).
 
 ## Publicación
