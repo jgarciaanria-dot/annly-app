@@ -36,7 +36,7 @@
 .svc-resumen{border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;}
 .svc-resumen-name{font-size:15px;font-weight:700;color:#fff;font-family:var(--font-heading);}
 .svc-resumen-meta{font-size:11.5px;color:rgba(255,255,255,.82);margin-top:3px;}
-.stepn{background:var(--gold-dark);color:#fff;font-weight:600;}
+.stepn{background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-weight:600;}
 .card-arrow{background:var(--gold-dark);}
 .incl-grid{grid-template-columns:1fr 1fr;gap:10px 16px;}
 .incl-item{align-items:flex-start;line-height:1.45;}
@@ -284,11 +284,14 @@ window.AnnlyReady.then(() => {
       document.documentElement.style.setProperty('--gold', b.color_primario);
       const rgb = hexToRgb(b.color_primario);
       if (rgb) document.documentElement.style.setProperty('--gold-rgb', rgb);
+      // Texto que va sobre el color de la marca: blanco si el color es oscuro, oscuro si es claro
+      if (rHex(b.color_primario)) document.documentElement.style.setProperty('--on-gold', rLum(b.color_primario) > .30 ? '#201B2B' : '#FFFFFF');
     }
     if (b.color_secundario) {
       document.documentElement.style.setProperty('--gold-dark', b.color_secundario);
       const rgbDark = hexToRgb(b.color_secundario);
       if (rgbDark) document.documentElement.style.setProperty('--gold-dark-rgb', rgbDark);
+      if (rHex(b.color_secundario)) document.documentElement.style.setProperty('--on-gold-dark', rLum(b.color_secundario) > .30 ? '#201B2B' : '#FFFFFF');
     }
     const h1 = document.getElementById('hdr-nombre');
     if (h1 && b.nombre) h1.textContent = b.nombre.toUpperCase();
@@ -521,7 +524,7 @@ function aplicarSucursalSitio(suc, conSelector){
 .suc-card-lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-dark);opacity:.85;}
 .suc-card-name{font-family:var(--font-heading);font-size:17px;font-weight:700;color:#1a1816;line-height:1.2;}
 .suc-card-dir{font-size:12px;color:rgba(30,26,22,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.suc-card-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--gold-dark);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s;}
+.suc-card-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s;}
 .suc-card-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
 .suc-card-btn i{font-size:15px;}
 body.modo-oscuro .suc-card{background:rgba(255,255,255,.05);border-color:rgba(var(--gold-rgb),.35);}
@@ -737,7 +740,7 @@ async function enviarCompraCertificado(){
         <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
         <div class="s-title">¡Compra recibida!</div>
         <div class="s-sub">Estamos confirmando tu pago — en cuanto quede validado te llegará el certificado por correo.</div>
-        <button class="btn-main" style="background:var(--gold-dark);color:#fff;" onclick="closeOv('ov-comprar-certificado')">Listo</button>
+        <button class="btn-main" style="background:var(--gold-dark);color:var(--on-gold-dark,#fff);" onclick="closeOv('ov-comprar-certificado')">Listo</button>
       </div>`;
   } catch(e) {
     console.error('Error comprando certificado:', e);
@@ -1436,7 +1439,7 @@ function goForm(){
       <label class="flbl">¿Tienes un cupón de descuento?</label>
       <div style="display:flex;gap:8px;">
         <input class="fi" id="fcupon" placeholder="Ej: RUL-4F2A" style="flex:1;text-transform:uppercase;">
-        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:var(--gold-dark);color:var(--on-gold-dark,#fff);border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="cuponMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>
@@ -1444,7 +1447,7 @@ function goForm(){
       <label class="flbl">¿Tienes un certificado de regalo?</label>
       <div style="display:flex;gap:8px;">
         <input class="fi" id="fcert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;">
-        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:var(--gold-dark);color:var(--on-gold-dark,#fff);border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>`}
@@ -1799,7 +1802,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
         ${totalLine}
       </div>
       ${abonoExonerado?'':'<p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>'}
-      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+      <button class="btn-main" style="background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
 
   setTimeout(async () => {
@@ -1901,7 +1904,7 @@ async function finalizarCitaDoble(dayStr, ref){
         <strong>Total del combo:</strong> <span style="color:#D95F2B;font-weight:600;">$${precioTotal.toFixed(2)}</span><br>
       </div>
       <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
-      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+      <button class="btn-main" style="background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
 
   // Ruleta: gira quien hizo la reserva (la persona principal)
