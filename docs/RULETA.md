@@ -3,10 +3,16 @@
 Disponible en **Medium y Ultimate**, con la cuenta activa (no en prueba gratis ni suspendida).
 
 ## Cómo funciona
-1. El negocio, en el panel (pestaña **Ruleta**), activa la ruleta y configura sus premios: nombre, probabilidad (pesos relativos) y stock (vacío = ilimitado).
-2. Cuando alguien reserva una cita en la agenda pública, aparece la rueda. Cada cliente (por teléfono) puede girar **una sola vez**.
+1. El negocio, en el panel (pestaña **Ruleta**), activa la ruleta, elige **cuándo aparece** y configura sus premios: nombre, probabilidad (pesos relativos) y stock (vacío = ilimitado).
+2. Cuando alguien reserva una cita en la agenda pública, aparece la rueda si cumple la regla elegida.
 3. El premio lo sortea la base de datos (`ruleta_girar`), no el navegador. El cliente ve su **código de canje** (`RUL-XXXX`).
 4. El negocio ve a los ganadores en el panel y marca cada premio como **canjeado**.
+
+### ¿Cuándo aparece? (configurable)
+- **Siempre:** a cada cliente, una sola vez.
+- **En un periodo** (por ejemplo, el mes de aniversario o una promoción): entre dos fechas; cada cliente gira una vez durante ese periodo. Al terminar el periodo la ruleta deja de aparecer; un nuevo periodo vuelve a dar una oportunidad a todos.
+- **Cuando el cliente está de cumpleaños:** solo gira quien ya está en la lista de clientes del negocio con su fecha de cumpleaños (por ejemplo, inscrito en el programa de clientes), durante todo su mes de cumpleaños o solo el día; una vez al año. El cliente se reconoce por su teléfono.
+- En cualquiera de las tres se puede escribir un **mensaje sobre la rueda** (por ejemplo, "¡Estamos de aniversario! Gira y gana").
 
 Reglas del sorteo:
 - Solo participan los premios activos, con probabilidad mayor que 0 y con stock.
@@ -27,6 +33,7 @@ Reglas del sorteo:
 4. Agenda pública: reservar una cita. Debe aparecer la rueda; girar. Debe mostrar el premio y el **código de canje** con botón para copiarlo.
 5. Panel → Ganadores recientes: debe verse el ganador con su código. Marcar como canjeado y deshacer.
 6. Volver a reservar con el mismo teléfono (también escrito de otra forma, por ejemplo `6815-5141` y `68155141`): no debe dejar girar otra vez.
-7. Apagar la ruleta: no debe aparecer al reservar. Con la cuenta en Basic o en prueba: tampoco.
-8. Reserva de cita doble (2 personas): debe aparecer la rueda para quien reservó.
-9. Probar en celular.
+7. Probar los modos: **En un periodo** (fechas que incluyan hoy: aparece; fechas pasadas o futuras: no aparece) y **Cumpleaños** (con un cliente de la lista cuyo cumpleaños sea este mes: aparece; con otro: no). Revisar que el mensaje sobre la rueda se vea.
+8. Apagar la ruleta: no debe aparecer al reservar. Con la cuenta en Basic o en prueba: tampoco.
+9. Reserva de cita doble (2 personas): debe aparecer la rueda para quien reservó.
+10. Probar en celular.

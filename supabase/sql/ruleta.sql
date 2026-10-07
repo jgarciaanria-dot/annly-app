@@ -7,6 +7,7 @@
 --  · Guardar los premios ya no borra y vuelve a crear todo (eso duplicaba premios cuando ya había ganadores).
 --  · El sorteo normaliza el teléfono (solo dígitos), garantiza un giro por cliente (también si dos giros llegan a la vez)
 --    y exige una reserva real (la cita que se acaba de guardar).
+--  · La ruleta puede aparecer siempre, solo en un periodo (aniversario, promoción) o cuando el cliente está de cumpleaños.
 --  · Solo hay ruleta en Medium o Ultimate, con cuenta no suspendida.
 --  · El sorteo devuelve el id del premio y esPremioReal para que la pantalla muestre el código de canje.
 --  · Un premio con probabilidad 0 nunca puede salir.
@@ -14,6 +15,17 @@
 
 -- 1) Los premios que se quitan de la lista, pero ya tienen ganadores, se archivan en vez de borrarse
 alter table public.roulette_prizes add column if not exists archivado boolean not null default false;
+
+-- 1b) ¿Cuándo aparece la ruleta? (configurable desde el panel)
+--   siempre : a cada cliente, una sola vez
+--   periodo : entre dos fechas (promoción, aniversario...); una vez por cliente durante el periodo
+--   cumple  : a clientes registrados que están de cumpleaños (el día o todo el mes); una vez al año
+alter table public.business_features
+  add column if not exists ruleta_modo text not null default 'siempre',
+  add column if not exists ruleta_desde date,
+  add column if not exists ruleta_hasta date,
+  add column if not exists ruleta_titulo text,
+  add column if not exists ruleta_cumple text not null default 'mes';
 
 -- 2) Teléfono a solo dígitos (para comparar "6815-5141" con "68155141")
 create or replace function public.solo_digitos(t text)
@@ -45,27 +57,60 @@ as $$
 $$;
 grant execute on function public.ruleta_disponible(uuid) to anon, authenticated;
 
--- 4) ¿Esta persona puede girar? (ruleta disponible y todavía no ha ganado nada)
+-- 4) ¿Esta persona puede girar ahora? (ruleta disponible, dentro de la regla elegida y sin haber girado ya en ese periodo)
 create or replace function public.ruleta_elegible(p_business uuid, p_telefono text)
 returns boolean
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
-  select public.ruleta_disponible(p_business)
-     and char_length(public.solo_digitos(p_telefono)) >= 7
-     and not exists (
-       select 1 from roulette_wins w
-       where w.business_id = p_business
-         and public.solo_digitos(w.telefono) = public.solo_digitos(p_telefono)
-     );
-$$;
+declare
+  v_tel text := public.solo_digitos(p_telefono);
+  v_hoy date := (now() at time zone 'America/Panama')::date;
+  f record;
+begin
+  if char_length(v_tel) < 7 or not public.ruleta_disponible(p_business) then
+    return false;
+  end if;
+  select ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_cumple into f
+    from business_features where business_id = p_business order by ruleta_premios desc nulls last limit 1;
+
+  if coalesce(f.ruleta_modo, 'siempre') = 'periodo' then
+    if f.ruleta_desde is null or f.ruleta_hasta is null or v_hoy < f.ruleta_desde or v_hoy > f.ruleta_hasta then
+      return false;
+    end if;
+    return not exists (
+      select 1 from roulette_wins w
+      where w.business_id = p_business and public.solo_digitos(w.telefono) = v_tel
+        and (w.ganado_en at time zone 'America/Panama')::date between f.ruleta_desde and f.ruleta_hasta);
+
+  elsif f.ruleta_modo = 'cumple' then
+    if not exists (
+      select 1 from clients c
+      where c.business_id = p_business and public.solo_digitos(c.telefono) = v_tel
+        and c.cumple_mes = extract(month from v_hoy)
+        and (coalesce(f.ruleta_cumple, 'mes') = 'mes' or c.cumple_dia = extract(day from v_hoy))
+    ) then
+      return false;
+    end if;
+    return not exists (
+      select 1 from roulette_wins w
+      where w.business_id = p_business and public.solo_digitos(w.telefono) = v_tel
+        and extract(year from (w.ganado_en at time zone 'America/Panama')) = extract(year from v_hoy));
+  end if;
+
+  -- siempre: una sola vez por cliente
+  return not exists (
+    select 1 from roulette_wins w
+    where w.business_id = p_business and public.solo_digitos(w.telefono) = v_tel);
+end $$;
 grant execute on function public.ruleta_elegible(uuid, text) to anon, authenticated;
 
 -- 5) El giro. p_cita = id de la cita recién guardada (la agenda lo envía). Sin p_cita se acepta cualquier
 --    reserva del teléfono, solo para no romper páginas que aún tengan el código viejo en memoria.
 drop function if exists public.ruleta_girar(uuid, text, text);
+drop function if exists public.ruleta_guardar(uuid, boolean, jsonb);
 create or replace function public.ruleta_girar(p_business uuid, p_telefono text, p_nombre text, p_cita uuid default null)
 returns jsonb
 language plpgsql
@@ -155,7 +200,7 @@ grant execute on function public.ruleta_girar(uuid, text, text, uuid) to anon, a
 
 -- 6) Guardar la configuración desde el panel: todo o nada. Lo puede usar el dueño o el Platform Admin.
 --    p_premios = [{ "id": uuid|null, "nombre": text, "probabilidad": numero, "activo": bool, "stock": int|null }, ...]
-create or replace function public.ruleta_guardar(p_business uuid, p_activa boolean, p_premios jsonb)
+create or replace function public.ruleta_guardar(p_business uuid, p_activa boolean, p_premios jsonb, p_config jsonb default null)
 returns jsonb
 language plpgsql
 security definer
@@ -170,12 +215,32 @@ declare
   v_activo boolean;
   v_vistos uuid[] := '{}';
   v_nombres text[] := '{}';
+  v_modo text := coalesce(nullif(p_config->>'modo', ''), 'siempre');
+  v_desde date := nullif(p_config->>'desde', '')::date;
+  v_hasta date := nullif(p_config->>'hasta', '')::date;
+  v_titulo text := nullif(left(btrim(coalesce(p_config->>'titulo', '')), 60), '');
+  v_cumple text := coalesce(nullif(p_config->>'cumple', ''), 'mes');
 begin
   if not (public.is_owner(p_business) or public.is_platform_admin()) then
     raise exception 'No tienes permiso para cambiar la ruleta de este negocio.';
   end if;
   if p_premios is null or jsonb_typeof(p_premios) <> 'array' then
     raise exception 'La lista de premios no es válida.';
+  end if;
+
+  if v_modo not in ('siempre', 'periodo', 'cumple') then
+    raise exception 'La forma de activar la ruleta no es válida.';
+  end if;
+  if v_cumple not in ('dia', 'mes') then
+    raise exception 'La opción de cumpleaños no es válida.';
+  end if;
+  if v_modo = 'periodo' then
+    if v_desde is null or v_hasta is null then
+      raise exception 'Para una ruleta por periodo indica la fecha de inicio y la de fin.';
+    end if;
+    if v_hasta < v_desde then
+      raise exception 'La fecha de fin no puede ser anterior a la de inicio.';
+    end if;
   end if;
 
   -- Revisar todo antes de tocar nada
@@ -198,9 +263,15 @@ begin
 
   -- Interruptor de la ruleta
   if exists (select 1 from business_features where business_id = p_business) then
-    update business_features set ruleta_premios = coalesce(p_activa, false) where business_id = p_business;
+    update business_features set ruleta_premios = coalesce(p_activa, false), ruleta_modo = v_modo,
+           ruleta_desde = case when v_modo = 'periodo' then v_desde end,
+           ruleta_hasta = case when v_modo = 'periodo' then v_hasta end,
+           ruleta_titulo = v_titulo, ruleta_cumple = v_cumple
+     where business_id = p_business;
   else
-    insert into business_features (business_id, ruleta_premios) values (p_business, coalesce(p_activa, false));
+    insert into business_features (business_id, ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple)
+    values (p_business, coalesce(p_activa, false), v_modo,
+            case when v_modo = 'periodo' then v_desde end, case when v_modo = 'periodo' then v_hasta end, v_titulo, v_cumple);
   end if;
 
   -- Premios: se actualizan por id; los nuevos se crean
@@ -230,7 +301,7 @@ begin
 
   return jsonb_build_object('ok', true);
 end $$;
-grant execute on function public.ruleta_guardar(uuid, boolean, jsonb) to authenticated;
+grant execute on function public.ruleta_guardar(uuid, boolean, jsonb, jsonb) to authenticated;
 
 -- 7) Limpieza de premios repetidos que dejó el guardado anterior (mismo negocio y mismo nombre).
 --    VISTA PREVIA (no cambia nada): quedan los marcados con rn = 1.

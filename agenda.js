@@ -54,6 +54,7 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
   // RUEDA DINÁMICA - se construye desde RuletaConfig, sin código fijo
   // ============================================================
   let RULETA_SEGMENTOS_ACTIVOS = [];
+  let RULETA_UI = { modo: 'siempre', titulo: '' };
 
   const RULETA_PALETA = [
     { fill: '#F0D68C', text: '#241B10', muted: '#5C4B22' },
@@ -93,6 +94,7 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
     try {
       const config = await Sheets.getRuletaConfig();
       // Solo aparecen en la rueda los premios que de verdad pueden salir: activos, con probabilidad y con stock
+      RULETA_UI = { modo: config.modo || 'siempre', titulo: config.titulo || '' };
       const activos = (config.premios || []).filter(p => p.activo && Number(p.probabilidad) > 0 && (p.stock === null || p.stock === undefined || p.stock > 0));
       construirRuedaDinamica(activos);
     } catch(e){

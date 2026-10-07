@@ -51,6 +51,11 @@ function abrirModalRuleta(identificador, nombre, citaId) {
     logoBox.appendChild(img);
   }
 
+  // Mensaje sobre la rueda: el que escribió el negocio o uno según la regla elegida
+  const fest = modal.querySelector('.ruleta-subtitle-fest');
+  const ui = (typeof RULETA_UI !== 'undefined' && RULETA_UI) ? RULETA_UI : { modo: 'siempre', titulo: '' };
+  if (fest) fest.textContent = ui.titulo || (ui.modo === 'cumple' ? '¡Feliz cumpleaños! Tu regalo te espera' : 'Tu cita tiene premio');
+
   modal.classList.add('activo');
   btnGirar.onclick = () => girarRuletaUI(identificador, nombre, citaId);
 }

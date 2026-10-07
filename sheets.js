@@ -2420,11 +2420,16 @@ const Sheets = {
   async getRuletaConfig() {
     await window.AnnlyReady;
 
-    const { data: feat } = await sbClient
+    // Interruptor y regla de la ruleta. Si la base aún no tiene las columnas nuevas, se lee solo el interruptor.
+    let { data: feat, error: errFeat } = await sbClient
       .from('business_features')
-      .select('ruleta_premios')
+      .select('ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple')
       .eq('business_id', BUSINESS_ID)
       .maybeSingle();
+    if (errFeat) {
+      const r0 = await sbClient.from('business_features').select('ruleta_premios').eq('business_id', BUSINESS_ID).maybeSingle();
+      feat = r0.data;
+    }
 
     // Los premios quitados de la lista (archivados) no se muestran. Si la base aún no tiene
     // esa columna, se leen todos para no romper la pantalla.
@@ -2441,6 +2446,11 @@ const Sheets = {
 
     return {
       activa: !!(feat && feat.ruleta_premios),
+      modo: (feat && feat.ruleta_modo) || 'siempre',
+      desde: (feat && feat.ruleta_desde) || '',
+      hasta: (feat && feat.ruleta_hasta) || '',
+      titulo: (feat && feat.ruleta_titulo) || '',
+      cumple: (feat && feat.ruleta_cumple) || 'mes',
       premios: (premios || []).map(p => ({
         id: p.id,
         premio: p.nombre,
@@ -2464,7 +2474,14 @@ const Sheets = {
       stock: (p.stock === null || p.stock === undefined || p.stock === '') ? null : p.stock
     }));
     const { data, error } = await sbClient.rpc('ruleta_guardar', {
-      p_business: BUSINESS_ID, p_activa: !!payload.activa, p_premios: lista
+      p_business: BUSINESS_ID, p_activa: !!payload.activa, p_premios: lista,
+      p_config: {
+        modo: payload.modo || 'siempre',
+        desde: payload.desde || '',
+        hasta: payload.hasta || '',
+        titulo: payload.titulo || '',
+        cumple: payload.cumple || 'mes'
+      }
     });
     if (error) {
       console.error('Error guardando la ruleta:', error);

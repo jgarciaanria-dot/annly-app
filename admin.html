@@ -4035,6 +4035,38 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div style="padding:1rem;">
         <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Controla si la ruleta aparece después de confirmar una cita, y ajusta los premios y sus probabilidades. Las probabilidades son pesos relativos — no necesitan sumar exactamente 100, pero se recomienda mantenerlo así para leerlas como porcentaje directo. Los cambios aquí (nombres, cantidad de premios, activo/inactivo) se reflejan solos en la rueda visual, sin tocar código.</p>
 
+        <div class="premio-card" id="ruleta-cuando" style="margin-bottom:14px;">
+          <div style="font-weight:800;font-size:14px;margin-bottom:8px;">¿Cuándo aparece la ruleta?</div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
+            <input type="radio" name="ruleta-modo" value="siempre" onchange="actualizarModoRuleta()" style="margin-top:3px;">
+            <span><strong>Siempre.</strong> Cada cliente gira una sola vez, cuando reserva.</span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
+            <input type="radio" name="ruleta-modo" value="periodo" onchange="actualizarModoRuleta()" style="margin-top:3px;">
+            <span><strong>En un periodo.</strong> Por ejemplo, el mes de aniversario o una promoción. Cada cliente gira una vez durante esas fechas.</span>
+          </label>
+          <div id="ruleta-opc-periodo" style="display:none;margin:0 0 10px 24px;">
+            <div class="frow">
+              <div class="fg" style="margin-bottom:0;"><label class="flbl">Desde</label><input class="fi" type="date" id="ruleta-desde"></div>
+              <div class="fg" style="margin-bottom:0;"><label class="flbl">Hasta</label><input class="fi" type="date" id="ruleta-hasta"></div>
+            </div>
+          </div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
+            <input type="radio" name="ruleta-modo" value="cumple" onchange="actualizarModoRuleta()" style="margin-top:3px;">
+            <span><strong>Cuando el cliente está de cumpleaños.</strong> Solo gira quien ya está en tu lista de clientes con su fecha de cumpleaños. Una vez al año.</span>
+          </label>
+          <div id="ruleta-opc-cumple" style="display:none;margin:0 0 10px 24px;">
+            <label class="flbl">¿Cuándo puede girar?</label>
+            <select class="fi" id="ruleta-cumple">
+              <option value="mes">Durante todo su mes de cumpleaños</option>
+              <option value="dia">Solo el día de su cumpleaños</option>
+            </select>
+          </div>
+          <div class="fg" style="margin:10px 0 0;">
+            <label class="flbl">Mensaje sobre la rueda (opcional)</label>
+            <input class="fi" id="ruleta-titulo" maxlength="60" placeholder="Ej.: ¡Estamos de aniversario! Gira y gana">
+          </div>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
           <span style="font-size:12px;color:#888;">Suma de probabilidades activas</span>
           <span id="ruleta-suma" style="font-size:14px;font-weight:600;color:var(--gold-dark);">0</span>
@@ -7426,8 +7458,25 @@ async function loadRuleta(){
   catch(e){ RULETA_CONFIG = {activa:false, premios:[]}; }
   if(!RULETA_CONFIG.premios) RULETA_CONFIG.premios = [];
   document.getElementById('ruleta-activa').checked = !!RULETA_CONFIG.activa;
+  const rm = document.querySelector('input[name="ruleta-modo"][value="'+(RULETA_CONFIG.modo||'siempre')+'"]');
+  (rm || document.querySelector('input[name="ruleta-modo"][value="siempre"]')).checked = true;
+  document.getElementById('ruleta-desde').value = RULETA_CONFIG.desde || '';
+  document.getElementById('ruleta-hasta').value = RULETA_CONFIG.hasta || '';
+  document.getElementById('ruleta-cumple').value = RULETA_CONFIG.cumple || 'mes';
+  document.getElementById('ruleta-titulo').value = RULETA_CONFIG.titulo || '';
+  actualizarModoRuleta();
   renderPremios();
   loadGanadoresRuleta();
+}
+
+function modoRuletaElegido(){
+  const r = document.querySelector('input[name="ruleta-modo"]:checked');
+  return r ? r.value : 'siempre';
+}
+function actualizarModoRuleta(){
+  const m = modoRuletaElegido();
+  document.getElementById('ruleta-opc-periodo').style.display = m==='periodo' ? 'block' : 'none';
+  document.getElementById('ruleta-opc-cumple').style.display = m==='cumple' ? 'block' : 'none';
 }
 
 function premioRowHtml(p, idx){
@@ -7523,6 +7572,13 @@ async function guardarRuleta(){
     return;
   }
   const activa = document.getElementById('ruleta-activa').checked;
+  const modo = modoRuletaElegido();
+  const desde = document.getElementById('ruleta-desde').value;
+  const hasta = document.getElementById('ruleta-hasta').value;
+  if(modo==='periodo'){
+    if(!desde || !hasta){ alert('Para una ruleta por periodo indica la fecha de inicio y la de fin.'); return; }
+    if(hasta < desde){ alert('La fecha de fin no puede ser anterior a la de inicio.'); return; }
+  }
   const conChance = premios.filter(p=>p.activo && p.probabilidad>0 && (p.stock===null || p.stock>0));
   if(activa && conChance.length===0){
     alert('Para activar la ruleta necesitas al menos un premio activo, con probabilidad mayor que 0 y con stock.');
@@ -7531,7 +7587,12 @@ async function guardarRuleta(){
   const btn = document.querySelector('#ruleta-activo .btn-save');
   if(btn) btn.disabled = true;
   try {
-    await Sheets.guardarRuletaConfig({ activa, premios });
+    await Sheets.guardarRuletaConfig({
+      activa, premios, modo,
+      desde: modo==='periodo' ? desde : '', hasta: modo==='periodo' ? hasta : '',
+      cumple: document.getElementById('ruleta-cumple').value,
+      titulo: document.getElementById('ruleta-titulo').value.trim()
+    });
     await loadRuleta();   // vuelve a leer: así cada premio queda con su id y se ve lo que de verdad se guardó
     alert('Ruleta actualizada. Los cambios se verán en la rueda la próxima vez que alguien cargue la agenda.');
   } catch(e){
