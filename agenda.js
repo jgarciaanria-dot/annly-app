@@ -27,7 +27,8 @@
   html body #suc-chip{padding-left:calc(1.5rem + 14px);padding-right:calc(1.5rem + 14px);}
   html body .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
 }
-.svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
+.svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(100deg,var(--banner-shade,transparent) 0%,transparent 92%),var(--banner-tex,linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%));background-size:cover;background-position:center;box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
+.svc-banner-name,.svc-banner-price,.svc-banner-dur,.svc-pill-name,.svc-pill-price,.svc-pill-dur,.svc-resumen-name,.svc-resumen-meta{text-shadow:0 1px 3px rgba(0,0,0,.32);}
 .svc-banner-name,.svc-pill-name{color:#fff;}
 .svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
 .svc-banner-dur,.svc-pill-dur{color:rgba(255,255,255,.78);}
@@ -277,6 +278,17 @@ window.AnnlyReady.then(() => Sheets.negocioSuspendido()).then(suspendido => {
   });
 }).catch(() => {});
 
+// Banner con textura difusa hecha con los colores de la marca (se genera por código, no es una imagen aparte)
+function annlyTexturaBanner(p, s){
+  if (!rHex(p) || !rHex(s)) return null;
+  let deep = s, i = 0;
+  while (rLum(deep) > .16 && i++ < 14) deep = rMix(deep, '#000000', .12);   // el fondo del banner siempre aguanta texto blanco
+  const stops = [rMix(deep,'#000000',.25), deep, rMix(deep,p,.45), rMix(p,'#000000',.15), rMix(p,'#ffffff',.25)];
+  const t = ch => stops.map(c => (rHex(c)[ch]/255).toFixed(3)).join(' ');
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="110" viewBox="0 0 400 110" preserveAspectRatio="none"><defs><filter id="t" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.006 0.018" numOctaves="4" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="2.6 0 0 0 -0.75 2.6 0 0 0 -0.75 2.6 0 0 0 -0.75 0 0 0 0 1" result="g"/><feComponentTransfer in="g"><feFuncR type="table" tableValues="' + t(0) + '"/><feFuncG type="table" tableValues="' + t(1) + '"/><feFuncB type="table" tableValues="' + t(2) + '"/></feComponentTransfer></filter></defs><rect width="400" height="110" filter="url(#t)"/></svg>';
+  return { url: 'data:image/svg+xml,' + encodeURIComponent(svg), deep };
+}
+
 window.AnnlyReady.then(() => {
   const b = window.ANNLY_BUSINESS;
   if (b) {
@@ -286,6 +298,20 @@ window.AnnlyReady.then(() => {
       if (rgb) document.documentElement.style.setProperty('--gold-rgb', rgb);
       // Texto que va sobre el color de la marca: blanco si el color es oscuro, oscuro si es claro
       if (rHex(b.color_primario)) document.documentElement.style.setProperty('--on-gold', rLum(b.color_primario) > .30 ? '#201B2B' : '#FFFFFF');
+    }
+    if (rHex(b.color_primario) && rHex(b.color_secundario)) {
+      const rs = document.documentElement.style;
+      // Botón principal: del color de la marca hacia un tono más cercano al secundario
+      const mezcla = rMix(b.color_primario, b.color_secundario, .28);
+      rs.setProperty('--gold-mix', mezcla);
+      rs.setProperty('--on-gold', rLum(rMix(b.color_primario, mezcla, .5)) > .30 ? '#201B2B' : '#FFFFFF');
+      // Banner de los servicios: textura difusa con los colores de la marca
+      const tx = annlyTexturaBanner(b.color_primario, b.color_secundario);
+      if (tx) {
+        rs.setProperty('--banner-tex', 'url("' + tx.url + '")');
+        const d = rHex(tx.deep);
+        rs.setProperty('--banner-shade', 'rgba(' + d.map(v => Math.round(v * .5)).join(',') + ',.55)');
+      }
     }
     if (b.color_secundario) {
       document.documentElement.style.setProperty('--gold-dark', b.color_secundario);

@@ -169,7 +169,7 @@ body.modo-oscuro .card-icon{
 .note-box-warn{background:#FBF8F1;border:0.5px solid #E8DFC8;border-radius:var(--radius);padding:.75rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#9A7F4A;line-height:1.55;}
 .note-box-warn i{font-size:14px;color:var(--gold-dark);flex-shrink:0;margin-top:1px;}
 
-.btn-main{width:100%;padding:13px;background:var(--gold);color:var(--on-gold,var(--forest));border:none;border-radius:var(--radius);font-family:var(--font-heading);font-size:16px;font-weight:600;cursor:pointer;letter-spacing:.03em;transition:opacity .15s,transform .15s;}
+.btn-main{width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--gold-mix,var(--gold)));box-shadow:0 12px 22px -12px rgba(var(--gold-rgb),.6);color:var(--on-gold,var(--forest));border:none;border-radius:var(--radius);font-family:var(--font-heading);font-size:16px;font-weight:600;cursor:pointer;letter-spacing:.03em;transition:opacity .15s,transform .15s;}
 .btn-main:hover{opacity:.9;}.btn-main:active{transform:scale(.98);}.btn-main:disabled{opacity:.3;cursor:default;}
 .btn-ghost{width:100%;padding:11px;background:transparent;color:var(--gray);border:0.5px solid #ddd;border-radius:var(--radius);font-size:13px;cursor:pointer;margin-top:8px;transition:border-color .15s;}
 .btn-ghost:hover{border-color:var(--gold);}
