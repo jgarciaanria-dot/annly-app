@@ -69,18 +69,18 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
     const p = rHex(neg.color_primario) ? neg.color_primario : '#C9A24B';
     let s = rHex(neg.color_secundario) ? neg.color_secundario : '#8A6A24';
     if (rDist(p, s) < 70) s = rMix(p, '#000000', .45);          // colores muy parecidos: se usa una versión más oscura
-    const bg = rMix('#0D0C0A', p, .12);
-    const acc = rLegible(p, .30);                               // color de realce, siempre legible sobre el fondo oscuro
-    const card1 = acc, card2 = rMix(acc, bg, .28);
-    const cardLum = (rLum(card1) + rLum(card2)) / 2;
+    // Realce: el color principal, oscurecido si hace falta para que se lea sobre blanco
+    let acc = p, i = 0;
+    while (rLum(acc) > .20 && i++ < 14) acc = rMix(acc, '#000000', .12);
+    const card1 = p, card2 = rMix(p, '#000000', .18);
     return {
-      bg, acc,
-      titulo: rMix(acc, '#ffffff', .25),
-      muted: rMix(bg, acc, .62),
-      linea: rMix(bg, acc, .30),
-      card1, card2, cardTexto: cardLum > .38 ? '#241D10' : '#FFFFFF',
+      bg: '#FFFFFF', acc,
+      titulo: '#201B2B',
+      muted: '#7A7287',
+      linea: rMix('#FFFFFF', acc, .30),
+      card1, card2, cardTexto: rLum(card1) > .30 ? '#201B2B' : '#FFFFFF',
       segmentos: [p, rMix(p,'#ffffff',.55), s, rMix(s,'#ffffff',.55)],
-      confeti: [acc, rMix(acc,'#ffffff',.5), p, s]
+      confeti: [p, rMix(p,'#ffffff',.4), s, rMix(s,'#ffffff',.4)]
     };
   }
   let RULETA_TEMA = null;
