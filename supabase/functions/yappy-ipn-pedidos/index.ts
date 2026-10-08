@@ -61,7 +61,12 @@ Deno.serve(async (req) => {
     if (status.toUpperCase() === "E") {
       // Una orden ya ejecutada no vuelve atrás por un aviso repetido
       const { data: r, error } = await sb.rpc("pedido_pagado_yappy", { p_order: orden.ref_id, p_yappy_order: orderId });
-      if (error) { console.error("yappy-ipn-pedidos: no se pudo confirmar el pedido", orden.ref_id, error); return json({ success: false }, 500); }
+      if (error) {
+        // Yappy cobró pero la base no pudo marcar el pedido: se anota para que la tienda no espere y el negocio lo revise
+        console.error("yappy-ipn-pedidos: no se pudo confirmar el pedido", orden.ref_id, error);
+        await sb.from("yappy_orders").update({ estado: "revisar" }).eq("order_id", orderId);
+        return json({ success: false }, 500);
+      }
       await sb.from("yappy_orders").update({ estado: "ejecutado" }).eq("order_id", orderId);
       return json({ success: true, pedido: r });
     }
