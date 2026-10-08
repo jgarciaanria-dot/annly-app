@@ -168,8 +168,10 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       const color = { fill: fillSeg, text: rLum(fillSeg) > .45 ? '#1B1612' : '#FFFFFF' };
       const segId = 'seg' + k;
 
-      pathsHtml += `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
-      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="${T.acc}" stroke-width="0.75" opacity="0.55"/>\n`;
+      pathsHtml += n === 1
+        ? `<circle id="${segId}" cx="${cx}" cy="${cy}" r="${R}" fill="${color.fill}"/>\n`
+        : `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
+      if (n > 1) linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="${T.acc}" stroke-width="0.75" opacity="0.55"/>\n`;
 
       const midAngle = (k + 0.5) * step;
       const nLineasTxt = ruletaWordWrap(premiosActivos[k].premio, maxLineLen, n <= 5 ? 3 : 2).length;
