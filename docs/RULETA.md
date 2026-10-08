@@ -22,7 +22,7 @@ Reglas del cupón:
 - En el panel, la cita muestra el código y cuánto se descontó.
 
 ### ¿Cuándo aparece? (configurable)
-- **Siempre:** a cada cliente, una sola vez.
+- **Siempre:** a cada cliente, una sola vez mientras la ruleta siga activa. Al apagarla y volver a encenderla, todos participan de nuevo.
 - **En un periodo** (por ejemplo, el mes de aniversario o una promoción): entre dos fechas; cada cliente gira una vez durante ese periodo. Al terminar el periodo la ruleta deja de aparecer; un nuevo periodo vuelve a dar una oportunidad a todos.
 - **Cuando el cliente está de cumpleaños:** solo gira quien ya está en la lista de clientes del negocio con su fecha de cumpleaños (por ejemplo, inscrito en el programa de clientes), durante todo su mes de cumpleaños o solo el día; una vez al año. El cliente se reconoce por su teléfono.
 - En cualquiera de las tres se puede escribir un **mensaje sobre la rueda** (por ejemplo, "¡Estamos de aniversario! Gira y gana").
