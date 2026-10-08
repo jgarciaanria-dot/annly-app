@@ -27,16 +27,16 @@
   html body #suc-chip{padding-left:calc(1.5rem + 14px);padding-right:calc(1.5rem + 14px);}
   html body .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
 }
-.svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(100deg,var(--banner-shade,transparent) 0%,transparent 92%),var(--banner-tex,linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%));background-size:cover;background-position:center;box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
-.svc-banner-name,.svc-banner-price,.svc-banner-dur,.svc-pill-name,.svc-pill-price,.svc-pill-dur,.svc-resumen-name,.svc-resumen-meta{text-shadow:0 1px 3px rgba(0,0,0,.32);}
-.svc-banner-name,.svc-pill-name{color:#fff;}
-.svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
-.svc-banner-dur,.svc-pill-dur{color:rgba(255,255,255,.78);}
-.svc-banner-icon{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.14);}
-.svc-banner-icon i{color:#fff;}
+:root{--b1:#EEE6F8;--b2:#F5F0FA;--b3:#FBF8FD;--b-glow:transparent;--b-ink:#2B2238;--b-ink-soft:rgba(43,34,56,.68);}
+.svc-banner,.svc-pill,.svc-resumen{background:radial-gradient(130% 150% at 88% -10%,var(--b-glow) 0%,transparent 62%),linear-gradient(180deg,var(--b1) 0%,var(--b2) 58%,var(--b3) 100%);border:1px solid rgba(255,255,255,.85);box-shadow:0 12px 26px -18px rgba(var(--gold-rgb),.55),inset 0 1px 0 rgba(255,255,255,.9);}
+.svc-banner-name,.svc-pill-name,.svc-resumen-name{color:var(--b-ink);}
+.svc-banner-price,.svc-pill-price{color:var(--b-ink);font-weight:700;}
+.svc-banner-dur,.svc-pill-dur,.svc-resumen-meta{color:var(--b-ink-soft);}
+.svc-banner-icon{border-color:rgba(255,255,255,.9);background:rgba(255,255,255,.6);box-shadow:0 4px 10px -6px rgba(var(--gold-rgb),.5);}
+.svc-banner-icon i{color:var(--b-ink);}
 .svc-resumen{border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;}
-.svc-resumen-name{font-size:15px;font-weight:700;color:#fff;font-family:var(--font-heading);}
-.svc-resumen-meta{font-size:11.5px;color:rgba(255,255,255,.82);margin-top:3px;}
+.svc-resumen-name{font-size:15px;font-weight:700;font-family:var(--font-heading);}
+.svc-resumen-meta{font-size:11.5px;margin-top:3px;}
 .stepn{background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-weight:600;}
 .card-arrow{background:var(--gold-dark);}
 .incl-grid{grid-template-columns:1fr 1fr;gap:10px 16px;}
@@ -278,17 +278,20 @@ window.AnnlyReady.then(() => Sheets.negocioSuspendido()).then(suspendido => {
   });
 }).catch(() => {});
 
-// Banner con textura difusa hecha con los colores de la marca (se genera por código, no es una imagen aparte)
-function annlyTexturaBanner(p, s){
+// Banner pastel y difuso con los colores de la marca: un lavado suave de arriba hacia abajo, con un brillo cálido
+function annlyBannerPastel(p, s){
   if (!rHex(p) || !rHex(s)) return null;
-  let deep = s, i = 0;
-  while (rLum(deep) > .16 && i++ < 14) deep = rMix(deep, '#000000', .12);   // el fondo del banner siempre aguanta texto blanco
-  // Difusión cálida: de un tono profundo suavizado a un brillo cremoso, sin choques bruscos de claro y oscuro
-  const calido = '#FFD9B0';
-  const stops = [rMix(deep, p, .55), rMix(deep, p, .78), p, rMix(p, calido, .28), rMix(p, calido, .48)];
-  const t = ch => stops.map(c => (rHex(c)[ch]/255).toFixed(3)).join(' ');
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="110" viewBox="0 0 400 110" preserveAspectRatio="none"><defs><filter id="t" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.0032 0.0085" numOctaves="2" seed="11" result="n"/><feGaussianBlur in="n" stdDeviation="8" result="b"/><feColorMatrix in="b" type="matrix" values="2.3 0 0 0 -0.65 2.3 0 0 0 -0.65 2.3 0 0 0 -0.65 0 0 0 0 1" result="g"/><feComponentTransfer in="g"><feFuncR type="table" tableValues="' + t(0) + '"/><feFuncG type="table" tableValues="' + t(1) + '"/><feFuncB type="table" tableValues="' + t(2) + '"/></feComponentTransfer></filter></defs><rect width="400" height="110" filter="url(#t)"/></svg>';
-  return { url: 'data:image/svg+xml,' + encodeURIComponent(svg), deep };
+  const calido = '#FFEBD6';
+  const base = (k, c) => rMix(rMix(p, '#ffffff', k), calido, c);   // tono de la marca aclarado y con un toque cálido
+  let tinta = s, i = 0;
+  while (rLum(tinta) > .07 && i++ < 16) tinta = rMix(tinta, '#000000', .12);   // texto oscuro, del tono de la marca
+  tinta = rMix(tinta, '#1B1612', .25);
+  const rgb = hex => rHex(hex).join(',');
+  return {
+    b1: base(.70, .22), b2: base(.86, .30), b3: base(.95, .35),
+    glow: 'rgba(' + rgb(rMix(p, calido, .45)) + ',.55)',
+    ink: tinta, inkSoft: 'rgba(' + rgb(tinta) + ',.68)'
+  };
 }
 
 window.AnnlyReady.then(() => {
@@ -307,13 +310,11 @@ window.AnnlyReady.then(() => {
       const mezcla = rMix(b.color_primario, b.color_secundario, .28);
       rs.setProperty('--gold-mix', mezcla);
       rs.setProperty('--on-gold', rLum(rMix(b.color_primario, mezcla, .5)) > .30 ? '#201B2B' : '#FFFFFF');
-      // Banner de los servicios: textura difusa con los colores de la marca
-      const tx = annlyTexturaBanner(b.color_primario, b.color_secundario);
-      if (tx) {
-        rs.setProperty('--banner-tex', 'url("' + tx.url + '")');
-        // Velo para que el texto se lea: del mismo color de la marca (no gris), más oscuro a la izquierda
-        const d = rHex(rMix(rMix(tx.deep, b.color_primario, .35), '#000000', .28));
-        rs.setProperty('--banner-shade', 'rgba(' + d.join(',') + ',.62)');
+      // Banner de los servicios: pastel difuso con los colores de la marca
+      const bn = annlyBannerPastel(b.color_primario, b.color_secundario);
+      if (bn) {
+        rs.setProperty('--b1', bn.b1); rs.setProperty('--b2', bn.b2); rs.setProperty('--b3', bn.b3);
+        rs.setProperty('--b-glow', bn.glow); rs.setProperty('--b-ink', bn.ink); rs.setProperty('--b-ink-soft', bn.inkSoft);
       }
     }
     if (b.color_secundario) {
