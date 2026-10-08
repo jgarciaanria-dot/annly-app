@@ -263,7 +263,7 @@ function subtituloCancelacion(cita, audiencia) {
 
 // ---------- Arma los datos (filas/botones/texto) según destinatario + tipo de CITA ----------
 // sucursal: { nombre, direccion, telefono } o null (negocio con una sola sucursal)
-function armarCorreoCita(audiencia, tipo, cita, negocio, profesional, sucursal) {
+function armarCorreoCita(audiencia, tipo, cita, negocio, profesional, sucursal, pagoAutomatico = false) {
   const nombreNegocio = negocio.nombre || "Tu negocio";
   const tagline = negocio.categoria ? negocio.categoria.toUpperCase() : "";
   const colorAcento = negocio.color_primario || "#a47c48";
@@ -323,6 +323,22 @@ function armarCorreoCita(audiencia, tipo, cita, negocio, profesional, sucursal) 
     // "Cómo llegar": solo con varias sucursales, para que el cliente vaya a la correcta
     const botonComoLlegar = (sucursal && direccion) ? { emoji: "📍", texto: `Cómo llegar a ${sucursal.nombre}`, url: linkGoogleMaps(direccion), color: "#6B7280" } : null;
 
+    if (tipo === "por_confirmar" && pagoAutomatico) {
+      // Pagó con el botón de Yappy y la confirmación automática aún no llega: no es un abono a mano
+      return {
+        asunto: `Estamos confirmando tu pago — ${nombreLugar}`,
+        html: armarPlantillaCorreo({
+          nombreNegocio, tagline, colorAcento, emojiHeader: "💳",
+          titulo: "¡Recibimos tu pago!", saludo: `Hola, ${cita.cliente_nombre || ""}!`,
+          subtitulo: "Estamos confirmando tu pago con Yappy. En unos minutos recibirás la confirmación de tu cita.",
+          filas,
+          botones: [botonWaNegocio].filter(Boolean),
+          notaTitulo: "¿Qué sigue?",
+          notaTexto: `No necesitas hacer nada más. Tu pago por Yappy${cita.comprobante ? " (orden " + cita.comprobante + ")" : ""} se está confirmando y tu cita quedará confirmada automáticamente.`,
+          direccion: pie
+        })
+      };
+    }
     if (tipo === "por_confirmar") {
       return {
         asunto: `Recibimos tu reserva — ${nombreLugar}`,
@@ -427,6 +443,21 @@ function armarCorreoCita(audiencia, tipo, cita, negocio, profesional, sucursal) 
   const botonContactarCliente = telCliente ? { emoji: "💬", texto: `Contactar a ${cita.cliente_nombre || "cliente"} por WhatsApp`, url: `https://wa.me/${telCliente}?text=${mensajeWaCliente}`, color: "#20c66a" } : null;
   const enSucursal = sucursal ? ` en ${sucursal.nombre}` : "";
 
+  if (tipo === "por_confirmar" && pagoAutomatico) {
+    return {
+      asunto: `Reserva con pago por Yappy en confirmación${enSucursal}: ${cita.cliente_nombre || "Cliente"} — ${nombreNegocio}`,
+      html: armarPlantillaCorreo({
+        nombreNegocio, tagline, colorAcento, emojiHeader: "💳",
+        titulo: "Reserva con pago por Yappy", saludo: "",
+        subtitulo: `Un cliente reservó${enSucursal} y pagó con el botón de Yappy. La cita se confirmará sola cuando Yappy avise.`,
+        filas: [...filas, { emoji: "🧾", etiqueta: "ORDEN DE YAPPY", valor: cita.comprobante || "—", negrita: false }],
+        botones: [botonContactarCliente].filter(Boolean),
+        notaTitulo: "¿Debo hacer algo?",
+        notaTexto: "No. Si en unos minutos no se confirma sola, revisa el pago en tu cuenta de Yappy y confírmala en Panel de administración → Citas → Por confirmar abono.",
+        direccion: pie
+      })
+    };
+  }
   if (tipo === "por_confirmar") {
     return {
       asunto: `Abono por confirmar${enSucursal}: ${cita.cliente_nombre || "Cliente"} — ${nombreNegocio}`,
@@ -660,15 +691,22 @@ async function manejarWebhookCita(payload) {
 
   const sucursal = await leerSucursalCita(cita);
 
+  // ¿Pagó con el botón de Yappy (orden registrada por el servidor) y solo falta que Yappy avise? Entonces no es un abono a mano
+  let pagoAutomatico = false;
+  if (tipo === "por_confirmar" && cita.comprobante) {
+    const { data: yo } = await sb.from("yappy_orders").select("id").eq("business_id", cita.business_id).eq("order_id", String(cita.comprobante).trim()).maybeSingle();
+    pagoAutomatico = !!yo;
+  }
+
   // Clave única por cita, tipo de aviso y horario: si el webhook llega repetido, no se duplican los correos
   const base = [tipo, cita.id, anterior ? `${anterior.fecha}-${anterior.hora}` : "", `${cita.fecha}-${cita.hora}`, cita.estado].join("|");
   const envios = [];
   if (cita.cliente_correo) {
-    const { asunto, html } = armarCorreoCita("cliente", tipo, cita, negocio, profesional, sucursal);
+    const { asunto, html } = armarCorreoCita("cliente", tipo, cita, negocio, profesional, sucursal, pagoAutomatico);
     envios.push(enviarCorreo(cita.cliente_correo, negocio.nombre || "Tu negocio", asunto, html, `cliente|${base}|${cita.cliente_correo}`));
   }
   if (tipo !== "abono_confirmado") {
-    const { asunto, html } = armarCorreoCita("dueno", tipo, cita, negocio, profesional, sucursal);
+    const { asunto, html } = armarCorreoCita("dueno", tipo, cita, negocio, profesional, sucursal, pagoAutomatico);
     for (const correo of correosDelNegocio(negocio, correoDueno)) {
       envios.push(enviarCorreo(correo, "Annly", asunto, html, `dueno|${base}|${correo}`));
     }
