@@ -7546,9 +7546,14 @@ function cambioTipoPremio(sel){
   lbl.textContent = t==='monto' ? 'Monto ($)' : 'Porcentaje (%)';
 }
 
+const RULETA_MAX_PREMIOS = 10;
 function agregarPremio(){
   // Primero se conserva lo que ya escribiste en los otros premios
   if(document.querySelector('#lista-premios-ruleta .premio-card')) RULETA_CONFIG.premios = recolectarPremiosDesdeDOM();
+  if(RULETA_CONFIG.premios.length >= RULETA_MAX_PREMIOS){
+    alert('La ruleta admite hasta '+RULETA_MAX_PREMIOS+' premios para que se vea clara. Elimina o desactiva uno para agregar otro.');
+    return;
+  }
   RULETA_CONFIG.premios.push({premio:'Nuevo premio', probabilidad:0, activo:true, stock:null, tipo:'otro', valor:null});
   renderPremios();
 }
@@ -7587,6 +7592,10 @@ function recolectarPremiosDesdeDOM(){
 
 async function guardarRuleta(){
   const premios = recolectarPremiosDesdeDOM();
+  if(premios.length > RULETA_MAX_PREMIOS){
+    alert('Tienes '+premios.length+' premios y el máximo es '+RULETA_MAX_PREMIOS+'. Elimina '+(premios.length-RULETA_MAX_PREMIOS)+' para poder guardar.');
+    return;
+  }
   if(premios.some(p=>!p.premio)){
     alert('Todos los premios necesitan un nombre.');
     return;
