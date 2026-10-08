@@ -4033,13 +4033,13 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         </label>
       </div>
       <div style="padding:1rem;">
-        <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Controla si la ruleta aparece después de confirmar una cita, y ajusta los premios y sus probabilidades. Las probabilidades son pesos relativos — no necesitan sumar exactamente 100, pero se recomienda mantenerlo así para leerlas como porcentaje directo. Los cambios aquí (nombres, cantidad de premios, activo/inactivo) se reflejan solos en la rueda visual, sin tocar código.</p>
+        <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Con el interruptor de arriba a la derecha enciendes o apagas la ruleta (recuerda dar «Guardar cambios» al final). Controla si la ruleta aparece después de confirmar una cita, y ajusta los premios y sus probabilidades. Las probabilidades son pesos relativos — no necesitan sumar exactamente 100, pero se recomienda mantenerlo así para leerlas como porcentaje directo. Los cambios aquí (nombres, cantidad de premios, activo/inactivo) se reflejan solos en la rueda visual, sin tocar código.</p>
 
         <div class="premio-card" id="ruleta-cuando" style="margin-bottom:14px;">
           <div style="font-weight:800;font-size:14px;margin-bottom:8px;">¿Cuándo aparece la ruleta?</div>
           <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
             <input type="radio" name="ruleta-modo" value="siempre" onchange="actualizarModoRuleta()" style="margin-top:3px;">
-            <span><strong>Siempre.</strong> Cada cliente gira una sola vez, cuando reserva.</span>
+            <span><strong>Siempre.</strong> Cada cliente gira una sola vez mientras la ruleta esté activa. Si la apagas y la vuelves a encender, todos pueden girar otra vez.</span>
           </label>
           <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
             <input type="radio" name="ruleta-modo" value="periodo" onchange="actualizarModoRuleta()" style="margin-top:3px;">
@@ -13976,6 +13976,15 @@ document.addEventListener('visibilitychange', () => {
       const t = h.querySelector('.adm-sec-title');
       if (!t || t.textContent.trim().toLowerCase() !== titulo) return;
       h.querySelectorAll('button').forEach(b => act && act.appendChild(b));
+      // El interruptor de activar/apagar también sube, con su texto, para que no se pierda
+      h.querySelectorAll('label.svc-toggle').forEach(l => {
+        if (!act) return;
+        const w = document.createElement('div');
+        w.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--ink-soft,#6b6478);';
+        w.innerHTML = '<span>Activada</span>';
+        w.appendChild(l);
+        act.appendChild(w);
+      });
       h.style.display = 'none';
     });
   });
