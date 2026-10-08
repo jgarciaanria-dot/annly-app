@@ -29,6 +29,8 @@
 }
 :root{--b1:#EEE6F8;--b2:#F5F0FA;--b3:#FBF8FD;--b-glow:transparent;--b-ink:#2B2238;--b-ink-soft:rgba(43,34,56,.68);}
 .svc-banner,.svc-pill,.svc-resumen{background:radial-gradient(130% 150% at 88% -10%,var(--b-glow) 0%,transparent 62%),linear-gradient(180deg,var(--b1) 0%,var(--b2) 58%,var(--b3) 100%);border:1px solid rgba(255,255,255,.85);box-shadow:0 12px 26px -18px rgba(var(--gold-rgb),.55),inset 0 1px 0 rgba(255,255,255,.9);}
+html body:not(.modo-oscuro) .hdr{background-color:var(--b3);background-image:radial-gradient(120% 90% at 50% 0%,var(--b-glow) 0%,transparent 65%),linear-gradient(180deg,var(--b1) 0%,var(--b2) 62%,var(--b3) 100%);}
+html body:not(.modo-oscuro) .hdr::before{background:radial-gradient(circle,rgba(255,255,255,.75) 0%,transparent 70%);}
 .svc-banner-name,.svc-pill-name,.svc-resumen-name{color:var(--b-ink);}
 .svc-banner-price,.svc-pill-price{color:var(--b-ink);font-weight:700;}
 .svc-banner-dur,.svc-pill-dur,.svc-resumen-meta{color:var(--b-ink-soft);}
