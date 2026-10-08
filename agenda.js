@@ -1506,7 +1506,8 @@ function goForm(){
     <button class="btn-main" id="btnConfirmar" onclick="${curSvc.esDoble ? `confirmarDoble('${dayStr}')` : `confirmar('${dayStr}')`}" style="${(tieneAbono&&tieneYappyComercial)?'display:none;':''}">Confirmar mi cita</button>`;
 
   if(tieneAbono && tieneYappyComercial) selPago('yappy');
-  if(tieneAbono) startTimer();
+  // Con Yappy Comercial el pago se confirma solo y el cupo no se aparta mientras tanto: no hay temporizador (solo en el pago manual)
+  if(tieneAbono && !tieneYappyComercial) startTimer();
   if(CERT_DESDE_URL){
     document.getElementById('fcert').value = CERT_DESDE_URL;
     aplicarCertificadoCodigo();
@@ -1639,14 +1640,20 @@ function selPago(tipo){
   const yappyManualWrap=document.getElementById('yappyManualWrap');
   const btnC=document.getElementById('btnConfirmar');
 
+  const timerBox=document.getElementById('timerBox');
   if(tipo==='bank'){
     if(yappyRealWrap) yappyRealWrap.classList.add('hidden');
     if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
     if(btnC) btnC.style.display='';
+    // Pago manual: vuelve el temporizador
+    if(timerBox && timerBox.style.display==='none'){ timerBox.style.display=''; startTimer(); }
   } else if(tieneYappyComercial && yappyRealWrap){
     yappyRealWrap.classList.remove('hidden');
     if(yappyManualWrap) yappyManualWrap.classList.add('hidden');
     if(btnC) btnC.style.display='none';
+    // Pago automático: sin temporizador
+    if(timerBox) timerBox.style.display='none';
+    if(timerInt) clearInterval(timerInt);
     setupYappyButtonAbono();
   } else {
     if(yappyManualWrap) yappyManualWrap.classList.remove('hidden');
@@ -1705,10 +1712,12 @@ function setupYappyButtonAbono(){
     ver('Confirmando tu pago…');
     let estado='pendiente';
     const fin=Date.now()+120000;
+    const inicio=Date.now();
     while(Date.now()<fin){
       estado=await Sheets.estadoOrdenYappy(orderId);
       if(estado==='ejecutado'||['rechazado','cancelado','expirado'].includes(estado)) break;
-      await new Promise(r=>setTimeout(r,2500));
+      if(Date.now()-inicio>25000) ver('Está tardando más de lo normal. Si ya aprobaste el pago en Yappy, no lo repitas: no cierres esta ventana.');
+      await new Promise(r=>setTimeout(r,Date.now()-inicio<20000?1200:2500));
     }
     if(estado==='ejecutado'){ ver(''); confirmarCitaConfirmada(currentDayStr, orderId); return; }
     if(['rechazado','cancelado','expirado'].includes(estado)){
