@@ -1710,7 +1710,7 @@ function setupYappyButtonAbono(){
       estado=await Sheets.estadoOrdenYappy(orderId);
       if(estado==='ejecutado'||['rechazado','cancelado','expirado'].includes(estado)) break;
       if(Date.now()-inicio>25000) ver('Está tardando más de lo normal. Si ya aprobaste el pago en Yappy, no lo repitas: no cierres esta ventana.');
-      await new Promise(r=>setTimeout(r,2500));
+      await new Promise(r=>setTimeout(r,Date.now()-inicio<20000?1200:2500));
     }
     if(estado==='ejecutado'){ ver(''); confirmarCitaConfirmada(currentDayStr, orderId); return; }
     if(['rechazado','cancelado','expirado'].includes(estado)){
