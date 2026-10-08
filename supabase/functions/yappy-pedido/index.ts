@@ -18,7 +18,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const URL_SB = Deno.env.get("SUPABASE_URL")!;
 const sb = createClient(URL_SB, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const YAPPY_API = Deno.env.get("YAPPY_API_BASE") || "https://apipagosbg.bgeneral.cloud";
-const IPN_URL = `${URL_SB}/functions/v1/yappy-ipn-pedidos`;
+// Dirección del aviso de Yappy. El panel de Supabase puede darle otro nombre a la función al crearla desde el editor:
+// en ese caso se define el secreto YAPPY_IPN_PEDIDOS_URL con su dirección completa.
+const IPN_URL = Deno.env.get("YAPPY_IPN_PEDIDOS_URL") || `${URL_SB}/functions/v1/yappy-ipn-pedidos`;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CORS = {
