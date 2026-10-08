@@ -5255,6 +5255,8 @@ const Sheets = {
            destinatarioNombre, destinatarioTelefono, destinatarioCorreo, mensaje, comprobante, metodoPago }
     });
     if (error) throw error;
+    // Quien compra un certificado también queda registrado como cliente (sin duplicarse si ya existe)
+    try { await this.upsertClienteDesdeReserva(compradorNombre, compradorTelefono, compradorCorreo); } catch (e) { console.error(e); }
     await this.enviarCorreo('certificado_pendiente_pago', {
       monto, nombreComprador: compradorNombre, metodoPago, comprobante
     });
