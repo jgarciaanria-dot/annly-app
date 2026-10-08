@@ -1705,9 +1705,11 @@ function setupYappyButtonAbono(){
     ver('Confirmando tu pago…');
     let estado='pendiente';
     const fin=Date.now()+120000;
+    const inicio=Date.now();
     while(Date.now()<fin){
       estado=await Sheets.estadoOrdenYappy(orderId);
       if(estado==='ejecutado'||['rechazado','cancelado','expirado'].includes(estado)) break;
+      if(Date.now()-inicio>25000) ver('Está tardando más de lo normal. Si ya aprobaste el pago en Yappy, no lo repitas: no cierres esta ventana.');
       await new Promise(r=>setTimeout(r,2500));
     }
     if(estado==='ejecutado'){ ver(''); confirmarCitaConfirmada(currentDayStr, orderId); return; }
