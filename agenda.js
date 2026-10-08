@@ -83,7 +83,7 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       linea: rMix('#FFFFFF', acc, .30),
       card1, card2, cardTexto: rLum(card1) > .30 ? '#201B2B' : '#FFFFFF',
       segmentos: [p, rMix(p,'#ffffff',.55), s, rMix(s,'#ffffff',.55)],
-      confeti: [p, rMix(p,'#ffffff',.4), s, rMix(s,'#ffffff',.4)]
+      confeti: ['#FF4D6D','#FFC233','#2EC4B6','#4D96FF','#9B5DE5','#FF8A3D']
     };
   }
   let RULETA_TEMA = null;
