@@ -4035,6 +4035,43 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div style="padding:1rem;">
         <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.5;">Controla si la ruleta aparece después de confirmar una cita, y ajusta los premios y sus probabilidades. Las probabilidades son pesos relativos — no necesitan sumar exactamente 100, pero se recomienda mantenerlo así para leerlas como porcentaje directo. Los cambios aquí (nombres, cantidad de premios, activo/inactivo) se reflejan solos en la rueda visual, sin tocar código.</p>
 
+        <div class="premio-card" id="ruleta-cuando" style="margin-bottom:14px;">
+          <div style="font-weight:800;font-size:14px;margin-bottom:8px;">¿Cuándo aparece la ruleta?</div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
+            <input type="radio" name="ruleta-modo" value="siempre" onchange="actualizarModoRuleta()" style="margin-top:3px;">
+            <span><strong>Siempre.</strong> Cada cliente gira una sola vez, cuando reserva.</span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
+            <input type="radio" name="ruleta-modo" value="periodo" onchange="actualizarModoRuleta()" style="margin-top:3px;">
+            <span><strong>En un periodo.</strong> Por ejemplo, el mes de aniversario o una promoción. Cada cliente gira una vez durante esas fechas.</span>
+          </label>
+          <div id="ruleta-opc-periodo" style="display:none;margin:0 0 10px 24px;">
+            <div class="frow">
+              <div class="fg" style="margin-bottom:0;"><label class="flbl">Desde</label><input class="fi" type="date" id="ruleta-desde"></div>
+              <div class="fg" style="margin-bottom:0;"><label class="flbl">Hasta</label><input class="fi" type="date" id="ruleta-hasta"></div>
+            </div>
+          </div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px;cursor:pointer;">
+            <input type="radio" name="ruleta-modo" value="cumple" onchange="actualizarModoRuleta()" style="margin-top:3px;">
+            <span><strong>Cuando el cliente está de cumpleaños.</strong> Solo gira quien ya está en tu lista de clientes con su fecha de cumpleaños. Una vez al año.</span>
+          </label>
+          <div id="ruleta-opc-cumple" style="display:none;margin:0 0 10px 24px;">
+            <label class="flbl">¿Cuándo puede girar?</label>
+            <select class="fi" id="ruleta-cumple">
+              <option value="mes">Durante todo su mes de cumpleaños</option>
+              <option value="dia">Solo el día de su cumpleaños</option>
+            </select>
+          </div>
+          <div class="fg" style="margin:10px 0 0;">
+            <label class="flbl">Vigencia del premio ganado (días)</label>
+            <input class="fi" type="number" min="0" max="365" id="ruleta-vigencia" value="30" placeholder="30">
+            <p style="font-size:11px;color:var(--ink-soft);margin:4px 0 0;">Cuántos días tiene el cliente para usar su cupón. 0 = no vence.</p>
+          </div>
+          <div class="fg" style="margin:10px 0 0;">
+            <label class="flbl">Mensaje sobre la rueda (opcional)</label>
+            <input class="fi" id="ruleta-titulo" maxlength="60" placeholder="Ej.: ¡Estamos de aniversario! Gira y gana">
+          </div>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;background:#FAFAF8;border:0.5px solid #E4EBE4;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
           <span style="font-size:12px;color:#888;">Suma de probabilidades activas</span>
           <span id="ruleta-suma" style="font-size:14px;font-weight:600;color:var(--gold-dark);">0</span>
@@ -5189,7 +5226,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=66"></script>
+<script src="sheets.js?v=68"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -7426,13 +7463,31 @@ async function loadRuleta(){
   catch(e){ RULETA_CONFIG = {activa:false, premios:[]}; }
   if(!RULETA_CONFIG.premios) RULETA_CONFIG.premios = [];
   document.getElementById('ruleta-activa').checked = !!RULETA_CONFIG.activa;
+  const rm = document.querySelector('input[name="ruleta-modo"][value="'+(RULETA_CONFIG.modo||'siempre')+'"]');
+  (rm || document.querySelector('input[name="ruleta-modo"][value="siempre"]')).checked = true;
+  document.getElementById('ruleta-desde').value = RULETA_CONFIG.desde || '';
+  document.getElementById('ruleta-hasta').value = RULETA_CONFIG.hasta || '';
+  document.getElementById('ruleta-cumple').value = RULETA_CONFIG.cumple || 'mes';
+  document.getElementById('ruleta-titulo').value = RULETA_CONFIG.titulo || '';
+  document.getElementById('ruleta-vigencia').value = (RULETA_CONFIG.vigencia == null ? 30 : RULETA_CONFIG.vigencia);
+  actualizarModoRuleta();
   renderPremios();
   loadGanadoresRuleta();
 }
 
+function modoRuletaElegido(){
+  const r = document.querySelector('input[name="ruleta-modo"]:checked');
+  return r ? r.value : 'siempre';
+}
+function actualizarModoRuleta(){
+  const m = modoRuletaElegido();
+  document.getElementById('ruleta-opc-periodo').style.display = m==='periodo' ? 'block' : 'none';
+  document.getElementById('ruleta-opc-cumple').style.display = m==='cumple' ? 'block' : 'none';
+}
+
 function premioRowHtml(p, idx){
   const stockVal = (p.stock===null || p.stock===undefined) ? '' : p.stock;
-  return `<div class="premio-card" data-idx="${idx}">
+  return `<div class="premio-card" data-idx="${idx}" data-id="${p.id||''}">
     <div class="premio-card-top">
       <input class="fi premio-nombre" value="${(p.premio||'').replace(/"/g,'&quot;')}" style="flex:1;font-weight:500;" placeholder="Nombre del premio">
       <label class="svc-toggle" style="flex-shrink:0;">
@@ -7441,6 +7496,15 @@ function premioRowHtml(p, idx){
         <div class="svc-toggle-thumb"></div>
       </label>
       <button class="btn-ico del" onclick="eliminarPremio(${idx})" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </div>
+    <div class="frow" style="margin-bottom:8px;">
+      <div class="fg" style="margin-bottom:0;"><label class="flbl">Qué da el premio</label>
+        <select class="fi premio-tipo" onchange="cambioTipoPremio(this)">
+          <option value="otro"${(p.tipo||'otro')==='otro'?' selected':''}>Regalo o servicio (lo cumples tú)</option>
+          <option value="porcentaje"${p.tipo==='porcentaje'?' selected':''}>Descuento en %</option>
+          <option value="monto"${p.tipo==='monto'?' selected':''}>Descuento en $</option>
+        </select></div>
+      <div class="fg premio-valor-wrap" style="margin-bottom:0;${(p.tipo==='porcentaje'||p.tipo==='monto')?'':'display:none;'}"><label class="flbl premio-valor-lbl">${p.tipo==='monto'?'Monto ($)':'Porcentaje (%)'}</label><input class="fi premio-valor" type="number" min="0" step="0.01" value="${p.valor==null?'':p.valor}"></div>
     </div>
     <div class="frow">
       <div class="fg" style="margin-bottom:0;"><label class="flbl">Probabilidad</label><input class="fi premio-prob" type="number" min="0" step="1" value="${p.probabilidad||0}"></div>
@@ -7473,13 +7537,30 @@ function actualizarSumaProbabilidades(){
   document.getElementById('ruleta-suma').textContent = suma;
 }
 
+function cambioTipoPremio(sel){
+  const card = sel.closest('.premio-card');
+  const wrap = card.querySelector('.premio-valor-wrap');
+  const lbl = card.querySelector('.premio-valor-lbl');
+  const t = sel.value;
+  wrap.style.display = (t==='porcentaje' || t==='monto') ? '' : 'none';
+  lbl.textContent = t==='monto' ? 'Monto ($)' : 'Porcentaje (%)';
+}
+
+const RULETA_MAX_PREMIOS = 10;
 function agregarPremio(){
-  RULETA_CONFIG.premios.push({premio:'Nuevo premio', probabilidad:0, activo:true, stock:null});
+  // Primero se conserva lo que ya escribiste en los otros premios
+  if(document.querySelector('#lista-premios-ruleta .premio-card')) RULETA_CONFIG.premios = recolectarPremiosDesdeDOM();
+  if(RULETA_CONFIG.premios.length >= RULETA_MAX_PREMIOS){
+    alert('La ruleta admite hasta '+RULETA_MAX_PREMIOS+' premios para que se vea clara. Elimina o desactiva uno para agregar otro.');
+    return;
+  }
+  RULETA_CONFIG.premios.push({premio:'Nuevo premio', probabilidad:0, activo:true, stock:null, tipo:'otro', valor:null});
   renderPremios();
 }
 
 function eliminarPremio(idx){
-  if(!confirm('¿Eliminar este premio de la lista?')) return;
+  if(!confirm('¿Eliminar este premio de la lista? Se quita al guardar los cambios.')) return;
+  RULETA_CONFIG.premios = recolectarPremiosDesdeDOM();
   RULETA_CONFIG.premios.splice(idx,1);
   renderPremios();
 }
@@ -7497,10 +7578,13 @@ function recolectarPremiosDesdeDOM(){
     const prob = parseFloat(row.querySelector('.premio-prob').value) || 0;
     const stockRaw = row.querySelector('.premio-stock').value.trim();
     premios.push({
+      id: row.getAttribute('data-id') || null,
       premio: nombre,
       probabilidad: prob,
       activo: activo,
-      stock: stockRaw === '' ? null : parseInt(stockRaw)
+      stock: stockRaw === '' ? null : parseInt(stockRaw),
+      tipo: row.querySelector('.premio-tipo').value,
+      valor: (function(){ const v = row.querySelector('.premio-valor').value.trim(); return v === '' ? null : parseFloat(v); })()
     });
   });
   return premios;
@@ -7508,22 +7592,89 @@ function recolectarPremiosDesdeDOM(){
 
 async function guardarRuleta(){
   const premios = recolectarPremiosDesdeDOM();
+  if(premios.length > RULETA_MAX_PREMIOS){
+    alert('Tienes '+premios.length+' premios y el máximo es '+RULETA_MAX_PREMIOS+'. Elimina '+(premios.length-RULETA_MAX_PREMIOS)+' para poder guardar.');
+    return;
+  }
   if(premios.some(p=>!p.premio)){
     alert('Todos los premios necesitan un nombre.');
     return;
   }
-  const payload = {
-    activa: document.getElementById('ruleta-activa').checked,
-    premios: premios
-  };
-  await Sheets.guardarRuletaConfig(payload);
-  RULETA_CONFIG = payload;
-  alert('Ruleta actualizada. Los cambios se verán en la rueda la próxima vez que alguien cargue la agenda.');
+  const nombres = premios.map(p=>p.premio.toLowerCase());
+  const repetido = nombres.find((n,i)=>nombres.indexOf(n)!==i);
+  if(repetido){
+    alert('Hay dos premios con el nombre "'+repetido+'". Cada premio debe tener un nombre distinto.');
+    return;
+  }
+  const sinValor = premios.find(p=>(p.tipo==='porcentaje' || p.tipo==='monto') && !(p.valor > 0));
+  if(sinValor){ alert('Indica cuánto descuenta el premio "'+sinValor.premio+'".'); return; }
+  const pasaDe100 = premios.find(p=>p.tipo==='porcentaje' && p.valor > 100);
+  if(pasaDe100){ alert('El porcentaje del premio "'+pasaDe100.premio+'" no puede pasar de 100.'); return; }
+  const activa = document.getElementById('ruleta-activa').checked;
+  const modo = modoRuletaElegido();
+  const desde = document.getElementById('ruleta-desde').value;
+  const hasta = document.getElementById('ruleta-hasta').value;
+  if(modo==='periodo'){
+    if(!desde || !hasta){ alert('Para una ruleta por periodo indica la fecha de inicio y la de fin.'); return; }
+    if(hasta < desde){ alert('La fecha de fin no puede ser anterior a la de inicio.'); return; }
+  }
+  const conChance = premios.filter(p=>p.activo && p.probabilidad>0 && (p.stock===null || p.stock>0));
+  if(activa && conChance.length===0){
+    alert('Para activar la ruleta necesitas al menos un premio activo, con probabilidad mayor que 0 y con stock.');
+    return;
+  }
+  const btn = document.querySelector('#ruleta-activo .btn-save');
+  if(btn) btn.disabled = true;
+  try {
+    await Sheets.guardarRuletaConfig({
+      activa, premios, modo,
+      desde: modo==='periodo' ? desde : '', hasta: modo==='periodo' ? hasta : '',
+      cumple: document.getElementById('ruleta-cumple').value,
+      titulo: document.getElementById('ruleta-titulo').value.trim(),
+      vigencia: document.getElementById('ruleta-vigencia').value.trim()
+    });
+    await loadRuleta();   // vuelve a leer: así cada premio queda con su id y se ve lo que de verdad se guardó
+    alert('Ruleta actualizada. Los cambios se verán en la rueda la próxima vez que alguien cargue la agenda.');
+  } catch(e){
+    alert('No se pudo guardar la ruleta: ' + (e.message || 'intenta de nuevo.'));
+  } finally {
+    if(btn) btn.disabled = false;
+  }
 }
 
 async function loadGanadoresRuleta(){
   const cont = document.getElementById('lista-ganadores-ruleta');
-  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Función de ganadores pendiente de conectar a Supabase.</p>';
+  cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Cargando...</p>';
+  let lista = [];
+  try { lista = await Sheets.getGanadoresRuleta(); }
+  catch(e){
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">No se pudieron cargar los ganadores.</p>';
+    return;
+  }
+  if(!lista.length){
+    cont.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:1rem;">Todavía nadie ha girado la ruleta.</p>';
+    return;
+  }
+  const esc = t => String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const fmt = iso => { try { return new Date(iso).toLocaleDateString('es-PA',{day:'numeric',month:'short',year:'numeric'}); } catch(e){ return ''; } };
+  cont.innerHTML = lista.map(w=>`
+    <div class="premio-card" style="margin-bottom:8px;">
+      <div class="premio-card-top" style="align-items:flex-start;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${esc(w.premio)||'Premio'}</div>
+          <div style="font-size:12px;color:#777;margin-top:2px;">${esc(w.nombre)||'Sin nombre'} · ${esc(w.telefono)} · ${fmt(w.fecha)}</div>
+          <div style="font-size:12px;margin-top:4px;">Código: <strong style="letter-spacing:.08em;">${esc(w.codigo)}</strong></div>
+        </div>
+        <button class="btn-save" style="width:auto;padding:7px 14px;font-size:12px;${w.usado?'background:#e9e4ed !important;color:#555 !important;box-shadow:none;':''}" onclick="toggleGanadorRuleta('${w.id}', ${w.usado?'false':'true'})">
+          ${w.usado?'Canjeado ✓ (deshacer)':'Marcar canjeado'}
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleGanadorRuleta(id, usado){
+  try { await Sheets.marcarGanadorRuleta(id, usado); loadGanadoresRuleta(); }
+  catch(e){ alert('No se pudo actualizar el premio. Intenta de nuevo.'); }
 }
 
 // ===== CERTIFICADOS =====
@@ -9993,9 +10144,18 @@ const PALETAS_PERFIL = [
   { nombre:'Esmeralda', primario:'#0F766E', secundario:'#84CC16' },
   { nombre:'Coral', primario:'#E85D4F', secundario:'#F4A261' },
   { nombre:'Marino Elegante', primario:'#1E3A5F', secundario:'#C9A96E' },
-  { nombre:'Carbón & Oro', primario:'#2D2D2D', secundario:'#C9A96E' },
   { nombre:'Rosa Cuarzo', primario:'#D88C9A', secundario:'#6B3F4D' },
-  { nombre:'Lavanda Suave', primario:'#B39DDB', secundario:'#5E3A87' }
+  { nombre:'Lavanda Suave', primario:'#B39DDB', secundario:'#5E3A87' },
+  { nombre:'Orquídea', primario:'#B83280', secundario:'#6B2150' },
+  { nombre:'Salvia', primario:'#5E8B7E', secundario:'#2F4F47' },
+  { nombre:'Peonía', primario:'#E0587A', secundario:'#8E2F4F' },
+  { nombre:'Frambuesa', primario:'#C2185B', secundario:'#7B1040' },
+  { nombre:'Mandarina', primario:'#E67E22', secundario:'#8A4B0F' },
+  { nombre:'Océano', primario:'#06B6D4', secundario:'#075985' },
+  { nombre:'Eléctrico', primario:'#3B5BDB', secundario:'#1B2A6B' },
+  { nombre:'Cielo', primario:'#0EA5E9', secundario:'#0C4A6E' },
+  { nombre:'Celeste', primario:'#7DB9E8', secundario:'#2F5D8A' },
+  { nombre:'Neutral', primario:'#6F6A64', secundario:'#34312E' }
 ];
 let pfPaletaSel = null;
 let pfFooterTextoSel = 'oscuro';
@@ -10064,7 +10224,13 @@ async function loadPerfil(){
   pfFooterTextoSel = b.footer_texto === 'claro' ? 'claro' : 'oscuro';
   renderFooterTextoPerfil();
 
+  // Si el negocio tiene una paleta que ya no está en la lista, se conserva como "Tu paleta actual"
+  for (let k = PALETAS_PERFIL.length - 1; k >= 0; k--) if (PALETAS_PERFIL[k].actual) PALETAS_PERFIL.splice(k, 1);
   pfPaletaSel = PALETAS_PERFIL.findIndex(p => p.primario.toLowerCase() === (b.color_primario||'').toLowerCase());
+  if (pfPaletaSel < 0 && /^#[0-9a-f]{6}$/i.test(b.color_primario||'')){
+    PALETAS_PERFIL.unshift({ nombre:'Tu paleta actual', primario:b.color_primario, secundario:(b.color_secundario||b.color_primario), actual:true });
+    pfPaletaSel = 0;
+  }
   renderPaletaPerfil();
 
   const preview = document.getElementById('pf-logo-preview');
@@ -12414,12 +12580,13 @@ async function abrirCompletarCita(id){
   const consultar = !!c.precioEsConsultar;
   const base = Number(c.precioTotal) || 0;
   const pct = Number(c.descuentoCupon) || 0;
-  const neto = consultar ? 0 : Math.max(0, base - base*pct/100);
+  const descFijo = Number(c.descuentoCuponMonto) || 0;
+  const neto = consultar ? 0 : Math.max(0, base - base*pct/100 - descFijo);
   COMPLETANDO = { c, consultar, neto, abono:Number(c.abonoMonto)||0, cert:Number(c.certificadoMonto)||0, descontable:(c.abonoTipo === 'descontable'), certExtra:null, certExtraAplicado:0,
     certPorAplicar: !!(c.certificadoCodigo && !(Number(c.certificadoMonto) > 0)) };
   const pistaPrecio = consultar
     ? 'Este servicio era "a consultar": ingresa el precio acordado.'
-    : (pct > 0 ? 'Incluye el descuento del cupón (' + pct + '%). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
+    : ((pct > 0 || descFijo > 0) ? 'Incluye el descuento del cupón (' + (pct > 0 ? pct + '%' : fmtDinero(descFijo)) + '). Puedes ajustarlo si cambió en el local.' : 'Puedes ajustarlo si hubo un descuento en el local.');
   elFin('fc-body').innerHTML = `
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.7;">
       <strong>${escCat(c.servicio)}</strong><br>
@@ -12827,7 +12994,9 @@ function inicialesCita(n){
 function resumenPagoCita(c){
   const precio = c.precioEsConsultar ? null : (Number(c.precioTotal) || 0);
   const pct = Number(c.descuentoCupon) || 0;
-  const desc = (precio != null && pct > 0) ? Math.round(precio*pct)/100 : 0;
+  const descFijo = Number(c.descuentoCuponMonto) || 0;
+  const descPct = (precio != null && pct > 0) ? Math.round(precio*pct)/100 : 0;
+  const desc = (precio != null) ? Math.min(precio, Math.round((descPct + descFijo)*100)/100) : 0;
   const cert = Number(c.certificadoMonto) || 0;
   const abono = Number(c.abonoMonto) || 0;
   const descontable = c.abonoTipo === 'descontable';
@@ -12838,7 +13007,7 @@ function resumenPagoCita(c){
   const porCobrar = neto != null ? Math.max(0, Math.round((neto - cert - (descontable ? abono : 0))*100)/100) : null;
   // Cobrado de más: lo pagado por adelantado (certificado + abono descontable) supera el servicio
   const excedente = neto != null ? Math.max(0, Math.round((cert + (descontable ? abono : 0) - neto)*100)/100) : 0;
-  return { precio, pct, desc, cert, abono, descontable, neto, porCobrar, excedente };
+  return { precio, pct, descFijo, desc, cert, abono, descontable, neto, porCobrar, excedente };
 }
 
 function metodoAbonoTexto(m){ return m === 'yappy' ? 'Yappy' : (m ? 'Transferencia' : ''); }
@@ -12848,6 +13017,7 @@ function chipsPagoCita(c){
   const chip = (txt, bg, fg) => `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:${bg};color:${fg};">${txt}</span>`;
   const out = [];
   if (r.pct > 0) out.push(chip('Cupón ' + r.pct + '%', '#FBEDEE', '#C2695A'));
+  if (r.descFijo > 0) out.push(chip('Cupón −' + fmtDinero(r.descFijo), '#FBEDEE', '#C2695A'));
   if (r.cert > 0) out.push(chip('Certificado −' + fmtDinero(r.cert), '#E9F6EF', '#159A61'));
   else if (c.certificadoCodigo && !c.completadaEn) out.push(chip('Certificado por aplicar', '#F3EDFB', '#7C4DA0'));
   if (r.abono > 0) out.push(chip('Abono ' + fmtDinero(r.abono) + (c.metodoPago ? ' · ' + metodoAbonoTexto(c.metodoPago) : ''), '#F3EDFB', '#7C4DA0'));
@@ -13086,7 +13256,7 @@ async function abrirDetalleCita(id){
       }
     }
   }
-  if (r.pct > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + ' ' + r.pct + '%', '−' + fmtDinero(r.desc), {icon:'ti-discount-2', tone:'neg'});
+  if (r.pct > 0 || r.descFijo > 0) html += fila('Cupón' + (c.cuponAplicado ? ' (' + escCat(c.cuponAplicado) + ')' : '') + (r.pct > 0 ? ' ' + r.pct + '%' : ''), '−' + fmtDinero(r.desc), {icon:'ti-discount-2', tone:'neg'});
   if (r.cert > 0) html += '<div id="cd-cert-fila">' + fila('Certificado' + (c.certificadoCodigo ? ' (' + escCat(c.certificadoCodigo) + ')' : ''), '−' + fmtDinero(r.cert), {icon:'ti-gift', tone:'neg'}) + '</div>' +
     '<div id="cd-cert-saldo"></div>';
   // Certificado validado al reservar pero todavía sin descontar (precio no fijo)

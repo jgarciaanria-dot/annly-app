@@ -27,16 +27,19 @@
   html body #suc-chip{padding-left:calc(1.5rem + 14px);padding-right:calc(1.5rem + 14px);}
   html body .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
 }
-.svc-banner,.svc-pill,.svc-resumen{background:linear-gradient(135deg,var(--gold-dark) 0%,rgba(var(--gold-dark-rgb),.86) 100%);box-shadow:0 8px 20px -14px rgba(var(--gold-dark-rgb),.9);}
-.svc-banner-name,.svc-pill-name{color:#fff;}
-.svc-banner-price,.svc-pill-price{color:#fff;font-weight:600;}
-.svc-banner-dur,.svc-pill-dur{color:rgba(255,255,255,.78);}
-.svc-banner-icon{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.14);}
-.svc-banner-icon i{color:#fff;}
+:root{--b1:#EEE6F8;--b2:#F5F0FA;--b3:#FBF8FD;--b-glow:transparent;--b-ink:#2B2238;--b-ink-soft:rgba(43,34,56,.68);}
+.svc-banner,.svc-pill,.svc-resumen{background:radial-gradient(130% 150% at 88% -10%,var(--b-glow) 0%,transparent 62%),linear-gradient(180deg,var(--b1) 0%,var(--b2) 58%,var(--b3) 100%);border:1px solid rgba(255,255,255,.85);box-shadow:0 12px 26px -18px rgba(var(--gold-rgb),.55),inset 0 1px 0 rgba(255,255,255,.9);}
+html body:not(.modo-oscuro) .hdr{background-color:var(--b3);background-image:radial-gradient(120% 90% at 50% 0%,var(--b-glow) 0%,transparent 65%),linear-gradient(180deg,var(--b1) 0%,var(--b2) 62%,var(--b3) 100%);}
+html body:not(.modo-oscuro) .hdr::before{background:radial-gradient(circle,rgba(255,255,255,.75) 0%,transparent 70%);}
+.svc-banner-name,.svc-pill-name,.svc-resumen-name{color:var(--b-ink);}
+.svc-banner-price,.svc-pill-price{color:var(--b-ink);font-weight:700;}
+.svc-banner-dur,.svc-pill-dur,.svc-resumen-meta{color:var(--b-ink-soft);}
+.svc-banner-icon{border-color:rgba(255,255,255,.9);background:rgba(255,255,255,.6);box-shadow:0 4px 10px -6px rgba(var(--gold-rgb),.5);}
+.svc-banner-icon i{color:var(--b-ink);}
 .svc-resumen{border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;}
-.svc-resumen-name{font-size:15px;font-weight:700;color:#fff;font-family:var(--font-heading);}
-.svc-resumen-meta{font-size:11.5px;color:rgba(255,255,255,.82);margin-top:3px;}
-.stepn{background:var(--gold-dark);color:#fff;font-weight:600;}
+.svc-resumen-name{font-size:15px;font-weight:700;font-family:var(--font-heading);}
+.svc-resumen-meta{font-size:11.5px;margin-top:3px;}
+.stepn{background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-weight:600;}
 .card-arrow{background:var(--gold-dark);}
 .incl-grid{grid-template-columns:1fr 1fr;gap:10px 16px;}
 .incl-item{align-items:flex-start;line-height:1.45;}
@@ -54,24 +57,52 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
   // RUEDA DINÁMICA - se construye desde RuletaConfig, sin código fijo
   // ============================================================
   let RULETA_SEGMENTOS_ACTIVOS = [];
+  let RULETA_UI = { modo: 'siempre', titulo: '' };
 
-  const RULETA_PALETA = [
-    { fill: '#F0D68C', text: '#241B10', muted: '#5C4B22' },
-    { fill: '#C9A24B', text: '#241B10', muted: '#4A3B18' },
-    { fill: '#8A6A24', text: '#F5F1E6', muted: '#D8D4CC' },
-    { fill: '#E3C077', text: '#241B10', muted: '#5C4B22' },
-    { fill: '#B8933D', text: '#241B10', muted: '#4A3B18' },
-    { fill: '#6B5518', text: '#F5F1E6', muted: '#D8D4CC' }
-  ];
+  // ---- Colores de la ruleta: salen de los colores de la marca del negocio ----
+  function rHex(h){ const m = /^#?([0-9a-f]{6})$/i.exec(String(h||'').trim()); if(!m) return null; const n = parseInt(m[1],16); return [n>>16&255, n>>8&255, n&255]; }
+  function rToHex(c){ return '#' + c.map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''); }
+  function rMix(a, b, t){ const A=rHex(a), B=rHex(b); return rToHex(A.map((v,i)=> v + (B[i]-v)*t)); }
+  function rLum(h){ const c=rHex(h).map(v=>{v/=255; return v<=.03928 ? v/12.92 : Math.pow((v+.055)/1.055,2.4);}); return .2126*c[0]+.7152*c[1]+.0722*c[2]; }
+  function rLegible(h, min){ let c=h, i=0; while(rLum(c) < min && i++ < 10) c = rMix(c,'#ffffff',.14); return c; }
+  function rDist(a,b){ const A=rHex(a), B=rHex(b); return Math.sqrt(A.reduce((t,v,i)=>t+Math.pow(v-B[i],2),0)); }
+
+  function ruletaTema(){
+    const neg = window.ANNLY_BUSINESS || {};
+    const p = rHex(neg.color_primario) ? neg.color_primario : '#C9A24B';
+    let s = rHex(neg.color_secundario) ? neg.color_secundario : '#8A6A24';
+    if (rDist(p, s) < 70) s = rMix(p, '#000000', .45);          // colores muy parecidos: se usa una versión más oscura
+    // Realce: el color principal, oscurecido si hace falta para que se lea sobre blanco
+    let acc = p, i = 0;
+    while (rLum(acc) > .20 && i++ < 14) acc = rMix(acc, '#000000', .12);
+    const card1 = p, card2 = rMix(p, '#000000', .18);
+    return {
+      bg: '#FFFFFF', acc,
+      titulo: '#201B2B',
+      muted: '#7A7287',
+      linea: rMix('#FFFFFF', acc, .30),
+      card1, card2, cardTexto: rLum(card1) > .30 ? '#201B2B' : '#FFFFFF',
+      segmentos: [p, rMix(p,'#ffffff',.55), s, rMix(s,'#ffffff',.55)],
+      confeti: ['#FF4D6D','#FFC233','#2EC4B6','#4D96FF','#9B5DE5','#FF8A3D']
+    };
+  }
+  let RULETA_TEMA = null;
+  function aplicarTemaRuleta(){
+    RULETA_TEMA = ruletaTema();
+    const m = document.getElementById('ruletaModal'); if(!m) return;
+    const t = RULETA_TEMA;
+    [['--rul-bg',t.bg],['--rul-acc',t.acc],['--rul-title',t.titulo],['--rul-muted',t.muted],['--rul-line',t.linea],
+     ['--rul-card1',t.card1],['--rul-card2',t.card2],['--rul-card-text',t.cardTexto]].forEach(([k,v]) => m.style.setProperty(k, v));
+  }
 
   function ruletaPt(cx, cy, r, angleDeg){
     const rad = angleDeg * Math.PI / 180;
     return { x: (cx + r * Math.sin(rad)).toFixed(1), y: (cy - r * Math.cos(rad)).toFixed(1) };
   }
 
-  function ruletaWordWrap(texto, maxLen){
-    const palabras = texto.split(' ');
-    const lineas = [];
+  function ruletaWordWrap(texto, maxLen, maxLineas){
+    const palabras = String(texto).split(' ');
+    let lineas = [];
     let actual = '';
     palabras.forEach(p => {
       if ((actual + ' ' + p).trim().length > maxLen && actual) {
@@ -82,7 +113,12 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       }
     });
     if (actual) lineas.push(actual);
-    return lineas.slice(0, 2); // máximo 2 líneas para que quepa
+    maxLineas = maxLineas || 2;
+    if (lineas.length > maxLineas) {
+      const resto = lineas.slice(maxLineas - 1).join(' ');
+      lineas = lineas.slice(0, maxLineas - 1).concat([resto.length > maxLen + 2 ? resto.slice(0, maxLen - 1).trim() + '…' : resto]);
+    }
+    return lineas;
   }
 
   function ruletaEscapeHtml(s){
@@ -92,7 +128,9 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
   async function loadRuletaConfig(){
     try {
       const config = await Sheets.getRuletaConfig();
-      const activos = (config.premios || []).filter(p => p.activo);
+      // Solo aparecen en la rueda los premios que de verdad pueden salir: activos, con probabilidad y con stock
+      RULETA_UI = { modo: config.modo || 'siempre', titulo: config.titulo || '' };
+      const activos = (config.premios || []).filter(p => p.activo && Number(p.probabilidad) > 0 && (p.stock === null || p.stock === undefined || p.stock > 0));
       construirRuedaDinamica(activos);
     } catch(e){
       console.error('Error cargando config de ruleta:', e);
@@ -109,11 +147,12 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       return;
     }
 
+    aplicarTemaRuleta();
+    const T = RULETA_TEMA;
     const cx = 125, cy = 125, R = 118;
     const step = 360 / n;
     const maxLineLen = n <= 4 ? 14 : (n <= 6 ? 11 : 8);
     const fontSize = n <= 4 ? 15 : (n <= 6 ? 12 : 9);
-    const lineHeight = fontSize * 1.15;
 
     let pathsHtml = '';
     let linesHtml = '';
@@ -123,42 +162,59 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
     for (let k = 0; k < n; k++) {
       const p1 = ruletaPt(cx, cy, R, k * step);
       const p2 = ruletaPt(cx, cy, R, (k + 1) * step);
-      const color = RULETA_PALETA[k % RULETA_PALETA.length];
+      let idxColor = k % T.segmentos.length;
+      if (k === n - 1 && n > 1 && idxColor === 0) idxColor = 2;     // el último no repite el color del primero
+      const fillSeg = T.segmentos[idxColor];
+      const color = { fill: fillSeg, text: rLum(fillSeg) > .45 ? '#1B1612' : '#FFFFFF' };
       const segId = 'seg' + k;
 
       pathsHtml += `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
-      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="#C9A24B" stroke-width="0.75" opacity="0.55"/>\n`;
+      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="${T.acc}" stroke-width="0.75" opacity="0.55"/>\n`;
 
       const midAngle = (k + 0.5) * step;
-      const headline = ruletaPt(cx, cy, R * 0.62, midAngle);
+      const nLineasTxt = ruletaWordWrap(premiosActivos[k].premio, maxLineLen, n <= 5 ? 3 : 2).length;
+      const headline = ruletaPt(cx, cy, R * (nLineasTxt >= 3 ? .72 : .62), midAngle);
+      const fontSeg = nLineasTxt >= 3 ? fontSize * .88 : fontSize;
 
       // Rotación fija tipo abanico para el TEXTO: siempre legible, nunca boca abajo
       const rotDeg = midAngle;
 
-      const lineas = ruletaWordWrap(premiosActivos[k].premio, maxLineLen);
-      const startY = parseFloat(headline.y) - ((lineas.length - 1) * lineHeight) / 2;
+      const maxLineas = n <= 5 ? 3 : 2;
+      const lineas = ruletaWordWrap(premiosActivos[k].premio, maxLineLen, maxLineas);
+      const lh = fontSeg * 1.15;
+      const startY = parseFloat(headline.y) - ((lineas.length - 1) * lh) / 2;
       const tspans = lineas.map((linea, i) =>
-        `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lineHeight}">${ruletaEscapeHtml(linea)}</tspan>`
+        `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lh}">${ruletaEscapeHtml(linea)}</tspan>`
       ).join('');
-      textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSize}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
+      if (n > 6) {
+        // Con muchos premios el texto va a lo largo del radio: cabe más y se lee completo
+        const rad = ruletaPt(cx, cy, R * .63, midAngle);
+        const lR = ruletaWordWrap(premiosActivos[k].premio, 15, 2);
+        const fR = lR.some(l => l.length > 12) ? 8.6 : 9.4, lhR = fR * 1.15;
+        const rotR = midAngle - 90 + (midAngle > 180 ? 180 : 0);
+        const y0 = parseFloat(rad.y) - ((lR.length - 1) * lhR) / 2 + fR * .35;
+        const ts = lR.map((l, i) => `<tspan x="${rad.x}" dy="${i === 0 ? 0 : lhR}">${ruletaEscapeHtml(l)}</tspan>`).join('');
+        textsHtml += `<text x="${rad.x}" y="${y0.toFixed(1)}" font-size="${fR}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotR.toFixed(1)} ${rad.x} ${rad.y})">${ts}</text>\n`;
+      } else
+      textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSeg.toFixed(1)}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
 
-      segmentos.push({ id: segId, premio: premiosActivos[k].premio, angle: midAngle });
+      segmentos.push({ id: segId, premioId: premiosActivos[k].id, premio: premiosActivos[k].premio, angle: midAngle });
     }
 
     const dotsHtml = [
       [125.0,4.0],[162.4,9.9],[196.1,27.1],[222.9,53.9],[240.1,87.6],[246.0,125.0],
       [240.1,162.4],[222.9,196.1],[196.1,222.9],[162.4,240.1],[125.0,246.0],[87.6,240.1],
       [53.9,222.9],[27.1,196.1],[9.9,162.4],[4.0,125.0],[9.9,87.6],[27.1,53.9],[53.9,27.1],[87.6,9.9]
-    ].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="#C9A24B"/>`).join('\n');
+    ].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="${T.acc}"/>`).join('\n');
 
     cont.innerHTML = `<svg id="wheelSvg" viewBox="0 0 250 250" width="250" height="250">
-      <circle cx="125" cy="125" r="122" fill="none" stroke="#C9A24B" stroke-width="1" opacity="0.6"/>
+      <circle cx="125" cy="125" r="122" fill="none" stroke="${T.acc}" stroke-width="1" opacity="0.6"/>
       ${pathsHtml}
-      <circle cx="125" cy="125" r="118" fill="none" stroke="#C9A24B" stroke-width="1.5"/>
+      <circle cx="125" cy="125" r="118" fill="none" stroke="${T.acc}" stroke-width="1.5"/>
       ${linesHtml}
       ${dotsHtml}
       ${textsHtml}
-      <circle cx="125" cy="125" r="34" fill="#0D0C0A" stroke="#C9A24B" stroke-width="2"/>
+      <circle cx="125" cy="125" r="34" fill="${T.bg}" stroke="${T.acc}" stroke-width="2"/>
     </svg>`;
 
     RULETA_SEGMENTOS_ACTIVOS = segmentos;
@@ -234,6 +290,22 @@ window.AnnlyReady.then(() => Sheets.negocioSuspendido()).then(suspendido => {
   });
 }).catch(() => {});
 
+// Banner pastel y difuso con los colores de la marca: un lavado suave de arriba hacia abajo, con un brillo cálido
+function annlyBannerPastel(p, s){
+  if (!rHex(p) || !rHex(s)) return null;
+  const calido = '#FFEBD6';
+  const base = (k, c) => rMix(rMix(p, '#ffffff', k), calido, c);   // tono de la marca aclarado y con un toque cálido
+  let tinta = s, i = 0;
+  while (rLum(tinta) > .07 && i++ < 16) tinta = rMix(tinta, '#000000', .12);   // texto oscuro, del tono de la marca
+  tinta = rMix(tinta, '#1B1612', .25);
+  const rgb = hex => rHex(hex).join(',');
+  return {
+    b1: base(.70, .22), b2: base(.86, .30), b3: base(.95, .35),
+    glow: 'rgba(' + rgb(rMix(p, calido, .45)) + ',.55)',
+    ink: tinta, inkSoft: 'rgba(' + rgb(tinta) + ',.68)'
+  };
+}
+
 window.AnnlyReady.then(() => {
   const b = window.ANNLY_BUSINESS;
   if (b) {
@@ -241,11 +313,27 @@ window.AnnlyReady.then(() => {
       document.documentElement.style.setProperty('--gold', b.color_primario);
       const rgb = hexToRgb(b.color_primario);
       if (rgb) document.documentElement.style.setProperty('--gold-rgb', rgb);
+      // Texto que va sobre el color de la marca: blanco si el color es oscuro, oscuro si es claro
+      if (rHex(b.color_primario)) document.documentElement.style.setProperty('--on-gold', rLum(b.color_primario) > .30 ? '#201B2B' : '#FFFFFF');
+    }
+    if (rHex(b.color_primario) && rHex(b.color_secundario)) {
+      const rs = document.documentElement.style;
+      // Botón principal: del color de la marca hacia un tono más cercano al secundario
+      const mezcla = rMix(b.color_primario, b.color_secundario, .28);
+      rs.setProperty('--gold-mix', mezcla);
+      rs.setProperty('--on-gold', rLum(rMix(b.color_primario, mezcla, .5)) > .30 ? '#201B2B' : '#FFFFFF');
+      // Banner de los servicios: pastel difuso con los colores de la marca
+      const bn = annlyBannerPastel(b.color_primario, b.color_secundario);
+      if (bn) {
+        rs.setProperty('--b1', bn.b1); rs.setProperty('--b2', bn.b2); rs.setProperty('--b3', bn.b3);
+        rs.setProperty('--b-glow', bn.glow); rs.setProperty('--b-ink', bn.ink); rs.setProperty('--b-ink-soft', bn.inkSoft);
+      }
     }
     if (b.color_secundario) {
       document.documentElement.style.setProperty('--gold-dark', b.color_secundario);
       const rgbDark = hexToRgb(b.color_secundario);
       if (rgbDark) document.documentElement.style.setProperty('--gold-dark-rgb', rgbDark);
+      if (rHex(b.color_secundario)) document.documentElement.style.setProperty('--on-gold-dark', rLum(b.color_secundario) > .30 ? '#201B2B' : '#FFFFFF');
     }
     const h1 = document.getElementById('hdr-nombre');
     if (h1 && b.nombre) h1.textContent = b.nombre.toUpperCase();
@@ -478,7 +566,7 @@ function aplicarSucursalSitio(suc, conSelector){
 .suc-card-lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-dark);opacity:.85;}
 .suc-card-name{font-family:var(--font-heading);font-size:17px;font-weight:700;color:#1a1816;line-height:1.2;}
 .suc-card-dir{font-size:12px;color:rgba(30,26,22,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.suc-card-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--gold-dark);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s;}
+.suc-card-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:999px;border:0;background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s;}
 .suc-card-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
 .suc-card-btn i{font-size:15px;}
 body.modo-oscuro .suc-card{background:rgba(255,255,255,.05);border-color:rgba(var(--gold-rgb),.35);}
@@ -694,7 +782,7 @@ async function enviarCompraCertificado(){
         <div class="s-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
         <div class="s-title">¡Compra recibida!</div>
         <div class="s-sub">Estamos confirmando tu pago — en cuanto quede validado te llegará el certificado por correo.</div>
-        <button class="btn-main" style="background:var(--gold-dark);color:#fff;" onclick="closeOv('ov-comprar-certificado')">Listo</button>
+        <button class="btn-main" style="background:var(--gold-dark);color:var(--on-gold-dark,#fff);" onclick="closeOv('ov-comprar-certificado')">Listo</button>
       </div>`;
   } catch(e) {
     console.error('Error comprando certificado:', e);
@@ -765,7 +853,14 @@ let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
 let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={},horariosEmpleadosCache={};
 // Cita doble: un segundo profesional, para la 2da persona de la reserva
 let empleadoSeleccionado2=null,empleadoHorarioCache2=null;
-let cuponAplicado=null,cuponDescuentoPct=0,cuponPremioTexto='';
+let cuponAplicado=null,cuponDescuentoPct=0,cuponDescuentoMonto=0,cuponPremioTexto='';
+
+// Descuento del cupón sobre un precio: primero el porcentaje y luego el monto fijo, sin pasar del precio
+function descuentoDeCupon(precio){
+  const dPct = cuponDescuentoPct>0 ? precio*(cuponDescuentoPct/100) : 0;
+  const dFijo = cuponDescuentoMonto>0 ? Math.min(cuponDescuentoMonto, Math.max(0,precio-dPct)) : 0;
+  return Math.round((dPct+dFijo)*100)/100;
+}
 let certAplicado=null; // {id, codigo, saldoDisponible}
 let pagoRender=null, abonoMostrado=null;
 
@@ -788,7 +883,7 @@ function calcularMontos(){
   const precio=curSvc.price>0?curSvc.price:0;
   const esConsultar=curSvc.price<=0;
   const noFijo=precioNoFijo(curSvc);
-  const descuentoMonto=(!esConsultar&&cuponDescuentoPct>0)?precio*(cuponDescuentoPct/100):0;
+  const descuentoMonto=!esConsultar?descuentoDeCupon(precio):0;
   const precioTrasCupon=Math.max(0,precio-descuentoMonto);
   const certPorAplicar=!!certAplicado && noFijo;
   const montoCert=(certAplicado && !noFijo)?Math.min(certAplicado.saldoDisponible,precioTrasCupon):0;
@@ -1285,7 +1380,7 @@ function chMo(d){
 
 function goForm(){
   closeOv('ov-cal');
-  cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
+  cuponAplicado=null; cuponDescuentoPct=0; cuponDescuentoMonto=0; cuponPremioTexto='';
   certAplicado=null;
   const dayStr=`${selectedDay} de ${MESES[calM]} ${calY}`;
   currentDayStr=dayStr;
@@ -1393,7 +1488,7 @@ function goForm(){
       <label class="flbl">¿Tienes un cupón de descuento?</label>
       <div style="display:flex;gap:8px;">
         <input class="fi" id="fcupon" placeholder="Ej: RUL-4F2A" style="flex:1;text-transform:uppercase;">
-        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+        <button type="button" onclick="aplicarCupon()" style="padding:0 16px;background:var(--gold-dark);color:var(--on-gold-dark,#fff);border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="cuponMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>
@@ -1401,7 +1496,7 @@ function goForm(){
       <label class="flbl">¿Tienes un certificado de regalo?</label>
       <div style="display:flex;gap:8px;">
         <input class="fi" id="fcert" placeholder="Ej: CERT-A1B2C3" style="flex:1;text-transform:uppercase;">
-        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:var(--gold-dark);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
+        <button type="button" onclick="aplicarCertificadoCodigo()" style="padding:0 16px;background:var(--gold-dark);color:var(--on-gold-dark,#fff);border:none;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;">Aplicar</button>
       </div>
       <p id="certMsg" style="font-size:11px;margin-top:6px;min-height:14px;"></p>
     </div>`}
@@ -1486,26 +1581,35 @@ async function aplicarCupon(){
   const input=document.getElementById('fcupon');
   const msgEl=document.getElementById('cuponMsg');
   const codigo=input.value.trim();
-  if(!codigo){ msgEl.textContent=''; cuponAplicado=null; cuponDescuentoPct=0; actualizarPagoPorCert(); return; }
+  const reset=()=>{ cuponAplicado=null; cuponDescuentoPct=0; cuponDescuentoMonto=0; cuponPremioTexto=''; };
+  if(!codigo){ msgEl.textContent=''; reset(); actualizarPagoPorCert(); return; }
+  // El cupón es de quien ganó el premio: se comprueba con el WhatsApp de la reserva
+  const tel=(document.getElementById('fp')||{}).value||'';
+  if(tel.replace(/\D/g,'').length<7){
+    reset(); msgEl.style.color='#c0392b';
+    msgEl.textContent='Escribe primero tu WhatsApp (el mismo con el que giraste la ruleta).';
+    actualizarPagoPorCert(); return;
+  }
   msgEl.style.color='#999';
   msgEl.textContent='Verificando...';
-  const res=await Sheets.validarCupon(codigo);
+  const res=await Sheets.validarCupon(codigo, tel);
+  reset();
+  const hasta=res.venceEn?` Válido hasta el ${res.venceEn.split('-').reverse().join('/')}.`:'';
   if(res.valido && res.tipo==='porcentaje'){
-    cuponAplicado=codigo.toUpperCase();
-    cuponDescuentoPct=res.valor;
-    cuponPremioTexto=res.premio;
+    cuponAplicado=codigo.toUpperCase(); cuponDescuentoPct=res.valor; cuponPremioTexto=res.premio;
     msgEl.style.color='#3a7a3a';
-    msgEl.textContent=`✓ Cupón válido: ${res.valor}% de descuento.`;
-  } else if(res.valido && res.tipo==='especial'){
-    cuponAplicado=codigo.toUpperCase();
-    cuponDescuentoPct=0;
-    cuponPremioTexto=res.premio;
+    msgEl.textContent=`✓ Cupón válido: ${res.valor}% de descuento.${hasta}`;
+  } else if(res.valido && res.tipo==='monto'){
+    cuponAplicado=codigo.toUpperCase(); cuponDescuentoMonto=res.valor; cuponPremioTexto=res.premio;
     msgEl.style.color='#3a7a3a';
-    msgEl.textContent=`✓ Cupón válido: ${res.premio}. Se coordinará el detalle contigo.`;
+    msgEl.textContent=`✓ Cupón válido: $${Number(res.valor).toFixed(2)} de descuento.${hasta}`;
+  } else if(res.valido){
+    cuponAplicado=codigo.toUpperCase(); cuponPremioTexto=res.premio;
+    msgEl.style.color='#3a7a3a';
+    msgEl.textContent=`✓ Cupón válido: ${res.premio}. Lo recibirás cuando vengas a tu cita.${hasta}`;
   } else {
-    cuponAplicado=null; cuponDescuentoPct=0; cuponPremioTexto='';
     msgEl.style.color='#c0392b';
-    const motivos={ya_canjeado:'Este cupón ya fue utilizado.',codigo_no_encontrado:'Cupón no válido.',codigo_vacio:'Ingresa un código.'};
+    const motivos={ya_canjeado:'Este cupón ya fue utilizado.',codigo_no_encontrado:'Cupón no válido.',codigo_vacio:'Ingresa un código.',otro_cliente:'Este cupón pertenece a otra persona. Usa el WhatsApp con el que giraste la ruleta.',vencido:'Este cupón ya venció.'};
     msgEl.textContent=motivos[res.motivo]||'Cupón no válido.';
   }
   actualizarPagoPorCert();
@@ -1681,7 +1785,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
   const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
   const citaId = 'cita-' + Date.now();
 
-  const descuentoMonto = (!esConsultar && cuponDescuentoPct>0) ? precio*(cuponDescuentoPct/100) : 0;
+  const descuentoMonto = !esConsultar ? descuentoDeCupon(precio) : 0;
   const precioTrasCupon = Math.max(0, precio - descuentoMonto);
   // Precio fijo: el certificado se descuenta ahora. Precio no fijo ("desde…", "consultar"):
   // solo se valida, y el negocio lo aplica al completar la cita con el precio final. Así, si el
@@ -1697,10 +1801,24 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
     comprobante:ref,abonoMonto:tieneAbono?montoAbono:0,abonoTipo:tieneAbono?tipoAbono:'',
     metodoPago:tieneAbono?pagoTipo:'', citaId:citaId, empleadoId:empleadoAsignadoFinal(),
     abonoPorConfirmar: tieneAbono && !pagoVerificado,
-    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, precioFinal:precioFinal,
+    cuponUsado:cuponAplicado||'', descuentoCupon:cuponDescuentoPct||0, descuentoCuponMonto:(!esConsultar && cuponDescuentoMonto>0)?Math.round((descuentoMonto-(cuponDescuentoPct>0?precio*(cuponDescuentoPct/100):0))*100)/100:0, precioFinal:precioFinal,
     certificadoCodigo: (montoCertAplicado>0 || certPorAplicar) ? certAplicado.codigo : null,
     certificadoMonto: montoCertAplicado>0 ? montoCertAplicado : null,
     certificadoSaldoRestante: montoCertAplicado>0 ? (certAplicado.unSoloUso ? 0 : Math.max(0, certAplicado.saldoDisponible - montoCertAplicado)) : null};
+  // El cupón se vuelve a comprobar con los datos finales (teléfono y fecha): es de quien lo ganó y solo vale una vez
+  if(cuponAplicado && !pagoVerificado){
+    let chk={valido:true};
+    try{ chk=await Sheets.validarCupon(cuponAplicado, tel); }catch(e){ console.error(e); }
+    if(!chk.valido){
+      const motivos={ya_canjeado:'ya fue utilizado',otro_cliente:'pertenece a otra persona (usa el WhatsApp con el que giraste la ruleta)',vencido:'ya venció',codigo_no_encontrado:'no es válido'};
+      cuponAplicado=null; cuponDescuentoPct=0; cuponDescuentoMonto=0; cuponPremioTexto='';
+      const el=document.getElementById('fcupon'); if(el) el.value='';
+      const cm=document.getElementById('cuponMsg'); if(cm) cm.textContent='';
+      try{ actualizarPagoPorCert(); }catch(e){}
+      errorAlGuardarCita(null, null, 'Tu cupón '+(motivos[chk.motivo]||'ya no es válido')+'. Lo quitamos del resumen: revisa el total y confirma de nuevo.');
+      return;
+    }
+  }
   let appointmentId=null;
   try{ appointmentId=await Sheets.guardarCita(cita); }
   catch(e){
@@ -1709,7 +1827,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
     return;
   }
   try{await Sheets.upsertClienteDesdeReserva(nombre, tel, correo);}catch(e){console.error(e);}
-  if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado);}catch(e){console.error(e);} }
+  if(cuponAplicado){ try{await Sheets.marcarCuponCanjeado(cuponAplicado, tel);}catch(e){console.error(e);} }
   let certFallo=false;
   if(montoCertAplicado>0){ try{await Sheets.aplicarCertificado(certAplicado.id, montoCertAplicado, appointmentId);}catch(e){console.error(e); certFallo=true;} }
   const horaDisplay = (()=>{const[h,m]=selTime.split(':');const hh=parseInt(h);return (hh>12?hh-12:hh)+':'+m+(hh>=12?' PM':' AM');})();
@@ -1722,8 +1840,8 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
     : '$'+(tipoAbono==='descontable' ? Math.max(0, precioFinal - montoAbono).toFixed(2) : precioFinal.toFixed(2));
   const abonoLine=tieneAbono?`<strong>Abono ${pagoVerificado ? 'pagado' : 'enviado (por validar)'}:</strong> <span style="color:#4CAF50;font-weight:600;">$${montoAbono.toFixed(2)}</span> (${textoTipo})<br><strong>Comprobante:</strong> ${ref}<br>`
     :(abonoExonerado?`<strong>Abono:</strong> No requerido (cubierto por tu certificado)<br>`:'');
-  const cuponLine = (cuponAplicado && cuponDescuentoPct>0 && !esConsultar)
-    ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">-${cuponDescuentoPct}% (-$${descuentoMonto.toFixed(2)})</span><br>`
+  const cuponLine = (cuponAplicado && descuentoMonto>0 && !esConsultar)
+    ? `<strong>Descuento por cupón:</strong> <span style="color:#D95F2B;font-weight:600;">${cuponDescuentoPct>0&&cuponDescuentoMonto<=0?`-${cuponDescuentoPct}% `:''}(-$${descuentoMonto.toFixed(2)})</span><br>`
     : (cuponAplicado ? `<strong>Cupón aplicado:</strong> ${cuponPremioTexto}<br>` : '');
   const certLine = montoCertAplicado>0
     ? `<strong>Certificado aplicado (${certAplicado.codigo}):</strong> <span style="color:#4CAF50;font-weight:600;">-$${montoCertAplicado.toFixed(2)}</span><br>${certFallo
@@ -1756,7 +1874,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
         ${totalLine}
       </div>
       ${abonoExonerado?'':'<p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Recuerda: cancelaciones con menos de 24 horas de anticipación no tienen reembolso del abono.</p>'}
-      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+      <button class="btn-main" style="background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
 
   setTimeout(async () => {
@@ -1764,7 +1882,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
       const check = await Sheets.verificarElegibilidadRuleta(tel);
       if (check && check.elegible) {
         closeOv('ov-form');
-        abrirModalRuleta(tel, nombre, citaId);
+        abrirModalRuleta(tel, nombre, appointmentId);
       }
       // si no es elegible (ya participó o ruleta apagada), el modal de confirmación se queda abierto tal cual
     } catch (err) {
@@ -1828,7 +1946,8 @@ async function finalizarCitaDoble(dayStr, ref){
     abonoMonto:0, abonoTipo:'', metodoPago:'', citaId:citaIdBase+'-b', empleadoId:empleadoSeleccionado2,
     abonoPorConfirmar: tieneAbono };
 
-  try{ await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }
+  let citaDobleGuardada=null;
+  try{ citaDobleGuardada = await Sheets.guardarCitaDoble(citaPrincipal, citaSecundaria); }
   catch(e){ console.error('Error guardando la cita doble:', e); errorAlGuardarCita(e, null); return; }
   try{ await Sheets.upsertClienteDesdeReserva(nombre, tel, correo); }catch(e){}
   try{ await Sheets.upsertClienteDesdeReserva(nombre2, tel2, correo2); }catch(e){}
@@ -1857,20 +1976,35 @@ async function finalizarCitaDoble(dayStr, ref){
         <strong>Total del combo:</strong> <span style="color:#D95F2B;font-weight:600;">$${precioTotal.toFixed(2)}</span><br>
       </div>
       <p style="font-size:11px;color:#aaa;margin-bottom:1rem;">Esta es una reserva conjunta: reprogramar o cancelar aplica a las 2 personas juntas.</p>
-      <button class="btn-main" style="background:var(--gold-dark);color:#fff;font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
+      <button class="btn-main" style="background:var(--gold-dark);color:var(--on-gold-dark,#fff);font-family:var(--font-heading);" onclick="closeOv('ov-form')">Listo</button>
     </div>`;
+
+  // Ruleta: gira quien hizo la reserva (la persona principal)
+  setTimeout(async () => {
+    try {
+      const check = await Sheets.verificarElegibilidadRuleta(tel);
+      if (check && check.elegible) {
+        closeOv('ov-form');
+        abrirModalRuleta(tel, nombre, citaDobleGuardada && citaDobleGuardada.idPrincipal);
+      }
+    } catch (err) {
+      console.error('Error verificando elegibilidad de ruleta:', err);
+    }
+  }, 1800);
 }
 
 // Si la cita no se guardó no se muestra éxito ni se mandan correos.
 // err: el error de la base. ordenPagada: orderId de Yappy cuando el cliente YA pagó
 // (no se le pide reintentar: se le da el número para que el negocio lo agende).
-function errorAlGuardarCita(err, ordenPagada){
+function errorAlGuardarCita(err, ordenPagada, mensajePropio){
   const ocupado = /HORARIO_OCUPADO/.test((err && (err.message || err.details)) || '');
   const btnC=document.getElementById('btnConfirmar');
   const b=window.ANNLY_BUSINESS||{};
   const wa=b.whatsapp?` por WhatsApp al <a href="https://wa.me/${b.whatsapp}" target="_blank" rel="noopener">${b.whatsapp}</a>`:'';
   let msg;
-  if(ordenPagada){
+  if(mensajePropio){
+    msg = mensajePropio;
+  } else if(ordenPagada){
     msg = `Recibimos tu pago (orden <strong>${ordenPagada}</strong>), pero ${ocupado ? 'ese horario se acaba de ocupar' : 'no pudimos guardar tu cita'}. Escríbenos${wa} con ese número y te agendamos de inmediato.`;
   } else if(ocupado){
     msg = 'Alguien acaba de reservar ese horario. Elige otra hora, tus datos se mantienen.';
