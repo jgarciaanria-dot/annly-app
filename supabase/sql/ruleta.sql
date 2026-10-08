@@ -36,6 +36,8 @@ alter table public.roulette_prizes
   add column if not exists tipo text not null default 'otro',
   add column if not exists valor numeric;
 alter table public.business_features add column if not exists ruleta_vigencia_dias integer not null default 30;  -- 0 = no vence
+-- Desde cuándo está activa la ruleta (se renueva al apagarla y volver a encenderla): todos vuelven a poder girar
+alter table public.business_features add column if not exists ruleta_activada_en timestamptz;
 alter table public.appointments add column if not exists descuento_cupon_monto numeric not null default 0;
 
 -- Los premios que ya existen se clasifican por su nombre (una sola vez)
@@ -92,7 +94,7 @@ begin
   if char_length(v_tel) < 7 or not public.ruleta_disponible(p_business) then
     return false;
   end if;
-  select ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_cumple into f
+  select ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_cumple, ruleta_activada_en into f
     from business_features where business_id = p_business order by ruleta_premios desc nulls last limit 1;
 
   if coalesce(f.ruleta_modo, 'siempre') = 'periodo' then
@@ -116,13 +118,15 @@ begin
     return not exists (
       select 1 from roulette_wins w
       where w.business_id = p_business and public.solo_digitos(w.telefono) = v_tel
+        and w.ganado_en >= coalesce(f.ruleta_activada_en, '-infinity'::timestamptz)
         and extract(year from (w.ganado_en at time zone 'America/Panama')) = extract(year from v_hoy));
   end if;
 
-  -- siempre: una sola vez por cliente
+  -- siempre: una sola vez por cliente mientras la ruleta siga activa; al apagarla y volver a encenderla, todos participan de nuevo
   return not exists (
     select 1 from roulette_wins w
-    where w.business_id = p_business and public.solo_digitos(w.telefono) = v_tel);
+    where w.business_id = p_business and public.solo_digitos(w.telefono) = v_tel
+      and w.ganado_en >= coalesce(f.ruleta_activada_en, '-infinity'::timestamptz));
 end $$;
 grant execute on function public.ruleta_elegible(uuid, text) to anon, authenticated;
 
@@ -309,14 +313,17 @@ begin
 
   -- Interruptor de la ruleta
   if exists (select 1 from business_features where business_id = p_business) then
-    update business_features set ruleta_premios = coalesce(p_activa, false), ruleta_modo = v_modo,
+    update business_features set
+           ruleta_activada_en = case when coalesce(p_activa, false) and (not coalesce(ruleta_premios, false) or ruleta_activada_en is null) then now()
+                                     when not coalesce(p_activa, false) then null else ruleta_activada_en end,
+           ruleta_premios = coalesce(p_activa, false), ruleta_modo = v_modo,
            ruleta_desde = case when v_modo = 'periodo' then v_desde end,
            ruleta_hasta = case when v_modo = 'periodo' then v_hasta end,
            ruleta_titulo = v_titulo, ruleta_cumple = v_cumple, ruleta_vigencia_dias = v_vigencia
      where business_id = p_business;
   else
-    insert into business_features (business_id, ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple, ruleta_vigencia_dias)
-    values (p_business, coalesce(p_activa, false), v_modo,
+    insert into business_features (business_id, ruleta_premios, ruleta_activada_en, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple, ruleta_vigencia_dias)
+    values (p_business, coalesce(p_activa, false), case when coalesce(p_activa, false) then now() end, v_modo,
             case when v_modo = 'periodo' then v_desde end, case when v_modo = 'periodo' then v_hasta end, v_titulo, v_cumple, v_vigencia);
   end if;
 
