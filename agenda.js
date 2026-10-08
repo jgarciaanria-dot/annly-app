@@ -186,6 +186,16 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       const tspans = lineas.map((linea, i) =>
         `<tspan x="${headline.x}" dy="${i === 0 ? 0 : lh}">${ruletaEscapeHtml(linea)}</tspan>`
       ).join('');
+      if (n > 6) {
+        // Con muchos premios el texto va a lo largo del radio: cabe más y se lee completo
+        const rad = ruletaPt(cx, cy, R * .63, midAngle);
+        const lR = ruletaWordWrap(premiosActivos[k].premio, 15, 2);
+        const fR = lR.some(l => l.length > 12) ? 8.6 : 9.4, lhR = fR * 1.15;
+        const rotR = midAngle - 90 + (midAngle > 180 ? 180 : 0);
+        const y0 = parseFloat(rad.y) - ((lR.length - 1) * lhR) / 2 + fR * .35;
+        const ts = lR.map((l, i) => `<tspan x="${rad.x}" dy="${i === 0 ? 0 : lhR}">${ruletaEscapeHtml(l)}</tspan>`).join('');
+        textsHtml += `<text x="${rad.x}" y="${y0.toFixed(1)}" font-size="${fR}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotR.toFixed(1)} ${rad.x} ${rad.y})">${ts}</text>\n`;
+      } else
       textsHtml += `<text x="${headline.x}" y="${startY.toFixed(1)}" font-size="${fontSeg.toFixed(1)}" font-weight="800" fill="${color.text}" text-anchor="middle" transform="rotate(${rotDeg.toFixed(1)} ${headline.x} ${startY.toFixed(1)})">${tspans}</text>\n`;
 
       segmentos.push({ id: segId, premioId: premiosActivos[k].id, premio: premiosActivos[k].premio, angle: midAngle });

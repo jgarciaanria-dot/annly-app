@@ -274,6 +274,10 @@ begin
     end if;
   end if;
 
+  if jsonb_array_length(p_premios) > 10 then
+    raise exception 'La ruleta admite hasta 10 premios.';
+  end if;
+
   -- Revisar todo antes de tocar nada
   for e in select * from jsonb_array_elements(p_premios) loop
     v_nombre := btrim(coalesce(e->>'nombre', ''));
