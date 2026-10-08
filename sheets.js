@@ -1870,6 +1870,9 @@ const Sheets = {
         descuentoCupon:
           c.descuento_cupon,
 
+        descuentoCuponMonto:
+          c.descuento_cupon_monto,
+
         certificadoMonto:
           c.certificado_monto,
 
@@ -2006,6 +2009,9 @@ const Sheets = {
 
         descuento_cupon:
           cita.descuentoCupon,
+
+        // Descuento en dólares del cupón (solo se manda si hay, así la reserva no falla si la columna aún no existe)
+        ...(Number(cita.descuentoCuponMonto) > 0 ? { descuento_cupon_monto: Number(cita.descuentoCuponMonto) } : {}),
 
         precio_final:
           cita.precioFinal,
@@ -2418,116 +2424,113 @@ const Sheets = {
   // =======================================================
 
   async getRuletaConfig() {
-
     await window.AnnlyReady;
 
-
-    const {
-      data: feat
-    } = await sbClient
+    // Interruptor y regla de la ruleta. Si la base aún no tiene las columnas nuevas, se lee solo el interruptor.
+    let { data: feat, error: errFeat } = await sbClient
       .from('business_features')
-      .select('ruleta_premios')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      )
+      .select('ruleta_premios, ruleta_modo, ruleta_desde, ruleta_hasta, ruleta_titulo, ruleta_cumple, ruleta_vigencia_dias')
+      .eq('business_id', BUSINESS_ID)
       .maybeSingle();
+    if (errFeat) {
+      const r0 = await sbClient.from('business_features').select('ruleta_premios').eq('business_id', BUSINESS_ID).maybeSingle();
+      feat = r0.data;
+    }
 
-
-    const {
-      data: premios
-    } = await sbClient
+    // Los premios quitados de la lista (archivados) no se muestran. Si la base aún no tiene
+    // esa columna, se leen todos para no romper la pantalla.
+    let { data: premios, error } = await sbClient
       .from('roulette_prizes')
       .select('*')
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
+      .eq('business_id', BUSINESS_ID)
+      .eq('archivado', false)
+      .order('id');
+    if (error) {
+      const r = await sbClient.from('roulette_prizes').select('*').eq('business_id', BUSINESS_ID).order('id');
+      premios = r.data;
+    }
 
     return {
-
-      activa:
-        !!(
-          feat &&
-          feat.ruleta_premios
-        ),
-
-      premios:
-        (premios || [])
-          .map(p => ({
-
-            premio:
-              p.nombre,
-
-            probabilidad:
-              p.probabilidad,
-
-            activo:
-              p.activo,
-
-            stock:
-              p.stock
-
-          }))
-
+      activa: !!(feat && feat.ruleta_premios),
+      modo: (feat && feat.ruleta_modo) || 'siempre',
+      desde: (feat && feat.ruleta_desde) || '',
+      hasta: (feat && feat.ruleta_hasta) || '',
+      titulo: (feat && feat.ruleta_titulo) || '',
+      cumple: (feat && feat.ruleta_cumple) || 'mes',
+      vigencia: (feat && feat.ruleta_vigencia_dias != null) ? feat.ruleta_vigencia_dias : 30,
+      premios: (premios || []).map(p => ({
+        id: p.id,
+        premio: p.nombre,
+        probabilidad: p.probabilidad,
+        activo: p.activo,
+        stock: p.stock,
+        tipo: p.tipo || 'otro',
+        valor: p.valor
+      }))
     };
   },
 
 
+  // Guarda interruptor y premios en una sola operación de la base (todo o nada).
+  // Lanza un error con un mensaje claro si algo falla.
   async guardarRuletaConfig(payload) {
-
     await window.AnnlyReady;
-
-
-    await sbClient
-      .from('business_features')
-      .update({
-        ruleta_premios:
-          payload.activa
-      })
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    await sbClient
-      .from('roulette_prizes')
-      .delete()
-      .eq(
-        'business_id',
-        BUSINESS_ID
-      );
-
-
-    if (payload.premios?.length) {
-
-      await sbClient
-        .from('roulette_prizes')
-        .insert(
-
-          payload.premios.map(p => ({
-
-            business_id:
-              BUSINESS_ID,
-
-            nombre:
-              p.premio,
-
-            probabilidad:
-              p.probabilidad,
-
-            activo:
-              p.activo,
-
-            stock:
-              p.stock
-
-          }))
-
-        );
+    const lista = (payload.premios || []).map(p => ({
+      id: p.id || null,
+      nombre: p.premio,
+      probabilidad: p.probabilidad,
+      activo: !!p.activo,
+      stock: (p.stock === null || p.stock === undefined || p.stock === '') ? null : p.stock,
+      tipo: p.tipo || 'otro',
+      valor: (p.tipo && p.tipo !== 'otro') ? p.valor : null
+    }));
+    const { data, error } = await sbClient.rpc('ruleta_guardar', {
+      p_business: BUSINESS_ID, p_activa: !!payload.activa, p_premios: lista,
+      p_config: {
+        modo: payload.modo || 'siempre',
+        desde: payload.desde || '',
+        hasta: payload.hasta || '',
+        titulo: payload.titulo || '',
+        cumple: payload.cumple || 'mes',
+        vigencia: (payload.vigencia === '' || payload.vigencia == null) ? 30 : payload.vigencia
+      }
+    });
+    if (error) {
+      console.error('Error guardando la ruleta:', error);
+      if (/ruleta_guardar/.test(error.message || '') && /function|schema cache/i.test(error.message || '')) {
+        throw new Error('Falta actualizar la base de datos de la ruleta (ruleta.sql). Avísale a soporte.');
+      }
+      throw new Error(error.message || 'No se pudo guardar la ruleta.');
     }
+    return data;
+  },
+
+
+  // Ganadores de la ruleta (el dueño y el Platform Admin pueden verlos)
+  async getGanadoresRuleta() {
+    await window.AnnlyReady;
+    const { data, error } = await sbClient
+      .from('roulette_wins')
+      .select('id, nombre, telefono, codigo_cupon, usado, ganado_en, roulette_prizes(nombre)')
+      .eq('business_id', BUSINESS_ID)
+      .order('ganado_en', { ascending: false })
+      .limit(200);
+    if (error) { console.error('Error leyendo los ganadores:', error); throw error; }
+    return (data || []).map(w => ({
+      id: w.id,
+      nombre: w.nombre || '',
+      telefono: w.telefono || '',
+      codigo: w.codigo_cupon || '',
+      usado: !!w.usado,
+      fecha: w.ganado_en,
+      premio: (w.roulette_prizes && w.roulette_prizes.nombre) || ''
+    }));
+  },
+
+  async marcarGanadorRuleta(id, usado) {
+    await window.AnnlyReady;
+    const { error } = await sbClient.from('roulette_wins').update({ usado: !!usado }).eq('id', id).eq('business_id', BUSINESS_ID);
+    if (error) { console.error('Error marcando el premio:', error); throw error; }
   },
 
 
@@ -2543,38 +2546,49 @@ const Sheets = {
 
   async girarRuleta(identificador, nombre, citaId) {
     await window.AnnlyReady;
-    // El premio se sortea en la base (antes lo elegía el navegador)
-    const { data, error } = await sbClient.rpc('ruleta_girar', {
-      p_business: BUSINESS_ID, p_telefono: identificador, p_nombre: nombre
-    });
+    // El premio se sortea en la base. Se manda el id de la cita recién guardada para comprobar la reserva.
+    const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(citaId || ''));
+    const args = { p_business: BUSINESS_ID, p_telefono: identificador, p_nombre: nombre };
+    if (esUuid) args.p_cita = citaId;
+    const { data, error } = await sbClient.rpc('ruleta_girar', args);
     if (error) { console.error('Error girando la ruleta:', error); return { ok: false, motivo: 'error' }; }
     return data || { ok: false, motivo: 'error' };
   },
 
 
 
-  async validarCupon(codigo) {
+  async validarCupon(codigo, telefono) {
     await window.AnnlyReady;
     const cod = (codigo || '').toUpperCase().trim();
     if (!cod) return { valido: false, motivo: 'codigo_vacio' };
-    const { data, error } = await sbClient.rpc('cupon_validar', { p_business: BUSINESS_ID, p_codigo: cod });
+    const args = { p_business: BUSINESS_ID, p_codigo: cod };
+    if (telefono) args.p_telefono = telefono;
+    const { data, error } = await sbClient.rpc('cupon_validar', args);
     if (error || !data) {
       if (error) console.error('Error validando el cupón:', error);
       return { valido: false, motivo: 'codigo_no_encontrado' };
     }
     if (!data.valido) return data;
     const nombre = data.premio || '';
-    const pctMatch = nombre.match(/(\d+)\s*%/);
-    return pctMatch
-      ? { valido: true, tipo: 'porcentaje', valor: parseInt(pctMatch[1]), premio: nombre }
-      : { valido: true, tipo: 'especial', premio: nombre };
+    // La base dice el tipo del premio. Si responde la versión anterior (sin tipo), se deduce del nombre.
+    let tipo = data.tipo, valor = Number(data.valor) || 0;
+    if (!tipo) {
+      const pctMatch = nombre.match(/(\d+(?:\.\d+)?)\s*%/);
+      const monMatch = nombre.match(/\$\s*(\d+(?:\.\d+)?)/);
+      if (pctMatch) { tipo = 'porcentaje'; valor = parseFloat(pctMatch[1]); }
+      else if (monMatch) { tipo = 'monto'; valor = parseFloat(monMatch[1]); }
+      else tipo = 'otro';
+    }
+    return { valido: true, tipo, valor, premio: nombre, venceEn: data.venceEn || null };
   },
 
 
 
-  async marcarCuponCanjeado(codigo) {
+  async marcarCuponCanjeado(codigo, telefono) {
     await window.AnnlyReady;
-    const { error } = await sbClient.rpc('cupon_marcar_usado', { p_business: BUSINESS_ID, p_codigo: codigo || '' });
+    const args = { p_business: BUSINESS_ID, p_codigo: codigo || '' };
+    if (telefono) args.p_telefono = telefono;
+    const { error } = await sbClient.rpc('cupon_marcar_usado', args);
     if (error) console.error('Error marcando el cupón como usado:', error);
     return { ok: !error };
   },
