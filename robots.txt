@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /pago
+Disallow: /update-password.html
+
+Sitemap: https://annly.app/sitemap.xml

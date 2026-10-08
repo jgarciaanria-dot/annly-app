@@ -168,8 +168,10 @@ document.getElementById('ruletaCloseBtn').addEventListener('click', function(){
       const color = { fill: fillSeg, text: rLum(fillSeg) > .45 ? '#1B1612' : '#FFFFFF' };
       const segId = 'seg' + k;
 
-      pathsHtml += `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
-      linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="${T.acc}" stroke-width="0.75" opacity="0.55"/>\n`;
+      pathsHtml += n === 1
+        ? `<circle id="${segId}" cx="${cx}" cy="${cy}" r="${R}" fill="${color.fill}"/>\n`
+        : `<path id="${segId}" d="M${cx},${cy} L${p1.x},${p1.y} A${R},${R} 0 0,1 ${p2.x},${p2.y} Z" fill="${color.fill}"/>\n`;
+      if (n > 1) linesHtml += `<line x1="${cx}" y1="${cy}" x2="${p1.x}" y2="${p1.y}" stroke="${T.acc}" stroke-width="0.75" opacity="0.55"/>\n`;
 
       const midAngle = (k + 0.5) * step;
       const nLineasTxt = ruletaWordWrap(premiosActivos[k].premio, maxLineLen, n <= 5 ? 3 : 2).length;
@@ -1695,8 +1697,28 @@ function setupYappyButtonAbono(){
     }
   });
 
-  btn.addEventListener('eventSuccess', () => {
-    confirmarCitaConfirmada(currentDayStr, window._yappyOrderId);
+  btn.addEventListener('eventSuccess', async () => {
+    // El navegador no basta para dar por pagado: se espera a que el servidor confirme la orden (aviso firmado de Yappy).
+    const orderId=window._yappyOrderId;
+    const msgEl=document.getElementById('yappyRealMsg');
+    const ver=(t,color)=>{ if(msgEl){ msgEl.style.color=color||'#999'; msgEl.textContent=t; } };
+    ver('Confirmando tu pago…');
+    let estado='pendiente';
+    const fin=Date.now()+120000;
+    while(Date.now()<fin){
+      estado=await Sheets.estadoOrdenYappy(orderId);
+      if(estado==='ejecutado'||['rechazado','cancelado','expirado'].includes(estado)) break;
+      await new Promise(r=>setTimeout(r,2500));
+    }
+    if(estado==='ejecutado'){ ver(''); confirmarCitaConfirmada(currentDayStr, orderId); return; }
+    if(['rechazado','cancelado','expirado'].includes(estado)){
+      ver('Yappy no aprobó el pago. Puedes intentar de nuevo.','#c0392b');
+      btn.isButtonLoading=false; return;
+    }
+    // Yappy no avisó a tiempo: la reserva queda apartada y el negocio valida el pago (nunca "confirmada" sin comprobar)
+    ver('');
+    if(timerInt)clearInterval(timerInt);
+    await finalizarCita(currentDayStr, orderId, false);
   });
 
   btn.addEventListener('eventError', () => {
@@ -1823,6 +1845,8 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
   try{ appointmentId=await Sheets.guardarCita(cita); }
   catch(e){
     console.error('Error guardando la cita:', e);
+    // La base no pudo comprobar el pago con Yappy: se aparta por validar en vez de confirmarla
+    if(pagoVerificado && /PAGO_NO_VERIFICADO/.test((e&&(e.message||e.details))||'')){ return finalizarCita(dayStr, ref, false); }
     errorAlGuardarCita(e, pagoVerificado ? ref : null);
     return;
   }
