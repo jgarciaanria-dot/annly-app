@@ -5226,7 +5226,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=68"></script>
+<script src="sheets.js?v=69"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -5726,6 +5726,10 @@ function iconoPorCategoria(cat){
 function escCat(t){
   return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Texto que viene de clientes o del público: se escapa antes de ponerlo en el HTML
+function escH(t){ return escCat(t == null ? '' : t); }
+// Texto dentro de un onclick="fn('...')": primero para JavaScript y luego para el atributo HTML
+function escJs(t){ return escCat(String(t == null ? '' : t).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' ')); }
 
 // Las categorías salen de los servicios (en orden de aparición)
 // Orden de las categorías: el que guardó el dueño; las nuevas se agregan al final (orden de creación).
@@ -7731,7 +7735,7 @@ function renderListaCertificados(){
     ${emitidos.map(c=>{
       const est = estadoCertificado(c);
       return `<tr style="border-bottom:1px solid var(--line-soft);">
-        <td style="padding:8px 6px;font-weight:700;">${c.codigo}</td>
+        <td style="padding:8px 6px;font-weight:700;">${escH(c.codigo)}</td>
         <td style="padding:8px 6px;">${tipoCertTexto(c.tipo)}</td>
         <td style="padding:8px 6px;">${c.compradorNombre || '—'}</td>
         <td style="padding:8px 6px;">${c.destinatarioNombre || '—'}</td>
@@ -7940,7 +7944,7 @@ async function verDetalleCertificado(certificateId){
 
   document.getElementById('detalle-cert-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;font-size:12.5px;">
-      <div><span style="color:#888;">Código</span><br><strong>${c.codigo}</strong></div>
+      <div><span style="color:#888;">Código</span><br><strong>${escH(c.codigo)}</strong></div>
       <div><span style="color:#888;">Tipo</span><br><strong>${tipoCertTexto(c.tipo)}</strong></div>
       <div><span style="color:#888;">Comprador</span><br><strong>${c.compradorNombre || '—'}</strong>${c.compradorTelefono ? ' · ' + c.compradorTelefono : ''}${c.compradorCorreo ? '<br>' + c.compradorCorreo : ''}</div>
       <div><span style="color:#888;">Destinatario</span><br><strong>${c.destinatarioNombre || '—'}</strong>${c.destinatarioTelefono ? ' · ' + c.destinatarioTelefono : ''}${c.destinatarioCorreo ? '<br>' + c.destinatarioCorreo : ''}</div>
@@ -7949,8 +7953,8 @@ async function verDetalleCertificado(certificateId){
       <div><span style="color:#888;">Emitido</span><br><strong>${c.fechaEmision || '—'}</strong></div>
       <div><span style="color:#888;">Vence</span><br><strong>${c.fechaVencimiento || '—'}</strong></div>
     </div>
-    ${c.mensaje ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Mensaje del regalo:</span> "${c.mensaje}"</div>` : ''}
-    ${c.nota ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Nota interna:</span> ${c.nota}</div>` : ''}
+    ${c.mensaje ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Mensaje del regalo:</span> "${escH(c.mensaje)}"</div>` : ''}
+    ${c.nota ? `<div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><span style="color:#888;">Nota interna:</span> ${escH(c.nota)}</div>` : ''}
     ${c.estado !== 'cancelado' && c.estado !== 'pendiente_pago' ? `<div class="cert-compartir">
       <div class="cert-compartir-txt"><i class="ti ti-photo"></i><div><strong>Enviar como imagen</strong><span>Un certificado listo para mandar por WhatsApp, con código y QR.</span></div></div>
       <label class="cert-monto"><input type="checkbox" id="cert-img-monto"> Incluir el monto en la imagen</label>
@@ -7993,7 +7997,7 @@ async function verDetalleCertificado(certificateId){
     cont.innerHTML = canjes.map(r => `
       <div style="border-bottom:1px solid var(--line-soft);padding:8px 0;font-size:12px;">
         <strong>-$${r.montoAplicado.toFixed(2)}</strong> · ${new Date(r.fecha).toLocaleDateString('es-PA', {day:'numeric', month:'short', year:'numeric'})}${r.saldoDespues != null ? ` · <span style="color:#159A61;font-weight:600;">saldo $${r.saldoDespues.toFixed(2)}</span>` : ''}
-        ${r.servicioNombre ? `<br><span style="color:#888;">${r.servicioNombre}${r.clienteNombre ? ' — ' + r.clienteNombre : ''}${r.fechaCita ? ' · ' + r.fechaCita : ''}</span>` : ''}
+        ${r.servicioNombre ? `<br><span style="color:#888;">${escH(r.servicioNombre)}${r.clienteNombre ? ' — ' + escH(r.clienteNombre) : ''}${r.fechaCita ? ' · ' + escH(r.fechaCita) : ''}</span>` : ''}
       </div>`).join('');
   } catch(e) {
     console.error('Error cargando historial de canjes:', e);
@@ -8025,7 +8029,7 @@ function renderPendientesCertificados(){
   cont.innerHTML = pendientes.map(c => `
     <div style="border:1px solid #F0DFA0;background:#FFFBEF;border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
       <div style="font-size:12px;">
-        <div style="font-weight:800;color:var(--ink);">${c.codigo} · $${c.montoInicial.toFixed(2)}</div>
+        <div style="font-weight:800;color:var(--ink);">${escH(c.codigo)} · $${c.montoInicial.toFixed(2)}</div>
         <div style="color:var(--ink-soft);margin-top:2px;">${c.compradorNombre || '—'} · ${c.metodoPago === 'bank' ? 'Transferencia' : 'Yappy'}${c.comprobante ? ' · Comprobante: ' + c.comprobante : ''}</div>
       </div>
       <button class="btn-add" onclick="confirmarPagoCertificadoUI('${c.id}')"><i class="ti ti-check"></i> Confirmar pago</button>
@@ -9494,8 +9498,8 @@ function renderClientas(){
     return `<div class="svc-row" style="padding:.75rem 0;">
       <div style="width:36px;height:36px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:${avFg};">${inicial}</div>
       <div class="svc-info">
-        <div class="svc-nm">${c.nombre}</div>
-        <div class="svc-meta">${c.telefono}${c.correo ? ' · '+c.correo : ''}${c.notas ? ' · '+c.notas : ''}</div>
+        <div class="svc-nm">${escH(c.nombre)}</div>
+        <div class="svc-meta">${escH(c.telefono)}${c.correo ? ' · '+escH(c.correo) : ''}${c.notas ? ' · '+escH(c.notas) : ''}</div>
         ${insignias ? '<div class="club-tags">' + insignias + '</div>' : ''}
       </div>
       <div class="svc-actions">
@@ -9683,7 +9687,7 @@ function renderEquipo(){
     return `<div class="svc-row" style="padding:.75rem 0;">
       <div style="width:36px;height:36px;border-radius:50%;background:${avBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${avatar}</div>
       <div class="svc-info">
-        <div class="svc-nm">${e.nombre}${e.esDueno?' <span style="font-size:10px;color:var(--ink-soft);font-weight:500;">(dueño/a)</span>':''}</div>
+        <div class="svc-nm">${escH(e.nombre)}${e.esDueno?' <span style="font-size:10px;color:var(--ink-soft);font-weight:500;">(dueño/a)</span>':''}</div>
         <div class="svc-meta">${e.telefono||'Sin teléfono'}${e.activo?'':' · Inactivo'}</div>
         <div class="svc-meta" id="eq-atiende-${e.id}" style="margin-top:2px;">Cargando servicios…</div>
       </div>
@@ -10269,19 +10273,17 @@ async function guardarYappyComercial(){
   // datos completos cuando se está encendiendo (hace falta algo real que validar).
   if (activo && (!merchantId || !dominioRegistrado)){ msgEl.style.color='#C2695A'; msgEl.textContent = 'Completa el Merchant ID y el dominio registrado.'; return; }
 
-  let secretB64 = secretNuevo;
-  if (!secretB64) {
-    try {
-      const existente = await Sheets.getCredencialesYappy();
-      secretB64 = existente ? existente.secretB64 : '';
-    } catch(e) {}
-    if (activo && !secretB64) { msgEl.style.color='#C2695A'; msgEl.textContent = 'Ingresa el Secret la primera vez que configures Yappy.'; return; }
+  // El Secret ya guardado no se puede leer de vuelta: si no escribes uno nuevo, se conserva el que ya está
+  if (!secretNuevo && activo) {
+    let tiene = false;
+    try { const existente = await Sheets.getCredencialesYappy(); tiene = !!(existente && existente.tieneSecret); } catch(e) {}
+    if (!tiene) { msgEl.style.color='#C2695A'; msgEl.textContent = 'Ingresa el Secret la primera vez que configures Yappy.'; return; }
   }
 
   msgEl.style.color = 'var(--ink-soft)';
   msgEl.textContent = 'Guardando...';
   try {
-    await Sheets.guardarCredencialesYappy({ merchantId, secretB64, dominioRegistrado, activo });
+    await Sheets.guardarCredencialesYappy({ merchantId, secret: secretNuevo, dominioRegistrado, activo });
     msgEl.style.color = '#4A9D6E';
     msgEl.textContent = activo ? '¡Credenciales de Yappy guardadas!' : 'Botón real desactivado — volviste al flujo manual.';
     document.getElementById('pf-yappy-eliminar').style.display = 'inline-flex';
@@ -13039,7 +13041,7 @@ function htmlCardCitaDoble(c){
   const completada = !!(p.completadaEn && o.completadaEn);
   const puedeCompletar = moduloDisponible('FINANZAS') && !completada && !esCancelada && p.estado !== 'por_confirmar' && c.fechaISO <= isoLocal(new Date());
   const btnStyle = 'width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;';
-  const esc1 = s => String(s || '').replace(/'/g, "\\'");
+  const esc1 = s => escJs(s);
   const primero = n => String(n || '').trim().split(/\s+/)[0];
   const nombresEsc = esc1(p.nombre + ' y ' + o.nombre);
   const abono = Number(p.abonoMonto) || 0;
@@ -13151,7 +13153,7 @@ function htmlCardCita(c){
   const cat = PALETA_CAT_CITAS[c.categoria] || {bg:'#F1EEE7', fg:'#8A8378'};
   const [horaNum, ampm] = c.hora.split(' ');
   const puedeCompletar = moduloDisponible('FINANZAS') && !c.completadaEn && c.estado !== 'por_confirmar' && c.fechaISO <= isoLocal(new Date());
-  const nombreEsc = (c.nombre || '').replace(/'/g, "\\'");
+  const nombreEsc = escJs(c.nombre);
   const btnStyle = 'width:122px;flex:0 0 122px;padding:0 9px;height:32px;font-size:10.5px;gap:5px;font-weight:700;';
   const precio = c.precioEsConsultar ? 'A consultar' : (c.precioTotal != null ? '$' + parseFloat(c.precioTotal).toFixed(2) : '');
   const esCancelada = c.estado === 'cancelada';
@@ -13183,14 +13185,14 @@ function htmlCardCita(c){
       </div>
       <div style="width:38px;height:38px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--charcoal2);">${inicialesCita(c.nombre)}</div>
       <div style="flex:1;min-width:0;">
-        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${c.nombre}</p>
+        <p style="font-size:13.5px;font-weight:700;color:var(--ink);margin:0 0 2px;">${escH(c.nombre)}</p>
         <p style="font-size:12px;color:var(--ink-soft);margin:0;">${c.servicio}</p>
         <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
           <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:600;background:${cat.bg};color:${cat.fg};">
             <span style="width:5px;height:5px;border-radius:50%;background:${cat.fg};"></span>${c.categoria||'Servicio'}
           </span>
           <span style="font-size:12px;font-weight:700;color:var(--ink);">${precio}</span>
-          ${c.empleadoNombre ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${c.empleadoNombre}</span>` : ''}
+          ${c.empleadoNombre ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-soft);"><i class="ti ti-user" style="font-size:11px;"></i>${escH(c.empleadoNombre)}</span>` : ''}
           ${chipSucursalCita(c)}
           ${insignia}
         </div>

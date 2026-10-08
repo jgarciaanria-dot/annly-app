@@ -1283,6 +1283,9 @@ function genCodigoCupon() {
 // SHEETS
 // =========================================================
 
+// ¿La base respondió que la función no existe? (aún no se ha corrido el SQL nuevo)
+function yappyFuncionFaltante(err){ return !!err && (err.code === 'PGRST202' || err.code === '42883' || /could not find the function|does not exist/i.test(err.message || '')); }
+
 const Sheets = {
 
   async initSheet() {
@@ -5412,39 +5415,57 @@ const Sheets = {
   // =======================================================
 
   // Solo para el panel admin (RLS: dueño o Platform Admin) — incluye el secret.
+  // El Secret nunca llega al navegador: solo se sabe si ya hay uno guardado (tieneSecret).
   async getCredencialesYappy() {
     await window.AnnlyReady;
-    const { data } = await sbClient.from('yappy_credentials').select('*').eq('business_id', BUSINESS_ID).maybeSingle();
+    let { data, error } = await sbClient.rpc('yappy_credenciales_estado', { p_business: BUSINESS_ID });
+    if (error && yappyFuncionFaltante(error)) {
+      // Transición: si la base aún no tiene la función nueva, se leen solo los datos no secretos
+      const r = await sbClient.from('yappy_credentials').select('merchant_id, dominio_registrado, activo').eq('business_id', BUSINESS_ID).maybeSingle();
+      if (r.error) throw r.error;
+      data = r.data ? { merchantId: r.data.merchant_id, dominioRegistrado: r.data.dominio_registrado, activo: r.data.activo, tieneSecret: true } : null;
+      error = null;
+    }
+    if (error) throw error;
     if (!data) return null;
     return {
-      merchantId: data.merchant_id, secretB64: data.secret_b64,
-      dominioRegistrado: data.dominio_registrado, activo: data.activo
+      merchantId: data.merchantId, tieneSecret: !!data.tieneSecret,
+      dominioRegistrado: data.dominioRegistrado, activo: data.activo
     };
   },
 
   // Guarda o actualiza las credenciales del negocio y mantiene sincronizado
   // el flag público businesses.tiene_yappy_comercial (sin secretos) que usa
   // el sitio de reservas para decidir botón real vs flujo manual.
-  async guardarCredencialesYappy({ merchantId, secretB64, dominioRegistrado, activo }) {
+  // secret vacío = se conserva el que ya estaba guardado.
+  async guardarCredencialesYappy({ merchantId, secret, dominioRegistrado, activo }) {
     await window.AnnlyReady;
-    const { error } = await sbClient.from('yappy_credentials').upsert({
-      business_id: BUSINESS_ID, merchant_id: merchantId, secret_b64: secretB64,
-      dominio_registrado: dominioRegistrado, activo: activo !== false
-    }, { onConflict: 'business_id' });
+    const { error } = await sbClient.rpc('yappy_guardar', {
+      p_business: BUSINESS_ID, p_merchant: merchantId, p_secret: secret || null,
+      p_dominio: dominioRegistrado, p_activo: activo !== false
+    });
+    if (error && yappyFuncionFaltante(error)) {
+      // Transición: base sin la función nueva. Sin Secret nuevo no se toca el que ya estaba guardado.
+      const fila = { business_id: BUSINESS_ID, merchant_id: merchantId, dominio_registrado: dominioRegistrado, activo: activo !== false };
+      if (secret) fila.secret_b64 = secret;
+      const r = await sbClient.from('yappy_credentials').upsert(fila, { onConflict: 'business_id' });
+      if (r.error) throw r.error;
+      await sbClient.from('businesses').update({ tiene_yappy_comercial: activo !== false }).eq('id', BUSINESS_ID);
+      return;
+    }
     if (error) throw error;
-
-    const { error: errBiz } = await sbClient.from('businesses')
-      .update({ tiene_yappy_comercial: activo !== false }).eq('id', BUSINESS_ID);
-    if (errBiz) console.error('No se pudo actualizar tiene_yappy_comercial:', errBiz);
   },
 
   async eliminarCredencialesYappy() {
     await window.AnnlyReady;
-    const { error } = await sbClient.from('yappy_credentials').delete().eq('business_id', BUSINESS_ID);
+    const { error } = await sbClient.rpc('yappy_eliminar', { p_business: BUSINESS_ID });
+    if (error && yappyFuncionFaltante(error)) {
+      const r = await sbClient.from('yappy_credentials').delete().eq('business_id', BUSINESS_ID);
+      if (r.error) throw r.error;
+      await sbClient.from('businesses').update({ tiene_yappy_comercial: false }).eq('id', BUSINESS_ID);
+      return;
+    }
     if (error) throw error;
-    const { error: errBiz } = await sbClient.from('businesses')
-      .update({ tiene_yappy_comercial: false }).eq('id', BUSINESS_ID);
-    if (errBiz) console.error('No se pudo actualizar tiene_yappy_comercial:', errBiz);
   },
 
   // Llamado desde el sitio público (index/404.html) al confirmar el pago del
