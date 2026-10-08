@@ -82,5 +82,5 @@ grant execute on function public.pedido_modulo_activo(uuid, text) to service_rol
 grant execute on function public.pedido_yappy_monto(uuid) to service_role;
 grant execute on function public.pedido_pagado_yappy(uuid, text) to service_role;
 
--- 5) AL FINAL, cuando todo esté probado: poner el módulo a la venta
--- update public.features set is_active = true where code = 'PEDIDOS_PAGOS';
+-- 5) Módulo a la venta (probado de punta a punta)
+update public.features set is_active = true where code = 'PEDIDOS_PAGOS';
