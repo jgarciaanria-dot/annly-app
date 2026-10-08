@@ -28,7 +28,7 @@ Lista de pendientes. Marcar al terminar cada uno.
 
 ## Publicación
 - [ ] Publicar `develop` a `main` en `annly-app` y en `annly-pedidos`.
-- [ ] Soporte: buzón real para `soporte@annly.app` y número de WhatsApp definitivo en la landing.
+- [ ] Soporte: buzón real para `soporte@annly.app`. (WhatsApp de Annly ya puesto en la landing: 6009-0157.)
   - Hoy el correo entrante de `annly.app` pasa por ImprovMX (MX y SPF en GoDaddy) y se reenvía a `appannly@gmail.com`. Funciona, pero la IP compartida de ImprovMX estuvo en la lista negra de SpamCop y Gmail rechazó un envío; las respuestas de clientes a `soporte@annly.app` podrían perderse.
   - Antes de salir, montar un buzón real (Zoho Mail gratis o Google Workspace) y cambiar los MX; entonces se puede quitar el secreto `SOPORTE_EMAIL`.
   - El envío (Resend) no se ve afectado por el reenvío.
