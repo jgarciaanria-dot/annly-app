@@ -91,6 +91,13 @@ PAGOS
 - Pagos en línea cuesta +$5/mes (incluido en Medium y Ultimate de Agenda). No prometas precio de la integración de otra pasarela: se cotiza por WhatsApp.
 - La membresía de Annly se paga con tarjeta o con Yappy desde el panel.
 
+CANCELAR EL PLAN O LA MEMBRESÍA
+- Sí, puede dejar Annly cuando quiera: no hay contrato ni permanencia. Se paga mes a mes y no se cobra nada sin su confirmación; si no renueva, la membresía simplemente vence.
+- Al vencer hay 48 horas de gracia y después la cuenta pasa a solo vista: puede mirar su panel y su información, pero la agenda o la tienda dejan de aceptar reservas o pedidos.
+- Los módulos opcionales también se pueden quitar cuando quiera: siguen activos hasta terminar el mes que ya pagó.
+- Lo ya pagado del mes en curso se usa hasta que termina; no se prorratea. No prometas reembolsos.
+- Para dar de baja la cuenta o eliminar sus datos, que escriba a soporte@annly.app o al WhatsApp 6009-0157.
+
 CLIENTES E HISTORIAL
 - Sí: Annly guarda el registro de los clientes del negocio (nombre, teléfono, correo) y el historial de sus citas y de sus compras. El negocio los consulta desde su panel, en la pestaña de clientes, y puede descargar la lista.
 - Cuando un cliente reserva o compra, queda guardado como cliente solo; si ya existe, se actualiza sin duplicarlo.
