@@ -114,6 +114,16 @@
     .ba{background:var(--lilac);padding:56px 0}.ba .how-head{margin-bottom:30px}.ba-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.ba-card{border-radius:22px;padding:26px;background:#fff;border:1px solid var(--line)}.ba-card.after{border-color:#d9b8f5;box-shadow:0 18px 40px rgba(116,36,212,.12)}.ba-card h3{margin:0 0 4px;font-size:1.15rem}.ba-card .tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}.ba-card.after .tag{color:var(--purple)}.ba-chat{display:grid;gap:8px;margin:14px 0}.ba-chat span{background:#f3f1f5;border-radius:14px;padding:9px 13px;font-size:.92rem;max-width:88%}.ba-chat span.me{background:#e6f6ec;justify-self:end}.ba-card ul{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:9px}.ba-card li{display:flex;gap:9px;align-items:flex-start;font-size:.95rem}.ba-card li svg{flex:none;width:18px;height:18px;color:var(--purple);margin-top:2px}.ba-card.before li svg{color:#b4476b}.ba-note{text-align:center;color:var(--muted);font-size:.82rem;margin:16px 0 0}
     @media(max-width:800px){.ba-grid{grid-template-columns:1fr}.ba{padding:44px 0}}
     .wa-float{position:fixed;right:18px;bottom:18px;z-index:60;display:flex;align-items:center;gap:9px;background:#25d366;color:#fff;font-weight:700;font-size:.92rem;padding:12px 16px;border-radius:999px;box-shadow:0 10px 26px rgba(0,0,0,.22);transition:transform .2s}.wa-float:hover{transform:translateY(-2px)}.wa-float svg{width:22px;height:22px;fill:#fff}@media(max-width:520px){.wa-float span{display:none}.wa-float{padding:14px}}
+
+    /* ===== Asistente virtual ===== */
+    .bot-fab{position:fixed;right:18px;bottom:78px;z-index:61;display:flex;align-items:center;gap:8px;border:0;cursor:pointer;color:#fff;font:700 .9rem 'DM Sans',sans-serif;padding:12px 16px;border-radius:999px;background:linear-gradient(100deg,#6c25cf,#e93681);box-shadow:0 10px 26px rgba(123,36,206,.35);transition:transform .2s}.bot-fab:hover{transform:translateY(-2px)}.bot-fab svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .bot-panel{position:fixed;right:18px;bottom:78px;z-index:62;width:min(370px,calc(100vw - 24px));height:min(540px,calc(100vh - 110px));background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 60px rgba(47,27,73,.28);display:none;flex-direction:column;overflow:hidden}.bot-panel.open{display:flex}
+    .bot-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;color:#fff;background:linear-gradient(100deg,#6c25cf,#e93681)}.bot-head b{display:block;font-size:.95rem}.bot-head small{opacity:.9;font-size:.74rem}.bot-x{background:rgba(255,255,255,.2);border:0;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:1.1rem;line-height:1}
+    .bot-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:9px;background:#faf7fc}.bot-m{max-width:86%;padding:10px 13px;border-radius:16px;font-size:.88rem;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}.bot-m.bot{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px}.bot-m.yo{background:linear-gradient(100deg,#6c25cf,#8a35d8);color:#fff;align-self:flex-end;border-bottom-right-radius:5px}.bot-m a{color:var(--purple);font-weight:700;text-decoration:underline}.bot-m.yo a{color:#fff}
+    .bot-sug{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;background:#faf7fc}.bot-sug button{border:1px solid #e1d3ee;background:#fff;color:var(--purple);border-radius:999px;padding:6px 11px;font:600 .76rem 'DM Sans',sans-serif;cursor:pointer}.bot-sug button:hover{background:var(--lilac)}
+    .bot-form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#fff}.bot-form input{flex:1;min-width:0;border:1px solid var(--line);border-radius:999px;padding:10px 14px;font:.9rem 'DM Sans',sans-serif;outline:none}.bot-form input:focus{border-color:var(--purple)}.bot-form button{border:0;border-radius:999px;padding:0 16px;color:#fff;font:700 .85rem 'DM Sans',sans-serif;cursor:pointer;background:linear-gradient(100deg,#6c25cf,#e93681)}.bot-form button:disabled{opacity:.5;cursor:default}
+    .bot-nota{font-size:.68rem;color:#8b8393;text-align:center;padding:0 12px 9px;background:#fff}
+    @media(max-width:520px){.bot-fab span{display:none}.bot-fab{padding:14px}.bot-panel{right:12px;bottom:12px;height:calc(100vh - 24px)}}
   </style>
 </head>
 <body>
@@ -169,6 +179,71 @@
     document.querySelectorAll('.price-tabs button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
     document.querySelectorAll('.price-panel').forEach(p => { p.hidden = p.dataset.panel !== b.dataset.tab; });
   }));
+</script>
+  <button class="bot-fab" id="botFab" type="button" aria-label="Abrir el asistente de Annly"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Pregúntale a Annly</span></button>
+  <section class="bot-panel" id="botPanel" role="dialog" aria-label="Asistente virtual de Annly">
+    <div class="bot-head"><div><b>Asistente de Annly</b><small>Asistente virtual · responde al instante</small></div><button class="bot-x" id="botX" type="button" aria-label="Cerrar">&times;</button></div>
+    <div class="bot-msgs" id="botMsgs"></div>
+    <div class="bot-sug" id="botSug"></div>
+    <form class="bot-form" id="botForm" autocomplete="off"><input id="botIn" maxlength="500" placeholder="Escribe tu pregunta…" aria-label="Tu pregunta"><button id="botSend" type="submit">Enviar</button></form>
+    <div class="bot-nota">Es una IA: confirma los datos importantes por WhatsApp. No compartas contraseñas ni datos de tarjeta.</div>
+  </section>
+<script>
+(function () {
+  var URL_BOT = 'https://hokrimtsyseuqfjjvmxu.supabase.co/functions/v1/asistente-annly';
+  var WA = 'https://wa.me/50760090157';
+  var fab = document.getElementById('botFab'), panel = document.getElementById('botPanel'), msgs = document.getElementById('botMsgs');
+  var sug = document.getElementById('botSug'), form = document.getElementById('botForm'), inp = document.getElementById('botIn'), send = document.getElementById('botSend');
+  var hist = [], ocupado = false, iniciado = false;
+  var SUGERENCIAS = ['Atiendo por cita', 'Vendo por pedidos', '¿Cómo me ayuda Annly?', '¿Cuánto cuesta?'];
+
+  // Convierte enlaces de Annly y de WhatsApp en <a> (con o sin https://) sin interpretar HTML: el texto siempre se inserta como texto
+  var ENLACE = /((?:https?:\/\/)?(?:www\.|dev\.)?annly\.app\/[^\s)]*|(?:https?:\/\/)?wa\.me\/[^\s)]+)/g;
+  function pintar(el, texto) {
+    String(texto).split(ENLACE).forEach(function (p, i) {
+      if (i % 2 === 1) {
+        var fin = p.match(/[?.,;:!]+$/); fin = fin ? fin[0] : '';           // la puntuación de la frase no es parte del enlace
+        var url = fin ? p.slice(0, p.length - fin.length) : p;
+        var a = document.createElement('a'); a.href = /^https?:\/\//.test(url) ? url : 'https://' + url;
+        a.target = '_blank'; a.rel = 'noopener'; a.textContent = url; el.appendChild(a);
+        if (fin) el.appendChild(document.createTextNode(fin));
+      } else if (p) el.appendChild(document.createTextNode(p));
+    });
+  }
+  function agregar(rol, texto) {
+    var d = document.createElement('div'); d.className = 'bot-m ' + (rol === 'user' ? 'yo' : 'bot');
+    pintar(d, texto); msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d;
+  }
+  function abrir() {
+    panel.classList.add('open'); fab.style.display = 'none';
+    if (!iniciado) {
+      iniciado = true;
+      agregar('assistant', '¡Hola! Soy el asistente de Annly. ¿En qué te ayudo?');
+      SUGERENCIAS.forEach(function (t) { var b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = function () { enviar(t); }; sug.appendChild(b); });
+    }
+    setTimeout(function () { inp.focus(); }, 50);
+  }
+  function cerrar() { panel.classList.remove('open'); fab.style.display = ''; }
+  function enviar(texto) {
+    texto = String(texto || '').trim().slice(0, 500);
+    if (!texto || ocupado) return;
+    sug.style.display = 'none';
+    agregar('user', texto); hist.push({ role: 'user', content: texto });
+    ocupado = true; send.disabled = true; inp.value = '';
+    var pensando = agregar('assistant', 'Escribiendo…');
+    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensajes: hist.slice(-8) }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) {
+        var t = (j && j.respuesta) || ('Ahora no puedo responder. Escríbenos por WhatsApp al 6009-0157 (' + WA + ').');
+        pensando.textContent = ''; pintar(pensando, t); hist.push({ role: 'assistant', content: t });
+      })
+      .catch(function () { pensando.textContent = ''; pintar(pensando, 'No pude conectarme. Escríbenos por WhatsApp al 6009-0157 (' + WA + ').'); })
+      .then(function () { ocupado = false; send.disabled = false; msgs.scrollTop = msgs.scrollHeight; inp.focus(); });
+  }
+  fab.addEventListener('click', abrir);
+  document.getElementById('botX').addEventListener('click', cerrar);
+  form.addEventListener('submit', function (e) { e.preventDefault(); enviar(inp.value); });
+})();
 </script>
   <a class="wa-float" href="https://wa.me/50760090157?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20Annly" target="_blank" rel="noopener" aria-label="Escríbenos por WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.100l-.8 1c-.1.2-.3.2-.5.1-1.5-.7-2.5-1.3-3.4-2.9-.3-.5.3-.5.8-1.5.1-.2 0-.3 0-.5l-.8-1.800c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.7.7-1 1.5-1 2.4.1 1 .5 2 1.2 2.8 1.4 1.8 3.1 3 5.3 3.8.8.3 1.5.2 2-.1.6-.4 1.1-1.1 1.2-1.8.1-.3.1-.5 0-.6z"/></svg><span>¿Dudas? Escríbenos</span></a>
 </body>
