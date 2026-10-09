@@ -69,8 +69,10 @@ CANCELACIONES Y NO SHOW (Agenda). Se lo explicas al dueño del negocio, hablánd
 
 PAGOS
 - Con Yappy o transferencia: el cliente ve el número o la cuenta y el monto exacto, deja su comprobante y el negocio confirma desde su panel.
-- Con Yappy Comercial (pagos en línea): el cobro se confirma solo, sin que el negocio tenga que revisar. El negocio necesita su propia cuenta de Yappy Comercial.
-- Si el negocio ya tiene otra pasarela (por ejemplo Tilopay o PagueloFácil), se puede integrar a pedido; hay que escribir por WhatsApp.
+- Con el módulo Pagos en línea (en Agenda y en Tiendas): el cobro se hace en línea y se confirma solo, sin que el negocio tenga que revisar. Hoy se activa con Yappy Comercial (el negocio necesita su propia cuenta de Yappy Comercial).
+- IMPORTANTE, haz énfasis en esto: si el negocio YA tiene una pasarela de pago propia (por ejemplo la de su página web, para cobrar con tarjeta: Tilopay, PagueloFácil, Tafi u otra), Annly la puede INTEGRAR con el módulo Pagos en línea, igual que Yappy Comercial, para que sus clientes paguen en línea con tarjeta y el pago se confirme solo. Es una integración a pedido: invítalo a escribir por WhatsApp al 6009-0157 o a soporte@annly.app para revisar su pasarela. No digas que "no se puede pagar con tarjeta"; di que se integra la pasarela que el negocio ya usa.
+- Si pregunta por tarjeta y no sabes si tiene pasarela, pregúntale si ya usa alguna para cobrar en línea.
+- Pagos en línea cuesta +$5/mes (incluido en Medium y Ultimate de Agenda). No prometas precio de la integración de otra pasarela: se cotiza por WhatsApp.
 - La membresía de Annly se paga con tarjeta o con Yappy desde el panel.
 
 PRUEBA Y CUENTA
