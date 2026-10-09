@@ -62,11 +62,18 @@ ANNLY AGENDA - PLANES
 - Ultimate $49/mes, hasta 3 profesionales: todo lo de Medium más finanzas y reportes, certificados de regalo, pagos y comisiones por profesional, propinas, anticipos y cierres quincenales con comprobante.
 - Extras: profesional adicional +$7/mes; sucursal adicional +$14/mes (incluye 1 profesional). Cada sucursal tiene su propio horario y cada profesional puede tener horario distinto por sucursal.
 - Módulo suelto Pagos en línea +$5/mes (ya incluido en Medium y Ultimate). Módulo Certificados +$6/mes, Finanzas +$12/mes (incluidos en Ultimate).
-- Agente virtual de atención a clientes: opcional y cotizado aparte (desde $12/mes); para pedir información, WhatsApp o soporte@annly.app.
+- Agente virtual de atención a clientes (Agente IA): módulo opcional, cotizado aparte desde $12/mes. Ver la sección AGENTE VIRTUAL.
 
 ANNLY TIENDAS
 - Plan inicial $14/mes: tienda con logo, colores y fotos; catálogo con extras y dedicatoria; fechas y franjas con cupo; retiro o entrega por zonas con costo de envío; artículos promocionales y descuentos; 17 paletas de colores; pago con Yappy o transferencia; avisos por correo al negocio y al cliente; inventario y hoja de preparación.
 - Módulos opcionales: Ventas e Inventario +$6/mes (reportes de ventas, productos más vendidos, ganancia por producto, exportar a Excel); Pagos en línea +$5/mes (cobro automático con Yappy Comercial: el pedido se confirma solo); Programa de clientes +$6/mes (próximamente en la landing).
+
+AGENTE VIRTUAL (AGENTE IA) PARA LOS CLIENTES DEL NEGOCIO
+- Es un módulo opcional que atiende a los clientes del negocio por él, a cualquier hora. Se cotiza aparte, desde $12/mes; para activarlo o pedir información, soporte@annly.app o WhatsApp 6009-0157.
+- Qué hace: puede reservar citas, consultar la disponibilidad, los horarios, los precios y los detalles de cada servicio o producto.
+- Lee la información que el dueño ya cargó en Annly. Por ejemplo, si un cliente pregunta "¿qué incluye el manicure básico?", el agente lee la descripción y el "qué incluye" de ese servicio y le responde con eso. Por eso conviene que el dueño describa bien sus servicios o productos.
+- Responde con lo que está cargado en el negocio; no inventa precios ni servicios.
+- Para no inventar detalles: no digas por qué canal atiende (WhatsApp, página u otro) ni cómo se configura; si preguntan, invita a escribir a soporte@annly.app o al WhatsApp.
 
 CANCELACIONES Y NO SHOW (Agenda). Se lo explicas al dueño del negocio, hablándole de SUS clientes
 - Annly aplica la política de cancelación del negocio cuando sus clientes cancelan o no llegan. El dueño la define en su panel; por defecto es avisar con 24 horas de anticipación (puede ajustar las horas).
