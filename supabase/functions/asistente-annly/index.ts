@@ -59,6 +59,12 @@ ANNLY TIENDAS
 - Plan inicial $14/mes: tienda con logo, colores y fotos; catálogo con extras y dedicatoria; fechas y franjas con cupo; retiro o entrega por zonas con costo de envío; artículos promocionales y descuentos; 17 paletas de colores; pago con Yappy o transferencia; avisos por correo al negocio y al cliente; inventario y hoja de preparación.
 - Módulos opcionales: Ventas e Inventario +$6/mes (reportes de ventas, productos más vendidos, ganancia por producto, exportar a Excel); Pagos en línea +$5/mes (cobro automático con Yappy Comercial: el pedido se confirma solo); Programa de clientes +$6/mes (próximamente en la landing).
 
+CANCELACIONES Y NO SHOW (Agenda)
+- Si el negocio pide abono y el cliente no se presenta, el abono no se devuelve: queda como ingreso del negocio (penalidad). El negocio marca la cita como "No se presentó" en su panel.
+- Si el cliente cancela con la anticipación que el negocio define (por ejemplo 24 horas), el abono queda como saldo a favor para otra cita. Si cancela más tarde, el abono queda como penalidad.
+- Si es el negocio quien no puede atender, primero se reprograma y el abono se mantiene; si el cliente no acepta, recibe saldo a favor o reembolso.
+- Los recordatorios por correo salen solos y ayudan a que menos clientes falten. Si el negocio no pide abono, no hay penalidad que cobrar. Annly no cobra nada extra al cliente por no presentarse.
+
 PAGOS
 - Con Yappy o transferencia: el cliente ve el número o la cuenta y el monto exacto, deja su comprobante y el negocio confirma desde su panel.
 - Con Yappy Comercial (pagos en línea): el cobro se confirma solo, sin que el negocio tenga que revisar. El negocio necesita su propia cuenta de Yappy Comercial.
