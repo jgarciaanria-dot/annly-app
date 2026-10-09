@@ -214,7 +214,7 @@
     panel.classList.add('open'); fab.style.display = 'none';
     if (!iniciado) {
       iniciado = true;
-      agregar('assistant', '¡Hola! Soy el asistente virtual de Annly. Te cuento cómo funcionan la Agenda y las Tiendas, sus precios y cómo empezar. ¿Qué te gustaría saber?');
+      agregar('assistant', '¡Hola! Soy el asistente de Annly. ¿En qué te ayudo?');
       SUGERENCIAS.forEach(function (t) { var b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = function () { enviar(t); }; sug.appendChild(b); });
     }
     setTimeout(function () { inp.focus(); }, 50);
