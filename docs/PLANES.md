@@ -113,6 +113,17 @@ where is_addon = true
 order by producto, code;
 ```
 
+### Idea siguiente: opiniones de clientes (medir la aceptación)
+Pendiente de construir. Hoy no existe nada parecido (ni calificaciones, ni encuestas, ni buzón).
+- Después de una cita completada (Agenda) o de un pedido entregado (Tiendas), el cliente recibe un correo corto: "¿Cómo te fue?" con las estrellas (1 a 5) dentro del mismo correo. Cada estrella es un enlace: con un solo toque queda registrada la calificación. Nada de formularios ni de pedirle que entre a otra página para calificar; si lo ignora, no pasa nada.
+- Detalle técnico inevitable: un correo no puede guardar nada por sí mismo, así que el toque abre una pantalla mínima de "¡Gracias!" (con un comentario opcional). No es un formulario que haya que llenar.
+- Panel del negocio: nota promedio, cantidad de respuestas y comentarios; en Agenda por profesional, en Tiendas por producto.
+- Alerta privada al dueño cuando la nota es 1 o 2, para que contacte al cliente.
+- Con 5 estrellas, el correo de gracias puede invitar a dejar una reseña pública (Google o Instagram del negocio).
+- Piezas: tabla de respuestas, correo automático programado después de la cita o la entrega (se apoya en el sistema de correos actual), enlace firmado por cada estrella (para que nadie califique dos veces ni por otro cliente) y la sección en el panel.
+- Por decidir: ¿incluido en los planes o módulo aparte ("Opiniones de clientes")? Mientras no exista, el bot dice que las ideas se envían a soporte@annly.app.
+
+
 ## 8. Pendiente
 - Usar la base de clientes: descuentos de cumpleaños, promos por cliente y ruleta.
 - Confirmar con la consulta de la sección 7 que la lista de funciones por plan coincide con la sección 2.
