@@ -197,13 +197,17 @@
   var hist = [], ocupado = false, iniciado = false;
   var SUGERENCIAS = ['Atiendo por cita', 'Vendo por pedidos', '¿Cómo me ayuda Annly?', '¿Cuánto cuesta?'];
 
-  // Convierte enlaces http(s) en <a> sin interpretar HTML (el texto siempre se inserta como texto)
+  // Convierte enlaces de Annly y de WhatsApp en <a> (con o sin https://) sin interpretar HTML: el texto siempre se inserta como texto
+  var ENLACE = /((?:https?:\/\/)?(?:www\.|dev\.)?annly\.app\/[^\s)]*|(?:https?:\/\/)?wa\.me\/[^\s)]+)/g;
   function pintar(el, texto) {
-    var partes = String(texto).split(/(https?:\/\/[^\s)]+)/g);
-    partes.forEach(function (p) {
-      if (/^https?:\/\//.test(p) && /^https:\/\/(annly\.app|www\.annly\.app|dev\.annly\.app|wa\.me)\//.test(p)) {
-        var a = document.createElement('a'); a.href = p; a.target = '_blank'; a.rel = 'noopener'; a.textContent = p; el.appendChild(a);
-      } else el.appendChild(document.createTextNode(p));
+    String(texto).split(ENLACE).forEach(function (p, i) {
+      if (i % 2 === 1) {
+        var fin = p.match(/[?.,;:!]+$/); fin = fin ? fin[0] : '';           // la puntuación de la frase no es parte del enlace
+        var url = fin ? p.slice(0, p.length - fin.length) : p;
+        var a = document.createElement('a'); a.href = /^https?:\/\//.test(url) ? url : 'https://' + url;
+        a.target = '_blank'; a.rel = 'noopener'; a.textContent = url; el.appendChild(a);
+        if (fin) el.appendChild(document.createTextNode(fin));
+      } else if (p) el.appendChild(document.createTextNode(p));
     });
   }
   function agregar(rol, texto) {
