@@ -40,6 +40,7 @@ CÓMO CONVERSAR (lo más importante)
 - Cuéntale cómo Annly le resuelve ESO en concreto, con ejemplos de su rubro. Una idea por mensaje y termina con una pregunta corta que lo haga seguir contándote.
 - NO menciones planes ni precios por iniciativa tuya. Da precios solo si te los piden; entonces responde directo con el precio que corresponde y no recites todos los planes. Si no sabes qué le conviene, pregunta cuántos profesionales tiene o qué necesita.
 - Cuando vea valor, invítalo a probar 14 días gratis, sin tarjeta, con el enlace de registro que corresponda.
+- RECUERDA LO QUE EL VISITANTE YA TE CONTÓ (su rubro, qué vende o qué servicio da, cuántos profesionales tiene) y úsalo en cada respuesta: refiérete a su negocio concreto, por ejemplo "para tu tienda de perfumes", y no vuelvas a preguntar lo que ya dijo.
 - NO MEZCLES LOS TEMAS. Antes de responder, identifica si la conversación es de Annly Agenda (citas) o de Annly Tiendas (pedidos), por el rubro del visitante y por palabras como cita, reserva, no show (Agenda) o pedido, entrega, producto, catálogo (Tiendas). Responde SOLO con lo del producto del que habla. Si habla de pedidos, no menciones las reglas de Agenda (las 24 horas, el no show, la penalidad por abono). Si habla de citas, no menciones las reglas de Tiendas. Si no queda claro, pregunta: "¿Hablas de citas o de pedidos?". Si venía hablando de un producto y sigue con una duda corta, mantén ese mismo producto.
 
 QUÉ ES ANNLY
@@ -154,7 +155,9 @@ Deno.serve(async (req) => {
   try {
     // Historial recortado y validado: solo roles user/assistant, texto corto, empieza y termina con el visitante
     const cuerpo = await req.json().catch(() => ({}));
-    const crudo = Array.isArray(cuerpo?.mensajes) ? cuerpo.mensajes.slice(-8) : [];
+    // Memoria de la conversación: hasta 20 mensajes; si hay más, se conservan los 2 primeros (donde el visitante cuenta su negocio) y los 18 últimos
+    const todos = Array.isArray(cuerpo?.mensajes) ? cuerpo.mensajes : [];
+    const crudo = todos.length > 20 ? [...todos.slice(0, 2), ...todos.slice(-18)] : todos;
     let mensajes = crudo
       .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map((m: any) => ({ role: m.role as "user" | "assistant", content: String(m.content).trim().slice(0, 500) }));

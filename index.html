@@ -231,7 +231,7 @@
     agregar('user', texto); hist.push({ role: 'user', content: texto });
     ocupado = true; send.disabled = true; inp.value = '';
     var pensando = agregar('assistant', 'Escribiendo…');
-    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensajes: hist.slice(-8) }) })
+    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensajes: hist.length > 20 ? hist.slice(0, 2).concat(hist.slice(-18)) : hist }) })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
         var t = (j && j.respuesta) || ('Ahora no puedo responder. Escríbenos por WhatsApp al 6009-0157 (' + WA + ').');
