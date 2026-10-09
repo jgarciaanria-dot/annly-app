@@ -206,7 +206,7 @@
   var SUGERENCIAS = ['Atiendo por cita', 'Vendo por pedidos', '¿Cómo me ayuda Annly?', '¿Cuánto cuesta?'];
 
   // Convierte enlaces de Annly y de WhatsApp en <a> (con o sin https://) sin interpretar HTML: el texto siempre se inserta como texto
-  var ENLACE = /((?:https?:\/\/)?(?:www\.|dev\.)?annly\.app\/[^\s)]*|(?:https?:\/\/)?wa\.me\/[^\s)]+)/g;
+  var ENLACE = /((?:https?:\/\/)?(?:www\.)?(?:instagram\.com\/annly\.app|tiktok\.com\/@annly\.app)|(?:https?:\/\/)?(?:www\.|dev\.)?annly\.app\/[^\s)]*|(?:https?:\/\/)?wa\.me\/[^\s)]+)/g;
   function pintar(el, texto) {
     String(texto).split(ENLACE).forEach(function (p, i) {
       if (i % 2 === 1) {
