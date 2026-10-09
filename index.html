@@ -123,6 +123,13 @@
     .bot-sug{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;background:#faf7fc}.bot-sug button{border:1px solid #e1d3ee;background:#fff;color:var(--purple);border-radius:999px;padding:6px 11px;font:600 .76rem 'DM Sans',sans-serif;cursor:pointer}.bot-sug button:hover{background:var(--lilac)}
     .bot-form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#fff}.bot-form input{flex:1;min-width:0;border:1px solid var(--line);border-radius:999px;padding:10px 14px;font:.9rem 'DM Sans',sans-serif;outline:none}.bot-form input:focus{border-color:var(--purple)}.bot-form button{border:0;border-radius:999px;padding:0 16px;color:#fff;font:700 .85rem 'DM Sans',sans-serif;cursor:pointer;background:linear-gradient(100deg,#6c25cf,#e93681)}.bot-form button:disabled{opacity:.5;cursor:default}
     .bot-nota{font-size:.68rem;color:#8b8393;text-align:center;padding:0 12px 9px;background:#fff}
+
+    .bot-mqbtn{display:none;padding:0 14px 10px;background:#faf7fc}.bot-mqbtn button{width:100%;border:1px dashed #b98be8;background:#fff;color:var(--purple);border-radius:12px;padding:9px 12px;font:700 .8rem 'DM Sans',sans-serif;cursor:pointer}.bot-mqbtn button:hover{background:var(--lilac)}.bot-mqbtn button:disabled{opacity:.5;cursor:default}
+    .mq{flex-shrink:0;align-self:stretch;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 8px 22px rgba(47,27,73,.1)}.mq-top{display:flex;align-items:center;gap:9px;padding:11px 13px;background:linear-gradient(100deg,#f4eaff,#ffe9f3)}.mq-logo{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#7424d4,#ef3d87);color:#fff;display:grid;place-items:center;font:700 .8rem 'DM Sans',sans-serif;flex-shrink:0}.mq-top b{display:block;font-size:.84rem;line-height:1.2}.mq-top small{font-size:.66rem;color:#7a7286}
+    .mq-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}.mq-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}.mq-img{height:54px}.mq-card div.t{padding:6px 8px}.mq-card b{display:block;font-size:.72rem;line-height:1.25}.mq-card small{display:block;font-size:.62rem;color:#7a7286}.mq-card .p{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:.74rem;font-weight:700}.mq-add{font-size:.58rem;background:var(--ink);color:#fff;border-radius:99px;padding:2px 7px}
+    .mq-list{padding:8px 10px}.mq-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #f0eaf4}.mq-row b{font-size:.76rem}.mq-row small{display:block;font-size:.62rem;color:#7a7286}.mq-row .p{font-size:.78rem;font-weight:700;white-space:nowrap}
+    .mq-days{display:flex;gap:5px;padding:4px 10px 2px}.mq-days i{flex:1;text-align:center;font-style:normal;font-size:.62rem;font-weight:700;border:1px solid var(--line);border-radius:8px;padding:5px 0}.mq-days i.on{background:var(--purple);color:#fff;border-color:var(--purple)}.mq-slots{display:flex;gap:5px;padding:6px 10px 8px;flex-wrap:wrap}.mq-slots i{font-style:normal;font-size:.62rem;background:#f4eaff;color:var(--purple);border-radius:99px;padding:3px 9px;font-weight:700}
+    .mq-chips{display:flex;gap:5px;padding:2px 10px 8px;flex-wrap:wrap}.mq-chips i{font-style:normal;font-size:.6rem;background:var(--mint);color:#126d4a;border-radius:99px;padding:3px 8px;font-weight:700}.mq-foot{padding:0 10px 10px}.mq-foot a{display:block;text-align:center;color:#fff;font-weight:700;font-size:.78rem;padding:9px;border-radius:99px;background:linear-gradient(100deg,#6c25cf,#e93681)}.mq-note{text-align:center;font-size:.58rem;color:#8b8393;padding:0 10px 8px}
     @media(max-width:520px){.bot-fab span{display:none}.bot-fab{padding:14px}.bot-panel{right:12px;bottom:12px;height:calc(100vh - 24px)}}
   </style>
 </head>
@@ -185,6 +192,7 @@
     <div class="bot-head"><div><b>Asistente de Annly</b><small>Asistente virtual · responde al instante</small></div><button class="bot-x" id="botX" type="button" aria-label="Cerrar">&times;</button></div>
     <div class="bot-msgs" id="botMsgs"></div>
     <div class="bot-sug" id="botSug"></div>
+    <div class="bot-mqbtn" id="botMq"><button type="button" id="botMqBtn">✨ Ver cómo quedaría mi negocio</button></div>
     <form class="bot-form" id="botForm" autocomplete="off"><input id="botIn" maxlength="500" placeholder="Escribe tu pregunta…" aria-label="Tu pregunta"><button id="botSend" type="submit">Enviar</button></form>
     <div class="bot-nota">Es una IA: confirma los datos importantes por WhatsApp. No compartas contraseñas ni datos de tarjeta.</div>
   </section>
@@ -229,9 +237,10 @@
     if (!texto || ocupado) return;
     sug.style.display = 'none';
     agregar('user', texto); hist.push({ role: 'user', content: texto });
+    actualizarMq();
     ocupado = true; send.disabled = true; inp.value = '';
     var pensando = agregar('assistant', 'Escribiendo…');
-    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensajes: hist.slice(-8) }) })
+    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maqueta: true, mensajes: hist.length > 20 ? hist.slice(0, 2).concat(hist.slice(-18)) : hist }) })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
         var t = (j && j.respuesta) || ('Ahora no puedo responder. Escríbenos por WhatsApp al 6009-0157 (' + WA + ').');
@@ -240,6 +249,53 @@
       .catch(function () { pensando.textContent = ''; pintar(pensando, 'No pude conectarme. Escríbenos por WhatsApp al 6009-0157 (' + WA + ').'); })
       .then(function () { ocupado = false; send.disabled = false; msgs.scrollTop = msgs.scrollHeight; inp.focus(); });
   }
+  // ===== Maqueta de ejemplo (tienda o agenda) =====
+  var COLORES = ['linear-gradient(135deg,#e7d3ff,#ffd3e6)', 'linear-gradient(135deg,#d3f1e7,#d6e4ff)', 'linear-gradient(135deg,#ffe4c7,#ffd0d0)', 'linear-gradient(135deg,#dcd6ff,#c9f0ff)'];
+  var mqBox = document.getElementById('botMq'), mqBtn = document.getElementById('botMqBtn');
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function precio(n) { return '$' + (Number(n) || 0).toFixed(2); }
+  function dibujarMaqueta(m) {
+    var card = el('div', 'mq'), top = el('div', 'mq-top'), tt = el('div');
+    top.appendChild(el('span', 'mq-logo', (m.negocio || 'T').charAt(0).toUpperCase()));
+    tt.appendChild(el('b', null, m.negocio)); tt.appendChild(el('small', null, m.tipo === 'tienda' ? 'Tu tienda en Annly · ejemplo' : 'Tu agenda en Annly · ejemplo'));
+    top.appendChild(tt); card.appendChild(top);
+    if (m.tipo === 'tienda') {
+      var g = el('div', 'mq-grid');
+      m.items.forEach(function (it, i) {
+        var c = el('div', 'mq-card'), im = el('div', 'mq-img'); im.style.background = COLORES[i % COLORES.length]; c.appendChild(im);
+        var t = el('div', 't'); t.appendChild(el('b', null, it.nombre)); if (it.detalle) t.appendChild(el('small', null, it.detalle));
+        var p = el('div', 'p'); p.appendChild(el('span', null, precio(it.precio))); p.appendChild(el('span', 'mq-add', 'Agregar')); t.appendChild(p); c.appendChild(t); g.appendChild(c);
+      });
+      card.appendChild(g);
+      var ch = el('div', 'mq-chips'); ['Retiro o domicilio', 'Yappy o transferencia', 'Fecha y franja'].forEach(function (x) { ch.appendChild(el('i', null, x)); }); card.appendChild(ch);
+    } else {
+      var l = el('div', 'mq-list');
+      m.items.forEach(function (it) {
+        var r = el('div', 'mq-row'), n = el('div'); n.appendChild(el('b', null, it.nombre)); if (it.detalle) n.appendChild(el('small', null, it.detalle));
+        r.appendChild(n); r.appendChild(el('span', 'p', precio(it.precio))); l.appendChild(r);
+      });
+      card.appendChild(l);
+      var d = el('div', 'mq-days'); ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'].forEach(function (x, i) { d.appendChild(el('i', i === 1 ? 'on' : '', x)); }); card.appendChild(d);
+      var sl = el('div', 'mq-slots'); ['9:00', '10:30', '1:00', '3:30', '5:00'].forEach(function (x) { sl.appendChild(el('i', null, x)); }); card.appendChild(sl);
+    }
+    var ft = el('div', 'mq-foot'), a = el('a', null, m.tipo === 'tienda' ? 'Crear mi tienda gratis' : 'Crear mi agenda gratis');
+    a.href = 'https://annly.app/registro.html?tipo=' + (m.tipo === 'tienda' ? 'pedidos' : 'citas'); a.target = '_blank'; a.rel = 'noopener'; ft.appendChild(a); card.appendChild(ft);
+    card.appendChild(el('div', 'mq-note', 'Ejemplo ilustrativo: productos, precios y nombres son de muestra.'));
+    msgs.appendChild(card); msgs.scrollTop = msgs.scrollHeight;
+  }
+  function actualizarMq() { var n = hist.filter(function (h) { return h.role === 'user'; }).length; mqBox.style.display = n >= 2 ? 'block' : 'none'; }
+  mqBtn.addEventListener('click', function () {
+    if (ocupado) return; ocupado = true; mqBtn.disabled = true;
+    var espera = agregar('assistant', 'Preparando tu maqueta…');
+    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo: 'maqueta', mensajes: hist.length > 20 ? hist.slice(0, 2).concat(hist.slice(-18)) : hist }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) {
+        if (j && j.maqueta && j.maqueta.items && j.maqueta.items.length) { espera.remove(); dibujarMaqueta(j.maqueta); }
+        else { espera.textContent = j && j.respuesta ? j.respuesta : 'Cuéntame primero a qué se dedica tu negocio y te muestro cómo quedaría.'; }
+      })
+      .catch(function () { espera.textContent = 'No pude preparar la maqueta ahora. Inténtalo de nuevo en un momento.'; })
+      .then(function () { ocupado = false; mqBtn.disabled = false; });
+  });
   fab.addEventListener('click', abrir);
   document.getElementById('botX').addEventListener('click', cerrar);
   form.addEventListener('submit', function (e) { e.preventDefault(); enviar(inp.value); });
