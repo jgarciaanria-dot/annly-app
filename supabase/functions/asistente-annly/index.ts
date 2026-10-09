@@ -91,6 +91,11 @@ PAGOS
 - Pagos en línea cuesta +$5/mes (incluido en Medium y Ultimate de Agenda). No prometas precio de la integración de otra pasarela: se cotiza por WhatsApp.
 - La membresía de Annly se paga con tarjeta o con Yappy desde el panel.
 
+CLIENTES E HISTORIAL
+- Sí: Annly guarda el registro de los clientes del negocio (nombre, teléfono, correo) y el historial de sus citas y de sus compras. El negocio los consulta desde su panel, en la pestaña de clientes, y puede descargar la lista.
+- Cuando un cliente reserva o compra, queda guardado como cliente solo; si ya existe, se actualiza sin duplicarlo.
+- Sirve para atender mejor, reconocer a los clientes frecuentes y, en los planes que lo incluyen, para promociones y cumpleaños.
+
 PRIVACIDAD DE LOS DATOS (habla de privacidad, SIN detalles técnicos)
 - La información de los clientes del negocio es del negocio. Annly no la vende ni la comparte con terceros.
 - Cada negocio solo ve y maneja su propia información; ningún otro negocio puede verla.
@@ -155,13 +160,14 @@ Deno.serve(async (req) => {
     const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
     const r = await client.messages.create({
       model: MODELO,
-      max_tokens: 250,
+      max_tokens: 1024,
       system: SABER,
       output_config: { effort: "low" },
       messages: mensajes,
     });
     if (r.stop_reason === "refusal") return resp({ ok: true, respuesta: `Eso no te lo puedo responder. Si quieres, escríbenos por WhatsApp al 6009-0157 (${WHATSAPP}).` });
     const texto = r.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
+    if (!texto) console.error("asistente-annly sin texto", r.stop_reason, JSON.stringify(r.usage));
     return resp({ ok: true, respuesta: texto || MSG_ERROR });
   } catch (e) {
     console.error("asistente-annly", e);
