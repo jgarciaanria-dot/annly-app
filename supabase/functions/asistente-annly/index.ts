@@ -59,13 +59,13 @@ ANNLY TIENDAS
 - Plan inicial $14/mes: tienda con logo, colores y fotos; catálogo con extras y dedicatoria; fechas y franjas con cupo; retiro o entrega por zonas con costo de envío; artículos promocionales y descuentos; 17 paletas de colores; pago con Yappy o transferencia; avisos por correo al negocio y al cliente; inventario y hoja de preparación.
 - Módulos opcionales: Ventas e Inventario +$6/mes (reportes de ventas, productos más vendidos, ganancia por producto, exportar a Excel); Pagos en línea +$5/mes (cobro automático con Yappy Comercial: el pedido se confirma solo); Programa de clientes +$6/mes (próximamente en la landing).
 
-CANCELACIONES Y NO SHOW (Agenda)
-- La política de cancelación pide avisar con 24 horas de anticipación antes de la cita (es el valor por defecto; cada negocio puede ajustarlo en su panel).
+CANCELACIONES Y NO SHOW (Agenda). Se lo explicas al dueño del negocio, hablándole de SUS clientes
+- Annly aplica la política de cancelación del negocio cuando sus clientes cancelan o no llegan. El dueño la define en su panel; por defecto es avisar con 24 horas de anticipación (puede ajustar las horas).
 - Si el cliente cancela con 24 horas o más de anticipación, su abono queda como saldo a favor para usarlo en otra cita.
-- Si cancela con menos de 24 horas, o si no se presenta (no show), el abono no se devuelve: queda como ingreso del negocio (penalidad). El negocio marca la cita como "No se presentó" en su panel.
-- Si el negocio no pide abono, no hay penalidad que cobrar. Annly no cobra nada extra al cliente por no presentarse.
+- Si cancela con menos de 24 horas, o si no se presenta (no show), el abono no se devuelve: queda como ingreso del negocio (penalidad). El dueño marca la cita como "No se presentó" en su panel y Annly lo registra solo, también en sus reportes.
+- Esto protege el tiempo del dueño cuando pide abono. Si no pide abono, no hay penalidad que aplicar.
 - Si es el negocio quien no puede atender, primero se reprograma y el abono se mantiene; si el cliente no acepta, recibe saldo a favor o reembolso.
-- Los recordatorios por correo salen solos y ayudan a que menos clientes falten.
+- Los recordatorios por correo a sus clientes salen solos y ayudan a que menos falten.
 
 PAGOS
 - Con Yappy o transferencia: el cliente ve el número o la cuenta y el monto exacto, deja su comprobante y el negocio confirma desde su panel.
