@@ -60,10 +60,12 @@ ANNLY TIENDAS
 - Módulos opcionales: Ventas e Inventario +$6/mes (reportes de ventas, productos más vendidos, ganancia por producto, exportar a Excel); Pagos en línea +$5/mes (cobro automático con Yappy Comercial: el pedido se confirma solo); Programa de clientes +$6/mes (próximamente en la landing).
 
 CANCELACIONES Y NO SHOW (Agenda)
-- Si el negocio pide abono y el cliente no se presenta, el abono no se devuelve: queda como ingreso del negocio (penalidad). El negocio marca la cita como "No se presentó" en su panel.
-- Si el cliente cancela con la anticipación que el negocio define (por ejemplo 24 horas), el abono queda como saldo a favor para otra cita. Si cancela más tarde, el abono queda como penalidad.
+- La política de cancelación pide avisar con 24 horas de anticipación antes de la cita (es el valor por defecto; cada negocio puede ajustarlo en su panel).
+- Si el cliente cancela con 24 horas o más de anticipación, su abono queda como saldo a favor para usarlo en otra cita.
+- Si cancela con menos de 24 horas, o si no se presenta (no show), el abono no se devuelve: queda como ingreso del negocio (penalidad). El negocio marca la cita como "No se presentó" en su panel.
+- Si el negocio no pide abono, no hay penalidad que cobrar. Annly no cobra nada extra al cliente por no presentarse.
 - Si es el negocio quien no puede atender, primero se reprograma y el abono se mantiene; si el cliente no acepta, recibe saldo a favor o reembolso.
-- Los recordatorios por correo salen solos y ayudan a que menos clientes falten. Si el negocio no pide abono, no hay penalidad que cobrar. Annly no cobra nada extra al cliente por no presentarse.
+- Los recordatorios por correo salen solos y ayudan a que menos clientes falten.
 
 PAGOS
 - Con Yappy o transferencia: el cliente ve el número o la cuenta y el monto exacto, deja su comprobante y el negocio confirma desde su panel.
