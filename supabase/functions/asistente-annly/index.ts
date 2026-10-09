@@ -166,7 +166,9 @@ Deno.serve(async (req) => {
       .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map((m: any) => ({ role: m.role as "user" | "assistant", content: String(m.content).trim().slice(0, 500) }));
     while (mensajes.length && mensajes[0].role !== "user") mensajes.shift();
-    if (!mensajes.length || mensajes[mensajes.length - 1].role !== "user") return resp({ ok: false, respuesta: "Escríbeme tu pregunta y con gusto te ayudo." }, 400);
+    // En modo maqueta la conversación termina con la respuesta del asistente, así que solo se exige que haya mensajes
+    const esMaqueta = cuerpo?.modo === "maqueta";
+    if (!mensajes.length || (!esMaqueta && mensajes[mensajes.length - 1].role !== "user")) return resp({ ok: false, respuesta: "Escríbeme tu pregunta y con gusto te ayudo." }, 400);
 
     // Límites: por visitante y global por día
     const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "sin-ip";
@@ -186,7 +188,7 @@ Deno.serve(async (req) => {
       const charla = mensajes.map((m: any) => (m.role === "user" ? "Visitante: " : "Asistente: ") + m.content).join("\n");
       const rm = await client.messages.create({
         model: MODELO,
-        max_tokens: 900,
+        max_tokens: 3000,
         output_config: { effort: "low" },
         system: "Preparas datos de EJEMPLO para una maqueta del negocio de un visitante de Annly (Panamá). Lee la conversación e identifica a qué se dedica. Responde SOLO con un JSON válido, sin texto ni comillas invertidas, con esta forma exacta: {\"tipo\":\"tienda\"|\"agenda\"|\"desconocido\",\"negocio\":\"nombre ficticio corto\",\"items\":[{\"nombre\":\"...\",\"detalle\":\"...\",\"precio\":0}]}. \"tienda\" si vende productos por pedido; \"agenda\" si atiende por cita o clases; \"desconocido\" si aún no se sabe a qué se dedica (items vacío). Si es tienda, 4 productos típicos de su rubro con detalle muy corto (por ejemplo tamaño o presentación). Si es agenda, 4 servicios típicos con detalle de duración (por ejemplo \"45 min\"). Precios realistas en dólares, número sin símbolo. Nombre del negocio inventado, sin marcas reales ni nombres de personas. Todo en español.",
         messages: [{ role: "user", content: "Conversación:\n" + charla }],
@@ -200,7 +202,10 @@ Deno.serve(async (req) => {
         detalle: String(x?.detalle ?? "").slice(0, 30),
         precio: Math.max(0, Math.min(9999, Number(x?.precio) || 0)),
       })).filter((x: any) => x.nombre) : [];
-      if (tipo === "desconocido" || !items.length) return resp({ ok: true, maqueta: null });
+      if (tipo === "desconocido" || !items.length) {
+        console.error("asistente-annly maqueta vacía", rm.stop_reason, JSON.stringify(rm.usage), bruto.slice(0, 300));
+        return resp({ ok: true, maqueta: null });
+      }
       return resp({ ok: true, maqueta: { tipo, negocio: String(d?.negocio ?? "Tu negocio").slice(0, 32), items } });
     }
 
