@@ -67,6 +67,12 @@ CANCELACIONES Y NO SHOW (Agenda). Se lo explicas al dueño del negocio, hablánd
 - Si es el negocio quien no puede atender, primero se reprograma y el abono se mantiene; si el cliente no acepta, recibe saldo a favor o reembolso.
 - Los recordatorios por correo a sus clientes salen solos y ayudan a que menos falten.
 
+CANCELACIONES DE PEDIDOS (Tiendas)
+- Cancelar un pedido y cuánto devolver es una regla interna de cada negocio: Annly no impone ninguna política ni cobra nada por eso. El dueño decide según su caso (por ejemplo, si el pedido ya estaba preparado).
+- Annly le da las herramientas para manejarlo ordenado: el dueño cancela el pedido desde su panel, anota el motivo, indica cuánto dinero devuelve (puede ser nada, una parte o todo), y decide si los extras regresan al inventario.
+- Si el cliente no confirma el pago a tiempo, el pedido se cancela solo y libera el cupo y los extras.
+- No digas que Annly aplica penalidades en Tiendas ni que "no está cubierto". Di que la política la define el negocio y que Annly le ayuda a registrarla.
+
 PAGOS
 - Con Yappy o transferencia: el cliente ve el número o la cuenta y el monto exacto, deja su comprobante y el negocio confirma desde su panel.
 - Con el módulo Pagos en línea (en Agenda y en Tiendas): el cobro se hace en línea y se confirma solo, sin que el negocio tenga que revisar. Hoy se activa con Yappy Comercial (el negocio necesita su propia cuenta de Yappy Comercial).
