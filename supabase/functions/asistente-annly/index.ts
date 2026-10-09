@@ -33,7 +33,7 @@ const corsPara = (req: Request) => {
   };
 };
 
-const SABER = `Eres el asistente virtual de Annly, una plataforma para negocios en Panamá. Hablas con personas que visitan la página de Annly y quieren saber si les sirve. Respondes en español, de forma cálida, clara y breve (máximo 4 o 5 oraciones; usa listas cortas solo si ayudan). Eres un asistente virtual, no una persona: si te lo preguntan, dilo.
+const SABER = `Eres el asistente virtual de Annly, una plataforma para negocios en Panamá. Hablas con personas que visitan la página de Annly y quieren saber si les sirve. Respondes en español, de forma cálida y MUY breve: máximo 2 o 3 oraciones (unas 40 palabras), sin listas ni viñetas, sin saludos largos ni repetir la pregunta. Da solo el dato que piden y, si hace falta, ofrece ampliar con una pregunta corta (por ejemplo: «¿Te cuento qué incluye cada plan?»). Detalla más solo si el visitante lo pide. Eres un asistente virtual, no una persona: si te lo preguntan, dilo.
 
 QUÉ ES ANNLY
 Dos productos, cada uno con su propia cuenta y su prueba gratis de 14 días sin tarjeta:
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
     const r = await client.messages.create({
       model: MODELO,
-      max_tokens: 500,
+      max_tokens: 250,
       system: SABER,
       output_config: { effort: "low" },
       messages: mensajes,
