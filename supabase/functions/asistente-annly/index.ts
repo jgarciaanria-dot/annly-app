@@ -41,6 +41,7 @@ CÓMO CONVERSAR (lo más importante)
 - NO menciones planes ni precios por iniciativa tuya. Da precios solo si te los piden; entonces responde directo con el precio que corresponde y no recites todos los planes. Si no sabes qué le conviene, pregunta cuántos profesionales tiene o qué necesita.
 - Cuando vea valor, invítalo a probar 14 días gratis, sin tarjeta, con el enlace de registro que corresponda.
 - RECUERDA LO QUE EL VISITANTE YA TE CONTÓ (su rubro, qué vende o qué servicio da, cuántos profesionales tiene) y úsalo en cada respuesta: refiérete a su negocio concreto, por ejemplo "para tu tienda de perfumes", y no vuelvas a preguntar lo que ya dijo.
+- Cuando ya conozcas su rubro, en vez de ofrecer "contarle cómo se vería", dile que toque el botón "Ver cómo quedaría mi negocio" (aparece debajo del chat) para ver una maqueta de su tienda o su agenda.
 - NO MEZCLES LOS TEMAS. Antes de responder, identifica si la conversación es de Annly Agenda (citas) o de Annly Tiendas (pedidos), por el rubro del visitante y por palabras como cita, reserva, no show (Agenda) o pedido, entrega, producto, catálogo (Tiendas). Responde SOLO con lo del producto del que habla. Si habla de pedidos, no menciones las reglas de Agenda (las 24 horas, el no show, la penalidad por abono). Si habla de citas, no menciones las reglas de Tiendas. Si no queda claro, pregunta: "¿Hablas de citas o de pedidos?". Si venía hablando de un producto y sigue con una duda corta, mantén ese mismo producto.
 
 QUÉ ES ANNLY
@@ -176,6 +177,30 @@ Deno.serve(async (req) => {
     }
 
     const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
+
+    // Modo maqueta: devuelve datos de ejemplo (nombre, 4 productos o servicios con precio) para dibujar la vista previa en la página
+    if (cuerpo?.modo === "maqueta") {
+      const charla = mensajes.map((m: any) => (m.role === "user" ? "Visitante: " : "Asistente: ") + m.content).join("\n");
+      const rm = await client.messages.create({
+        model: MODELO,
+        max_tokens: 900,
+        output_config: { effort: "low" },
+        system: "Preparas datos de EJEMPLO para una maqueta del negocio de un visitante de Annly (Panamá). Lee la conversación e identifica a qué se dedica. Responde SOLO con un JSON válido, sin texto ni comillas invertidas, con esta forma exacta: {\"tipo\":\"tienda\"|\"agenda\"|\"desconocido\",\"negocio\":\"nombre ficticio corto\",\"items\":[{\"nombre\":\"...\",\"detalle\":\"...\",\"precio\":0}]}. \"tienda\" si vende productos por pedido; \"agenda\" si atiende por cita o clases; \"desconocido\" si aún no se sabe a qué se dedica (items vacío). Si es tienda, 4 productos típicos de su rubro con detalle muy corto (por ejemplo tamaño o presentación). Si es agenda, 4 servicios típicos con detalle de duración (por ejemplo \"45 min\"). Precios realistas en dólares, número sin símbolo. Nombre del negocio inventado, sin marcas reales ni nombres de personas. Todo en español.",
+        messages: [{ role: "user", content: "Conversación:\n" + charla }],
+      });
+      const bruto = rm.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
+      let d: any = null;
+      try { d = JSON.parse(bruto.slice(bruto.indexOf("{"), bruto.lastIndexOf("}") + 1)); } catch (_) { d = null; }
+      const tipo = d && (d.tipo === "tienda" || d.tipo === "agenda") ? d.tipo : "desconocido";
+      const items = Array.isArray(d?.items) ? d.items.slice(0, 4).map((x: any) => ({
+        nombre: String(x?.nombre ?? "").slice(0, 40),
+        detalle: String(x?.detalle ?? "").slice(0, 30),
+        precio: Math.max(0, Math.min(9999, Number(x?.precio) || 0)),
+      })).filter((x: any) => x.nombre) : [];
+      if (tipo === "desconocido" || !items.length) return resp({ ok: true, maqueta: null });
+      return resp({ ok: true, maqueta: { tipo, negocio: String(d?.negocio ?? "Tu negocio").slice(0, 32), items } });
+    }
+
     const r = await client.messages.create({
       model: MODELO,
       max_tokens: 1024,
