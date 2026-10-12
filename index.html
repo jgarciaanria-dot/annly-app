@@ -194,7 +194,7 @@
     <div class="bot-sug" id="botSug"></div>
     <div class="bot-mqbtn" id="botMq"><button type="button" id="botMqBtn">✨ Ver cómo quedaría mi negocio</button></div>
     <form class="bot-form" id="botForm" autocomplete="off"><input id="botIn" maxlength="500" placeholder="Escribe tu pregunta…" aria-label="Tu pregunta"><button id="botSend" type="submit">Enviar</button></form>
-    <div class="bot-nota">Es una IA: confirma los datos importantes por WhatsApp. No compartas contraseñas ni datos de tarjeta.</div>
+    <div class="bot-nota">Es una IA: confirma los datos importantes por WhatsApp. Guardamos esta conversación para mejorar y poder responderte. No compartas contraseñas ni datos de tarjeta.</div>
   </section>
 <script>
 (function () {
@@ -203,6 +203,13 @@
   var fab = document.getElementById('botFab'), panel = document.getElementById('botPanel'), msgs = document.getElementById('botMsgs');
   var sug = document.getElementById('botSug'), form = document.getElementById('botForm'), inp = document.getElementById('botIn'), send = document.getElementById('botSend');
   var hist = [], ocupado = false, iniciado = false;
+  // Identifica la conversación (no a la persona) para que el equipo vea cómo avanzó
+  var CID = (function () {
+    try { var g = sessionStorage.getItem('annlyBotCid'); if (g) return g; } catch (e) {}
+    var v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+    try { sessionStorage.setItem('annlyBotCid', v); } catch (e) {}
+    return v;
+  })();
   var SUGERENCIAS = ['Atiendo por cita', 'Vendo por pedidos', '¿Cómo me ayuda Annly?', '¿Cuánto cuesta?'];
 
   // Convierte enlaces de Annly y de WhatsApp en <a> (con o sin https://) sin interpretar HTML: el texto siempre se inserta como texto
@@ -240,7 +247,7 @@
     actualizarMq();
     ocupado = true; send.disabled = true; inp.value = '';
     var pensando = agregar('assistant', 'Escribiendo…');
-    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maqueta: true, mensajes: hist.length > 20 ? hist.slice(0, 2).concat(hist.slice(-18)) : hist }) })
+    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ maqueta: true, cid: CID, mensajes: hist.length > 20 ? hist.slice(0, 2).concat(hist.slice(-18)) : hist }) })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
         var t = (j && j.respuesta) || ('Ahora no puedo responder. Escríbenos por WhatsApp al 6009-0157 (' + WA + ').');
@@ -287,7 +294,7 @@
   mqBtn.addEventListener('click', function () {
     if (ocupado) return; ocupado = true; mqBtn.disabled = true;
     var espera = agregar('assistant', 'Preparando tu maqueta…');
-    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo: 'maqueta', mensajes: hist.length > 20 ? hist.slice(0, 2).concat(hist.slice(-18)) : hist }) })
+    fetch(URL_BOT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo: 'maqueta', cid: CID, mensajes: hist.length > 20 ? hist.slice(0, 2).concat(hist.slice(-18)) : hist }) })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
         if (j && j.maqueta && j.maqueta.items && j.maqueta.items.length) { espera.remove(); dibujarMaqueta(j.maqueta); }
