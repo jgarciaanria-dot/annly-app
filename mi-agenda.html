@@ -18,6 +18,18 @@ h1{font-size:22px;margin:0}
 .neg{font-size:13px;color:var(--soft);margin-top:2px}
 button.act{border:1px solid var(--line);background:var(--card);color:var(--purple);border-radius:999px;padding:9px 14px;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;white-space:nowrap}
 button.act:disabled{opacity:.6}
+.barra{display:flex;align-items:center;gap:8px;margin:4px 0 6px}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;color:var(--soft);font-family:inherit;font-weight:700;font-size:14px;padding:7px 16px;border-radius:999px;cursor:pointer}
+.seg button.on{background:var(--purple);color:#fff}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 4px}
+.nav button{border:1px solid var(--line);background:var(--card);color:var(--purple);border-radius:50%;width:42px;height:42px;font-size:20px;line-height:1;cursor:pointer;font-family:inherit}
+.nav button:disabled{opacity:.35}
+.nav .ctr{flex:1;text-align:center;font-weight:800;font-size:17px}
+.nav .ctr small{display:block;font-weight:500;font-size:12px;color:var(--soft)}
+.hoy-btn{border:0;background:none;color:var(--purple);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;padding:0;margin-top:2px}
+.dia.pasado{opacity:.6}
+.libre{color:var(--soft);font-size:14px;padding:2px 2px 4px}
 .dia{margin:20px 0 8px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--soft)}
 .dia b{color:var(--ink)}
 .cita{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px}
@@ -43,6 +55,8 @@ button.act:disabled{opacity:.6}
     <div><h1 id="titulo">Mi agenda</h1><div class="neg" id="neg"></div></div>
     <button class="act" id="refrescar" type="button" hidden>Actualizar</button>
   </header>
+  <div class="barra"><div class="seg" role="tablist"><button type="button" id="vDia" class="on">Día</button><button type="button" id="vSem">Semana</button></div></div>
+  <div id="nav"></div>
   <main id="lista"><div class="vacio">Cargando tu agenda…</div></main>
   <div class="pie" id="pie" hidden></div>
 </div>
@@ -52,7 +66,7 @@ button.act:disabled{opacity:.6}
   var lista = document.getElementById('lista'), btn = document.getElementById('refrescar'), pie = document.getElementById('pie');
   var token = (new URLSearchParams(location.search).get('t') || '').trim();
   var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  var datos = null, verTodo = false, DIAS_INICIALES = 7;
+  var datos = null;
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function parteFecha(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
@@ -70,38 +84,75 @@ button.act:disabled{opacity:.6}
   }
   function solo(tel) { return String(tel || '').replace(/\D/g, ''); }
 
-  function error(t, d) { lista.textContent = ''; var b = el('div', 'error'); b.appendChild(el('h2', null, t)); b.appendChild(el('div', null, d)); lista.appendChild(b); btn.hidden = true; }
+  function error(t, d) { lista.textContent = ''; document.getElementById('nav').textContent = ''; document.querySelector('.barra').hidden = true; var b = el('div', 'error'); b.appendChild(el('h2', null, t)); b.appendChild(el('div', null, d)); lista.appendChild(b); btn.hidden = true; }
+
+  var modo = 'dia', ref = null, MIN = null, MAX = null;
+  try { if (localStorage.getItem('annlyAgendaModo') === 'semana') modo = 'semana'; } catch (e) {}
+  var NOM3 = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  function lunesDe(iso) { var d = parteFecha(iso), k = (d.getDay() + 6) % 7; return suma(iso, -k); }
+  function tarjeta(c) {
+    var card = el('div', 'cita'), hr = el('div', 'hora', hora12(c.hora)), fin = horaFin(c.hora, c.duracion);
+    if (fin) hr.appendChild(el('small', null, 'hasta ' + fin));
+    var inf = el('div', 'info'); inf.appendChild(el('div', 'srv', c.servicio || 'Cita'));
+    var cl = el('div', 'cli', c.cliente || 'Cliente'), t = solo(c.telefono);
+    if (t) { cl.appendChild(document.createTextNode(' · ')); var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, ' WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
+    inf.appendChild(cl);
+    if (c.estado === 'por_confirmar' || c.estado === 'pendiente') inf.appendChild(el('span', 'tag pc', 'Por confirmar'));
+    else inf.appendChild(el('span', 'tag ok', 'Confirmada'));
+    if (c.sede) inf.appendChild(el('span', 'tag sd', c.sede));
+    card.appendChild(hr); card.appendChild(inf); return card;
+  }
+  function titDia(f, n, hoy) {
+    var et = etiquetaDia(f, hoy), h = el('div', 'dia' + (f < hoy ? ' pasado' : '')), b = el('b', null, et[0]);
+    h.appendChild(b); if (et[1]) h.appendChild(document.createTextNode(' · ' + et[1]));
+    h.appendChild(document.createTextNode(' · ' + (n ? n + (n === 1 ? ' cita' : ' citas') : 'sin citas')));
+    return h;
+  }
+  function boton(txt, fn, dis, aria) { var b = el('button', null, txt); b.type = 'button'; b.disabled = !!dis; if (aria) b.setAttribute('aria-label', aria); b.addEventListener('click', fn); return b; }
 
   function pintar() {
-    var d = datos; lista.textContent = '';
+    var d = datos, nav = document.getElementById('nav'); lista.textContent = ''; nav.textContent = '';
     document.getElementById('titulo').textContent = 'Agenda de ' + d.profesional;
     document.getElementById('neg').textContent = d.negocio;
     document.title = 'Agenda de ' + d.profesional + ' · Annly';
-    var dias = {}, orden = [];
-    d.citas.forEach(function (c) { if (!dias[c.fecha]) { dias[c.fecha] = []; orden.push(c.fecha); } dias[c.fecha].push(c); });
-    if (!orden.length) { lista.appendChild(el('div', 'vacio', 'No tienes citas en los próximos días.')); return; }
-    var corte = suma(d.hoy, DIAS_INICIALES), ocultos = 0;
-    orden.forEach(function (f) {
-      if (!verTodo && f > corte) { ocultos += dias[f].length; return; }
-      var et = etiquetaDia(f, d.hoy), h = el('div', 'dia'); h.appendChild(document.createTextNode('')); var b = el('b', null, et[0]); h.appendChild(b);
-      if (et[1]) h.appendChild(document.createTextNode(' · ' + et[1]));
-      h.appendChild(document.createTextNode(' · ' + dias[f].length + (dias[f].length === 1 ? ' cita' : ' citas')));
-      lista.appendChild(h);
-      dias[f].forEach(function (c) {
-        var card = el('div', 'cita'), hr = el('div', 'hora', hora12(c.hora)), fin = horaFin(c.hora, c.duracion);
-        if (fin) hr.appendChild(el('small', null, 'hasta ' + fin));
-        var inf = el('div', 'info'); inf.appendChild(el('div', 'srv', c.servicio || 'Cita'));
-        var cl = el('div', 'cli', c.cliente || 'Cliente'), t = solo(c.telefono);
-        if (t) { cl.appendChild(document.createTextNode(' · ')); var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, ' WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
-        inf.appendChild(cl);
-        if (c.estado === 'por_confirmar' || c.estado === 'pendiente') inf.appendChild(el('span', 'tag pc', 'Por confirmar'));
-        else inf.appendChild(el('span', 'tag ok', 'Confirmada'));
-        if (c.sede) inf.appendChild(el('span', 'tag sd', c.sede));
-        card.appendChild(hr); card.appendChild(inf); lista.appendChild(card);
-      });
-    });
-    if (ocultos) { var m = el('button', 'act mas', 'Ver ' + ocultos + (ocultos === 1 ? ' cita más' : ' citas más')); m.type = 'button'; m.addEventListener('click', function () { verTodo = true; pintar(); }); lista.appendChild(m); }
+    document.getElementById('vDia').className = modo === 'dia' ? 'on' : '';
+    document.getElementById('vSem').className = modo === 'semana' ? 'on' : '';
+    MIN = suma(d.hoy, -7); MAX = suma(d.hoy, 60);
+    if (!ref) ref = d.hoy;
+    var por = {}; d.citas.forEach(function (c) { (por[c.fecha] = por[c.fecha] || []).push(c); });
+    var n = el('div', 'nav'), ctr = el('div', 'ctr'), irHoy = null;
+    if (modo === 'dia') {
+      var et = etiquetaDia(ref, d.hoy), cant = (por[ref] || []).length;
+      ctr.appendChild(document.createTextNode(et[0] === 'Hoy' || et[0] === 'Mañana' ? et[0] : et[0]));
+      ctr.appendChild(el('small', null, (et[1] || '') + (et[1] ? ' · ' : '') + (cant ? cant + (cant === 1 ? ' cita' : ' citas') : 'sin citas')));
+      n.appendChild(boton('‹', function () { ref = suma(ref, -1); pintar(); }, ref <= MIN, 'Día anterior')); n.appendChild(ctr);
+      n.appendChild(boton('›', function () { ref = suma(ref, 1); pintar(); }, ref >= MAX, 'Día siguiente'));
+      if (ref !== d.hoy) irHoy = true;
+      nav.appendChild(n);
+      if (irHoy) { var hb = el('div'); hb.style.textAlign = 'center'; var hbtn = el('button', 'hoy-btn', 'Ir a hoy'); hbtn.type = 'button'; hbtn.addEventListener('click', function () { ref = d.hoy; pintar(); }); hb.appendChild(hbtn); nav.appendChild(hb); }
+      if (!cant) lista.appendChild(el('div', 'vacio', ref < d.hoy ? 'No hubo citas este día.' : 'No tienes citas este día.'));
+      (por[ref] || []).forEach(function (c) { lista.appendChild(tarjeta(c)); });
+    } else {
+      var lun = lunesDe(ref), dom = suma(lun, 6), total = 0, i;
+      for (i = 0; i < 7; i++) total += (por[suma(lun, i)] || []).length;
+      var a = parteFecha(lun), b2 = parteFecha(dom);
+      ctr.appendChild(document.createTextNode(a.getDate() + ' ' + MESES[a.getMonth()] + ' – ' + b2.getDate() + ' ' + MESES[b2.getMonth()]));
+      ctr.appendChild(el('small', null, (lun <= d.hoy && d.hoy <= dom ? 'Esta semana · ' : '') + (total ? total + (total === 1 ? ' cita' : ' citas') : 'sin citas')));
+      n.appendChild(boton('‹', function () { ref = suma(lun, -7); pintar(); }, suma(lun, -1) < MIN, 'Semana anterior')); n.appendChild(ctr);
+      n.appendChild(boton('›', function () { ref = suma(lun, 7); pintar(); }, suma(lun, 7) > MAX, 'Semana siguiente'));
+      nav.appendChild(n);
+      if (!(lun <= d.hoy && d.hoy <= dom)) { var hb2 = el('div'); hb2.style.textAlign = 'center'; var hbtn2 = el('button', 'hoy-btn', 'Ir a esta semana'); hbtn2.type = 'button'; hbtn2.addEventListener('click', function () { ref = d.hoy; pintar(); }); hb2.appendChild(hbtn2); nav.appendChild(hb2); }
+      for (i = 0; i < 7; i++) {
+        var f = suma(lun, i), lst = por[f] || [];
+        lista.appendChild(titDia(f, lst.length, d.hoy));
+        if (!lst.length) lista.appendChild(el('div', 'libre', f < MIN ? '—' : 'Libre'));
+        lst.forEach(function (c) { lista.appendChild(tarjeta(c)); });
+      }
+    }
   }
+  function cambiar(m) { modo = m; try { localStorage.setItem('annlyAgendaModo', m); } catch (e) {} if (datos) pintar(); }
+  document.getElementById('vDia').addEventListener('click', function () { cambiar('dia'); });
+  document.getElementById('vSem').addEventListener('click', function () { cambiar('semana'); });
 
   function cargar() {
     if (!/^[a-f0-9]{48}$/i.test(token)) { error('Enlace no válido', 'Pídele a quien administra el negocio que te envíe de nuevo tu enlace.'); return Promise.resolve(); }

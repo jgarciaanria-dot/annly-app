@@ -12,6 +12,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const ORIGENES = new Set(["https://annly.app", "https://www.annly.app", "https://dev.annly.app"]);
 const DIAS_ADELANTE = 60;
+const DIAS_ATRAS = 7;   // para ver la semana en curso completa
 const OCULTAS = ["cancelada", "cancelado", "rechazado"];
 
 const corsPara = (req: Request) => {
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
     const { data: citas, error } = await sb.from("appointments")
       .select("id, fecha, hora, duracion_min, cliente_nombre, cliente_telefono, servicio_nombre, estado, location_id")
       .eq("business_id", enlace.business_id).eq("employee_id", enlace.employee_id)
-      .gte("fecha", hoy).lte("fecha", fechaPanama(DIAS_ADELANTE))
+      .gte("fecha", fechaPanama(-DIAS_ATRAS)).lte("fecha", fechaPanama(DIAS_ADELANTE))
       .order("fecha", { ascending: true }).order("hora", { ascending: true }).limit(400);
     if (error) { console.error("agenda-profesional citas", error); return resp({ ok: false, error: "no_disponible" }, 500); }
 
