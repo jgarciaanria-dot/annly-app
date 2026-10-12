@@ -9727,14 +9727,14 @@ async function guardarEnlaceAgenda(empId, esNuevo){
   if (!esNuevo && !confirm('El enlace anterior de ' + e.nombre + ' dejará de funcionar. ¿Generar uno nuevo?')) return;
   const token = tokenAgendaNuevo();
   const { error } = await sbClient.from('agenda_profesional_enlaces').upsert({ employee_id: String(empId), business_id: BUSINESS_ID, token }, { onConflict: 'employee_id' });
-  if (error) { console.error('enlace agenda', error); const m = document.getElementById('ea-msg'); if (m) m.textContent = 'No pude guardar el enlace. Inténtalo de nuevo.'; return; }
+  if (error) { console.error('enlace agenda', error); const m = document.getElementById('ea-msg'); if (m) m.textContent = 'No pude guardar el enlace: ' + ((error && (error.message || error.code)) || 'inténtalo de nuevo') + '.'; return; }
   pintarEnlaceAgenda(e, token, '');
 }
 async function quitarEnlaceAgenda(empId){
   const e = EQUIPO.find(x => String(x.id) === String(empId)); if (!e) return;
   if (!confirm('¿Desactivar el enlace de ' + e.nombre + '? Dejará de ver su agenda en el celular.')) return;
   const { error } = await sbClient.from('agenda_profesional_enlaces').delete().eq('employee_id', String(empId)).eq('business_id', BUSINESS_ID);
-  if (error) { console.error('enlace agenda', error); const m = document.getElementById('ea-msg'); if (m) m.textContent = 'No pude desactivarlo. Inténtalo de nuevo.'; return; }
+  if (error) { console.error('enlace agenda', error); const m = document.getElementById('ea-msg'); if (m) m.textContent = 'No pude desactivarlo: ' + ((error && (error.message || error.code)) || 'inténtalo de nuevo') + '.'; return; }
   pintarEnlaceAgenda(e, null, '');
 }
 
