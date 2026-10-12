@@ -152,6 +152,10 @@ REGLAS
 const REGLA_MAQUETA = `
 - Cuando ya conozcas su rubro, en vez de ofrecer "contarle cómo se vería", dile que toque el botón "Ver cómo quedaría mi negocio" (aparece debajo del chat) para ver una maqueta de su tienda o su agenda.`;
 
+// Se añade en el mensaje 3 del visitante (lo decide el código, no el modelo) para que la oferta siempre se haga
+const REGLA_OFRECER = `
+- EN ESTA RESPUESTA, después de contestar lo que preguntó, termina invitándolo así (una sola frase, con tus palabras): que si quiere, el equipo de Annly le escribe para ayudarle a empezar, y que solo necesitas su nombre y su WhatsApp o correo. No escribas ninguna otra pregunta en este mensaje.`;
+
 const MSG_ERROR = `Ahora no puedo responder. Escríbenos por WhatsApp al 6009-0157 (${WHATSAPP}) y te ayudamos enseguida.`;
 
 const sha256 = async (txt: string) => {
@@ -322,10 +326,13 @@ Deno.serve(async (req) => {
       return resp({ ok: true, maqueta: { tipo, negocio: String(d?.negocio ?? "Tu negocio").slice(0, 32), items } });
     }
 
+    // En el 3.er mensaje del visitante, si aún no dejó contacto, el bot lo invita a dejar sus datos
+    const textosVisitante = todos.filter((m: any) => m?.role === "user" && typeof m.content === "string").map((m: any) => m.content);
+    const ofrecer = textosVisitante.length === 3 && !contactoDe(textosVisitante);
     const r = await client.messages.create({
       model: MODELO,
       max_tokens: 1024,
-      system: cuerpo?.maqueta === true ? SABER + REGLA_MAQUETA : SABER,
+      system: (cuerpo?.maqueta === true ? SABER + REGLA_MAQUETA : SABER) + (ofrecer ? REGLA_OFRECER : ""),
       output_config: { effort: "low" },
       messages: mensajes,
     });
