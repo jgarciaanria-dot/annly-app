@@ -7,9 +7,10 @@
 // Seguridad y costo:
 //   - La clave de Anthropic vive solo aquí (secreto ANTHROPIC_API_KEY); el navegador nunca la ve.
 //   - Solo responde a páginas de Annly (CORS) y limita mensajes: LIMITE_VISITANTE por visitante y LIMITE_GLOBAL por día.
-//   - Recorta el historial (8 mensajes, 500 caracteres cada uno) y la respuesta (500 tokens).
+//   - Recorta el historial (20 mensajes, 500 caracteres cada uno).
+//   - Guarda cada conversación (tabla asistente_conversaciones), la resume con IA y, si el visitante deja su contacto, avisa por correo (Resend) a SOPORTE_EMAIL o soporte@annly.app.
 // "Verify JWT" APAGADO (lo usa un visitante sin sesión).
-// Secretos: ANTHROPIC_API_KEY (obligatorio). Opcionales: ASISTENTE_MODELO, ASISTENTE_LIMITE_VISITANTE, ASISTENTE_LIMITE_GLOBAL.
+// Secretos: ANTHROPIC_API_KEY (obligatorio), RESEND_API_KEY (aviso de prospectos). Opcionales: SOPORTE_EMAIL, ASISTENTE_MODELO, ASISTENTE_LIMITE_VISITANTE, ASISTENTE_LIMITE_GLOBAL.
 // Deploy: supabase functions deploy asistente-annly --no-verify-jwt
 // =========================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -21,6 +22,8 @@ const MODELO = Deno.env.get("ASISTENTE_MODELO") || "claude-haiku-5-5";
 const LIMITE_VISITANTE = Number(Deno.env.get("ASISTENTE_LIMITE_VISITANTE") || 30);
 const LIMITE_GLOBAL = Number(Deno.env.get("ASISTENTE_LIMITE_GLOBAL") || 2000);
 const WHATSAPP = "https://wa.me/50760090157";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const AVISO_A = Deno.env.get("SOPORTE_EMAIL") || "soporte@annly.app";   // a dónde llega el aviso de prospectos nuevos
 
 const ORIGENES = new Set(["https://annly.app", "https://www.annly.app", "https://dev.annly.app"]);
 const corsPara = (req: Request) => {
@@ -123,6 +126,11 @@ AL REGISTRARSE: GUÍA Y ACOMPAÑAMIENTO
 - Si necesita ayuda con la configuración, el equipo de soporte lo acompaña y lo guía: soporte@annly.app o WhatsApp 6009-0157.
 - Si preguntan cómo se configura, responde con eso en positivo; nunca digas "no tengo una guía".
 
+DEJAR SUS DATOS (prospectos)
+- Cuando el visitante ya mostró interés (preguntó precios, cómo empezar o cómo se vería su negocio, o llevan 3 o más intercambios), ofrécele UNA sola vez, en una frase, que el equipo le escriba: "¿Quieres que el equipo te escriba? Déjame tu nombre y tu WhatsApp o correo."
+- Si te da su nombre y un teléfono o correo, agradécele, dile que el equipo le escribe pronto y que mientras tanto puede probar gratis. No vuelvas a pedirle datos.
+- Si no quiere, no insistas y sigue la conversación normal. No pidas datos de tarjeta, cédula, contraseñas ni datos bancarios; solo nombre y un contacto.
+
 PRUEBA Y CUENTA
 - 14 días gratis, sin tarjeta y sin contrato. Para empezar: https://annly.app/registro.html?tipo=citas (Agenda) o https://annly.app/registro.html?tipo=pedidos (Tiendas).
 - Al terminar la prueba el negocio elige su plan; no se cobra nada sin su confirmación.
@@ -151,6 +159,104 @@ const sha256 = async (txt: string) => {
   return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
 };
 
+// ===== Registro de conversaciones y prospectos =====
+const ES_CID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const esc = (t: unknown) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+const RE_CORREO = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+const RE_TEL = /\+?\d[\d\s().-]{6,17}\d/;
+
+// Correo o teléfono que el visitante escribió (lo detecta el código, no la IA, para que no se invente)
+function contactoDe(textos: string[]): string {
+  const todo = textos.join("\n");
+  const c = todo.match(RE_CORREO)?.[0];
+  if (c) return c.slice(0, 120);
+  const t = todo.match(RE_TEL)?.[0];
+  return t && t.replace(/\D/g, "").length >= 7 ? t.trim().slice(0, 30) : "";
+}
+
+async function guardarTurno(cid: string, huella: string, origen: string, ultimo: string, respuesta: string, maqueta = false) {
+  const { data: c } = await sb.from("asistente_conversaciones").select("visitante,mensajes,contacto_at").eq("id", cid).maybeSingle();
+  if (c && c.visitante !== huella) return;   // otro visitante no puede tocar esta conversación
+  const ahora = new Date().toISOString();
+  const previos = Array.isArray(c?.mensajes) ? c!.mensajes : [];
+  const mensajes = [...previos, { r: "user", t: ultimo.slice(0, 500), at: ahora }, { r: "assistant", t: respuesta.slice(0, 1500), at: ahora }].slice(-80);
+  const nUsuario = mensajes.filter((m: any) => m.r === "user").length;
+  const fila: Record<string, unknown> = { id: cid, visitante: huella, origen: origen || null, mensajes, n_usuario: nUsuario, actualizado: ahora };
+  if (maqueta) fila.uso_maqueta = true;
+  const { error } = await sb.from("asistente_conversaciones").upsert(fila, { onConflict: "id" });
+  if (error) { console.error("asistente guardar", error); return; }
+  const contacto = contactoDe(mensajes.filter((m: any) => m.r === "user").map((m: any) => m.t));
+  const toca = (nUsuario >= 3 && nUsuario % 3 === 0) || (!!contacto && !c?.contacto_at);
+  if (toca) await analizar(cid, mensajes, contacto);
+}
+
+async function marcarMaqueta(cid: string, huella: string) {
+  await sb.from("asistente_conversaciones").update({ uso_maqueta: true }).eq("id", cid).eq("visitante", huella);
+}
+
+// La IA resume la conversación (rubro, producto, interés, qué lo frena) y, si dejó contacto, avisa al equipo por correo
+async function analizar(cid: string, mensajes: any[], contacto: string) {
+  const charla = mensajes.map((m: any) => (m.r === "user" ? "Visitante: " : "Asistente: ") + m.t).join("\n");
+  let d: any = {};
+  try {
+    const r = await new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") }).messages.create({
+      model: MODELO,
+      max_tokens: 3000,
+      output_config: { effort: "low" },
+      system: 'Analizas la conversación de un visitante con el asistente de Annly (plataforma de agendas por cita y tiendas por pedido, Panamá). Responde SOLO con un JSON válido, sin texto ni comillas invertidas: {"rubro":"a qué se dedica, 1 a 4 palabras, o vacío","producto":"agenda"|"tiendas"|"ninguno","interes":"alto"|"medio"|"bajo","resumen":"1 o 2 frases: qué quiere y qué le preguntó","freno":"qué lo frena u objeción (precio, tarjeta, algo que Annly no hace...), o vacío","nombre":"su nombre si lo dijo, o vacío"}. interes alto = pregunta precios, cómo empezar, pide maqueta o deja su contacto; medio = curioso con un negocio concreto; bajo = pregunta suelta o sin negocio. No inventes: usa solo lo que dijo el visitante.',
+      messages: [{ role: "user", content: "Conversación:\n" + charla }],
+    });
+    const bruto = r.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
+    d = JSON.parse(bruto.slice(bruto.indexOf("{"), bruto.lastIndexOf("}") + 1));
+  } catch (e) { console.error("asistente análisis", e); }
+  const corto = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "") || null;
+  const campos: Record<string, unknown> = {
+    rubro: corto(d.rubro, 60),
+    producto: ["agenda", "tiendas", "ninguno"].includes(d.producto) ? d.producto : null,
+    interes: ["alto", "medio", "bajo"].includes(d.interes) ? d.interes : null,
+    resumen: corto(d.resumen, 400),
+    freno: corto(d.freno, 200),
+    nombre: corto(d.nombre, 60),
+  };
+  const { error } = await sb.from("asistente_conversaciones").update(campos).eq("id", cid);
+  if (error) console.error("asistente análisis guardar", error);
+  if (!contacto) return;
+  // El aviso sale una sola vez: solo si esta llamada es la que marca el contacto
+  const { data: marcado } = await sb.from("asistente_conversaciones").update({ contacto, contacto_at: new Date().toISOString() }).eq("id", cid).is("contacto_at", null).select("id");
+  if (!marcado?.length) return;
+  await avisarProspecto(cid, contacto, campos, mensajes);
+}
+
+async function avisarProspecto(cid: string, contacto: string, c: Record<string, unknown>, mensajes: any[]) {
+  if (!RESEND_API_KEY) { console.error("asistente aviso: falta RESEND_API_KEY"); return; }
+  const esCorreo = RE_CORREO.test(contacto);
+  const digitos = contacto.replace(/\D/g, "");
+  const enlace = esCorreo ? `mailto:${esc(contacto)}` : `https://wa.me/${digitos.length === 8 ? "507" + digitos : digitos}`;
+  const fila = (k: string, v: unknown) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#8a8496">${k}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>` : "";
+  const charla = mensajes.slice(-14).map((m: any) => `<p style="margin:4px 0;color:${m.r === "user" ? "#2b1b3d" : "#8a8496"}"><b>${m.r === "user" ? "Visitante" : "Asistente"}:</b> ${esc(m.t)}</p>`).join("");
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#2b1b3d"><h2 style="margin:0 0 12px">Nuevo prospecto del asistente</h2>
+<table style="font-size:14px;border-collapse:collapse">${fila("Nombre", c.nombre)}${fila("Contacto", contacto)}${fila("Rubro", c.rubro)}${fila("Producto", c.producto)}${fila("Interés", c.interes)}${fila("Qué quiere", c.resumen)}${fila("Lo frena", c.freno)}</table>
+<p style="margin:16px 0"><a href="${enlace}" style="background:#7c3aed;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:bold">${esCorreo ? "Escribirle por correo" : "Escribirle por WhatsApp"}</a></p>
+<h3 style="font-size:14px;margin:18px 0 6px">Últimos mensajes</h3><div style="font-size:13px">${charla}</div>
+<p style="color:#8a8496;font-size:12px;margin-top:18px">Todas las conversaciones están en la tabla asistente_conversaciones de Supabase.</p></div>`;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `prospecto-${cid}` },
+    body: JSON.stringify({
+      from: "Annly <notificaciones@annly.app>", to: AVISO_A, ...(esCorreo ? { reply_to: contacto } : {}),
+      subject: `Nuevo prospecto: ${c.nombre || contacto}${c.rubro ? " — " + c.rubro : ""}`, html,
+    }),
+  });
+  if (!res.ok && res.status !== 409) console.error("asistente aviso Resend:", await res.text());
+}
+
+// Corre después de responder para no hacer esperar al visitante (si el entorno no lo soporta, se espera)
+const enSegundoPlano = async (p: Promise<unknown>) => {
+  const er = (globalThis as any).EdgeRuntime;
+  if (er?.waitUntil) er.waitUntil(p.catch((e: unknown) => console.error("asistente segundo plano", e)));
+  else await p.catch((e: unknown) => console.error("asistente segundo plano", e));
+};
+
 Deno.serve(async (req) => {
   const CORS = corsPara(req);
   const resp = (obj: unknown, status = 200) =>
@@ -176,8 +282,10 @@ Deno.serve(async (req) => {
 
     // Límites: por visitante y global por día
     const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "sin-ip";
+    const huella = await sha256(ip + ":" + (req.headers.get("user-agent") || ""));
+    const cid = typeof cuerpo?.cid === "string" && ES_CID.test(cuerpo.cid) ? cuerpo.cid.toLowerCase() : null;
     const [okVisitante, okGlobal] = await Promise.all([
-      sb.rpc("asistente_registrar", { p_clave: "v:" + (await sha256(ip + ":" + (req.headers.get("user-agent") || ""))), p_limite: LIMITE_VISITANTE }),
+      sb.rpc("asistente_registrar", { p_clave: "v:" + huella, p_limite: LIMITE_VISITANTE }),
       sb.rpc("asistente_registrar", { p_clave: "global", p_limite: LIMITE_GLOBAL }),
     ]);
     if (okVisitante.error || okGlobal.error) { console.error("asistente_registrar", okVisitante.error || okGlobal.error); return resp({ ok: false, respuesta: MSG_ERROR }, 500); }
@@ -210,6 +318,7 @@ Deno.serve(async (req) => {
         console.error("asistente-annly maqueta vacía", rm.stop_reason, JSON.stringify(rm.usage), bruto.slice(0, 300));
         return resp({ ok: true, maqueta: null });
       }
+      if (cid) await enSegundoPlano(marcarMaqueta(cid, huella));
       return resp({ ok: true, maqueta: { tipo, negocio: String(d?.negocio ?? "Tu negocio").slice(0, 32), items } });
     }
 
@@ -223,6 +332,7 @@ Deno.serve(async (req) => {
     if (r.stop_reason === "refusal") return resp({ ok: true, respuesta: `Eso no te lo puedo responder. Si quieres, escríbenos por WhatsApp al 6009-0157 (${WHATSAPP}).` });
     const texto = r.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
     if (!texto) console.error("asistente-annly sin texto", r.stop_reason, JSON.stringify(r.usage));
+    if (cid && texto) await enSegundoPlano(guardarTurno(cid, huella, origen, mensajes[mensajes.length - 1].content, texto));
     return resp({ ok: true, respuesta: texto || MSG_ERROR });
   } catch (e) {
     console.error("asistente-annly", e);
