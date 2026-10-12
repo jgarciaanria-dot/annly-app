@@ -531,6 +531,15 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .pf-yappy-hdr b{font-size:13.5px;}
 .pf-yappy-hdr span{font-size:12px;color:var(--ink-soft,#77738A);}
 .pf-yappy .fi{width:100%;}
+.ea-lbl{font-size:12px;font-weight:700;color:var(--ink-soft,#77738A);margin:14px 0 6px;display:block;}
+.ea-url{width:100%;border:1px solid var(--line,#E6DCF8);border-radius:12px;padding:10px 12px;font-size:12px;background:#FAF7FE;color:inherit;}
+.ea-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.ea-btns button{flex:1 1 auto;border:1px solid var(--line,#E6DCF8);background:#fff;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#7C3AED;font-family:inherit;}
+.ea-btns button.pri{background:#7C3AED;border-color:#7C3AED;color:#fff;}
+.ea-btns button.wa{background:#1EBE5B;border-color:#1EBE5B;color:#fff;}
+.ea-btns button.mal{color:#B42318;}
+.ea-nota{font-size:12px;color:var(--ink-soft,#77738A);margin:12px 0 0;line-height:1.45;}
+.ea-msg{font-size:12px;min-height:16px;margin:8px 0 0;color:#B42318;}
 .pm-ov{position:fixed;inset:0;background:rgba(26,22,37,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
 .pm-box{position:relative;background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;padding:24px 22px 22px;}
 .pm-box h3{margin:0 24px 4px 0;font-size:17px;}
@@ -9667,6 +9676,68 @@ function irAExtraProfesional(){
   }, 200);
 }
 
+
+// ---------- Enlace privado de la agenda de cada profesional (solo lectura, sin contraseña) ----------
+// El profesional abre el enlace en su celular y ve sus citas próximas. Quien tenga el enlace la ve: se puede generar uno nuevo (el anterior deja de funcionar) o desactivar.
+function tokenAgendaNuevo(){ const b = new Uint8Array(24); crypto.getRandomValues(b); return Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); }
+function urlAgendaProfesional(token){ return window.location.origin + '/mi-agenda.html?t=' + token; }
+async function abrirEnlaceAgenda(empId){
+  const e = EQUIPO.find(x => String(x.id) === String(empId)); if (!e) return;
+  let token = null, falla = '';
+  try {
+    const { data, error } = await sbClient.from('agenda_profesional_enlaces').select('token').eq('employee_id', String(empId)).eq('business_id', BUSINESS_ID).maybeSingle();
+    if (error) throw error;
+    token = data && data.token || null;
+  } catch (err) { console.error('enlace agenda', err); falla = 'No pude consultar el enlace. Si es la primera vez, falta ejecutar el SQL agenda_profesional.sql en Supabase.'; }
+  pintarEnlaceAgenda(e, token, falla);
+}
+function pintarEnlaceAgenda(e, token, falla){
+  cerrarEnlaceAgenda();
+  const ov = document.createElement('div'); ov.className = 'pm-ov'; ov.id = 'ea-ov';
+  ov.addEventListener('click', ev => { if (ev.target === ov) cerrarEnlaceAgenda(); });
+  const nom = escH(e.nombre);
+  let cuerpo;
+  if (falla) cuerpo = `<p class="ea-msg" id="ea-msg">${escH(falla)}</p>`;
+  else if (!token) cuerpo = `<p class="ea-nota" style="margin-top:0;">Crea un enlace privado para que <b>${nom}</b> vea su agenda desde su celular, sin contraseña. Solo ve sus citas (cliente, servicio y hora), no ve precios ni finanzas.</p>
+    <div class="ea-btns"><button type="button" class="pri" onclick="guardarEnlaceAgenda('${e.id}', true)">Crear enlace</button></div><p class="ea-msg" id="ea-msg"></p>`;
+  else {
+    const url = urlAgendaProfesional(token);
+    const tel = String(e.telefono || '').replace(/\D/g, '');
+    const texto = encodeURIComponent('Hola ' + e.nombre + ', este es el enlace para ver tu agenda en el celular: ' + url);
+    const wa = 'https://wa.me/' + (tel ? (tel.length === 8 ? '507' + tel : tel) : '') + '?text=' + texto;
+    cuerpo = `<label class="ea-lbl" for="ea-url">Enlace de ${nom}</label>
+      <input class="ea-url" id="ea-url" readonly value="${escH(url)}" onfocus="this.select()">
+      <div class="ea-btns"><button type="button" class="pri" onclick="copiarEnlaceAgenda()">Copiar enlace</button><a href="${escH(wa)}" target="_blank" rel="noopener" style="flex:1 1 auto;text-decoration:none;"><button type="button" class="wa" style="width:100%;">Enviar por WhatsApp</button></a></div>
+      <div class="ea-btns"><button type="button" onclick="guardarEnlaceAgenda('${e.id}', false)">Generar uno nuevo</button><button type="button" class="mal" onclick="quitarEnlaceAgenda('${e.id}')">Desactivar</button></div>
+      <p class="ea-msg" id="ea-msg"></p>
+      <p class="ea-nota">Quien tenga este enlace puede ver la agenda de ${nom} (solo lectura). No lo publiques. Si se lo pasan a alguien más o ${nom} deja el equipo, genera uno nuevo o desactívalo: el anterior deja de funcionar al instante.</p>`;
+  }
+  ov.innerHTML = `<div class="pm-box" role="dialog" aria-modal="true"><button type="button" class="pm-x" aria-label="Cerrar" onclick="cerrarEnlaceAgenda()">×</button><h3>Agenda de ${nom} en su celular</h3>${cuerpo}</div>`;
+  document.body.appendChild(ov);
+}
+function cerrarEnlaceAgenda(){ const ov = document.getElementById('ea-ov'); if (ov) ov.remove(); }
+function copiarEnlaceAgenda(){
+  const i = document.getElementById('ea-url'), m = document.getElementById('ea-msg'); if (!i) return;
+  const ok = () => { if (m) { m.style.color = '#15803D'; m.textContent = '¡Enlace copiado!'; } };
+  if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(ok).catch(() => { i.select(); document.execCommand('copy'); ok(); });
+  else { i.select(); document.execCommand('copy'); ok(); }
+}
+async function guardarEnlaceAgenda(empId, esNuevo){
+  const e = EQUIPO.find(x => String(x.id) === String(empId)); if (!e) return;
+  if (!esNuevo && !confirm('El enlace anterior de ' + e.nombre + ' dejará de funcionar. ¿Generar uno nuevo?')) return;
+  const token = tokenAgendaNuevo();
+  const { error } = await sbClient.from('agenda_profesional_enlaces').upsert({ employee_id: String(empId), business_id: BUSINESS_ID, token }, { onConflict: 'employee_id' });
+  if (error) { console.error('enlace agenda', error); const m = document.getElementById('ea-msg'); if (m) m.textContent = 'No pude guardar el enlace. Inténtalo de nuevo.'; return; }
+  pintarEnlaceAgenda(e, token, '');
+}
+async function quitarEnlaceAgenda(empId){
+  const e = EQUIPO.find(x => String(x.id) === String(empId)); if (!e) return;
+  if (!confirm('¿Desactivar el enlace de ' + e.nombre + '? Dejará de ver su agenda en el celular.')) return;
+  const { error } = await sbClient.from('agenda_profesional_enlaces').delete().eq('employee_id', String(empId)).eq('business_id', BUSINESS_ID);
+  if (error) { console.error('enlace agenda', error); const m = document.getElementById('ea-msg'); if (m) m.textContent = 'No pude desactivarlo. Inténtalo de nuevo.'; return; }
+  pintarEnlaceAgenda(e, null, '');
+}
+
 function renderEquipo(){
   const cont = document.getElementById('lista-equipo');
   const limite = limiteEmpleadosDelPlan();
@@ -9692,6 +9763,7 @@ function renderEquipo(){
         <div class="svc-meta" id="eq-atiende-${e.id}" style="margin-top:2px;">Cargando servicios…</div>
       </div>
       <div class="svc-actions">
+        <button class="btn-ico" onclick="abrirEnlaceAgenda('${e.id}')" title="Enlace para que vea su agenda en el celular"><i class="ti ti-link"></i></button>
         <button class="btn-ico" onclick="openModalEmpleado('${e.id}')" title="Editar"><i class="ti ti-edit"></i></button>
       </div>
     </div>`;
