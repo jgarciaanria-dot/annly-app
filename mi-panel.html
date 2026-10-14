@@ -79,6 +79,7 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
   </header>
   <div id="barra" hidden>
     <div class="tabs" role="tablist"><button type="button" id="tPc">Por confirmar<span class="n" id="nPc" hidden>0</span></button><button type="button" id="tDia">Día</button><button type="button" id="tSem">Semana</button></div>
+    <select id="fNeg" aria-label="Negocio" hidden></select>
     <select id="fEmp" aria-label="Filtrar por profesional" hidden></select>
     <div id="nav"></div>
   </div>
@@ -260,6 +261,10 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
   document.getElementById('tPc').addEventListener('click', function () { cambiar('pc'); });
   document.getElementById('tDia').addEventListener('click', function () { cambiar('dia'); });
   document.getElementById('tSem').addEventListener('click', function () { cambiar('semana'); });
+  document.getElementById('fNeg').addEventListener('change', function (e) {
+    var id = e.target.value; try { localStorage.setItem('annlyPanelNegocio', id); } catch (x) {}
+    filtroEmp = ''; items = []; window.AnnlyAuth.seleccionarNegocio(id).then(function () { return cargar(true); });
+  });
   document.getElementById('fEmp').addEventListener('change', function (e) { filtroEmp = e.target.value; pintar(); });
 
   function pantallaError(t, d) { barra.hidden = true; btnRef.hidden = true; lista.textContent = ''; var b = el('div', 'error'); b.appendChild(el('h2', null, t)); b.appendChild(el('div', null, d)); lista.appendChild(b); }
@@ -288,6 +293,21 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
     try {
       await window.AnnlyReady;
       if (!window.ANNLY_AUTHENTICATED) { pantallaLogin(); return; }
+      // Administrador de la plataforma (varios negocios): se escoge cuál agenda ver
+      var selN = document.getElementById('fNeg');
+      if (window.ANNLY_PLATFORM_ADMIN) {
+        var ags = (window.ANNLY_BUSINESSES || []).filter(function (b) { return b.tipo_negocio !== 'pedidos'; });
+        if (ags.length) {
+          var guardado = ''; try { guardado = localStorage.getItem('annlyPanelNegocio') || ''; } catch (e) {}
+          var actual = window.ANNLY_BUSINESS && ags.filter(function (b) { return String(b.id) === String(window.ANNLY_BUSINESS.id); })[0];
+          var elegido = (!cargado && guardado && ags.filter(function (b) { return String(b.id) === guardado; })[0]) || actual || ags[0];
+          if (!window.ANNLY_BUSINESS || String(window.ANNLY_BUSINESS.id) !== String(elegido.id)) await window.AnnlyAuth.seleccionarNegocio(elegido.id);
+          if (ags.length > 1) {
+            selN.textContent = ''; ags.forEach(function (b) { var o = el('option', null, b.nombre); o.value = b.id; selN.appendChild(o); });
+            selN.value = String(window.ANNLY_BUSINESS.id); selN.hidden = false;
+          }
+        }
+      }
       var neg = window.ANNLY_BUSINESS;
       if (!neg) { pantallaError('No encontré tu negocio', 'Esta pantalla es para la dueña del negocio. Entra con la cuenta con la que lo registraste.'); return; }
       if (neg.tipo_negocio === 'pedidos') { pantallaError('Esta pantalla es para agendas', 'Tu negocio es una tienda; usa el panel para ver tus pedidos.'); return; }
