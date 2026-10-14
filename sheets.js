@@ -200,7 +200,7 @@ async function resolverNegocio() {
   window.ANNLY_BUSINESSES = [];
   BUSINESS_ID = null;
 
-  const esPanelAdmin = window.location.pathname.includes('admin.html');
+  const esPanelAdmin = window.location.pathname.includes('admin.html') || window.location.pathname.includes('mi-panel.html');
   const esRegistro = window.location.pathname.includes('registro.html');
 
 

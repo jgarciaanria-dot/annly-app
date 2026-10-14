@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#7c3aed">
+<link rel="manifest" href="mi-panel.webmanifest">
+<link rel="apple-touch-icon" href="logo-annly-v2.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Mis citas · Annly</title>
+<style>
+:root{--bg:#faf7fc;--card:#fff;--ink:#2b1b3d;--soft:#77738a;--line:#e8def3;--purple:#7c3aed;--amber:#b45309;--amberbg:#fff4e0;--green:#15803d;--greenbg:#e7f8ee;--red:#b42318;--redbg:#fdecea}
+@media(prefers-color-scheme:dark){:root{--bg:#171022;--card:#221733;--ink:#f3ecfb;--soft:#a79bb8;--line:#3a2b52;--amberbg:#3a2a10;--amber:#f5c26b;--greenbg:#12301f;--green:#6fdc98;--red:#ff9b8f;--redbg:#3a1714}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:0 16px calc(28px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto}
+header{padding:calc(16px + env(safe-area-inset-top)) 0 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{font-size:21px;margin:0}
+.neg{font-size:13px;color:var(--soft);margin-top:2px}
+button{font-family:inherit}
+.act{border:1px solid var(--line);background:var(--card);color:var(--purple);border-radius:999px;padding:9px 14px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+.act:disabled{opacity:.55}
+.tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;margin:6px 0}
+.tabs button{flex:1;white-space:nowrap;border:0;background:none;color:var(--soft);font-weight:700;font-size:13px;padding:8px 4px;border-radius:999px;cursor:pointer}
+.tabs button.on{background:var(--purple);color:#fff}
+.tabs .n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--amber);color:#fff;font-size:12px;line-height:20px}
+.tabs button.on .n{background:#fff;color:var(--purple)}
+select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:14px;font-family:inherit}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 4px}
+.nav button{border:1px solid var(--line);background:var(--card);color:var(--purple);border-radius:50%;width:42px;height:42px;font-size:20px;cursor:pointer}
+.nav button:disabled{opacity:.35}
+.nav .ctr{flex:1;text-align:center;font-weight:800;font-size:17px}
+.nav .ctr small{display:block;font-weight:500;font-size:12px;color:var(--soft)}
+.link{border:0;background:none;color:var(--purple);font-weight:700;font-size:13px;cursor:pointer;padding:0;margin:2px auto 0;display:block}
+.dia{margin:18px 0 8px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--soft)}
+.dia b{color:var(--ink)}
+.dia.pasado{opacity:.65}
+.libre{color:var(--soft);font-size:14px;padding:2px 2px 4px}
+.cita{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.cita.pc{border-color:var(--amber)}
+.fila{display:flex;gap:12px}
+.hora{min-width:64px;font-weight:800;font-size:17px;line-height:1.15}
+.hora small{display:block;font-weight:500;font-size:12px;color:var(--soft)}
+.info{flex:1;min-width:0}
+.srv{font-weight:700}
+.cli{color:var(--soft);font-size:14px;margin-top:2px;overflow-wrap:anywhere}
+.cli a,.det a{color:var(--purple);text-decoration:none;font-weight:600}
+.det{font-size:13px;color:var(--soft);margin-top:4px}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin:6px 6px 0 0}
+.tag.pc{background:var(--amberbg);color:var(--amber)}.tag.ok{background:var(--greenbg);color:var(--green)}.tag.sd{background:var(--bg);color:var(--soft);border:1px solid var(--line)}
+.acc{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.acc button,.acc a{flex:1 1 130px;text-align:center;text-decoration:none;border-radius:12px;padding:11px 10px;font-size:14px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--purple)}
+.acc .si{background:var(--green);border-color:var(--green);color:#fff}
+.acc .no{color:var(--red);border-color:var(--red);background:var(--redbg)}
+.acc button:disabled{opacity:.5}
+.nota{font-size:12px;color:var(--soft);margin:6px 2px 0}
+.vacio,.error{text-align:center;color:var(--soft);padding:34px 12px}
+.error h2{color:var(--ink);font-size:18px;margin:0 0 6px}
+.pie{text-align:center;font-size:12px;color:var(--soft);margin-top:20px}
+.login{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:20px}
+.login input{width:100%;margin:6px 0 10px;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:var(--bg);color:var(--ink);font-family:inherit}
+.login .act{width:100%;background:var(--purple);color:#fff;border-color:var(--purple);padding:12px}
+.login .msg{color:var(--red);font-size:13px;min-height:18px;margin:4px 0}
+.ov{position:fixed;inset:0;background:rgba(20,12,30,.5);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.hoja{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}
+.hoja h3{margin:0 0 6px;font-size:18px}
+.hoja p{margin:0 0 10px;font-size:14px;color:var(--soft);line-height:1.45}
+.hoja textarea{width:100%;min-height:70px;padding:10px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;background:var(--bg);color:var(--ink)}
+.hoja .msg{color:var(--red);font-size:13px;min-height:18px;margin:4px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Mis citas</h1><div class="neg" id="neg"></div></div>
+    <button class="act" id="refrescar" type="button" hidden>Actualizar</button>
+  </header>
+  <div id="barra" hidden>
+    <div class="tabs" role="tablist"><button type="button" id="tPc">Por confirmar<span class="n" id="nPc" hidden>0</span></button><button type="button" id="tDia">Día</button><button type="button" id="tSem">Semana</button></div>
+    <select id="fEmp" aria-label="Filtrar por profesional" hidden></select>
+    <div id="nav"></div>
+  </div>
+  <main id="lista"><div class="vacio">Cargando tus citas…</div></main>
+  <div class="pie" id="pie" hidden></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
+<script src="sheets.js?v=71"></script>
+<script>
+(function () {
+  var lista = document.getElementById('lista'), btnRef = document.getElementById('refrescar'), barra = document.getElementById('barra');
+  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  var items = [], modo = 'dia', ref = null, filtroEmp = '', ocupado = false, cargado = false;
+  try { var m0 = localStorage.getItem('annlyPanelModo'); if (m0 === 'semana' || m0 === 'dia') modo = m0; } catch (e) {}
+
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function parteFecha(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function suma(iso, n) { var d = parteFecha(iso); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function lunesDe(iso) { var d = parteFecha(iso), k = (d.getDay() + 6) % 7; return suma(iso, -k); }
+  function pan() {
+    var f = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Panama', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    var h = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Panama', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()).split(':');
+    return { fecha: f, min: (+h[0]) * 60 + (+h[1]) };
+  }
+  function minDe(h) { var p = String(h || '0:0').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
+  function hora12(h) { var p = String(h || '').split(':'), n = parseInt(p[0], 10); if (isNaN(n)) return ''; return ((n % 12) || 12) + ':' + (p[1] || '00').slice(0, 2) + ' ' + (n >= 12 ? 'p. m.' : 'a. m.'); }
+  function horaFin(h, min) { if (!min) return ''; var t = minDe(h) + Number(min); return hora12(String(Math.floor(t / 60) % 24).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0')); }
+  function etiquetaDia(iso, hoy) {
+    var d = parteFecha(iso), f = DIAS[d.getDay()] + ' ' + d.getDate() + ' ' + MESES[d.getMonth()];
+    if (iso === hoy) return ['Hoy', f]; if (iso === suma(hoy, 1)) return ['Mañana', f];
+    return [f.charAt(0).toUpperCase() + f.slice(1), ''];
+  }
+  function solo(t) { return String(t || '').replace(/\D/g, ''); }
+  function dinero(n) { return '$' + (Number(n) || 0).toFixed(2); }
+  function metodo(m) { return ({ yappy: 'Yappy', transferencia: 'transferencia', efectivo: 'efectivo', tarjeta: 'tarjeta' })[String(m || '').toLowerCase()] || (m || ''); }
+
+  // ---------- datos ----------
+  function armar(citas) {
+    var grupos = {}, out = [];
+    citas.forEach(function (c) {
+      if (String(c.estado || '').toLowerCase().indexOf('cancel') === 0 || c.estado === 'rechazado') return;
+      if (c.grupoCitaId) { (grupos[c.grupoCitaId] = grupos[c.grupoCitaId] || []).push(c); } else out.push({ c: c, par: [c], doble: false });
+    });
+    Object.keys(grupos).forEach(function (k) {
+      var par = grupos[k], p = par.filter(function (x) { return x.grupoPrincipal; })[0] || par[0];
+      out.push({ c: p, par: par, doble: par.length > 1 });
+    });
+    out.sort(function (a, b) { return (a.c.fechaISO + a.c.horaISO) < (b.c.fechaISO + b.c.horaISO) ? -1 : 1; });
+    return out;
+  }
+  function visibles() {
+    return items.filter(function (it) { return !filtroEmp || it.par.some(function (x) { return String(x.empleadoId) === filtroEmp; }); });
+  }
+
+  // ---------- acciones (misma lógica que el panel: sheets.js) ----------
+  function hoja(titulo, texto, opts) {
+    return new Promise(function (resolve) {
+      var ov = el('div', 'ov'), h = el('div', 'hoja'), ta = null, msg = el('div', 'msg');
+      h.appendChild(el('h3', null, titulo)); h.appendChild(el('p', null, texto));
+      if (opts.motivo) { ta = el('textarea'); ta.placeholder = opts.placeholder || 'Motivo (obligatorio)'; ta.maxLength = 200; h.appendChild(ta); }
+      h.appendChild(msg);
+      var acc = el('div', 'acc'), no = el('button', null, 'Volver'), si = el('button', opts.peligro ? 'no' : 'si', opts.boton);
+      no.type = si.type = 'button'; acc.appendChild(no); acc.appendChild(si); h.appendChild(acc); ov.appendChild(h); document.body.appendChild(ov);
+      function cerrar(v) { ov.remove(); resolve(v); }
+      ov.addEventListener('click', function (e) { if (e.target === ov) cerrar(null); });
+      no.addEventListener('click', function () { cerrar(null); });
+      si.addEventListener('click', function () {
+        if (ta) { var v = ta.value.trim(); if (v.length < 3) { msg.textContent = 'Escribe el motivo (mínimo 3 letras).'; return; } cerrar(v); } else cerrar(true);
+      });
+    });
+  }
+  async function correr(fn, errTxt) {
+    if (ocupado) return; ocupado = true;
+    try { await fn(); await cargar(true); }
+    catch (e) { console.error(e); alert(errTxt + (e && e.message ? ' (' + e.message + ')' : '')); }
+    ocupado = false;
+  }
+  function confirmarAbono(it) {
+    hoja('¿El abono llegó?', 'Revisa el comprobante o tu app. Al confirmar, la cita queda confirmada y al cliente le llega el correo de cita confirmada.', { boton: 'Sí, confirmar' }).then(function (ok) {
+      if (ok) correr(function () { return Sheets.confirmarAbonoCita(it.c.id); }, 'No se pudo confirmar.');
+    });
+  }
+  function rechazarAbono(it) {
+    hoja('El abono no llegó', 'La cita se cancela y el horario queda libre. Como el dinero no llegó, no hay saldo a favor ni penalidad. Si usó un certificado, se le devuelve el saldo. Al cliente le llega un aviso.', { motivo: true, placeholder: 'Ej: el comprobante no aparece en Yappy', boton: 'Cancelar la reserva', peligro: true }).then(function (motivo) {
+      if (motivo) correr(function () { return Sheets.rechazarAbonoCita(it.c.id, motivo); }, 'No se pudo cancelar.');
+    });
+  }
+  function noSePresento(it) {
+    var c = it.c, ab = Number(c.abonoMonto) || 0;
+    var efecto = ab > 0 ? 'El abono de ' + dinero(ab) + ' no se devuelve y entra como ingreso (penalidad por no presentarse). ' : 'Esta cita no tiene abono. ';
+    hoja('¿No se presentó?', efecto + 'Si usó un certificado, se le devuelve el saldo (salvo que sea de cortesía). Se le avisa al cliente por correo si dejó correo. Esto cancela la cita y no se puede deshacer.', { boton: 'Sí, no se presentó', peligro: true }).then(function (ok) {
+      if (!ok) return;
+      correr(function () {
+        return Sheets.cancelarConPolitica(c.id, 'No se presentó', { caso: 'no_show' }, { cliente: c.nombre, servicio: c.servicio, fecha: c.fecha, hora: c.hora, profesional: c.empleadoNombre || null });
+      }, 'No se pudo registrar.');
+    });
+  }
+
+  // ---------- pintado ----------
+  function tarjeta(it, hoy, nowMin) {
+    var c = it.c, pc = c.estado === 'por_confirmar', card = el('div', 'cita' + (pc ? ' pc' : '')), fila = el('div', 'fila');
+    var hr = el('div', 'hora', hora12(c.horaISO)), fin = horaFin(c.horaISO, c.duracion); if (fin) hr.appendChild(el('small', null, 'hasta ' + fin));
+    var inf = el('div', 'info'), serv = it.doble ? it.par.map(function (x) { return x.servicio; }).join(' + ') : c.servicio;
+    inf.appendChild(el('div', 'srv', serv || 'Cita'));
+    var cl = el('div', 'cli', it.doble ? it.par.map(function (x) { return x.nombre; }).join(' y ') : (c.nombre || 'Cliente')), t = solo(c.telefono);
+    if (t) { cl.appendChild(document.createTextNode(' · ')); var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, 'WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
+    inf.appendChild(cl);
+    var prof = it.par.map(function (x) { return x.empleadoNombre; }).filter(function (v, i, a2) { return v && a2.indexOf(v) === i; }).join(' y ');
+    if (prof) inf.appendChild(el('div', 'det', 'Con ' + prof));
+    var ab = Number(c.abonoMonto) || 0;
+    if (pc) {
+      var d = el('div', 'det', 'Abono: ' + (ab > 0 ? dinero(ab) : 'sin monto') + (c.metodoPago ? ' por ' + metodo(c.metodoPago) : ''));
+      if (c.comprobante && /^https?:\/\//i.test(c.comprobante)) { d.appendChild(document.createTextNode(' · ')); var v = el('a', null, 'Ver comprobante'); v.href = c.comprobante; v.target = '_blank'; v.rel = 'noopener'; d.appendChild(v); }
+      else if (c.comprobante) d.appendChild(document.createTextNode(' · Ref: ' + String(c.comprobante).slice(0, 40)));
+      inf.appendChild(d);
+    }
+    if (pc) inf.appendChild(el('span', 'tag pc', 'Por confirmar'));
+    else if (c.completadaEn) inf.appendChild(el('span', 'tag ok', 'Atendida'));
+    else inf.appendChild(el('span', 'tag ok', 'Confirmada'));
+    if (it.doble) inf.appendChild(el('span', 'tag sd', 'Cita doble'));
+    fila.appendChild(hr); fila.appendChild(inf); card.appendChild(fila);
+    var acc = el('div', 'acc');
+    if (pc) {
+      var b1 = el('button', 'si', 'Confirmar abono'), b2 = el('button', 'no', 'No llegó'); b1.type = b2.type = 'button';
+      b1.addEventListener('click', function () { confirmarAbono(it); }); b2.addEventListener('click', function () { rechazarAbono(it); });
+      acc.appendChild(b1); acc.appendChild(b2); card.appendChild(acc);
+    } else if (!c.completadaEn && (c.fechaISO < hoy || (c.fechaISO === hoy && minDe(c.horaISO) <= nowMin))) {
+      var b3 = el('button', 'no', 'No se presentó'); b3.type = 'button'; b3.addEventListener('click', function () { noSePresento(it); });
+      var b4 = el('a', null, 'Registrar cobro'); b4.href = 'admin.html'; acc.appendChild(b3); acc.appendChild(b4); card.appendChild(acc);
+      card.appendChild(el('div', 'nota', 'Si sí vino, el cobro se registra desde el panel completo.'));
+    }
+    return card;
+  }
+  function titDia(f, n, hoy) {
+    var et = etiquetaDia(f, hoy), h = el('div', 'dia' + (f < hoy ? ' pasado' : '')); h.appendChild(el('b', null, et[0]));
+    if (et[1]) h.appendChild(document.createTextNode(' · ' + et[1])); h.appendChild(document.createTextNode(' · ' + (n ? n + (n === 1 ? ' cita' : ' citas') : 'sin citas'))); return h;
+  }
+  function boton(txt, fn, dis, aria) { var b = el('button', null, txt); b.type = 'button'; b.disabled = !!dis; if (aria) b.setAttribute('aria-label', aria); b.addEventListener('click', fn); return b; }
+  function linkBtn(txt, fn) { var b = el('button', 'link', txt); b.type = 'button'; b.addEventListener('click', fn); return b; }
+
+  function pintar() {
+    var P = pan(), hoy = P.fecha, nav = document.getElementById('nav'), vis = visibles();
+    lista.textContent = ''; nav.textContent = '';
+    var pcs = vis.filter(function (it) { return it.c.estado === 'por_confirmar'; });
+    var nPc = document.getElementById('nPc'); nPc.hidden = !pcs.length; nPc.textContent = pcs.length;
+    ['tPc', 'tDia', 'tSem'].forEach(function (id) { document.getElementById(id).className = ''; });
+    document.getElementById(modo === 'pc' ? 'tPc' : modo === 'dia' ? 'tDia' : 'tSem').className = 'on';
+    if (!ref) ref = hoy;
+    var MIN = suma(hoy, -30), MAX = suma(hoy, 90);
+    var por = {}; vis.forEach(function (it) { (por[it.c.fechaISO] = por[it.c.fechaISO] || []).push(it); });
+    if (modo === 'pc') {
+      if (!pcs.length) { lista.appendChild(el('div', 'vacio', 'No tienes abonos por confirmar. 🎉')); return; }
+      var ult = ''; pcs.forEach(function (it) { if (it.c.fechaISO !== ult) { ult = it.c.fechaISO; lista.appendChild(titDia(ult, pcs.filter(function (x) { return x.c.fechaISO === ult; }).length, hoy)); } lista.appendChild(tarjeta(it, hoy, P.min)); });
+      return;
+    }
+    var n = el('div', 'nav'), ctr = el('div', 'ctr');
+    if (modo === 'dia') {
+      var et = etiquetaDia(ref, hoy), lst = por[ref] || [];
+      ctr.appendChild(document.createTextNode(et[0])); ctr.appendChild(el('small', null, (et[1] ? et[1] + ' · ' : '') + (lst.length ? lst.length + (lst.length === 1 ? ' cita' : ' citas') : 'sin citas')));
+      n.appendChild(boton('‹', function () { ref = suma(ref, -1); pintar(); }, ref <= MIN, 'Día anterior')); n.appendChild(ctr); n.appendChild(boton('›', function () { ref = suma(ref, 1); pintar(); }, ref >= MAX, 'Día siguiente'));
+      nav.appendChild(n); if (ref !== hoy) nav.appendChild(linkBtn('Ir a hoy', function () { ref = hoy; pintar(); }));
+      if (!lst.length) lista.appendChild(el('div', 'vacio', ref < hoy ? 'No hubo citas este día.' : 'No hay citas este día.'));
+      lst.forEach(function (it) { lista.appendChild(tarjeta(it, hoy, P.min)); });
+    } else {
+      var lun = lunesDe(ref), dom = suma(lun, 6), total = 0, i;
+      for (i = 0; i < 7; i++) total += (por[suma(lun, i)] || []).length;
+      var a = parteFecha(lun), b = parteFecha(dom), esta = lun <= hoy && hoy <= dom;
+      ctr.appendChild(document.createTextNode(a.getDate() + ' ' + MESES[a.getMonth()] + ' – ' + b.getDate() + ' ' + MESES[b.getMonth()])); ctr.appendChild(el('small', null, (esta ? 'Esta semana · ' : '') + (total ? total + (total === 1 ? ' cita' : ' citas') : 'sin citas')));
+      n.appendChild(boton('‹', function () { ref = suma(lun, -7); pintar(); }, suma(lun, -1) < MIN, 'Semana anterior')); n.appendChild(ctr); n.appendChild(boton('›', function () { ref = suma(lun, 7); pintar(); }, suma(lun, 7) > MAX, 'Semana siguiente'));
+      nav.appendChild(n); if (!esta) nav.appendChild(linkBtn('Ir a esta semana', function () { ref = hoy; pintar(); }));
+      for (i = 0; i < 7; i++) {
+        var f = suma(lun, i), l2 = por[f] || []; lista.appendChild(titDia(f, l2.length, hoy));
+        if (!l2.length) lista.appendChild(el('div', 'libre', 'Libre'));
+        l2.forEach(function (it) { lista.appendChild(tarjeta(it, hoy, P.min)); });
+      }
+    }
+  }
+  function cambiar(m) { modo = m; if (m !== 'pc') { try { localStorage.setItem('annlyPanelModo', m); } catch (e) {} } if (cargado) pintar(); }
+  document.getElementById('tPc').addEventListener('click', function () { cambiar('pc'); });
+  document.getElementById('tDia').addEventListener('click', function () { cambiar('dia'); });
+  document.getElementById('tSem').addEventListener('click', function () { cambiar('semana'); });
+  document.getElementById('fEmp').addEventListener('change', function (e) { filtroEmp = e.target.value; pintar(); });
+
+  function pantallaError(t, d) { barra.hidden = true; btnRef.hidden = true; lista.textContent = ''; var b = el('div', 'error'); b.appendChild(el('h2', null, t)); b.appendChild(el('div', null, d)); lista.appendChild(b); }
+  function pantallaLogin(msgIni) {
+    barra.hidden = true; btnRef.hidden = true; lista.textContent = '';
+    var f = el('form', 'login'); f.appendChild(el('h2', null, 'Entra a tus citas')); f.firstChild.style.cssText = 'margin:0 0 6px;font-size:18px';
+    f.appendChild(el('div', 'neg', 'Con el mismo correo y contraseña de tu panel de Annly.'));
+    var em = el('input'); em.type = 'email'; em.placeholder = 'Correo'; em.autocomplete = 'username'; em.required = true;
+    var pw = el('input'); pw.type = 'password'; pw.placeholder = 'Contraseña'; pw.autocomplete = 'current-password'; pw.required = true;
+    try { var r = localStorage.getItem('annly_recordar_correo'); if (r) em.value = r; } catch (e) {}
+    var msg = el('div', 'msg', msgIni || ''), bt = el('button', 'act', 'Entrar'); bt.type = 'submit';
+    f.appendChild(em); f.appendChild(pw); f.appendChild(msg); f.appendChild(bt);
+    var alt = el('a', null, 'Entrar con Google u otro método desde el panel'); alt.href = 'admin.html'; alt.style.cssText = 'display:block;text-align:center;margin-top:12px;font-size:13px;color:var(--purple)'; f.appendChild(alt);
+    f.addEventListener('submit', function (e) {
+      e.preventDefault(); bt.disabled = true; msg.textContent = '';
+      sbClient.auth.signInWithPassword({ email: em.value.trim(), password: pw.value }).then(function (r2) {
+        if (r2.error) { msg.textContent = 'Correo o contraseña incorrectos.'; bt.disabled = false; return; }
+        location.reload();
+      }).catch(function () { msg.textContent = 'No pude conectarme. Inténtalo de nuevo.'; bt.disabled = false; });
+    });
+    lista.appendChild(f);
+  }
+
+  async function cargar(silencioso) {
+    btnRef.disabled = true;
+    try {
+      await window.AnnlyReady;
+      if (!window.ANNLY_AUTHENTICATED) { pantallaLogin(); return; }
+      var neg = window.ANNLY_BUSINESS;
+      if (!neg) { pantallaError('No encontré tu negocio', 'Esta pantalla es para la dueña del negocio. Entra con la cuenta con la que lo registraste.'); return; }
+      if (neg.tipo_negocio === 'pedidos') { pantallaError('Esta pantalla es para agendas', 'Tu negocio es una tienda; usa el panel para ver tus pedidos.'); return; }
+      document.getElementById('neg').textContent = neg.nombre || '';
+      var citas = await Sheets.getCitas();
+      items = armar(citas || []);
+      var nombres = {}; items.forEach(function (it) { it.par.forEach(function (x) { if (x.empleadoId && x.empleadoNombre) nombres[x.empleadoId] = x.empleadoNombre; }); });
+      var ids = Object.keys(nombres), sel = document.getElementById('fEmp');
+      if (ids.length > 1) {
+        sel.textContent = ''; var o0 = el('option', null, 'Todos los profesionales'); o0.value = ''; sel.appendChild(o0);
+        ids.forEach(function (id) { var o = el('option', null, nombres[id]); o.value = id; sel.appendChild(o); }); sel.value = filtroEmp; sel.hidden = false;
+      } else { sel.hidden = true; filtroEmp = ''; }
+      if (!cargado && !silencioso) { var hayPc = items.some(function (it) { return it.c.estado === 'por_confirmar'; }); if (hayPc) modo = 'pc'; }
+      cargado = true; barra.hidden = false; btnRef.hidden = false; pintar();
+      var pie = document.getElementById('pie'); pie.hidden = false; pie.textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-PA', { hour: 'numeric', minute: '2-digit' });
+      if (window.ANNLY_SUSPENDIDA) pie.textContent += ' · Cuenta suspendida: solo lectura';
+    } catch (e) {
+      console.error(e);
+      if (!cargado) pantallaError('No pude cargar tus citas', 'Revisa tu conexión y toca Actualizar.');
+      btnRef.hidden = false;
+    }
+    btnRef.disabled = false;
+  }
+  btnRef.addEventListener('click', function () { cargar(true); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && cargado && !document.querySelector('.ov')) cargar(true); });
+  setInterval(function () { if (!document.hidden && cargado && !ocupado && !document.querySelector('.ov')) cargar(true); }, 90000);
+  cargar(false);
+})();
+</script>
+</body>
+</html>
