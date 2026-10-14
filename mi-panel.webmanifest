@@ -1,0 +1,10 @@
+{
+  "name": "Annly · Mis citas",
+  "short_name": "Mis citas",
+  "start_url": "/mi-panel.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf7fc",
+  "theme_color": "#7c3aed",
+  "icons": [{ "src": "/logo-annly-v2.png", "sizes": "320x320", "type": "image/png", "purpose": "any" }]
+}
