@@ -171,7 +171,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .plan-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:#DCCFF1;}
 .plan-card.featured{border:1.5px solid #CDB6EE;box-shadow:0 12px 30px -18px rgba(124,58,237,.38);}
 .plan-card.featured::before{content:'MÁS ELEGIDO';position:absolute;right:12px;top:12px;padding:4px 7px;border-radius:999px;background:var(--accent-soft);color:var(--charcoal2);font-size:8px;font-weight:800;letter-spacing:.08em;}
-.plan-card.current{border-color:#BBA2E6;background:linear-gradient(180deg,#fff 0%,#fcf9ff 100%);}
+.plan-card.sin-destaque.featured,.plan-card.sin-destaque.premium{border:1px solid var(--line);box-shadow:var(--shadow-sm);}
+.plan-card.sin-destaque.featured::before{content:none;}
+.plan-card.current.current{border:2px solid #7C3AED;background:linear-gradient(180deg,#fff 0%,#f7f1ff 100%);box-shadow:0 14px 34px -16px rgba(124,58,237,.55);}
+.plan-card.current::before{content:'PLAN ACTUAL';position:absolute;right:12px;top:12px;padding:4px 8px;border-radius:999px;background:#7C3AED;color:#fff;font-size:8px;font-weight:800;letter-spacing:.08em;}
+.plan-card.current .plan-cta:disabled{background:#7C3AED;border-color:#7C3AED;color:#fff;opacity:1;}
 .plan-name{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--ink-soft);text-transform:uppercase;}
 .plan-price{font-size:25px;line-height:1;font-weight:800;color:var(--ink);margin-top:7px;letter-spacing:-.03em;}
 .plan-price span{font-size:10.5px;font-weight:600;color:var(--ink-soft);letter-spacing:0;}
@@ -201,7 +205,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .plan-modal-list{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
 .plan-modal-list li{font-size:12px;color:#5D574F;display:flex;gap:7px;line-height:1.4;}
 .plan-modal-list i{color:#6E45C5;font-size:15px;flex-shrink:0;}
-@media(max-width:780px){.plan-grid{grid-template-columns:1fr;}.plan-card.featured{order:-1;}.plan-extras{grid-template-columns:1fr;}.plan-current{align-items:flex-start;flex-direction:column;}.plan-current-badge{align-self:flex-start;}}
+@media(max-width:780px){.plan-grid{grid-template-columns:1fr;}.plan-card.featured{order:-1;}.plan-card.sin-destaque.featured{order:0;}.plan-card.current{order:-2;}.plan-extras{grid-template-columns:1fr;}.plan-current{align-items:flex-start;flex-direction:column;}.plan-current-badge{align-self:flex-start;}}
 
 /* ---------- HEADER ---------- */
 .adm-hdr{
@@ -540,6 +544,32 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .ea-btns button.mal{color:#B42318;}
 .ea-nota{font-size:12px;color:var(--ink-soft,#77738A);margin:12px 0 0;line-height:1.45;}
 .ea-msg{font-size:12px;min-height:16px;margin:8px 0 0;color:#B42318;}
+.prosp-badge{margin-left:auto;min-width:20px;padding:0 6px;border-radius:999px;background:#C2410C;color:#fff;font-size:11px;font-weight:700;line-height:20px;text-align:center;}
+.pr-wrap{max-width:900px;}
+.pr-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.pr-hdr h3{margin:0 0 2px;font-size:18px;}.pr-hdr p{margin:0;font-size:12.5px;color:var(--ink-soft,#77738A);}
+.pr-btn{border:1px solid var(--line,#E6DCF8);background:#fff;color:#7C3AED;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;gap:6px;align-items:center;font-family:inherit;white-space:nowrap;}
+.pr-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;}
+.pr-stat{border:1px solid var(--line,#E6DCF8);background:#fff;border-radius:14px;padding:12px 14px;}
+.pr-stat b{display:block;font-size:22px;}.pr-stat span{font-size:12px;color:var(--ink-soft,#77738A);}
+.pr-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.pr-filtros button{border:1px solid var(--line,#E6DCF8);background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink-soft,#77738A);font-family:inherit;}
+.pr-filtros button.on{background:#7C3AED;border-color:#7C3AED;color:#fff;}
+.pr-card{border:1px solid var(--line,#E6DCF8);background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:10px;}
+.pr-card.nuevo{border-color:#C2410C;}
+.pr-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+.pr-nom{font-weight:800;font-size:15px;}.pr-fecha{font-size:12px;color:var(--ink-soft,#77738A);}
+.pr-tags{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
+.pr-tag{font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;background:#F3EDFB;color:#6B3FA0;}
+.pr-tag.alto{background:#E7F8EE;color:#15803D;}.pr-tag.medio{background:#FFF4E0;color:#B45309;}.pr-tag.bajo{background:#F1EEE7;color:#8A8378;}
+.pr-txt{font-size:13.5px;line-height:1.45;margin:4px 0;}.pr-txt small{color:var(--ink-soft,#77738A);}
+.pr-acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+.pr-acc a,.pr-acc button,.pr-acc select{border:1px solid var(--line,#E6DCF8);background:#fff;color:#7C3AED;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit;}
+.pr-acc a.wa{background:#1EBE5B;border-color:#1EBE5B;color:#fff;}
+.pr-acc button.del{color:#B42318;}
+.pr-conv{margin-top:10px;border-top:1px dashed var(--line,#E6DCF8);padding-top:8px;font-size:13px;}
+.pr-conv p{margin:5px 0;}.pr-conv .a{color:var(--ink-soft,#77738A);}
+.pr-vacio{color:var(--ink-soft,#77738A);text-align:center;padding:30px 10px;}
 .pm-ov{position:fixed;inset:0;background:rgba(26,22,37,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
 .pm-box{position:relative;background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;padding:24px 22px 22px;}
 .pm-box h3{margin:0 24px 4px 0;font-size:17px;}
@@ -3845,6 +3875,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <button class="adm-tab" id="tab-sucursales" onclick="switchTab('sucursales')"><i class="ti ti-map-pin"></i><span>Sucursales</span></button>
       <button class="adm-tab" id="tab-perfil" onclick="switchTab('perfil')"><i class="ti ti-building-store"></i><span>Perfil</span></button>
       <button class="adm-tab" id="tab-plan" onclick="switchTab('plan')"><i class="ti ti-sparkles"></i><span>Mi plan</span></button>
+      <button class="adm-tab" id="tab-prospectos" onclick="switchTab('prospectos')" style="display:none;"><i class="ti ti-message-chatbot"></i><span>Prospectos</span><span id="prosp-badge" class="prosp-badge" hidden>0</span></button>
     </nav>
     <div class="adm-sidebar-foot">
       <a href="index.html" id="adm-side-ver-sitio" class="adm-sidebar-site" target="_blank"><i class="ti ti-external-link"></i><span>Ver sitio</span></a>
@@ -4410,6 +4441,15 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 
     <p id="pf-msg" style="font-size:12px;text-align:center;min-height:16px;"></p>
     <button class="btn-save" onclick="guardarPerfil()" style="margin-bottom:2rem;"><i class="ti ti-check" style="font-size:17px;"></i> Guardar cambios del perfil</button>
+  </div>
+
+  <div id="panel-prospectos" style="display:none;">
+    <div class="pr-wrap">
+      <div class="pr-hdr"><div><h3><i class="ti ti-message-chatbot"></i> Prospectos del asistente</h3><p>Solo tú ves esto. Las conversaciones del bot de annly.app: quién preguntó, qué quiere y qué lo frena.</p></div><button type="button" class="pr-btn" onclick="cargarProspectos()"><i class="ti ti-refresh"></i><span>Actualizar</span></button></div>
+      <div class="pr-stats" id="pr-stats"></div>
+      <div class="pr-filtros" id="pr-filtros"></div>
+      <div id="pr-lista"><p class="pr-vacio">Cargando…</p></div>
+    </div>
   </div>
 
   <div id="panel-plan" style="display:none;">
@@ -5235,7 +5275,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="config.js"></script>
-<script src="sheets.js?v=70"></script>
+<script src="sheets.js?v=71"></script>
 <script src="horarios.js?v=1"></script>
 <script src="campana.js?v=1"></script>
 <script>
@@ -5549,10 +5589,84 @@ function aplicarModoTienda(){
   </div>`;
 }
 
+
+// ---------- Prospectos del asistente (solo administrador de la plataforma) ----------
+let PROSP = [], PROSP_FILTRO = 'todas';
+const PROSP_COLS = 'id, creado, actualizado, n_usuario, uso_maqueta, rubro, producto, interes, resumen, freno, nombre, contacto, estado';
+async function iniciarProspectosAsistente(){
+  if (!window.ANNLY_PLATFORM_ADMIN) return;
+  const t = document.getElementById('tab-prospectos'); if (t) t.style.display = '';
+  try {
+    const { count } = await sbClient.from('asistente_conversaciones').select('id', { count: 'exact', head: true }).not('contacto', 'is', null).eq('estado', 'nuevo');
+    const b = document.getElementById('prosp-badge');
+    if (b){ b.textContent = count || 0; b.hidden = !count; }
+  } catch(e){ console.error(e); }
+}
+async function cargarProspectos(){
+  const lista = document.getElementById('pr-lista'); if (!lista) return;
+  const { data, error } = await sbClient.from('asistente_conversaciones').select(PROSP_COLS).order('creado', { ascending: false }).limit(300);
+  if (error){ console.error(error); lista.innerHTML = '<p class="pr-vacio">No pude cargar los prospectos. ¿Corriste el SQL asistente_admin.sql en Supabase?</p>'; return; }
+  PROSP = data || [];
+  pintarProspectos();
+  iniciarProspectosAsistente();
+}
+function prospFecha(iso){ return new Date(iso).toLocaleString('es-PA', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
+function pintarProspectos(){
+  const hace7 = Date.now() - 7 * 86400000;
+  const sem = PROSP.filter(p => new Date(p.creado).getTime() >= hace7);
+  const conC = PROSP.filter(p => p.contacto);
+  document.getElementById('pr-stats').innerHTML = [
+    [sem.length, 'conversaciones (7 días)'], [conC.length, 'dejaron su contacto'], [conC.filter(p => p.estado === 'nuevo').length, 'por contactar'],
+    [PROSP.filter(p => p.interes === 'alto').length, 'interés alto'], [PROSP.filter(p => p.uso_maqueta).length, 'vieron su maqueta']
+  ].map(x => `<div class="pr-stat"><b>${x[0]}</b><span>${x[1]}</span></div>`).join('');
+  const F = [['todas', 'Todas'], ['contacto', 'Con contacto'], ['nuevos', 'Por contactar'], ['alto', 'Interés alto'], ['sin', 'Interés alto sin contacto']];
+  document.getElementById('pr-filtros').innerHTML = F.map(f => `<button type="button" class="${PROSP_FILTRO === f[0] ? 'on' : ''}" onclick="PROSP_FILTRO='${f[0]}';pintarProspectos()">${f[1]}</button>`).join('');
+  const L = PROSP.filter(p => PROSP_FILTRO === 'todas' || (PROSP_FILTRO === 'contacto' && p.contacto) || (PROSP_FILTRO === 'nuevos' && p.contacto && p.estado === 'nuevo')
+    || (PROSP_FILTRO === 'alto' && p.interes === 'alto') || (PROSP_FILTRO === 'sin' && p.interes === 'alto' && !p.contacto));
+  const lista = document.getElementById('pr-lista');
+  if (!L.length){ lista.innerHTML = '<p class="pr-vacio">No hay conversaciones en esta vista.</p>'; return; }
+  lista.innerHTML = L.map(p => {
+    const dig = String(p.contacto || '').replace(/\D/g, '');
+    const esMail = /@/.test(p.contacto || '');
+    const wa = !p.contacto ? '' : (esMail ? `<a href="mailto:${escH(p.contacto)}">Escribirle por correo</a>` : `<a class="wa" href="https://wa.me/${dig.length === 8 ? '507' + dig : dig}" target="_blank" rel="noopener">WhatsApp</a>`);
+    const tags = [p.interes ? `<span class="pr-tag ${p.interes}">Interés ${p.interes}</span>` : '', p.rubro ? `<span class="pr-tag">${escH(p.rubro)}</span>` : '', p.producto && p.producto !== 'ninguno' ? `<span class="pr-tag">${p.producto === 'agenda' ? 'Agenda' : 'Tiendas'}</span>` : '', p.uso_maqueta ? '<span class="pr-tag">Vio su maqueta</span>' : '', `<span class="pr-tag">${p.n_usuario} mensaje${p.n_usuario === 1 ? '' : 's'}</span>`].join('');
+    return `<div class="pr-card${p.contacto && p.estado === 'nuevo' ? ' nuevo' : ''}" id="pr-${p.id}">
+      <div class="pr-top"><div><div class="pr-nom">${escH(p.nombre || (p.contacto ? 'Sin nombre' : 'Visitante anónimo'))}${p.contacto ? ' · ' + escH(p.contacto) : ''}</div><div class="pr-fecha">${prospFecha(p.creado)}</div></div></div>
+      <div class="pr-tags">${tags}</div>
+      ${p.resumen ? `<div class="pr-txt">${escH(p.resumen)}</div>` : ''}
+      ${p.freno ? `<div class="pr-txt"><small>Lo frena:</small> ${escH(p.freno)}</div>` : ''}
+      <div class="pr-acc">${wa}<button type="button" onclick="verConversacionProspecto('${p.id}')">Ver conversación</button>
+        ${p.contacto ? `<select onchange="estadoProspecto('${p.id}', this.value)"><option value="nuevo"${p.estado === 'nuevo' ? ' selected' : ''}>Por contactar</option><option value="contactado"${p.estado === 'contactado' ? ' selected' : ''}>Contactado</option><option value="cerrado"${p.estado === 'cerrado' ? ' selected' : ''}>Cerrado</option></select>` : ''}
+        <button type="button" class="del" onclick="borrarProspecto('${p.id}')">Borrar</button></div>
+      <div class="pr-conv" id="pr-conv-${p.id}" hidden></div></div>`;
+  }).join('');
+}
+async function verConversacionProspecto(id){
+  const box = document.getElementById('pr-conv-' + id); if (!box) return;
+  if (!box.hidden){ box.hidden = true; return; }
+  box.hidden = false; box.innerHTML = '<p>Cargando…</p>';
+  const { data, error } = await sbClient.from('asistente_conversaciones').select('mensajes').eq('id', id).maybeSingle();
+  if (error || !data){ box.innerHTML = '<p>No pude cargar la conversación.</p>'; return; }
+  box.innerHTML = (data.mensajes || []).map(m => `<p class="${m.r === 'user' ? 'u' : 'a'}"><b>${m.r === 'user' ? 'Visitante' : 'Asistente'}:</b> ${escH(m.t)}</p>`).join('') || '<p>Sin mensajes.</p>';
+}
+async function estadoProspecto(id, estado){
+  const { error } = await sbClient.from('asistente_conversaciones').update({ estado }).eq('id', id);
+  if (error){ console.error(error); alert('No se pudo cambiar el estado.'); return; }
+  const p = PROSP.find(x => x.id === id); if (p) p.estado = estado;
+  pintarProspectos(); iniciarProspectosAsistente();
+}
+async function borrarProspecto(id){
+  if (!confirm('¿Borrar esta conversación? No se puede deshacer.')) return;
+  const { error } = await sbClient.from('asistente_conversaciones').delete().eq('id', id);
+  if (error){ console.error(error); alert('No se pudo borrar.'); return; }
+  PROSP = PROSP.filter(x => x.id !== id); pintarProspectos(); iniciarProspectosAsistente();
+}
+
 async function arrancarPanelAdmin(){
   if (esNegocioPedidos() && !window.ANNLY_PLATFORM_ADMIN){ await window.AnnlyAuth.irAPanelPedidos(); return; }
   actualizarContextoNegocioUI();
   renderSelectorNegocios();
+  iniciarProspectosAsistente();
   aplicarModoTienda();
   if (esNegocioPedidos()) return;
 
@@ -6158,7 +6272,7 @@ function closeAdminMenu(){
 }
 
 function switchTab(tab){
-  const tabs = ['servicios','citas','bloqueos','promo','ruleta','certificados','finanzas','clientas','equipo','sucursales','perfil','plan'];
+  const tabs = ['servicios','citas','bloqueos','promo','ruleta','certificados','finanzas','clientas','equipo','sucursales','perfil','plan','prospectos'];
   tabs.forEach(t => {
     const tabEl = document.getElementById('tab-' + t);
     const panelEl = document.getElementById('panel-' + t);
@@ -6176,6 +6290,7 @@ function switchTab(tab){
   if(tab==='sucursales') loadSucursales();
   if(tab==='perfil') loadPerfil();
   if(tab==='plan') renderPlan();
+  if(tab==='prospectos') cargarProspectos();
   closeAdminMenu();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -6688,8 +6803,12 @@ async function renderPlan(){
     const btn=document.getElementById('plan-btn-'+key);
     if(!card || !btn) return;
     card.classList.toggle('current', key===actual);
+    card.classList.toggle('sin-destaque', key!==actual);   // el destaque es del plan actual, no de "Más elegido"
     if(key===actual){ btn.textContent='Plan actual'; btn.disabled=true; btn.className='plan-cta secondary'; }
-    else { btn.disabled=false; btn.className='plan-cta '+(key==='medium'?'primary':'secondary'); btn.textContent = key==='basic'?'Cambiar a Basic':`Subir a ${ANNLY_PLANES_UI[key].name.charAt(0)+ANNLY_PLANES_UI[key].name.slice(1).toLowerCase()}`; }
+    else { btn.disabled=false; btn.className='plan-cta secondary'; const ORDEN_PLAN = ['basic','medium','ultimate'];
+      const nombrePlan = ANNLY_PLANES_UI[key].name.charAt(0)+ANNLY_PLANES_UI[key].name.slice(1).toLowerCase();
+      // "Subir" solo si es un plan superior al actual; si es inferior, "Cambiar"
+      btn.textContent = (ORDEN_PLAN.indexOf(key) > ORDEN_PLAN.indexOf(actual) ? 'Subir a ' : 'Cambiar a ') + nombrePlan; }
   });
 
   await renderModulosPlan();
