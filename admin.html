@@ -6800,7 +6800,10 @@ async function renderPlan(){
     if(!card || !btn) return;
     card.classList.toggle('current', key===actual);
     if(key===actual){ btn.textContent='Plan actual'; btn.disabled=true; btn.className='plan-cta secondary'; }
-    else { btn.disabled=false; btn.className='plan-cta '+(key==='medium'?'primary':'secondary'); btn.textContent = key==='basic'?'Cambiar a Basic':`Subir a ${ANNLY_PLANES_UI[key].name.charAt(0)+ANNLY_PLANES_UI[key].name.slice(1).toLowerCase()}`; }
+    else { btn.disabled=false; btn.className='plan-cta '+(key==='medium'?'primary':'secondary'); const ORDEN_PLAN = ['basic','medium','ultimate'];
+      const nombrePlan = ANNLY_PLANES_UI[key].name.charAt(0)+ANNLY_PLANES_UI[key].name.slice(1).toLowerCase();
+      // "Subir" solo si es un plan superior al actual; si es inferior, "Cambiar"
+      btn.textContent = (ORDEN_PLAN.indexOf(key) > ORDEN_PLAN.indexOf(actual) ? 'Subir a ' : 'Cambiar a ') + nombrePlan; }
   });
 
   await renderModulosPlan();
