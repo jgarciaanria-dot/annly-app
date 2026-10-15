@@ -1663,6 +1663,25 @@ async function irAMiPanel(){
   } catch(e){ console.error(e); }
 })();
 
+// Cuenta ya creada (por ejemplo con Google) pero sin negocio: se completa solo el negocio, sin pedir de nuevo correo ni contraseña
+let MODO_COMPLETAR = false;
+function activarModoCompletar(){
+  if (MODO_COMPLETAR) return;
+  MODO_COMPLETAR = true;
+  ['r-email', 'r-pass'].forEach(id => { const g = document.getElementById(id).closest('.fg'); if (g) g.style.display = 'none'; });
+  const sub = document.querySelector('#step-3 .step-sub');
+  if (sub) sub.textContent = 'Tu cuenta ya está lista. Solo falta crear tu negocio con los datos que acabas de llenar.';
+  const b = document.getElementById('r-btn'); if (b) b.innerHTML = 'Crear mi negocio<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  const bar = document.getElementById('sesion-bar');
+  if (bar && !document.getElementById('aviso-sin-negocio')) { const aviso = document.createElement('div'); aviso.id = 'aviso-sin-negocio'; aviso.style.cssText = 'flex-basis:100%;font-size:12.5px;margin-top:6px'; aviso.textContent = 'Tu cuenta está creada pero aún no tiene negocio. Llena los datos y toca "Crear mi negocio".'; bar.appendChild(aviso); }
+}
+(async function detectarCuentaSinNegocio(){
+  if (sessionStorage.getItem('annly_registro_pendiente')) return;
+  await window.AnnlyReady;
+  if (!window.ANNLY_AUTHENTICATED || window.ANNLY_BUSINESS || window.ANNLY_PLATFORM_ADMIN) return;
+  activarModoCompletar();
+})();
+
 // Si volvemos de Google con un registro pendiente guardado, terminamos de crear el negocio.
 (async function completarSiVuelveDeGoogle(){
   const pendiente = sessionStorage.getItem('annly_registro_pendiente');
@@ -1677,7 +1696,10 @@ async function irAMiPanel(){
     } catch(e){
       console.error(e);
       document.getElementById('msg-3').className = 'msg err';
-      document.getElementById('msg-3').textContent = 'No se pudo completar tu registro con Google. Intenta de nuevo.';
+      document.getElementById('msg-3').textContent = 'No se pudo completar tu registro con Google. Revisa los datos y toca "Crear mi negocio".' + (e && e.message ? ' (' + e.message + ')' : '');
+      // La cuenta ya existe: se deja crear el negocio desde el formulario sin pedir de nuevo correo y contraseña
+      document.getElementById('sesion-bar').hidden = false;
+      activarModoCompletar();
     }
   }
 })();
@@ -1697,6 +1719,23 @@ async function registrarNegocio(){
 
   msgEl.className = 'msg err'; msgEl.textContent = '';
 
+  if (MODO_COMPLETAR) {
+    if(!nombre){ irPaso(1); document.getElementById('msg-1').textContent = 'Escribe el nombre de tu negocio.'; return; }
+    if(!terms){ msgEl.textContent = 'Debes aceptar los términos para continuar.'; return; }
+    btnEl.disabled = true; btnEl.textContent = 'Creando tu negocio...';
+    try {
+      const negocio = await window.AnnlyAuth.completarRegistroTrasOAuth({
+        nombreNegocio: nombre, categoria, representanteLegal, ruc, whatsapp,
+        colorPrimario: PALETAS[paletaSel].primario, colorSecundario: PALETAS[paletaSel].secundario, tipoNegocio
+      });
+      mostrarExito(negocio.slug, negocio.tipo_negocio);
+    } catch(e){
+      console.error(e);
+      msgEl.textContent = 'No se pudo crear tu negocio. Inténtalo de nuevo.' + (e && e.message ? ' (' + e.message + ')' : '');
+      btnEl.disabled = false; btnEl.textContent = 'Crear mi negocio';
+    }
+    return;
+  }
   if(!email || !pass){ msgEl.textContent = 'Completa tu correo y contraseña.'; return; }
   if(pass.length < 6){ msgEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
   if(!terms){ msgEl.textContent = 'Debes aceptar los términos para continuar.'; return; }
