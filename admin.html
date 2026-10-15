@@ -5177,6 +5177,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
 
       <p id="me-msg" style="font-size:12px;color:#C2695A;min-height:16px;margin-bottom:6px;"></p>
       <button class="btn-save" id="me-btn-guardar" onclick="guardarEmpleadoModal()"><i class="ti ti-check" style="font-size:17px;"></i> Guardar empleado</button>
+      <button class="btn-add" id="me-btn-enlace" style="width:100%;justify-content:center;margin-top:8px;display:none;" onclick="abrirEnlaceAgenda(editEmpleadoId)"><i class="ti ti-link"></i> Enlace para ver su agenda en el celular</button>
       <button class="btn-add" id="me-btn-eliminar" style="width:100%;justify-content:center;margin-top:8px;color:#C2695A;border-color:#f0d5d0;display:none;" onclick="eliminarEmpleadoModal()"><i class="ti ti-trash"></i> Eliminar empleado</button>
     </div>
   </div>
@@ -9949,6 +9950,7 @@ async function openModalEmpleado(id){
     ? `<img src="${e.fotoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`
     : `<i class="ti ti-user" style="font-size:22px;color:var(--ink-soft);"></i>`;
   document.getElementById('me-btn-eliminar').style.display = (e && !e.esDueno) ? 'flex' : 'none';
+  document.getElementById('me-btn-enlace').style.display = e ? 'flex' : 'none';
 
   // Sucursales donde atiende (nuevo: la que viene preseleccionada desde Sucursales, o la Principal)
   if (!SUCURSALES.length && typeof Sheets.getSucursales === 'function'){
