@@ -147,26 +147,284 @@
       .rubro-fotos,.closing-box>img{display:none}.closing-box{background:linear-gradient(120deg,#211b2c 0%,#3a1d4f 60%,#6c25cf 130%)}.closing-box:before{display:none}.closing-box{min-height:0;padding:26px 22px;border-radius:20px}.closing h2{font-size:1.7rem}.closing p{font-size:.95rem}.contact-link{margin-top:12px}
       footer{padding:22px 0 80px}footer .logo-img img{width:60px;height:60px}.copyright{margin-top:16px}
     }
-  </style>
+  
+    /* === Nueva landing (hero animado, tarjetas, cinta) — todo con prefijo nl- === */
+:root{--nl-bg:#fffdfb;--nl-ink:#201b2b;--nl-muted:#706a7c;--nl-line:#e9e4ed;--nl-card:#FFFFFF;--nl-accent:#7424d4;--nl-accent-soft:#f4eaff;--nl-mint:#1f9d63;--nl-mint-soft:#ddf8e9;--nl-pink:#ef3d87;--nl-pink-soft:#ffe6f1;--nl-peach:#ef3d87;--nl-peach-soft:#ffe6f1;--nl-sky:#a56bff;--nl-sky-soft:#ece0ff;--nl-r:28px}
+.nl-sec,.nl-sec *{box-sizing:border-box}
+  --nl-bg:#fffdfb; --nl-ink:#201b2b; --nl-muted:#706a7c; --nl-line:#e9e4ed; --nl-card:#FFFFFF;
+  --nl-accent:#7424d4; --nl-accent-soft:#f4eaff; --nl-mint:#1f9d63; --nl-mint-soft:#ddf8e9;
+  --nl-pink:#ef3d87; --nl-pink-soft:#ffe6f1; --nl-peach:#ef3d87; --nl-peach-soft:#ffe6f1; --nl-sky:#a56bff; --nl-sky-soft:#ece0ff;
+  --nl-r:28px;
+}
+.nl-serif{font-family:"Playfair Display",Georgia,serif;font-weight:700;letter-spacing:-.015em}
+.nl-gradient{font-style:italic;background:linear-gradient(100deg,var(--nl-accent),var(--nl-pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+.nl-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:999px;font-weight:600;font-size:14px;background:var(--nl-ink);color:#fff;transition:transform .2s,background .2s}
+.nl-btn:hover{transform:translateY(-1px);background:#000}
+.nl-btn:not(.nl-ghost){background:linear-gradient(100deg,#6c25cf,#e93681);box-shadow:0 12px 24px rgba(123,36,206,.22)}
+.nl-btn:not(.nl-ghost):hover{background:linear-gradient(100deg,#5f1fb8,#d62d72)}
+.nl-btn.nl-ghost{background:transparent;color:var(--nl-ink);border:1px solid var(--nl-line)}
+.nl-arrow{display:inline-block;transition:transform .25s}
+a:hover .nl-arrow{transform:translateX(4px)}
+/* ---------- HERO ---------- */
+.nl-hero{padding:110px 16px 40px}
+.nl-stage{position:relative;max-width:1140px;margin:0 auto;border-radius:40px;padding:22px;overflow:hidden;transition:background 0.8s}
+.nl-stage::before{content:"";position:absolute;inset:0;background:var(--nl-grad);transition:opacity .8s;z-index:0}
+.nl-stage[data-t="0"]{--nl-grad:radial-gradient(120% 90% at 10% 0%,#e2c9ff 0%,transparent 55%),radial-gradient(90% 90% at 100% 100%,#ffd0e4 0%,transparent 60%),#f7efff}
+.nl-stage[data-t="1"]{--nl-grad:radial-gradient(120% 90% at 10% 0%,#ffc7de 0%,transparent 55%),radial-gradient(90% 90% at 100% 100%,#f1d5ff 0%,transparent 60%),#fff1f7}
+.nl-stage[data-t="2"]{--nl-grad:radial-gradient(120% 90% at 10% 0%,#c4f2d9 0%,transparent 55%),radial-gradient(90% 90% at 100% 100%,#e5d5ff 0%,transparent 60%),#f0fbf5}
+.nl-stage[data-t="3"]{--nl-grad:radial-gradient(120% 90% at 10% 0%,#ffd9b8 0%,transparent 55%),radial-gradient(90% 90% at 100% 100%,#e2c9ff 0%,transparent 60%),#fff6ef}
+.nl-tabs{position:relative;z-index:2;display:flex;justify-content:center;gap:10px;margin-bottom:-14px}
+.nl-tab{width:52px;height:52px;border-radius:17px;border:1px solid rgba(255,255,255,.8);background:rgba(255,255,255,.55);display:grid;place-items:center;cursor:pointer;transition:all .3s;position:relative}
+.nl-tab svg{width:22px;height:22px;stroke:var(--nl-ink);opacity:.55;transition:opacity .3s}
+.nl-tab:hover svg{opacity:.9}
+.nl-tab.nl-on{background:#fff;box-shadow:0 8px 20px -8px rgba(32,27,43,.35)}
+.nl-tab.nl-on svg{opacity:1}
+.nl-tab .nl-bar{position:absolute;bottom:6px;left:14px;right:14px;height:3px;border-radius:3px;background:rgba(32,27,43,.1);overflow:hidden}
+.nl-tab.nl-on .nl-bar::after{content:"";position:absolute;inset:0;background:var(--nl-ink);transform-origin:left;animation:fill var(--nl-dur,6s) linear forwards}
+@keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.nl-panel{position:relative;z-index:1;background:rgba(255,255,255,.88);border-radius:32px;padding:56px 48px;display:grid;grid-template-columns:1fr 1.05fr;gap:40px;align-items:center;min-height:470px}
+.nl-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--nl-muted)}
+.nl-eyebrow b{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:var(--nl-accent-soft);color:var(--nl-accent);font-size:12px}
+.nl-copy h1{font-size:clamp(38px,5vw,60px);line-height:1.02;margin:16px 0 16px}
+.nl-copy p{color:var(--nl-muted);font-size:17px;line-height:1.55;max-width:440px}
+.nl-copy .nl-cta{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
+.nl-copy > *{transition:opacity .45s,transform .45s}
+.nl-copy.nl-swap > *{opacity:0;transform:translateY(10px)}
+.nl-visual{position:relative;height:380px;border-radius:24px;background:var(--nl-vbg,#E9ECFF);display:grid;place-items:center;overflow:hidden;transition:background .6s}
+.nl-scene{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transform:scale(.97);transition:opacity .5s,transform .5s;pointer-events:none}
+.nl-scene.nl-on{opacity:1;transform:none}
+/* escena 1: agenda */
+.nl-cal{width:min(440px,92%);background:#fff;border-radius:18px;box-shadow:0 30px 60px -25px rgba(70,30,140,.35);display:grid;grid-template-columns:1.25fr 1fr;gap:16px;padding:18px}
+.nl-cal h4{font-size:13px;text-align:center;margin-bottom:10px}
+.nl-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:10px;text-align:center}
+.nl-days span{aspect-ratio:1;display:grid;place-items:center;border-radius:50%;color:#B4B2BD}
+.nl-days .nl-wd{color:var(--nl-muted);font-weight:600;font-size:9px;aspect-ratio:auto;padding-bottom:4px}
+.nl-days .nl-av{background:var(--nl-accent-soft);color:var(--nl-accent);font-weight:600;transition:all .3s}
+.nl-days .nl-av.nl-pick{background:var(--nl-accent);color:#fff;transform:scale(1.12)}
+.nl-slots{display:flex;flex-direction:column;gap:7px}
+.nl-slots .nl-d{font-size:12px;font-weight:600;text-align:center}
+.nl-slots .nl-sd{font-size:10px;color:var(--nl-muted);text-align:center;margin-bottom:4px}
+.nl-slot{font-size:11px;font-weight:600;padding:9px;border-radius:9px;border:1px solid #e6d3ff;color:var(--nl-accent);text-align:center;opacity:0;transform:translateY(6px);transition:all .35s}
+.nl-slot.nl-show{opacity:1;transform:none}
+.nl-slot.nl-pick{background:var(--nl-accent);color:#fff;border-color:var(--nl-accent)}
+.nl-slot.nl-ok{background:var(--nl-mint);border-color:var(--nl-mint);color:#fff}
+.nl-cursor{position:absolute;width:18px;height:18px;left:0;top:0;z-index:5;transition:transform .7s cubic-bezier(.5,0,.2,1),opacity .3s;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+.nl-cursor.nl-tap{animation:tap .3s}
+@keyframes tap{50%{scale:.8}}
+/* escena 2: recordatorio */
+.nl-phone{width:240px;height:330px;border-radius:34px;background:#201b2b;padding:10px;box-shadow:0 30px 60px -20px rgba(150,30,80,.45)}
+.nl-screen{height:100%;border-radius:26px;background:linear-gradient(#fff5f9,#fff);padding:30px 12px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.nl-bubble{max-width:85%;font-size:11.5px;line-height:1.4;padding:9px 11px;border-radius:14px;opacity:0;transform:translateY(8px) scale(.98);transition:all .4s}
+.nl-bubble.nl-show{opacity:1;transform:none}
+.nl-bubble.nl-in{background:#fff;border:1px solid var(--nl-line);border-bottom-left-radius:4px}
+.nl-bubble.nl-out{align-self:flex-end;background:var(--nl-peach);color:#fff;border-bottom-right-radius:4px}
+.nl-bubble small{display:block;font-size:9px;opacity:.6;margin-top:3px}
+.nl-typing{display:flex;gap:3px;padding:10px 12px;background:#fff;border:1px solid var(--nl-line);border-radius:14px;width:max-content;opacity:0;transition:opacity .3s}
+.nl-typing.nl-show{opacity:1}
+.nl-typing i{width:5px;height:5px;border-radius:50%;background:#B9B5C0;animation:dot 1s infinite}
+.nl-typing i:nth-child(2){animation-delay:.15s}.nl-typing i:nth-child(3){animation-delay:.3s}
+@keyframes dot{40%{transform:translateY(-3px);background:var(--nl-peach)}}
+/* escena 3: clientes */
+.nl-crm{width:min(400px,92%);display:flex;flex-direction:column;gap:10px}
+.nl-row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 12px 30px -18px rgba(20,100,70,.45);opacity:0;transform:translateX(-14px);transition:all .45s}
+.nl-row.nl-show{opacity:1;transform:none}
+.nl-av-c{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;flex:none}
+.nl-row div{flex:1;font-size:13px;font-weight:600}
+.nl-row div small{display:block;font-weight:400;color:var(--nl-muted);font-size:11px}
+.nl-pill{font-size:10.5px;font-weight:600;padding:5px 9px;border-radius:999px;white-space:nowrap}
+/* escena 4: tienda */
+.nl-shop{width:min(430px,94%);background:#fff;border-radius:18px;box-shadow:0 30px 60px -25px rgba(150,60,40,.35);padding:14px 14px 66px;position:relative}
+.nl-shop-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nl-shop-hd b{font-size:13px}
+.nl-cart{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--nl-accent);background:var(--nl-accent-soft);padding:6px 10px;border-radius:999px;transition:transform .3s}
+.nl-cart.nl-pop{transform:scale(1.12)}
+.nl-cart span{background:var(--nl-accent);color:#fff;border-radius:999px;min-width:16px;height:16px;display:grid;place-items:center;font-size:10px}
+.nl-grid4{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nl-prod{border:1px solid var(--nl-line);border-radius:14px;overflow:hidden;opacity:0;transform:translateY(8px);transition:all .4s}
+.nl-prod.nl-show{opacity:1;transform:none}
+.nl-prod .nl-im{height:44px;display:grid;place-items:center;font-size:22px}
+.nl-prod .nl-tx{padding:8px 10px 10px;font-size:11.5px}
+.nl-prod .nl-tx b{display:block;font-size:12px}
+.nl-prod .nl-pr{display:flex;align-items:center;justify-content:space-between;margin-top:6px;color:var(--nl-muted)}
+.nl-prod .nl-add{font-size:10px;font-weight:700;padding:4px 8px;border-radius:999px;background:var(--nl-accent-soft);color:var(--nl-accent);transition:all .3s}
+.nl-prod.nl-sel{border-color:var(--nl-accent);box-shadow:0 0 0 2px #e6d3ff}
+.nl-prod.nl-sel .nl-add{background:var(--nl-accent);color:#fff}
+.nl-order{position:absolute;left:12px;right:12px;bottom:12px;background:var(--nl-ink);color:#fff;border-radius:14px;padding:12px 14px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;opacity:0;transform:translateY(14px);transition:all .4s}
+.nl-order.nl-show{opacity:1;transform:none}
+.nl-order .nl-ok{background:var(--nl-mint);color:#fff;font-weight:700;font-size:11px;padding:5px 9px;border-radius:999px;display:none}
+.nl-order.nl-paid .nl-ok{display:inline-block}
+.nl-order.nl-paid .nl-go{display:none}
+.nl-go{font-weight:700;font-size:11px;background:linear-gradient(100deg,#6c25cf,#e93681);padding:6px 10px;border-radius:999px}
+/* ---------- Títulos con revelado ---------- */
+.nl-reveal-sec{padding:120px 0 60px;text-align:center}
+.nl-kicker{font-size:12px;letter-spacing:.14em;font-weight:600;color:var(--nl-muted)}
+.nl-reveal{font-size:clamp(34px,5.4vw,64px);line-height:1.05;max-width:860px;margin:14px auto 0}
+.nl-reveal .nl-w{opacity:.14;transition:opacity .25s}
+.nl-reveal-sec p{max-width:560px;margin:22px auto 0;color:var(--nl-muted);font-size:17px;line-height:1.6}
+/* ---------- Tarjetas apiladas ---------- */
+.nl-stack{padding:20px 0 80px}
+.nl-scard{position:sticky;top:calc(96px + var(--nl-i)*18px);margin-bottom:28px;background:var(--nl-card);border-radius:var(--nl-r);border:1px solid var(--nl-line);padding:48px;display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;min-height:380px;overflow:hidden;box-shadow:0 -14px 40px -30px rgba(32,27,43,.35);transform-origin:top center}
+.nl-scard::after{content:"";position:absolute;right:-10%;top:-20%;width:60%;height:140%;background:radial-gradient(closest-side,var(--nl-glow),transparent);opacity:.55;pointer-events:none}
+.nl-scard .nl-num{font-size:12px;font-weight:700;color:var(--nl-c);background:var(--nl-soft);padding:5px 10px;border-radius:999px}
+.nl-scard h3{font-size:clamp(32px,4vw,46px);margin:14px 0 10px}
+.nl-scard p{color:var(--nl-muted);line-height:1.6;max-width:420px}
+.nl-steps{list-style:none;margin-top:20px;display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+.nl-steps li{display:flex;gap:10px;align-items:center}
+.nl-steps li::before{content:"✓";width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:var(--nl-soft);color:var(--nl-c);font-size:12px;font-weight:700;flex:none}
+.nl-mock{position:relative;z-index:1;background:rgba(255,255,255,.85);border:1px solid var(--nl-line);border-radius:20px;padding:18px;box-shadow:0 24px 50px -30px rgba(32,27,43,.4);font-size:13px}
+.nl-mock .nl-hd{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-weight:600}
+.nl-mock .nl-hd i{width:30px;height:30px;border-radius:10px;background:var(--nl-soft);display:grid;place-items:center;color:var(--nl-c);font-style:normal}
+.nl-mock .nl-ln{height:9px;border-radius:5px;background:#f0ebf3;margin:8px 0}
+.nl-chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:var(--nl-soft);color:var(--nl-c);font-weight:600;font-size:12px;margin:4px 4px 0 0}
+.nl-bars{display:flex;align-items:flex-end;gap:6px;height:90px;margin-top:10px}
+.nl-bars span{flex:1;border-radius:6px 6px 2px 2px;background:var(--nl-soft)}
+.nl-bars span.nl-hi{background:var(--nl-c)}
+/* ---------- Marquee ---------- */
+.nl-final{padding:100px 0 0;text-align:center;overflow:hidden}
+.nl-final h2{font-size:clamp(36px,5vw,58px);line-height:1.05}
+.nl-final p{color:var(--nl-muted);margin:16px auto 28px;max-width:520px;line-height:1.6}
+.nl-marquee{margin-top:70px;display:flex;flex-direction:column;gap:14px;padding-bottom:80px;-webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.nl-track{display:flex;gap:14px;width:max-content;animation:mq 38s linear infinite}
+.nl-track.nl-rev{animation-direction:reverse;animation-duration:44s}
+.nl-marquee:hover .nl-track{animation-play-state:paused}
+@keyframes mq{to{transform:translateX(-50%)}}
+.nl-st{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--nl-line);border-radius:16px;padding:12px 16px 12px 12px;text-align:left}
+.nl-st i{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-style:normal;font-size:15px}
+.nl-st b{display:block;font-size:13.5px}
+.nl-st small{font-size:12px;color:var(--nl-muted)}
+@media (max-width:860px){
+  .nl-panel{grid-template-columns:1fr;padding:30px 20px 20px;gap:24px;min-height:0}
+  .nl-visual{height:320px}
+  .nl-stage{padding:12px;border-radius:30px}
+  .nl-tab{width:46px;height:46px}
+  .nl-scard{grid-template-columns:1fr;padding:28px 22px;top:calc(84px + var(--nl-i)*12px);min-height:0}
+  .nl-reveal-sec{padding:80px 0 30px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .nl-reveal .nl-w{opacity:1}
+}
+.nl-hero{padding:64px 16px 40px}@media(max-width:860px){.nl-hero{padding-top:40px}}
+.nl-trust{margin-top:18px;font-size:13px;color:var(--nl-muted);display:flex;gap:14px;flex-wrap:wrap}
+.nl-trust span::before{content:"✓ ";color:var(--nl-mint);font-weight:700}
+.nl-final{padding:30px 0 10px;overflow:hidden}
+.nl-final .nl-marquee{margin-top:10px;padding-bottom:30px}
+.nl-sec{color:var(--nl-ink)}
+</style>
 </head>
 <body>
   <header class="site-nav" id="nav"><div class="wrap nav">
     <a class="logo logo-img" href="#inicio" aria-label="Annly inicio"><img src="logo-annly-v2.png" alt="Annly" width="150" height="150"></a>
-    <ul class="nav-links" id="navLinks"><li><a href="#productos">Productos</a></li><li><a href="#antes-despues">Antes y después</a></li><li><a href="#como-funciona">Cómo funciona</a></li><li><a href="#precios">Precios</a></li><li><a href="#preguntas">Preguntas</a></li></ul>
+    <ul class="nav-links" id="navLinks"><li><a href="#productos">Productos</a></li><li><a href="#que-hace">Qué hace</a></li><li><a href="#como-funciona">Cómo funciona</a></li><li><a href="#precios">Precios</a></li><li><a href="#preguntas">Preguntas</a></li></ul>
     <div class="nav-actions"><a href="admin.html">Iniciar sesión</a><a class="btn btn-grad" href="registro.html">Prueba gratis <i data-lucide="arrow-right" size="15"></i></a><button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false"><i data-lucide="menu"></i></button></div>
   </div></header>
   <main id="inicio">
-    <section class="wrap hero">
-      <div class="hero-copy"><div class="eyebrow">AGENDA Y TIENDA EN LÍNEA, CON YAPPY</div><h1>Tu negocio vende y reserva, incluso cuando <em class="gradient">tú no estás.</em></h1><p>Tus clientes reservan o piden desde tu enlace, pagan con Yappy o transferencia y reciben su confirmación al instante. Tú lo manejas todo desde un solo panel.</p><div class="hero-pick"><a class="pick" href="registro.html?tipo=citas"><i data-lucide="calendar-check-2"></i><span><b>Agenda de citas</b>Salones, spas, barberías, estudios</span><i data-lucide="arrow-right" size="16"></i></a><a class="pick" href="registro.html?tipo=pedidos"><i data-lucide="shopping-bag"></i><span><b>Tienda de pedidos</b>Floristerías, pastelerías, regalos</span><i data-lucide="arrow-right" size="16"></i></a></div><div class="trust"><span><i data-lucide="check" size="15"></i>14 días gratis, sin tarjeta</span><span><i data-lucide="check" size="15"></i>Con tu logo y tus colores</span></div></div>
-      <div class="hero-stage" aria-label="Vista previa de las reservas en Annly"><div class="orb"></div><div class="hero-photo"><img src="hero-profesional-annly.webp" alt="Profesional de belleza feliz revisando nuevas citas en su celular"></div><div class="float booking"><i data-lucide="check"></i><div><strong>Nueva cita confirmada</strong><small>Andrea M. · Color y corte · 3:00 p. m.</small></div></div><div class="float rate"><i data-lucide="shopping-bag" size="16"></i>Nuevo pedido #000012</div><div class="float week"><div class="week-top"><b>Tu semana</b><span>●</span></div><div class="slots"><i></i><i></i><i></i><i></i><i></i></div></div></div>
-    </section>
-    <section class="ba" id="antes-despues"><div class="wrap"><div class="how-head"><h2>Un mismo día, <em class="gradient">dos formas de vivirlo.</em></h2><p>Así cambia una reserva cuando ya no depende del chat.</p></div><div class="ba-grid"><article class="ba-card before"><span class="tag">SIN ANNLY</span><h3>Todo se coordina a mano</h3><div class="ba-chat"><span>Hola, ¿tienes espacio mañana en la tarde?</span><span class="me">Déjame revisar mi agenda…</span><span>¿Y el viernes? ¿Cuánto cuesta?</span><span class="me">Te confirmo en un rato.</span></div><ul><li><i data-lucide="x"></i>Mensajes a todas horas, también fuera de tu horario</li><li><i data-lucide="x"></i>Citas cruzadas y clientes que no llegan</li><li><i data-lucide="x"></i>Pagos y comprobantes perdidos en el chat</li></ul></article><article class="ba-card after"><span class="tag">CON ANNLY</span><h3>El cliente reserva solo</h3><div class="ba-chat"><span>Reserva desde tu enlace: elige servicio, día y hora.</span><span class="me">Cita confirmada. Recibes el aviso al instante.</span></div><ul><li><i data-lucide="check"></i>Disponibilidad real, visible las 24 horas</li><li><i data-lucide="check"></i>Confirmación y recordatorio automáticos</li><li><i data-lucide="check"></i>Cada pago queda registrado con su comprobante</li></ul></article></div><p class="ba-note">Ejemplo ilustrativo. Tus resultados dependerán de cómo uses Annly.</p></div></section>
+    <!-- HERO -->
+<section class="nl-hero nl-sec">
+  <div class="nl-stage" id="nl-stage" data-t="0">
+    <div class="nl-tabs" role="tablist">
+      <button class="nl-tab nl-on" data-i="0" aria-label="Reservas"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="nl-bar"></span></button>
+      <button class="nl-tab" data-i="1" aria-label="Recordatorios"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="nl-bar"></span></button>
+      <button class="nl-tab" data-i="2" aria-label="Clientes"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.6.8 2.6 2.6 3 5.2"/></svg><span class="nl-bar"></span></button>
+<button class="nl-tab" data-i="3" aria-label="Pedidos"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M5 8h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span class="nl-bar"></span></button>
+    </div>
+    <div class="nl-panel">
+      <div class="nl-copy" id="nl-copy">
+        <span class="nl-eyebrow"><b>●</b><span id="nl-ey">Reservas</span></span>
+        <h1 class="nl-serif" id="nl-h1">Tu agenda se llena <span class="nl-gradient">sola</span></h1>
+        <p id="nl-pp">Comparte tu enlace y deja que tus clientes reserven a cualquier hora, sin llamadas ni mensajes de ida y vuelta.</p>
+        <div class="nl-cta"><a class="nl-btn" id="nl-cta1" href="registro.html?tipo=citas"><span id="nl-cta1t">Crear mi agenda</span> <span class="nl-arrow">→</span></a><a class="nl-btn nl-ghost" href="#como">Ver cómo funciona</a></div>
+        <div class="nl-trust"><span>14 días gratis</span><span>Sin tarjeta</span><span>Cobra con Yappy</span></div>
+      </div>
+      <div class="nl-visual" id="nl-visual">
+        <!-- Escena 1 -->
+        <div class="nl-scene nl-on" id="nl-s0">
+          <div class="nl-cal">
+            <div>
+              <h4>‹ &nbsp;Noviembre 2026&nbsp; ›</h4>
+              <div class="nl-days" id="nl-days"></div>
+            </div>
+            <div class="nl-slots">
+              <div class="nl-d" id="nl-dname">Elige un día</div><div class="nl-sd" id="nl-dsub">&nbsp;</div>
+              <div class="nl-slot">9:00 a. m.</div><div class="nl-slot" id="nl-target">10:30 a. m.</div><div class="nl-slot">2:00 p. m.</div><div class="nl-slot">4:30 p. m.</div>
+            </div>
+          </div>
+          <svg class="nl-cursor" id="nl-cur" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#201b2b" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+        <!-- Escena 2 -->
+        <div class="nl-scene" id="nl-s1">
+          <div class="nl-phone"><div class="nl-screen" id="nl-chat">
+            <div class="nl-bubble nl-in">Hola Ana 👋 Te recordamos tu cita de <b>manicure</b> mañana a las 10:30 a. m.<small>Annly · automático</small></div>
+            <div class="nl-bubble nl-in">¿Confirmas tu asistencia?<small>Responde SÍ o REAGENDAR</small></div>
+            <div class="nl-typing"><i></i><i></i><i></i></div>
+            <div class="nl-bubble nl-out">SÍ, ahí estaré 🙌</div>
+            <div class="nl-bubble nl-in">¡Listo! Cita confirmada ✓<small>Se avisó al negocio</small></div>
+          </div></div>
+        </div>
+        <!-- Escena 3 -->
+        <div class="nl-scene" id="nl-s2">
+          <div class="nl-crm">
+            <div class="nl-row"><span class="nl-av-c" style="background:#7424d4">AM</span><div>Ana Martínez<small>8 visitas · última hace 3 semanas</small></div><span class="nl-pill" style="background:var(--nl-peach-soft);color:#b8195f">Toca volver</span></div>
+            <div class="nl-row"><span class="nl-av-c" style="background:#1f9d63">LR</span><div>Luis Rodríguez<small>Corte + barba · cada 15 días</small></div><span class="nl-pill" style="background:var(--nl-mint-soft);color:#0f7a49">Confirmado</span></div>
+            <div class="nl-row"><span class="nl-av-c" style="background:#ef3d87">KP</span><div>Karla Pérez<small>Cliente nueva · llegó por Instagram</small></div><span class="nl-pill" style="background:var(--nl-accent-soft);color:var(--nl-accent)">Primera cita</span></div>
+            <div class="nl-row"><span class="nl-av-c" style="background:#a56bff">JG</span><div>José Gómez<small>Reagendó 1 vez · sin faltas</small></div><span class="nl-pill" style="background:var(--nl-sky-soft);color:#5a1aa8">Fiel</span></div>
+          </div>
+        </div>
+        <!-- Escena 4 -->
+        <div class="nl-scene" id="nl-s3">
+          <div class="nl-shop">
+            <div class="nl-shop-hd"><b>Dulces Annly · Tienda</b><span class="nl-cart" id="nl-cart">🛍 Pedido <span id="nl-cn">0</span></span></div>
+            <div class="nl-grid4">
+              <div class="nl-prod" data-p="0"><div class="nl-im" style="background:#ffe6f1">🧁</div><div class="nl-tx"><b>Cupcakes x6</b><div class="nl-pr"><span>$18.00</span><span class="nl-add">Agregar</span></div></div></div>
+              <div class="nl-prod" data-p="1"><div class="nl-im" style="background:#f4eaff">🎂</div><div class="nl-tx"><b>Torta mediana</b><div class="nl-pr"><span>$32.00</span><span class="nl-add">Agregar</span></div></div></div>
+              <div class="nl-prod" data-p="2"><div class="nl-im" style="background:#ddf8e9">🍪</div><div class="nl-tx"><b>Galletas decoradas</b><div class="nl-pr"><span>$12.00</span><span class="nl-add">Agregar</span></div></div></div>
+              <div class="nl-prod" data-p="3"><div class="nl-im" style="background:#fff0d9">🎁</div><div class="nl-tx"><b>Caja de regalo</b><div class="nl-pr"><span>$25.00</span><span class="nl-add">Agregar</span></div></div></div>
+            </div>
+            <div class="nl-order" id="nl-order"><span>Retiro · Sáb 14 · 3:00 p. m.<br><b>Total $50.00</b></span><span class="nl-go">Pagar con Yappy</span><span class="nl-ok">Pedido confirmado ✓</span></div>
+            <svg class="nl-cursor" id="nl-cur2" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#201b2b" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+    <!-- TÍTULO QUE SE REVELA -->
+<section class="nl-reveal-sec wrap nl-sec" id="que-hace">
+  <div class="nl-kicker">PARA NEGOCIOS QUE VIVEN DE SUS CITAS</div>
+  <h2 class="nl-reveal nl-serif" data-reveal>Menos tiempo contestando mensajes, más tiempo atendiendo clientes</h2>
+  <p>Annly se encarga de lo que pasa antes, durante y después de cada cita.</p>
+</section>
+
+<!-- TARJETAS APILADAS -->
+<section class="nl-stack wrap nl-sec">
+  <article class="nl-scard" style="--nl-i:0;--nl-c:#7424d4;--nl-soft:#f4eaff;--nl-glow:#e2c9ff">
+    <div><span class="nl-num">01 · Reserva</span><h3 class="nl-serif">El cliente elige su hora</h3><p>Desde tu enlace, Instagram o WhatsApp. Solo ve los horarios que tienes libres.</p>
+      <ul class="nl-steps"><li>Enlace propio para compartir</li><li>Horarios y servicios a tu medida</li><li>Sin cruces de citas</li></ul></div>
+    <div class="nl-mock"><div class="nl-hd"><i>📅</i>Nueva reserva</div><span class="nl-chip">Manicure · 45 min</span><span class="nl-chip">Jue 12 · 10:30</span><div class="nl-ln" style="width:90%"></div><div class="nl-ln" style="width:65%"></div></div>
+  </article>
+  <article class="nl-scard" style="--nl-i:1;--nl-c:#ef3d87;--nl-soft:#ffe6f1;--nl-glow:#ffc7de">
+    <div><span class="nl-num">02 · Recordatorio</span><h3 class="nl-serif">Nadie se olvida</h3><p>Avisos automáticos antes de la cita. El cliente confirma o reagenda con un toque.</p>
+      <ul class="nl-steps"><li>Recordatorio 24 h y 2 h antes</li><li>Confirmación con un toque</li><li>Menos inasistencias</li></ul></div>
+    <div class="nl-mock"><div class="nl-hd"><i>🔔</i>Recordatorio enviado</div><div class="nl-ln" style="width:80%"></div><span class="nl-chip">✓ Confirmó</span><span class="nl-chip">Hace 2 min</span></div>
+  </article>
+  <article class="nl-scard" style="--nl-i:2;--nl-c:#0f7a49;--nl-soft:#ddf8e9;--nl-glow:#c4f2d9">
+    <div><span class="nl-num">03 · Atención</span><h3 class="nl-serif">Tu día, de un vistazo</h3><p>Ve quién viene, qué servicio pidió y su historial antes de que llegue.</p>
+      <ul class="nl-steps"><li>Agenda diaria y semanal</li><li>Historial por cliente</li><li>Notas de cada visita</li></ul></div>
+    <div class="nl-mock"><div class="nl-hd"><i>📊</i>Citas de la semana</div><div class="nl-bars"><span style="height:40%"></span><span style="height:65%"></span><span class="nl-hi" style="height:90%"></span><span style="height:55%"></span><span style="height:75%"></span><span style="height:35%"></span></div></div>
+  </article>
+  <article class="nl-scard" style="--nl-i:3;--nl-c:#5a1aa8;--nl-soft:#ece0ff;--nl-glow:#e5d5ff">
+    <div><span class="nl-num">04 · Vuelve</span><h3 class="nl-serif">Clientes que regresan</h3><p>Annly detecta a quién le toca volver y le envía una invitación para reservar de nuevo.</p>
+      <ul class="nl-steps"><li>Aviso de “te toca volver”</li><li>Enlace directo para reagendar</li><li>Clientes fieles, agenda llena</li></ul></div>
+    <div class="nl-mock"><div class="nl-hd"><i>💬</i>Invitación a volver</div><div class="nl-ln" style="width:85%"></div><div class="nl-ln" style="width:55%"></div><span class="nl-chip">Reservó de nuevo ✓</span></div>
+  </article>
+</section>
     <section class="wrap section productos" id="productos"><div class="how-head"><h2>Elige cómo <em class="gradient">trabaja tu negocio.</em></h2><p>Al registrarte eliges uno y tu panel se arma para eso. Si tu marca necesita los dos, también puede tenerlos.</p></div><div class="prod-grid"><div class="prod-col"><article class="prod-card"><div class="prod-ico"><i data-lucide="calendar-check-2"></i></div><div class="eyebrow">ANNLY AGENDA</div><h3>Para negocios que atienden por cita</h3><p class="prod-rubros">Salones, barberías, spas, estudios de uñas y tatuaje, consultorios, entrenadores y clases.</p><ul><li><i data-lucide="check"></i>Reservas con tu disponibilidad real: servicios, profesionales, bloqueos y vacaciones</li><li><i data-lucide="check"></i>Recordatorios automáticos que reducen las ausencias</li><li><i data-lucide="check"></i>Abonos con Yappy o transferencia</li><li><i data-lucide="check"></i>Equipo con comisiones, sucursales y finanzas</li><li><i data-lucide="check"></i>Agente virtual opcional que responde fuera de horario</li></ul><a class="btn btn-dark" href="registro.html?tipo=citas">Crear mi agenda <i data-lucide="arrow-right" size="16"></i></a></article><div class="rubro-fotos" aria-label="Negocios que atienden por cita"><figure><img src="https://images.pexels.com/photos/1836983/pexels-photo-1836983.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Barbero cortando el cabello a un cliente" loading="lazy"><figcaption>Barberías</figcaption></figure><figure><img src="https://images.pexels.com/photos/3993312/pexels-photo-3993312.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Estilista aplicando color en un salón" loading="lazy"><figcaption>Salones de belleza</figcaption></figure><figure><img src="https://images.pexels.com/photos/3985329/pexels-photo-3985329.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Tratamiento facial en un spa" loading="lazy"><figcaption>Spas y estética</figcaption></figure><figure><img src="rubro-tatuajes-annly.webp" alt="Profesional tatuando a un cliente" loading="lazy"><figcaption>Tatuajes</figcaption></figure></div></div><div class="prod-col"><article class="prod-card tienda"><div class="prod-ico"><i data-lucide="shopping-bag"></i></div><div class="eyebrow">ANNLY TIENDAS</div><h3>Para negocios que venden por pedido</h3><p class="prod-rubros">Floristerías, pastelerías, tiendas de regalos y catering por encargo.</p><ul><li><i data-lucide="check"></i>Catálogo con fotos, extras y dedicatoria</li><li><i data-lucide="check"></i>Día y franja de entrega con cupo real</li><li><i data-lucide="check"></i>Retiro en tienda o domicilio por zonas</li><li><i data-lucide="check"></i>Pago con Yappy o transferencia, con comprobante</li><li><i data-lucide="check"></i>Inventario y hoja de preparación por pedido</li></ul><a class="btn btn-grad" href="registro.html?tipo=pedidos">Crear mi tienda <i data-lucide="arrow-right" size="16"></i></a></article><div class="rubro-fotos" aria-label="Negocios que venden por pedido"><figure><img src="https://images.pexels.com/photos/5414331/pexels-photo-5414331.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Florista armando un arreglo en su tienda" loading="lazy"><figcaption>Floristerías</figcaption></figure><figure><img src="https://images.pexels.com/photos/7525182/pexels-photo-7525182.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Pastel decorado y cupcakes listos para entregar" loading="lazy"><figcaption>Pastelerías</figcaption></figure><figure><img src="https://images.pexels.com/photos/7410461/pexels-photo-7410461.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Cajas de regalo con lazos" loading="lazy"><figcaption>Regalos y detalles</figcaption></figure><figure><img src="https://images.pexels.com/photos/31970824/pexels-photo-31970824.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Bandeja de mini hamburguesas para un evento" loading="lazy"><figcaption>Catering</figcaption></figure></div></div></div></section>
     <section class="how section" id="como-funciona"><div class="wrap"><div class="how-head"><h2>Listo en <em class="gradient">tres pasos.</em></h2></div><div class="steps"><article class="step"><i data-lucide="settings-2"></i><div class="step-number">01</div><h3>Configura tu negocio</h3><p>Carga tus servicios o productos, horarios y formas de pago.</p></article><article class="step"><i data-lucide="link"></i><div class="step-number">02</div><h3>Comparte tu enlace</h3><p>En Instagram, Google, WhatsApp o donde tus clientes ya te encuentran.</p></article><article class="step"><i data-lucide="calendar-check-2"></i><div class="step-number">03</div><h3>Recibe y gestiona</h3><p>Tus clientes reservan o piden; Annly confirma, avisa y te deja todo listo.</p></article></div></div></section>
     <section class="pricing section" id="precios"><div class="wrap"><div class="pricing-head"><h2>Precios claros, <em class="gradient">sin contratos.</em></h2><p>14 días gratis para probar. No pedimos tarjeta.</p><div class="price-tabs" role="tablist"><button class="on" role="tab" aria-selected="true" data-tab="agenda">Agenda de citas</button><button role="tab" aria-selected="false" data-tab="tienda">Tienda de pedidos</button></div></div>
 <div class="price-panel" data-panel="agenda"><div class="price-grid"><article class="price-card"><h3>Basic</h3><div class="users">1 profesional</div><div class="price">$14 <span>USD/mes</span></div><div class="price-note">Para profesionales independientes.</div><ul><li><i data-lucide="check"></i>Agenda 24/7 y citas ilimitadas</li><li><i data-lucide="check"></i>Recordatorios y avisos automáticos</li><li><i data-lucide="check"></i>Reagendar y cancelar citas</li><li><i data-lucide="check"></i>Abono con Yappy o transferencia</li><li><i data-lucide="check"></i>Horarios y bloqueos a tu medida</li><li><i data-lucide="check"></i>Botón de WhatsApp y diseño profesional</li></ul><a href="registro.html?tipo=citas" class="btn btn-light">Empezar con Basic</a></article><article class="price-card featured"><div class="badge">MÁS POPULAR</div><h3>Medium</h3><div class="users">Hasta 2 profesionales</div><div class="price">$24 <span>USD/mes</span></div><div class="price-note">Para equipos pequeños que están creciendo.</div><ul><li><i data-lucide="check"></i>Todo lo de Basic</li><li><i data-lucide="check"></i>Promociones y ruleta de premios</li><li><i data-lucide="check"></i>Paleta de colores a escoger</li><li><i data-lucide="check"></i>Pagos en línea con Yappy Comercial (y tu pasarela propia, si ya tienes una)</li><li><i data-lucide="check"></i>Programa de clientes: inscripción y cumpleaños</li></ul><a href="registro.html?tipo=citas" class="btn btn-grad">Probar Medium <i data-lucide="arrow-right" size="15"></i></a></article><article class="price-card"><h3>Ultimate</h3><div class="users">Hasta 3 profesionales</div><div class="price">$49 <span>USD/mes</span></div><div class="price-note">Para negocios que quieren todo bajo control.</div><ul><li><i data-lucide="check"></i>Todo lo de Medium</li><li><i data-lucide="check"></i>Finanzas, reportes y dashboard</li><li><i data-lucide="check"></i>Certificados de regalo</li><li><i data-lucide="check"></i>Comisiones, propinas y anticipos</li><li><i data-lucide="check"></i>Cierres de periodo con comprobante</li></ul><a href="registro.html?tipo=citas" class="btn btn-light">Elegir Ultimate</a></article></div><p class="pricing-foot">¿Más profesionales u otra sede? Agrega <b>Profesional adicional</b> (+$7/mes) o <b>Sucursal adicional</b> (+$14/mes, incluye 1 profesional) a cualquier plan. También puedes sumar módulos: <b>Pagos en línea</b> (+$5/mes), <b>Certificados</b> (+$6/mes), <b>Finanzas</b> (+$12/mes) o <b>Agente AI</b> (desde $12/mes). Precios en USD.</p></div>
 <div class="price-panel" data-panel="tienda" hidden><div class="price-grid uno"><article class="price-card featured"><h3>Tienda</h3><div class="users">Tu catálogo en línea</div><div class="price">$14 <span>USD/mes</span></div><div class="price-note">Todo lo necesario para vender por pedido.</div><ul><li><i data-lucide="check"></i>Tienda con tu logo, colores y fotos</li><li><i data-lucide="check"></i>Catálogo con extras y dedicatoria</li><li><i data-lucide="check"></i>Fechas y franjas con cupo real</li><li><i data-lucide="check"></i>Retiro o entrega por zonas</li><li><i data-lucide="check"></i>Artículos promocionales y descuentos para impulsar tus ventas</li><li><i data-lucide="check"></i>17 paletas de colores para tu tienda</li><li><i data-lucide="check"></i>Pago con Yappy o transferencia</li><li><i data-lucide="check"></i>Avisos por correo al negocio y al cliente</li><li><i data-lucide="check"></i>Inventario y hoja de preparación</li></ul><a href="registro.html?tipo=pedidos" class="btn btn-grad">Crear mi tienda gratis <i data-lucide="arrow-right" size="15"></i></a></article></div><p class="pricing-foot">14 días gratis para probar tu tienda con pedidos reales. Módulos opcionales: <b>Ventas e Inventario</b> (+$6/mes: reportes de ventas, ganancia por producto y exportar a Excel), <b>Pagos en línea</b> (+$5/mes: cobra con Yappy Comercial y tus pedidos se confirman solos; si usas otra pasarela como Tilopay o PagueloFácil, la integramos contigo) y <b>Programa de clientes</b> (próximamente). Precios en USD.</p></div></div></section>
     <section class="wrap section faq" id="preguntas"><div class="how-head"><h2>Lo que más nos <em class="gradient">preguntan.</em></h2></div><div class="faq-list"><details><summary>¿Necesito saber de tecnología para usar Annly?</summary><p>No. Te registras, eliges si trabajas por cita o por pedido, cargas tus servicios o productos y compartes tu enlace. Tu panel te guía paso a paso.</p></details><details><summary>¿Cómo me pagan mis clientes?</summary><p>Como prefieras. Con <b>Yappy</b> o <b>transferencia bancaria</b>, tu cliente ve tu número o tu cuenta y el monto exacto, deja su comprobante y tú confirmas el pago desde el panel. En los planes con pagos en línea también puedes cobrar con <b>Yappy Comercial</b> y el pago se confirma solo. Si ya cuentas con una pasarela de pago propia, por ejemplo la de tu página web, escríbenos y la integramos igual que Yappy Comercial.</p></details><details><summary>¿Puedo usar mi logo y mis colores?</summary><p>Sí. Tu agenda o tu tienda muestran tu logo, tu nombre y tu paleta de colores, y tus clientes reciben los correos con tu marca.</p></details><details><summary>¿Qué pasa cuando termina la prueba de 14 días?</summary><p>Eliges el plan que mejor se ajusta a tu negocio. No pedimos tarjeta para empezar, así que no se te cobra nada sin tu confirmación.</p></details><details><summary>¿Puedo tener agenda y tienda a la vez?</summary><p>Sí. La agenda y la tienda se registran por separado, cada una con su propia cuenta, pero tu marca puede tener las dos: una agenda para tus servicios y una tienda para tus productos, con el mismo logo y los mismos colores. Si necesitas ayuda para configurarlas, escríbenos.</p></details><details><summary>¿Mis clientes necesitan descargar algo?</summary><p>No. Reservan o compran desde tu enlace, en cualquier celular, tablet o computadora.</p></details></div></section>
+    <section class="nl-final nl-sec" aria-hidden="true"><div class="nl-marquee" id="nl-mq"></div></section>
     <section class="wrap closing" id="contacto"><div class="closing-box"><img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1500&q=85" alt="" loading="lazy"><div class="closing-content"><h2>Tu talento merece un sistema que trabaje contigo.</h2><p>Pruébalo 14 días gratis con tus propios clientes.</p><a class="btn contact-link" href="registro.html">Quiero probar Annly <i data-lucide="arrow-right" size="16"></i></a></div></div></section>
   </main>
   <footer><div class="wrap"><div class="footer-row"><a class="logo logo-img" href="#inicio" aria-label="Annly inicio"><img src="logo-annly-v2.png" alt="Annly" width="96" height="96"></a><ul class="footer-links"><li><a href="#productos">Productos</a></li><li><a href="#precios">Precios</a></li><li><a href="#preguntas">Preguntas</a></li><li><a href="politicas.html">Políticas</a></li></ul></div><div class="copyright">© 2026 Annly. Más citas, más pedidos y más tiempo para ti.<br>¿Necesitas ayuda? Escríbenos a <a href="mailto:soporte@annly.app">soporte@annly.app</a></div></div></footer>
@@ -310,6 +568,132 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarMenu(); });
   document.getElementById('botX').addEventListener('click', cerrar);
   form.addEventListener('submit', function (e) { e.preventDefault(); enviar(inp.value); });
+})();
+</script>
+
+<script>
+(function(){
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Nav */
+
+/* ---------- HERO ---------- */
+const tabsData=[
+  {ey:'Reservas',h:'Tu agenda se llena <span class="gradient">sola</span>',p:'Comparte tu enlace y deja que tus clientes reserven a cualquier hora, sin llamadas ni mensajes de ida y vuelta.',bg:'#f1e4ff',dur:7200},
+  {ey:'Recordatorios',h:'Adiós a las citas <span class="gradient">olvidadas</span>',p:'Annly confirma y recuerda cada cita por ti. Si alguien no puede, reagenda en un toque.',bg:'#ffe3ef',dur:6400},
+  {ey:'Clientes',h:'Conoce a cada <span class="gradient">cliente</span>',p:'Historial, frecuencia y quién está por volver. Todo en un solo lugar, sin hojas de cálculo.',bg:'#ddf8e9',dur:5600},
+  {ey:'Pedidos',h:'Tu tienda recibe pedidos <span class="gradient">sin chat</span>',p:'Catálogo con fotos, fecha de entrega y pago con Yappy. Cada pedido llega ordenado y confirmado, sin mensajes de ida y vuelta.',bg:'#ffe9d6',dur:7000}
+];
+const stage=document.getElementById('nl-stage'),tabs=[...document.querySelectorAll('.nl-tab')],copy=document.getElementById('nl-copy'),visual=document.getElementById('nl-visual');
+let cur=0,timer,seq=[];
+const later=(fn,ms)=>{const t=setTimeout(fn,ms);seq.push(t);return t};
+const clearSeq=()=>{seq.forEach(clearTimeout);seq=[]};
+
+// días del calendario
+const days=document.getElementById('nl-days');
+['L','M','M','J','V','S','D'].forEach(d=>days.insertAdjacentHTML('beforeend',`<span class="nl-wd">${d}</span>`));
+const avail=[3,4,5,6,10,11,12,13,17,18,19,20,24,25,26,27];
+for(let i=0;i<6;i++)days.insertAdjacentHTML('beforeend','<span></span>');
+for(let d=1;d<=30;d++)days.insertAdjacentHTML('beforeend',`<span class="${avail.includes(d)?'nl-av':''}" data-d="${d}">${d}</span>`);
+
+function moveCursor(el){
+  const c=document.getElementById('nl-cur'),v=visual.getBoundingClientRect(),r=el.getBoundingClientRect();
+  c.style.opacity=1;
+  c.style.transform=`translate(${r.left-v.left+r.width*.55}px,${r.top-v.top+r.height*.55}px)`;
+}
+function tap(){const c=document.getElementById('nl-cur');c.classList.remove('nl-tap');void c.offsetWidth;c.classList.add('nl-tap')}
+
+function play0(){
+  const dayEl=days.querySelector('[data-d="12"]'),slots=[...document.querySelectorAll('#nl-s0 .nl-slot')],t=document.getElementById('nl-target');
+  days.querySelectorAll('.nl-pick').forEach(e=>e.classList.remove('nl-pick'));
+  slots.forEach(s=>{s.classList.remove('nl-show','pick','ok');});
+  t.textContent='10:30 a. m.';
+  document.getElementById('nl-dname').textContent='Elige un día';document.getElementById('nl-dsub').innerHTML='&nbsp;';
+  const c=document.getElementById('nl-cur');c.style.transition='none';c.style.transform='translate(80%,110%)';c.style.opacity=0;void c.offsetWidth;c.style.transition='';
+  later(()=>moveCursor(dayEl),500);
+  later(()=>{tap();dayEl.classList.add('nl-pick');document.getElementById('nl-dname').textContent='Jueves';document.getElementById('nl-dsub').textContent='12 de noviembre';slots.forEach((s,i)=>later(()=>s.classList.add('nl-show'),i*110))},1300);
+  later(()=>moveCursor(t),2300);
+  later(()=>{tap();t.classList.add('nl-pick');t.textContent='Confirmar →'},3100);
+  later(()=>{tap();t.classList.remove('nl-pick');t.classList.add('nl-ok');t.textContent='Cita confirmada ✓'},4300);
+  later(()=>{c.style.opacity=0},5200);
+}
+function play1(){
+  const items=[...document.querySelectorAll('#nl-chat > *')];
+  items.forEach(i=>i.classList.remove('nl-show'));
+  const steps=[[0,300],[1,1100],[2,2000],[2,-3000],[3,3000],[4,4200]];
+  steps.forEach(([i,ms])=>later(()=>ms<0?null:items[i].classList.add('nl-show'),Math.abs(ms)));
+  later(()=>items[2].classList.remove('nl-show'),2950);
+  // ocultar typing de layout cuando no está visible
+  items[2].style.display='flex';
+  later(()=>items[2].style.display='none',3000);
+}
+function play2(){
+  const rows=[...document.querySelectorAll('#nl-s2 .nl-row')];
+  rows.forEach(r=>r.classList.remove('nl-show'));
+  rows.forEach((r,i)=>later(()=>r.classList.add('nl-show'),300+i*350));
+}
+function play3(){
+  const prods=[...document.querySelectorAll('#nl-s3 .nl-prod')],ord=document.getElementById('nl-order'),cart=document.getElementById('nl-cart'),cn=document.getElementById('nl-cn');
+  prods.forEach(p=>p.classList.remove('nl-show','sel'));ord.classList.remove('nl-show','paid');cn.textContent='0';
+  const c=document.getElementById('nl-cur2');c.style.transition='none';c.style.transform='translate(80%,110%)';c.style.opacity=0;void c.offsetWidth;c.style.transition='';
+  const mv=el=>{const sh=document.querySelector('#nl-s3 .nl-shop').getBoundingClientRect(),r=el.getBoundingClientRect();c.style.opacity=1;c.style.transform=`translate(${r.left-sh.left+r.width*.6}px,${r.top-sh.top+r.height*.6}px)`};
+  const tp=()=>{c.classList.remove('nl-tap');void c.offsetWidth;c.classList.add('nl-tap')};
+  prods.forEach((p,i)=>later(()=>p.classList.add('nl-show'),250+i*140));
+  later(()=>mv(prods[0].querySelector('.nl-add')),1200);
+  later(()=>{tp();prods[0].classList.add('nl-sel');cn.textContent='1';cart.classList.add('nl-pop');later(()=>cart.classList.remove('nl-pop'),300)},1900);
+  later(()=>mv(prods[1].querySelector('.nl-add')),2500);
+  later(()=>{tp();prods[1].classList.add('nl-sel');cn.textContent='2';cart.classList.add('nl-pop');later(()=>cart.classList.remove('nl-pop'),300);ord.classList.add('nl-show')},3200);
+  later(()=>mv(ord.querySelector('.nl-go')),4200);
+  later(()=>{tp();ord.classList.add('nl-paid')},5000);
+  later(()=>{c.style.opacity=0},5800);
+}
+const plays=[play0,play1,play2,play3];
+
+function go(i,auto){
+  clearSeq();clearTimeout(timer);
+  cur=i;
+  const d=tabsData[i];
+  stage.dataset.t=i;visual.style.setProperty('--nl-vbg',d.bg);
+  tabs.forEach((t,k)=>{t.classList.toggle('nl-on',k===i);t.setAttribute('aria-selected',k===i);t.style.setProperty('--nl-dur',d.dur+'ms');const b=t.querySelector('.nl-bar');b.replaceWith(b.cloneNode())});
+  copy.classList.add('nl-swap');
+  setTimeout(()=>{document.getElementById('nl-ey').textContent=d.ey;document.getElementById('nl-h1').innerHTML=d.h;document.getElementById('nl-pp').textContent=d.p;document.getElementById('nl-cta1t').textContent=i===3?'Crear mi tienda':'Crear mi agenda';document.getElementById('nl-cta1').href=i===3?'registro.html?tipo=pedidos':'registro.html?tipo=citas';copy.classList.remove('nl-swap')},260);
+  document.querySelectorAll('.nl-scene').forEach((s,k)=>s.classList.toggle('nl-on',k===i));
+  plays[i]();
+  if(!reduce)timer=setTimeout(()=>go((i+1)%4,true),d.dur);
+}
+tabs.forEach(t=>t.addEventListener('click',()=>go(+t.dataset.i)));
+// pausar si el hero no está visible
+new IntersectionObserver(([e])=>{if(e.isIntersecting)go(cur);else{clearSeq();clearTimeout(timer)}},{threshold:.3}).observe(stage);
+
+/* ---------- Revelado palabra por palabra con scroll ---------- */
+const reveals=[...document.querySelectorAll('[data-reveal]')];
+reveals.forEach(el=>{el.innerHTML=el.textContent.trim().split(/\s+/).map(w=>`<span class="nl-w">${w}</span>`).join(' ')});
+function onScroll(){
+  const vh=innerHeight;
+  reveals.forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const p=Math.min(1,Math.max(0,(vh*.85-r.top)/(vh*.45)));
+    const ws=el.querySelectorAll('.nl-w'),n=Math.round(p*ws.length);
+    ws.forEach((w,i)=>w.style.opacity=i<n?1:.14);
+  });
+  // tarjetas apiladas: la de atrás se encoge un poco
+  const cards=[...document.querySelectorAll('.nl-scard')];
+  cards.forEach((c,i)=>{
+    const next=cards[i+1];if(!next){c.style.transform='';return}
+    const top=parseFloat(getComputedStyle(c).top),nr=next.getBoundingClientRect().top;
+    const k=Math.min(1,Math.max(0,1-(nr-top)/innerHeight));
+    c.style.transform=`scale(${1-k*.05})`;c.style.filter=`brightness(${1-k*.04})`;
+  });
+}
+if(!reduce){addEventListener('scroll',onScroll,{passive:true});onScroll()}
+
+/* ---------- Marquee ---------- */
+const st=[['📅','Cita','Reservada','#f4eaff'],['🔔','Recordatorio','Enviado','#ffe6f1'],['✅','Asistencia','Confirmada','#ddf8e9'],['🔁','Cliente','Volvió','#ece0ff'],['⭐','Reseña','Recibida','#FFF4D6'],['💬','Mensaje','Respondido','#f4eaff']];
+const mk=a=>a.map(([e,b,s,c])=>`<div class="nl-st"><i style="background:${c}">${e}</i><span><b>${b}</b><small>${s}</small></span></div>`).join('');
+const mq=document.getElementById('nl-mq');
+[st,[...st].reverse()].forEach((a,i)=>{const h=mk(a)+mk(a)+mk(a);mq.insertAdjacentHTML('beforeend',`<div class="nl-track ${i?'nl-rev':''}">${h}${h}</div>`)});
+
 })();
 </script>
 </body>
