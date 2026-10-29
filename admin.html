@@ -535,6 +535,7 @@ button.cal-col-hdr{border-top:0;border-right:0;cursor:pointer;}
 .pf-yappy-hdr b{font-size:13.5px;}
 .pf-yappy-hdr span{font-size:12px;color:var(--ink-soft,#77738A);}
 .pf-yappy .fi{width:100%;}
+.modo-tienda #adm-hdr-celular{display:none;}
 .ea-lbl{font-size:12px;font-weight:700;color:var(--ink-soft,#77738A);margin:14px 0 6px;display:block;}
 .ea-url{width:100%;border:1px solid var(--line,#E6DCF8);border-radius:12px;padding:10px 12px;font-size:12px;background:#FAF7FE;color:inherit;}
 .ea-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
@@ -3900,6 +3901,7 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
       <div class="adm-hdr-actions">
         <span class="cmp-slot" id="cmp-slot" style="display:inline-flex;"></span>
         <a href="index.html" id="adm-hdr-ver-sitio" target="_blank" class="adm-hdr-back"><i class="ti ti-external-link"></i><span class="hdr-btn-txt">Ver sitio</span></a>
+        <button type="button" id="adm-hdr-celular" class="adm-hdr-back" onclick="abrirLinkCelular()"><i class="ti ti-device-mobile"></i><span class="hdr-btn-txt">En el celular</span></button>
         <button type="button" id="adm-hdr-copiar-link" class="adm-hdr-back" onclick="copiarLinkNegocio()"><i class="ti ti-link"></i><span class="hdr-btn-txt">Copiar link</span></button>
         <button type="button" id="adm-hdr-logout" class="adm-hdr-back adm-hdr-logout" onclick="window.AnnlyAuth.logout()"><i class="ti ti-logout"></i><span class="hdr-btn-txt">Cerrar sesión</span></button>
       </div>
@@ -9796,6 +9798,32 @@ function irAExtraProfesional(){
   }, 200);
 }
 
+
+
+// ---------- Enlace del panel de citas para el celular de la dueña ----------
+function abrirLinkCelular(){
+  cerrarLinkCelular();
+  const url = window.location.origin + '/mi-panel.html';
+  const texto = encodeURIComponent('Mis citas en Annly: ' + url);
+  const ov = document.createElement('div'); ov.className = 'pm-ov'; ov.id = 'lc-ov';
+  ov.addEventListener('click', ev => { if (ev.target === ov) cerrarLinkCelular(); });
+  ov.innerHTML = `<div class="pm-box" role="dialog" aria-modal="true"><button type="button" class="pm-x" aria-label="Cerrar" onclick="cerrarLinkCelular()">×</button>
+    <h3>Tus citas en el celular</h3>
+    <p class="ea-nota" style="margin-top:0;">Abre este enlace en tu celular, entra con tu correo y contraseña de Annly y verás todas tus citas. Ahí mismo puedes <b>confirmar abonos</b>, rechazarlos y marcar "No se presentó".</p>
+    <label class="ea-lbl" for="lc-url">Tu enlace</label>
+    <input class="ea-url" id="lc-url" readonly value="${escH(url)}" onfocus="this.select()">
+    <div class="ea-btns"><button type="button" class="pri" onclick="copiarLinkCelular()">Copiar enlace</button><a href="https://wa.me/?text=${texto}" target="_blank" rel="noopener" style="flex:1 1 auto;text-decoration:none;"><button type="button" class="wa" style="width:100%;">Enviármelo por WhatsApp</button></a></div>
+    <p class="ea-msg" id="lc-msg" style="color:#15803D;"></p>
+    <p class="ea-nota"><b>Para tenerlo como ícono:</b> en Android, menú de Chrome → "Instalar app" o "Agregar a pantalla de inicio". En iPhone, Compartir → "Agregar a inicio". El enlace es solo para ti: pide tu contraseña, así que no se puede usar sin ella.</p></div>`;
+  document.body.appendChild(ov);
+}
+function cerrarLinkCelular(){ const ov = document.getElementById('lc-ov'); if (ov) ov.remove(); }
+function copiarLinkCelular(){
+  const i = document.getElementById('lc-url'), m = document.getElementById('lc-msg'); if (!i) return;
+  const ok = () => { if (m) m.textContent = '¡Enlace copiado!'; };
+  if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(ok).catch(() => { i.select(); document.execCommand('copy'); ok(); });
+  else { i.select(); document.execCommand('copy'); ok(); }
+}
 
 // ---------- Enlace privado de la agenda de cada profesional (solo lectura, sin contraseña) ----------
 // El profesional abre el enlace en su celular y ve sus citas próximas. Quien tenga el enlace la ve: se puede generar uno nuevo (el anterior deja de funcionar) o desactivar.
