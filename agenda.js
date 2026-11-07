@@ -236,6 +236,25 @@ const SVC_ICONS={
   instexten:'ti-arrow-merge',retiromantenimiento:'ti-refresh'
 };
 
+// Si la dirección es un link (ej. de Google Maps) se muestra como botón "Cómo llegar"; si no, como texto
+function pintarDireccion(el, dir){
+  if (!el) return;
+  dir = String(dir || '').trim();
+  if (/^https?:\/\/\S+$/i.test(dir)) {
+    el.textContent = '';
+    const a = document.createElement('a');
+    a.href = dir; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.textContent = 'Cómo llegar';
+    a.style.cssText = 'color:inherit;text-decoration:underline;';
+    const ico = document.createElement('i');
+    ico.className = 'ti ti-map-pin'; ico.setAttribute('aria-hidden', 'true');
+    ico.style.marginRight = '4px';
+    el.appendChild(ico); el.appendChild(a);
+  } else {
+    el.textContent = dir;
+  }
+}
+
 let SERVICES=[];
 let BLOQUEOS={dias:[], horas:{}};
 
@@ -415,7 +434,7 @@ window.AnnlyReady.then(() => {
     const horEl = document.getElementById('footer-horario');
     if (horEl) horEl.innerHTML = (b.horario_texto || 'Consulta disponibilidad').replace(/\|/g, '<br>');
     const dirEl = document.getElementById('footer-direccion');
-    if (dirEl) dirEl.textContent = b.direccion || '';
+    pintarDireccion(dirEl, b.direccion);
     const copyEl = document.getElementById('footer-copyright');
     if (copyEl) copyEl.textContent = '© ' + (b.nombre || 'Annly') + ' · Powered by Annly';
 
@@ -540,7 +559,7 @@ function aplicarSucursalSitio(suc, conSelector){
 
   // Dirección, horario y WhatsApp de la sucursal (con los del negocio como respaldo)
   const dirEl = document.getElementById('footer-direccion');
-  if (dirEl) dirEl.textContent = suc.direccion || b.direccion || '';
+  pintarDireccion(dirEl, suc.direccion || b.direccion);
   const horEl = document.getElementById('footer-horario');
   const horTxt = textoHorarioSitio(suc.horario) || b.horario_texto || 'Consulta disponibilidad';
   if (horEl) horEl.innerHTML = escSuc(horTxt).replace(/\|/g, '<br>');
@@ -641,7 +660,7 @@ function datosSucursalCorreo(){
     sucursal: SUCURSAL_ACTUAL.nombre,
     sucursalDireccion: dir,
     sucursalTelefono: SUCURSAL_ACTUAL.telefono || '',
-    sucursalMapsUrl: dir ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(dir + ', Panamá') : ''
+    sucursalMapsUrl: /^https?:\/\/\S+$/i.test(dir) ? dir : (dir ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(dir + ', Panamá') : '')
   };
 }
 
