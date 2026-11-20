@@ -373,3 +373,19 @@ body.modo-oscuro .card-icon{
   pointer-events:none; overflow:visible;
   z-index:20;
 }
+
+/* ===== Adicionales del servicio ===== */
+.adic-hint{font-weight:400;text-transform:none;letter-spacing:0;opacity:.7;font-size:11px;margin-left:6px;}
+.adic-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.adic-op{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;cursor:pointer;
+  background:#fff;border:1.5px solid rgba(var(--gold-rgb,124,58,237),.25);border-radius:12px;padding:11px 12px;color:inherit;}
+.adic-op.sel{border-color:var(--gold);background:rgba(var(--gold-rgb,124,58,237),.08);}
+.adic-mark{width:18px;height:18px;border-radius:50%;border:2px solid rgba(var(--gold-rgb,124,58,237),.45);flex-shrink:0;box-sizing:border-box;}
+.adic-mark.chk{border-radius:5px;}
+.adic-op.sel .adic-mark{border-color:var(--gold);background:var(--gold);box-shadow:inset 0 0 0 3px #fff;}
+.adic-nom{flex:1;font-weight:600;font-size:14px;}
+.adic-min{font-size:11px;opacity:.7;white-space:nowrap;}
+.adic-pre{font-weight:700;font-size:13px;color:var(--gold);white-space:nowrap;}
+.adic-res{background:rgba(var(--gold-rgb,124,58,237),.07);border-radius:12px;padding:10px 12px;margin-bottom:12px;}
+.adic-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;}
+.adic-tot{border-top:1px solid rgba(var(--gold-rgb,124,58,237),.2);margin-top:5px;padding-top:7px;font-weight:700;font-size:14px;}

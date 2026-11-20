@@ -1366,7 +1366,10 @@ const Sheets = {
         s.imagen_url || null,
 
       esDoble:
-        s.es_doble || false
+        s.es_doble || false,
+
+      adicionales:
+        Array.isArray(s.adicionales) ? s.adicionales : []
 
     }));
   },
@@ -1397,7 +1400,11 @@ const Sheets = {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
           });
 
-    const armarFila = s => ({
+    // Los adicionales van en la columna `adicionales` (supabase/sql/servicio_adicionales.sql).
+    // conAdic=false se usa solo para reintentar si la columna aún no existe en la base.
+    const armarFila = (s, conAdic = true) => ({
+
+      ...(conAdic ? { adicionales: Array.isArray(s.adicionales) ? s.adicionales : [] } : {}),
 
       business_id:
         BUSINESS_ID,
@@ -1477,7 +1484,7 @@ const Sheets = {
         error: errLegacy
       } = await sbClient
         .from('services')
-        .insert(servicios.map(armarFila));
+        .insert(servicios.map(sv => armarFila(sv)));
 
       if (errLegacy) {
         console.error('Error guardando servicios:', errLegacy);
@@ -1525,7 +1532,7 @@ const Sheets = {
       servicios.map(s => ({ id: s.id, ...armarFila(s) }));
 
 
-    const {
+    let {
       error
     } = await sbClient
       .from('services')
@@ -1534,6 +1541,16 @@ const Sheets = {
         { onConflict: 'id' }
       );
 
+    // Si la columna `adicionales` aún no existe y ningún servicio tiene adicionales, se guarda igual sin ella
+    const hayAdic = servicios.some(sv => Array.isArray(sv.adicionales) && sv.adicionales.length);
+    if (error && !hayAdic) {
+      ({ error } = await sbClient
+        .from('services')
+        .upsert(
+          servicios.map(sv => ({ id: sv.id, ...armarFila(sv, false) })),
+          { onConflict: 'id' }
+        ));
+    }
 
     if (error) {
 

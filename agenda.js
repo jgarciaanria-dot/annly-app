@@ -851,6 +851,7 @@ function getDefaultServices(){
 }
 
 let curSvc=null,calY,calM,selectedDay=null,selTime=null,timerInt=null,timerSecs=300;
+let curSvcBase=null, ADIC_SEL={}; // servicio sin adicionales + lo que el cliente marcó (grupo -> posiciones)
 let empleadosDelServicio=[],empleadoSeleccionado=null,modoCualquiera=false;
 let empleadoHorarioCache=null,ocupadosPorEmpleadoCache={},horariosEmpleadosCache={};
 // Cita doble: un segundo profesional, para la 2da persona de la reserva
@@ -999,6 +1000,85 @@ function precargarCalendario(svcId){
   return p;
 }
 
+// ===== Adicionales del servicio (ej. diseños y retiro en uñas) =====
+// Cada adicional suma su precio y sus minutos. curSvc es siempre el servicio base + lo elegido, así el
+// calendario (duración), el resumen, el abono y la cita guardada usan el total sin más cambios.
+function adicDisponibles(){
+  const a = curSvcBase && !curSvcBase.esDoble ? curSvcBase.adicionales : null;
+  return Array.isArray(a) ? a.filter(g => g && Array.isArray(g.opciones) && g.opciones.length) : [];
+}
+function adicElegidos(){
+  const out = [];
+  adicDisponibles().forEach((g, gi) => (ADIC_SEL[gi] || []).forEach(oi => {
+    const o = g.opciones[oi];
+    if (o) out.push({ grupo: g.grupo || '', nombre: o.nombre, precio: Number(o.precio) || 0, min: Number(o.min) || 0 });
+  }));
+  return out;
+}
+function aplicarAdicionales(){
+  const b = curSvcBase;
+  const el = adicElegidos();
+  const sumP = el.reduce((t, a) => t + a.precio, 0);
+  const sumM = el.reduce((t, a) => t + a.min, 0);
+  curSvc = { ...b,
+    price: b.price > 0 ? Math.round((b.price + sumP) * 100) / 100 : b.price,
+    durMin: sumM > 0 ? (b.durMin || 60) + sumM : b.durMin,
+    dur: sumM > 0 ? (fmtDur(b.dur) ? fmtDur(b.dur) + ' + ' : '') + sumM + ' min' : b.dur,
+    _adicionales: el };
+}
+function toggleAdic(gi, oi){
+  const g = adicDisponibles()[gi];
+  if (!g) return;
+  const cur = ADIC_SEL[gi] || [];
+  if (g.multi) ADIC_SEL[gi] = cur.includes(oi) ? cur.filter(x => x !== oi) : [...cur, oi];
+  else ADIC_SEL[gi] = cur.includes(oi) ? [] : [oi];
+  aplicarAdicionales();
+  pintarAdicionales();
+}
+function pintarAdicionales(){
+  const w = document.getElementById('adic-wrap');
+  if (w) w.innerHTML = adicionalesHtml();
+}
+function adicionalesHtml(){
+  const grupos = adicDisponibles();
+  if (!grupos.length) return '';
+  const money = n => '$' + (Number(n) || 0).toFixed(2);
+  let html = '';
+  grupos.forEach((g, gi) => {
+    html += `<p class="incl-title">${escSuc(g.grupo || 'Adicionales')} <span class="adic-hint">${g.multi ? 'puedes elegir varios' : 'elige uno (opcional)'}</span></p><div class="adic-list">`;
+    g.opciones.forEach((o, oi) => {
+      const sel = (ADIC_SEL[gi] || []).includes(oi);
+      html += `<button type="button" class="adic-op${sel ? ' sel' : ''}" onclick="toggleAdic(${gi},${oi})">
+        <span class="adic-mark${g.multi ? ' chk' : ''}"></span>
+        <span class="adic-nom">${escSuc(o.nombre)}</span>
+        <span class="adic-min">${Number(o.min) > 0 ? '+' + Number(o.min) + ' min' : ''}</span>
+        <span class="adic-pre">${Number(o.precio) > 0 ? '+' + money(o.precio) : 'sin costo'}</span>
+      </button>`;
+    });
+    html += '</div>';
+  });
+  const el = adicElegidos();
+  if (el.length && curSvc) {
+    const sumM = el.reduce((t, a) => t + a.min, 0);
+    const base = curSvcBase.price > 0 ? money(curSvcBase.price) : (curSvcBase.precioTexto || 'A consultar');
+    const total = curSvc.price > 0 ? money(curSvc.price) : (curSvcBase.precioTexto || 'A consultar') + ' + ' + money(el.reduce((t, a) => t + a.precio, 0));
+    html += `<div class="adic-res">
+      <div class="adic-row"><span>${escSuc(curSvcBase.name)}</span><span>${base}</span></div>
+      ${el.map(a => `<div class="adic-row"><span>${escSuc(a.nombre)}</span><span>+${money(a.precio)}${a.min ? ' · +' + a.min + ' min' : ''}</span></div>`).join('')}
+      <div class="adic-row adic-tot"><span>Total</span><span>${total}${sumM ? ' · ' + (curSvc.durMin) + ' min' : ''}</span></div>
+    </div>`;
+  }
+  return html;
+}
+// Los adicionales elegidos quedan escritos en la nota de la cita (el nombre del servicio no cambia,
+// porque las comisiones y los reportes se agrupan por ese nombre)
+function notaConAdicionales(nota){
+  const el = (curSvc && curSvc._adicionales) || [];
+  if (!el.length) return nota;
+  const t = 'Adicionales: ' + el.map(a => a.nombre + ' (+$' + a.precio.toFixed(2) + (a.min ? ', +' + a.min + ' min' : '') + ')').join(' · ');
+  return nota ? t + ' | ' + nota : t;
+}
+
 function openDetail(id, esPromo){
   curSvc=SERVICES.find(s=>s.id===id);
   if(!curSvc)return;
@@ -1006,6 +1086,7 @@ function openDetail(id, esPromo){
   if(esPromo && PROMO_DATA && PROMO_DATA.precioPromo){
     curSvc={...curSvc, price:parseFloat(PROMO_DATA.precioPromo), precioTexto:null, _promo:true, _precioOriginal:curSvc.price};
   }
+  curSvcBase=curSvc; ADIC_SEL={}; aplicarAdicionales();
   const icon=SVC_ICONS[curSvc.id]||'ti-star';
   const precio=curSvc.precioTexto||(curSvc.price>0?'$'+curSvc.price.toFixed(2):'A consultar');
   // Cada ítem: punto alineado con la primera línea; lo que va antes del guion largo, en negrita.
@@ -1049,6 +1130,7 @@ function openDetail(id, esPromo){
     <p class="svc-desc">${curSvc.desc}</p>
     <p class="incl-title">Incluye</p>
     <div class="incl-grid${inclLargo?' incl-uno':''}">${incl}</div>
+    <div id="adic-wrap">${adicionalesHtml()}</div>
     ${extraBox}
     <button class="btn-main" onclick="openCal()">Agendar este servicio</button>
     <button class="btn-ghost" onclick="closeOv('ov-detail')">Volver</button>`;
@@ -1813,7 +1895,7 @@ async function finalizarCita(dayStr, ref, pagoVerificado){
   const precio=curSvc.price>0?curSvc.price:0;
   const esConsultar = curSvc.price<=0;
   const noFijo = precioNoFijo(curSvc);
-  const notaFinal = curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota;
+  const notaFinal = notaConAdicionales(curSvc._promo ? (nota ? nota+' [PROMO aplicada]' : 'PROMO aplicada') : nota);
   const citaId = 'cita-' + Date.now();
 
   const descuentoMonto = !esConsultar ? descuentoDeCupon(precio) : 0;
