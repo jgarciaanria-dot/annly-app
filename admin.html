@@ -5383,7 +5383,18 @@ async function olvideMiContrasena(){
     document.getElementById('login-ok-email').textContent = email;
     okEl.classList.add('show');
   } catch(e){
-    errEl.textContent = 'No se pudo enviar el correo. Verifica la dirección.';
+    console.error('[Annly Reset]', e);
+    const msg = String(e?.message || '');
+    const seg = msg.match(/(\d+)\s*seconds?/i);
+    if (e?.status === 429 || /rate limit|security purposes/i.test(msg)) {
+      errEl.textContent = seg
+        ? `Ya te enviamos un correo hace un momento. Espera ${seg[1]} segundos antes de pedir otro.`
+        : 'Ya te enviamos un correo hace un momento. Espera un minuto antes de pedir otro.';
+    } else if (e?.status === 400 || /invalid|email/i.test(msg)) {
+      errEl.textContent = 'No se pudo enviar el correo. Verifica la dirección.';
+    } else {
+      errEl.textContent = 'No se pudo enviar el correo. Inténtalo de nuevo en unos minutos.';
+    }
   }
 }
 
