@@ -3271,6 +3271,14 @@ img{max-width:100%;}
 }
 .modal::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important;}
 
+/* Aviso de correo de recuperación enviado (login) */
+.login-ok{display:none;gap:10px;align-items:flex-start;text-align:left;background:#ECFDF3;border:1px solid #A7E3BF;border-radius:12px;padding:12px 14px;margin:0 0 .9rem;color:#1F5E3A;animation:loginOkIn .25s ease}
+.login-ok.show{display:flex}
+.login-ok-ico{font-size:22px;line-height:1;color:#16A34A;flex-shrink:0;margin-top:1px}
+.login-ok-tit{font-size:13px;font-weight:700;margin-bottom:2px}
+.login-ok-txt{font-size:12px;line-height:1.45}
+.login-ok-txt b{word-break:break-all}
+@keyframes loginOkIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 </style>
 
 <style>
@@ -3847,6 +3855,13 @@ html,body{background:var(--annly-bg)!important;color:var(--annly-text);}
         <span class="login-forgot" onclick="olvideMiContrasena()">¿Olvidaste tu contraseña?</span>
       </div>
       <p id="login-error" style="color:#C2695A;font-size:12px;min-height:16px;margin-bottom:.5rem;"></p>
+      <div id="login-ok" class="login-ok" role="status" aria-live="polite">
+        <i class="ti ti-mail-check login-ok-ico"></i>
+        <div>
+          <div class="login-ok-tit">Revisa tu correo</div>
+          <div class="login-ok-txt">Te enviamos un enlace a <b id="login-ok-email"></b> para crear una nueva contraseña. Si no lo ves en unos minutos, revisa Spam o Promociones.</div>
+        </div>
+      </div>
       <button class="login-btn" onclick="hacerLogin()">Entrar <i class="ti ti-arrow-right"></i></button>
       <div class="login-divider">o continúa con</div>
       <div class="login-oauth">
@@ -5356,12 +5371,15 @@ function toggleLoginPass(){
 async function olvideMiContrasena(){
   const errEl = document.getElementById('login-error');
   const email = document.getElementById('login-email').value.trim();
+  const okEl = document.getElementById('login-ok');
   errEl.style.color = '#C2695A';
+  errEl.textContent = '';
+  okEl.classList.remove('show');
   if(!email){ errEl.textContent = 'Escribe tu correo arriba y vuelve a hacer clic aquí.'; return; }
   try {
     await window.AnnlyAuth.resetPassword(email);
-    errEl.style.color = '#3a7a3a';
-    errEl.textContent = 'Te enviamos un correo para restablecer tu contraseña.';
+    document.getElementById('login-ok-email').textContent = email;
+    okEl.classList.add('show');
   } catch(e){
     errEl.textContent = 'No se pudo enviar el correo. Verifica la dirección.';
   }
