@@ -1301,6 +1301,7 @@ const Sheets = {
     await window.AnnlyReady;
     // Se piden en el orden en que se crearon (así las categorías salen en orden de creación);
     // si esa columna no existiera, se piden sin orden.
+    // Orden que eligió el negocio (columna `orden`, por categoría) y, a igualdad, el de creación
     let {
       data,
       error
@@ -1308,7 +1309,18 @@ const Sheets = {
       .from('services')
       .select('*')
       .eq('business_id', BUSINESS_ID)
+      .order('orden', { ascending: true })
       .order('creado_en', { ascending: true });
+    if (error) {
+      ({
+        data,
+        error
+      } = await sbClient
+        .from('services')
+        .select('*')
+        .eq('business_id', BUSINESS_ID)
+        .order('creado_en', { ascending: true }));
+    }
     if (error) {
       ({
         data,
@@ -1369,7 +1381,10 @@ const Sheets = {
         s.es_doble || false,
 
       adicionales:
-        Array.isArray(s.adicionales) ? s.adicionales : []
+        Array.isArray(s.adicionales) ? s.adicionales : [],
+
+      orden:
+        Number(s.orden) || 0
 
     }));
   },
@@ -1400,11 +1415,11 @@ const Sheets = {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
           });
 
-    // Los adicionales van en la columna `adicionales` (supabase/sql/servicio_adicionales.sql).
+    // Los adicionales y el orden van en las columnas `adicionales` y `orden` (supabase/sql/servicio_adicionales.sql y servicios_orden.sql).
     // conAdic=false se usa solo para reintentar si la columna aún no existe en la base.
     const armarFila = (s, conAdic = true) => ({
 
-      ...(conAdic ? { adicionales: Array.isArray(s.adicionales) ? s.adicionales : [] } : {}),
+      ...(conAdic ? { adicionales: Array.isArray(s.adicionales) ? s.adicionales : [], orden: Number(s.orden) || 0 } : {}),
 
       business_id:
         BUSINESS_ID,

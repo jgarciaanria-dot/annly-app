@@ -5970,7 +5970,7 @@ function renderAdmin(){
           <button class="btn-ico" onclick="renombrarCategoria(${ci})" title="Editar nombre de la categoría"><i class="ti ti-pencil"></i></button>
         </div>
       </div>`;
-    svcs.forEach(sv=>{
+    svcs.forEach((sv,si)=>{
       const precio=sv.precioTexto||(sv.price>0?'$'+sv.price.toFixed(2):'A consultar');
       const esRosa=idxColor%2===1; idxColor++;
       const icoBg=esRosa?'var(--accent2-soft)':'var(--accent-soft)';
@@ -5992,6 +5992,8 @@ function renderAdmin(){
           <div class="svc-meta">${precio} · ${sv.dur} · ${escCat(cat)}</div>
         </div>
         <div class="svc-actions">
+          <button class="btn-ico" ${si===0?'disabled style="opacity:.35;cursor:default;"':''} onclick="moverServicio('${sv.id}',-1)" title="Subir dentro de ${escCat(cat)}"><i class="ti ti-arrow-up"></i></button>
+          <button class="btn-ico" ${si===svcs.length-1?'disabled style="opacity:.35;cursor:default;"':''} onclick="moverServicio('${sv.id}',1)" title="Bajar dentro de ${escCat(cat)}"><i class="ti ti-arrow-down"></i></button>
           <button class="btn-ico" onclick="openModal('${sv.id}')" title="Editar"><i class="ti ti-edit"></i></button>
           <button class="btn-ico del" onclick="eliminar('${sv.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
         </div>
@@ -6000,6 +6002,29 @@ function renderAdmin(){
     html+='</div>';
   });
   document.getElementById('seccionesServicios').innerHTML=html;
+}
+
+// Orden de los servicios: solo se mueve DENTRO de su categoría (el primero no sube y el último no baja),
+// así un servicio nunca pasa a otra categoría. Las flechas de la categoría mueven la categoría completa.
+function renumerarServiciosDeCat(cat){
+  SERVICES.filter(sv=>sv.cat===cat).forEach((sv,i)=>{ sv.orden=i; });
+}
+function siguienteOrdenEnCat(cat, exceptoId){
+  const ords=SERVICES.filter(sv=>sv.cat===cat && sv.id!==exceptoId).map(sv=>Number(sv.orden)||0);
+  return ords.length ? Math.max(...ords)+1 : 0;
+}
+function moverServicio(id, dir){
+  const sv=SERVICES.find(x=>x.id===id);
+  if(!sv) return;
+  const grupo=SERVICES.filter(x=>x.cat===sv.cat);
+  const k=grupo.findIndex(x=>x.id===id);
+  const vecino=grupo[k+dir];
+  if(!vecino) return; // en el borde de su categoría no hay a dónde ir
+  const a=SERVICES.indexOf(sv), b=SERVICES.indexOf(vecino);
+  [SERVICES[a], SERVICES[b]] = [SERVICES[b], SERVICES[a]];
+  renumerarServiciosDeCat(sv.cat);
+  saveServices();
+  renderAdmin();
 }
 
 function toggleActive(id,val){
@@ -6253,10 +6278,11 @@ function guardar(){
 
   if(editId){
     const idx=SERVICES.findIndex(s=>s.id===editId);
-    if(idx>-1) SERVICES[idx]={...SERVICES[idx],name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,adicionales,esEval,esDoble,requiereAbono,abonoMonto,abonoTipo,imagenUrl};
+    const ordenEdit=(idx>-1 && SERVICES[idx].cat===cat) ? SERVICES[idx].orden : siguienteOrdenEnCat(cat, editId);
+    if(idx>-1) SERVICES[idx]={...SERVICES[idx],orden:ordenEdit,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,desc,includes,adicionales,esEval,esDoble,requiereAbono,abonoMonto,abonoTipo,imagenUrl};
   } else {
     const newId=uuidNuevo();
-    SERVICES.push({id:newId,name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,esDoble,requiereAbono,abonoMonto,abonoTipo,desc,includes,adicionales,imagenUrl});
+    SERVICES.push({id:newId,orden:siguienteOrdenEnCat(cat),name:nombre,cat,price,precioTexto:precioTexto||null,dur,durMin,active:true,esEval,esDoble,requiereAbono,abonoMonto,abonoTipo,desc,includes,adicionales,imagenUrl});
   }
   // Sucursales elegidas (solo si hay más de una; con una sola, la base lo asigna sola)
   const idServicio = editId || SERVICES[SERVICES.length - 1].id;
