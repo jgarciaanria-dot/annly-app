@@ -2365,6 +2365,12 @@ function abrirServicioPromo(){
   const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');
   const objetivo=norm(PROMO_DATA.servicio);
   let svc=PROMO_DATA.servicioId ? SERVICES.find(s=>String(s.id)===String(PROMO_DATA.servicioId)) : null;
+  if(!svc && PROMO_DATA.servicioId){
+    // El servicio de la promo existe pero no está disponible en la agenda (p. ej. sin profesional asignado): no abrir otro por parecido de nombre
+    console.warn('[Promo] servicio no disponible en la agenda:', PROMO_DATA.servicio);
+    alert('Esta promo no está disponible por ahora. Escríbenos por WhatsApp y te ayudamos a agendarla.');
+    return;
+  }
   if(!svc) svc=SERVICES.find(s=>norm(s.name)===objetivo);
   if(!svc) svc=SERVICES.find(s=>norm(s.name).includes(objetivo)||objetivo.includes(norm(s.name)));
   if(svc){
