@@ -7743,6 +7743,7 @@ async function guardarPromo(){
     const svc=SERVICES.find(x=>x.name===nombre);
     return {
       servicio:nombre,
+      servicioId: svc ? svc.id : null,
       precioNormal: svc&&svc.price>0 ? svc.price : null,
       precioPromo: parseFloat(document.getElementById('promo-op'+n+'-precio').value)||null
     };

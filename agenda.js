@@ -2348,24 +2348,29 @@ function mostrarOpcionesPromo(ops){
       <span style="font-size:20px;font-weight:700;color:#D95F2B;white-space:nowrap;">${o.precioPromo?'$'+parseFloat(o.precioPromo).toFixed(0):''}</span>
     </button>`).join('');
   lista.querySelectorAll('button').forEach(b=>{
-    b.onclick=()=>{ aplicarOpcionPromo(ops[+b.dataset.i]); cerrarPromo(); abrirServicioPromo(); };
+    b.onclick=()=>{
+      try{ aplicarOpcionPromo(ops[+b.dataset.i]); cerrarPromo(); abrirServicioPromo(); }
+      catch(e){ console.error('[Promo]',e); alert('No se pudo abrir esta promo. Intenta de nuevo o escríbenos por WhatsApp.'); }
+    };
   });
   document.getElementById('promo-opc-ov').style.display='flex';
 }
 
 function aplicarOpcionPromo(o){
-  PROMO_DATA={...PROMO_DATA, servicio:o.servicio, precioNormal:o.precioNormal||null, precioPromo:o.precioPromo||null};
+  PROMO_DATA={...PROMO_DATA, servicio:o.servicio, servicioId:o.servicioId||null, precioNormal:o.precioNormal||null, precioPromo:o.precioPromo||null};
 }
 
 function abrirServicioPromo(){
   if(!PROMO_DATA || !PROMO_DATA.servicio){ return; }
   const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');
   const objetivo=norm(PROMO_DATA.servicio);
-  let svc=SERVICES.find(s=>norm(s.name)===objetivo);
+  let svc=PROMO_DATA.servicioId ? SERVICES.find(s=>String(s.id)===String(PROMO_DATA.servicioId)) : null;
+  if(!svc) svc=SERVICES.find(s=>norm(s.name)===objetivo);
   if(!svc) svc=SERVICES.find(s=>norm(s.name).includes(objetivo)||objetivo.includes(norm(s.name)));
   if(svc){
     openDetail(svc.id, true);
   } else {
+    console.warn('[Promo] servicio no encontrado:', PROMO_DATA.servicio);
     document.querySelector('.servicios-wrap, #servicios, .svc-grid')?.scrollIntoView({behavior:'smooth'});
   }
 }
