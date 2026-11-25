@@ -9,6 +9,10 @@
       "destination": "/pago.html"
     },
     {
+      "source": "/agenda/:codigo",
+      "destination": "/mi-agenda.html"
+    },
+    {
       "source": "/:slug([a-z0-9-]+)",
       "destination": "/tienda.html"
     }

@@ -10004,18 +10004,24 @@ function copiarLinkCelular(){
 // ---------- Enlace privado de la agenda de cada profesional (solo lectura, sin contraseña) ----------
 // El profesional abre el enlace en su celular y ve sus citas próximas. Quien tenga el enlace la ve: se puede generar uno nuevo (el anterior deja de funcionar) o desactivar.
 function tokenAgendaNuevo(){ const b = new Uint8Array(24); crypto.getRandomValues(b); return Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); }
-function urlAgendaProfesional(token){ return window.location.origin + '/mi-agenda.html?t=' + token; }
+function codigoAgendaNuevo(nombre){
+  const slug = String(nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20).replace(/-+$/g, '') || 'agenda';
+  const b = new Uint8Array(6); crypto.getRandomValues(b);
+  return slug + '-' + Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+}
+// Enlace corto (annly.app/agenda/paola-3fa9c01b27de); si el enlace es antiguo y no tiene código, se usa el largo de siempre
+function urlAgendaProfesional(token, codigo){ return codigo ? window.location.origin + '/agenda/' + codigo : window.location.origin + '/mi-agenda.html?t=' + token; }
 async function abrirEnlaceAgenda(empId){
   const e = EQUIPO.find(x => String(x.id) === String(empId)); if (!e) return;
-  let token = null, falla = '';
+  let token = null, codigo = null, falla = '';
   try {
-    const { data, error } = await sbClient.from('agenda_profesional_enlaces').select('token').eq('employee_id', String(empId)).eq('business_id', BUSINESS_ID).maybeSingle();
+    const { data, error } = await sbClient.from('agenda_profesional_enlaces').select('token, codigo').eq('employee_id', String(empId)).eq('business_id', BUSINESS_ID).maybeSingle();
     if (error) throw error;
-    token = data && data.token || null;
+    token = data && data.token || null; codigo = data && data.codigo || null;
   } catch (err) { console.error('enlace agenda', err); falla = 'No pude consultar el enlace. Si es la primera vez, falta ejecutar el SQL agenda_profesional.sql en Supabase.'; }
-  pintarEnlaceAgenda(e, token, falla);
+  pintarEnlaceAgenda(e, token, falla, codigo);
 }
-function pintarEnlaceAgenda(e, token, falla){
+function pintarEnlaceAgenda(e, token, falla, codigo){
   cerrarEnlaceAgenda();
   const ov = document.createElement('div'); ov.className = 'pm-ov'; ov.id = 'ea-ov';
   ov.addEventListener('click', ev => { if (ev.target === ov) cerrarEnlaceAgenda(); });
@@ -10025,7 +10031,7 @@ function pintarEnlaceAgenda(e, token, falla){
   else if (!token) cuerpo = `<p class="ea-nota" style="margin-top:0;">Crea un enlace privado para que <b>${nom}</b> vea su agenda desde su celular, sin contraseña. Solo ve sus citas (cliente, servicio y hora), no ve precios ni finanzas.</p>
     <div class="ea-btns"><button type="button" class="pri" onclick="guardarEnlaceAgenda('${e.id}', true)">Crear enlace</button></div><p class="ea-msg" id="ea-msg"></p>`;
   else {
-    const url = urlAgendaProfesional(token);
+    const url = urlAgendaProfesional(token, codigo);
     const tel = String(e.telefono || '').replace(/\D/g, '');
     const texto = encodeURIComponent('Hola ' + e.nombre + ', este es el enlace para ver tu agenda en el celular: ' + url);
     const wa = 'https://wa.me/' + (tel ? (tel.length === 8 ? '507' + tel : tel) : '') + '?text=' + texto;
@@ -10049,10 +10055,10 @@ function copiarEnlaceAgenda(){
 async function guardarEnlaceAgenda(empId, esNuevo){
   const e = EQUIPO.find(x => String(x.id) === String(empId)); if (!e) return;
   if (!esNuevo && !confirm('El enlace anterior de ' + e.nombre + ' dejará de funcionar. ¿Generar uno nuevo?')) return;
-  const token = tokenAgendaNuevo();
-  const { error } = await sbClient.from('agenda_profesional_enlaces').upsert({ employee_id: String(empId), business_id: BUSINESS_ID, token }, { onConflict: 'employee_id' });
+  const token = tokenAgendaNuevo(), codigo = codigoAgendaNuevo(e.nombre);
+  const { error } = await sbClient.from('agenda_profesional_enlaces').upsert({ employee_id: String(empId), business_id: BUSINESS_ID, token, codigo }, { onConflict: 'employee_id' });
   if (error) { console.error('enlace agenda', error); const m = document.getElementById('ea-msg'); if (m) m.textContent = 'No pude guardar el enlace: ' + ((error && (error.message || error.code)) || 'inténtalo de nuevo') + '.'; return; }
-  pintarEnlaceAgenda(e, token, '');
+  pintarEnlaceAgenda(e, token, '', codigo);
 }
 async function quitarEnlaceAgenda(empId){
   const e = EQUIPO.find(x => String(x.id) === String(empId)); if (!e) return;

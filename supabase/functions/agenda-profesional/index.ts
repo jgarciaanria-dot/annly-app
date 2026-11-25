@@ -1,6 +1,7 @@
 // =========================================================
 // Edge Function: agenda-profesional
-// Agenda de solo lectura de un profesional, para su celular. La página mi-agenda.html manda { t: token }.
+// Agenda de solo lectura de un profesional, para su celular. La página mi-agenda.html manda { c: codigo } (enlace corto
+// annly.app/agenda/paola-3fa9c01b27de) o { t: token } (enlace largo de siempre; sigue funcionando).
 // El token lo crea el dueño en Equipo (tabla agenda_profesional_enlaces). Devuelve únicamente las citas próximas
 // de ESE profesional (nombre, teléfono, servicio, fecha, hora, estado); no devuelve precios ni finanzas ni otros profesionales.
 // "Verify JWT" APAGADO (el visitante no tiene sesión; el token hace de llave).
@@ -43,14 +44,17 @@ Deno.serve(async (req) => {
   try {
     const cuerpo = await req.json().catch(() => ({}));
     const token = typeof cuerpo?.t === "string" ? cuerpo.t.trim().toLowerCase() : "";
-    if (!/^[a-f0-9]{48}$/.test(token)) return resp({ ok: false, error: "enlace_invalido" }, 404);
+    const codigo = typeof cuerpo?.c === "string" ? cuerpo.c.trim().toLowerCase() : "";
+    const tokenOk = /^[a-f0-9]{48}$/.test(token), codigoOk = /^[a-z0-9-]{1,40}-[a-f0-9]{12}$/.test(codigo);
+    if (!tokenOk && !codigoOk) return resp({ ok: false, error: "enlace_invalido" }, 404);
 
-    const { data: enlace } = await sb.from("agenda_profesional_enlaces").select("employee_id, business_id").eq("token", token).maybeSingle();
+    const { data: enlace } = await sb.from("agenda_profesional_enlaces").select("employee_id, business_id")
+      .eq(tokenOk ? "token" : "codigo", tokenOk ? token : codigo).maybeSingle();
     if (!enlace) return resp({ ok: false, error: "enlace_invalido" }, 404);
 
     const [{ data: emp }, { data: neg }] = await Promise.all([
       sb.from("employees").select("nombre").eq("id", enlace.employee_id).eq("business_id", enlace.business_id).maybeSingle(),
-      sb.from("businesses").select("nombre").eq("id", enlace.business_id).maybeSingle(),
+      sb.from("businesses").select("nombre, logo_url, color_primario, color_secundario, fuente").eq("id", enlace.business_id).maybeSingle(),
     ]);
     if (!emp) return resp({ ok: false, error: "enlace_invalido" }, 404);
 
@@ -74,6 +78,8 @@ Deno.serve(async (req) => {
       ok: true,
       profesional: emp.nombre,
       negocio: neg?.nombre || "",
+      // Marca del negocio para que la página se vea como la suya (solo datos públicos de la agenda)
+      marca: { logo: neg?.logo_url || "", color: neg?.color_primario || "", color2: neg?.color_secundario || "", fuente: neg?.fuente || "" },
       hoy,
       citas: (citas || []).filter((c: any) => !OCULTAS.includes(String(c.estado || "").toLowerCase())).map((c: any) => ({
         id: c.id, fecha: c.fecha, hora: String(c.hora || "").slice(0, 5), duracion: c.duracion_min || null,

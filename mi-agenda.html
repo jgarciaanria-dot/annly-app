@@ -8,20 +8,24 @@
 <meta name="theme-color" content="#7c3aed">
 <title>Mi agenda · Annly</title>
 <style>
-:root{--bg:#faf7fc;--card:#fff;--ink:#2b1b3d;--soft:#77738a;--line:#e8def3;--purple:#7c3aed;--amber:#b45309;--amberbg:#fff4e0;--green:#15803d;--greenbg:#e7f8ee}
+:root{--bg:#faf7fc;--card:#fff;--ink:#2b1b3d;--soft:#77738a;--line:#e8def3;--purple:#7c3aed;--onp:#fff;--amber:#b45309;--amberbg:#fff4e0;--green:#15803d;--greenbg:#e7f8ee}
 @media(prefers-color-scheme:dark){:root{--bg:#171022;--card:#221733;--ink:#f3ecfb;--soft:#a79bb8;--line:#3a2b52;--amberbg:#3a2a10;--amber:#f5c26b;--greenbg:#12301f;--green:#6fdc98}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
 .wrap{max-width:560px;margin:0 auto}
 header{padding:calc(18px + env(safe-area-inset-top)) 0 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 h1{font-size:22px;margin:0}
+.logo{display:block;max-height:46px;max-width:150px;object-fit:contain;margin:0 0 8px}
+body.elegante h1,body.elegante .nav .ctr,body.elegante .hora,body.elegante .nom,body.elegante .srv{font-family:'Cormorant Garamond',Georgia,serif}
+body.elegante{font-variant-numeric:lining-nums}
+body.elegante h1{font-size:25px}
 .neg{font-size:13px;color:var(--soft);margin-top:2px}
 button.act{border:1px solid var(--line);background:var(--card);color:var(--purple);border-radius:999px;padding:9px 14px;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;white-space:nowrap}
 button.act:disabled{opacity:.6}
 .barra{display:flex;align-items:center;gap:8px;margin:4px 0 6px}
 .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
 .seg button{border:0;background:none;color:var(--soft);font-family:inherit;font-weight:700;font-size:14px;padding:7px 16px;border-radius:999px;cursor:pointer}
-.seg button.on{background:var(--purple);color:#fff}
+.seg button.on{background:var(--purple);color:var(--onp)}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 4px}
 .nav button{border:1px solid var(--line);background:var(--card);color:var(--purple);border-radius:50%;width:42px;height:42px;font-size:20px;line-height:1;cursor:pointer;font-family:inherit}
 .nav button:disabled{opacity:.35}
@@ -36,7 +40,8 @@ button.act:disabled{opacity:.6}
 .hora{min-width:64px;font-weight:800;font-size:17px;line-height:1.15}
 .hora small{display:block;font-weight:500;font-size:12px;color:var(--soft)}
 .info{flex:1;min-width:0}
-.srv{font-weight:700}
+.nom{font-weight:800;font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.srv{font-weight:600;color:var(--soft);font-size:14.5px;margin-top:1px}
 .cli{color:var(--soft);font-size:14px;margin-top:2px;overflow-wrap:anywhere}
 .cli a{color:var(--purple);text-decoration:none;font-weight:600}
 .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-top:6px;margin-right:6px}
@@ -46,26 +51,44 @@ button.act:disabled{opacity:.6}
 .vacio,.error{text-align:center;color:var(--soft);padding:36px 12px}
 .error h2{color:var(--ink);font-size:18px;margin:0 0 6px}
 .mas{display:block;margin:14px auto 0}
+.mes{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0 4px}
+.mes .h{text-align:center;font-size:11px;font-weight:700;color:var(--soft);padding:2px 0}
+.mes button.d{aspect-ratio:1/1.1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;padding:0}
+.mes .vac{visibility:hidden}
+.mes button.d:disabled{opacity:.35;cursor:default}
+.mes button.d.hoy{border-color:var(--purple);box-shadow:inset 0 0 0 1px var(--purple)}
+.mes button.d.sel{background:var(--purple);border-color:var(--purple);color:var(--onp)}
+.mes .n{font-size:10px;font-weight:800;line-height:1.2;min-width:16px;border-radius:999px;padding:0 5px;background:var(--greenbg);color:var(--green)}
+.mes .n.pc{background:var(--amberbg);color:var(--amber)}
+.mes .n.v{visibility:hidden}
+.mes button.d.sel .n{background:rgba(255,255,255,.9);color:var(--purple)}
+.inst{text-align:center;margin:14px 0 0}
+.inst .act{padding:10px 18px}
+.inst-ios{font-size:13px;color:var(--soft);margin-top:6px}
 .pie{text-align:center;font-size:12px;color:var(--soft);margin-top:22px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div><h1 id="titulo">Mi agenda</h1><div class="neg" id="neg"></div></div>
+    <div><img class="logo" id="logo" alt="" hidden><h1 id="titulo">Mi agenda</h1><div class="neg" id="neg"></div></div>
     <button class="act" id="refrescar" type="button" hidden>Actualizar</button>
   </header>
-  <div class="barra"><div class="seg" role="tablist"><button type="button" id="vDia" class="on">Día</button><button type="button" id="vSem">Semana</button></div></div>
+  <div class="barra"><div class="seg" role="tablist"><button type="button" id="vDia" class="on">Día</button><button type="button" id="vSem">Semana</button><button type="button" id="vMes">Calendario</button></div></div>
   <div id="nav"></div>
   <main id="lista"><div class="vacio">Cargando tu agenda…</div></main>
   <div class="pie" id="pie" hidden></div>
+  <div class="inst" id="instalar" hidden><button class="act" id="instalarBtn" type="button" hidden>Instalar en tu celular</button><div class="inst-ios" id="instalarIos" hidden>En iPhone: toca <b>Compartir</b> y luego <b>Agregar a inicio</b> para tenerla como app.</div></div>
 </div>
+<script src="/instalable.js?v=3"></script>
 <script>
 (function () {
   var URL_FN = 'https://hokrimtsyseuqfjjvmxu.supabase.co/functions/v1/agenda-profesional';
   var lista = document.getElementById('lista'), btn = document.getElementById('refrescar'), pie = document.getElementById('pie');
   var token = (new URLSearchParams(location.search).get('t') || '').trim();
-  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  // Enlace corto: /agenda/paola-3fa9c01b27de (el largo ?t=... sigue funcionando)
+  var mCod = location.pathname.match(/\/agenda\/([a-z0-9-]{1,60})\/?$/i), codigo = mCod ? mCod[1].toLowerCase() : '';
+  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'], MESES_L = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   var datos = null;
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -84,18 +107,52 @@ button.act:disabled{opacity:.6}
   }
   function solo(tel) { return String(tel || '').replace(/\D/g, ''); }
 
+
+  // ---- Marca del negocio: colores, tipografía y logo, para que la página se vea como la suya ----
+  function hexRgb(h) { var m = /^#?([0-9a-f]{6})$/i.exec(String(h || '').trim()); if (!m) return null; var n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+  function lum(c) { var a = c.map(function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * a[0] + .7152 * a[1] + .0722 * a[2]; }
+  function mezcla(a, b, k) { return a.map(function (v, i) { return Math.round(v * (1 - k) + b[i] * k); }); }
+  function css(c) { return 'rgb(' + c.join(',') + ')'; }
+  function aplicarMarca(m) {
+    if (!m) return;
+    var r0 = document.documentElement.style; ['--purple', '--onp', '--bg', '--line', '--ink', '--soft'].forEach(function (k) { r0.removeProperty(k); }); document.body.classList.remove('elegante');
+    var r = document.documentElement.style, c1 = hexRgb(m.color), c2 = hexRgb(m.color2), base = c1 || c2;
+    if (base) {
+      var oscuro = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches, acc = c2 || c1, i = 0;
+      if (!oscuro) {
+        while (lum(acc) > .2 && i++ < 16) acc = mezcla(acc, [0, 0, 0], .12);                 // acento oscuro: se lee con texto blanco
+        r.setProperty('--purple', css(acc)); r.setProperty('--onp', '#fff');
+        r.setProperty('--bg', css(mezcla(base, [255, 255, 255], .94))); r.setProperty('--line', css(mezcla(base, [255, 255, 255], .78)));
+        r.setProperty('--ink', css(mezcla(c2 || base, [0, 0, 0], .55))); r.setProperty('--soft', css(mezcla(c2 || base, [120, 118, 125], .6)));
+        var tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.setAttribute('content', css(mezcla(base, [255, 255, 255], .94)));
+      } else {
+        acc = c1 || c2; while (lum(acc) < .25 && i++ < 16) acc = mezcla(acc, [255, 255, 255], .12);
+        r.setProperty('--purple', css(acc)); r.setProperty('--onp', '#1b1216');
+      }
+    }
+    if (/garamond/i.test(m.fuente || '')) {
+      if (!document.getElementById('fuente-elegante')) { var l = document.createElement('link'); l.id = 'fuente-elegante'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap'; document.head.appendChild(l); }
+      document.body.classList.add('elegante');
+    }
+    // Barra de estado del celular: del color de fondo de la página (también cuando está instalada como app)
+    var tc2 = document.querySelector('meta[name=theme-color]'), bgc = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    if (tc2 && bgc) tc2.setAttribute('content', bgc);
+    var lg = document.getElementById('logo');
+    if (lg && /^https:\/\//i.test(m.logo || '')) { lg.src = m.logo; lg.hidden = false; lg.onerror = function () { lg.hidden = true; }; }
+  }
+
   function error(t, d) { lista.textContent = ''; document.getElementById('nav').textContent = ''; document.querySelector('.barra').hidden = true; var b = el('div', 'error'); b.appendChild(el('h2', null, t)); b.appendChild(el('div', null, d)); lista.appendChild(b); btn.hidden = true; }
 
   var modo = 'dia', ref = null, MIN = null, MAX = null;
-  try { if (localStorage.getItem('annlyAgendaModo') === 'semana') modo = 'semana'; } catch (e) {}
+  try { var gm = localStorage.getItem('annlyAgendaModo'); if (gm === 'semana' || gm === 'mes') modo = gm; } catch (e) {}
   var NOM3 = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   function lunesDe(iso) { var d = parteFecha(iso), k = (d.getDay() + 6) % 7; return suma(iso, -k); }
   function tarjeta(c) {
     var card = el('div', 'cita'), hr = el('div', 'hora', hora12(c.hora)), fin = horaFin(c.hora, c.duracion);
     if (fin) hr.appendChild(el('small', null, 'hasta ' + fin));
-    var inf = el('div', 'info'); inf.appendChild(el('div', 'srv', c.servicio || 'Cita'));
-    var cl = el('div', 'cli', c.cliente || 'Cliente'), t = solo(c.telefono);
-    if (t) { cl.appendChild(document.createTextNode(' · ')); var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, ' WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
+    var inf = el('div', 'info'); inf.appendChild(el('div', 'nom', c.cliente || 'Cliente')); inf.appendChild(el('div', 'srv', c.servicio || 'Cita'));
+    var cl = el('div', 'cli'), t = solo(c.telefono);
+    if (t) { var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, ' WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
     inf.appendChild(cl);
     if (c.estado === 'por_confirmar' || c.estado === 'pendiente') inf.appendChild(el('span', 'tag pc', 'Por confirmar'));
     else inf.appendChild(el('span', 'tag ok', 'Confirmada'));
@@ -117,6 +174,7 @@ button.act:disabled{opacity:.6}
     document.title = 'Agenda de ' + d.profesional + ' · Annly';
     document.getElementById('vDia').className = modo === 'dia' ? 'on' : '';
     document.getElementById('vSem').className = modo === 'semana' ? 'on' : '';
+    document.getElementById('vMes').className = modo === 'mes' ? 'on' : '';
     MIN = suma(d.hoy, -7); MAX = suma(d.hoy, 60);
     if (!ref) ref = d.hoy;
     var por = {}; d.citas.forEach(function (c) { (por[c.fecha] = por[c.fecha] || []).push(c); });
@@ -132,6 +190,37 @@ button.act:disabled{opacity:.6}
       if (irHoy) { var hb = el('div'); hb.style.textAlign = 'center'; var hbtn = el('button', 'hoy-btn', 'Ir a hoy'); hbtn.type = 'button'; hbtn.addEventListener('click', function () { ref = d.hoy; pintar(); }); hb.appendChild(hbtn); nav.appendChild(hb); }
       if (!cant) lista.appendChild(el('div', 'vacio', ref < d.hoy ? 'No hubo citas este día.' : 'No tienes citas este día.'));
       (por[ref] || []).forEach(function (c) { lista.appendChild(tarjeta(c)); });
+    } else if (modo === 'mes') {
+      var pr = ref.slice(0, 8) + '01', dm = parteFecha(pr), primerMes = MIN.slice(0, 8) + '01', ultMes = MAX.slice(0, 8) + '01';
+      function irMes(delta) {
+        var x = new Date(dm.getFullYear(), dm.getMonth() + delta, 1), f = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-01';
+        ref = d.hoy.slice(0, 7) === f.slice(0, 7) ? d.hoy : (f < MIN ? MIN : (f > MAX ? MAX : f)); pintar();
+      }
+      ctr.appendChild(document.createTextNode(MESES_L[dm.getMonth()].charAt(0).toUpperCase() + MESES_L[dm.getMonth()].slice(1) + ' ' + dm.getFullYear()));
+      n.appendChild(boton('‹', function () { irMes(-1); }, pr <= primerMes, 'Mes anterior')); n.appendChild(ctr);
+      n.appendChild(boton('›', function () { irMes(1); }, pr >= ultMes, 'Mes siguiente'));
+      nav.appendChild(n);
+      if (ref.slice(0, 7) !== d.hoy.slice(0, 7) || ref !== d.hoy) { var hb3 = el('div'); hb3.style.textAlign = 'center'; var hbtn3 = el('button', 'hoy-btn', 'Ir a hoy'); hbtn3.type = 'button'; hbtn3.addEventListener('click', function () { ref = d.hoy; pintar(); }); hb3.appendChild(hbtn3); nav.appendChild(hb3); }
+      var cuad = el('div', 'mes'), k;
+      NOM3.forEach(function (t) { cuad.appendChild(el('div', 'h', t)); });
+      for (k = 0; k < (dm.getDay() + 6) % 7; k++) cuad.appendChild(el('div', 'vac'));
+      var diasMes = new Date(dm.getFullYear(), dm.getMonth() + 1, 0).getDate();
+      for (k = 1; k <= diasMes; k++) {
+        (function (dia) {
+          var f = pr.slice(0, 8) + String(dia).padStart(2, '0'), ls = por[f] || [], b = el('button', 'd' + (f === d.hoy ? ' hoy' : '') + (f === ref ? ' sel' : ''));
+          b.type = 'button'; b.appendChild(document.createTextNode(String(dia)));
+          var pc = ls.some(function (c) { return c.estado === 'por_confirmar' || c.estado === 'pendiente'; });
+          b.appendChild(el('span', 'n' + (pc ? ' pc' : '') + (ls.length ? '' : ' v'), String(ls.length || 0)));
+          if (f < MIN || f > MAX) b.disabled = true; else b.addEventListener('click', function () { ref = f; pintar(); });
+          b.setAttribute('aria-label', dia + ' de ' + MESES_L[dm.getMonth()] + ': ' + (ls.length ? ls.length + (ls.length === 1 ? ' cita' : ' citas') : 'sin citas'));
+          cuad.appendChild(b);
+        })(k);
+      }
+      lista.appendChild(cuad);
+      var sel = por[ref] || [];
+      lista.appendChild(titDia(ref, sel.length, d.hoy));
+      if (!sel.length) lista.appendChild(el('div', 'libre', ref < d.hoy ? 'No hubo citas este día.' : 'Libre'));
+      sel.forEach(function (c) { lista.appendChild(tarjeta(c)); });
     } else {
       var lun = lunesDe(ref), dom = suma(lun, 6), total = 0, i;
       for (i = 0; i < 7; i++) total += (por[suma(lun, i)] || []).length;
@@ -153,14 +242,22 @@ button.act:disabled{opacity:.6}
   function cambiar(m) { modo = m; try { localStorage.setItem('annlyAgendaModo', m); } catch (e) {} if (datos) pintar(); }
   document.getElementById('vDia').addEventListener('click', function () { cambiar('dia'); });
   document.getElementById('vSem').addEventListener('click', function () { cambiar('semana'); });
+  document.getElementById('vMes').addEventListener('click', function () { cambiar('mes'); });
 
+  var instalada = false;
+  function hacerInstalable(d) {
+    if (instalada || !window.annlyInstalable) return; instalada = true;
+    var cod = /^[a-z0-9-]{1,40}-[a-f0-9]{12}$/.test(codigo);
+    window.annlyInstalable({ nombre: 'Agenda de ' + d.profesional + (d.negocio ? ' · ' + d.negocio : ''), corto: String(d.profesional || 'Mi agenda').split(' ')[0],
+      startUrl: location.origin + (cod ? '/agenda/' + codigo : '/mi-agenda.html' + location.search), scope: location.origin + (cod ? '/agenda/' + codigo : '/mi-agenda.html'), logo: d.marca && d.marca.logo });
+  }
   function cargar() {
-    if (!/^[a-f0-9]{48}$/i.test(token)) { error('Enlace no válido', 'Pídele a quien administra el negocio que te envíe de nuevo tu enlace.'); return Promise.resolve(); }
+    if (!/^[a-f0-9]{48}$/i.test(token) && !/^[a-z0-9-]{1,40}-[a-f0-9]{12}$/.test(codigo)) { error('Enlace no válido', 'Pídele a quien administra el negocio que te envíe de nuevo tu enlace.'); return Promise.resolve(); }
     btn.disabled = true;
-    return fetch(URL_FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token }) })
+    return fetch(URL_FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(/^[a-f0-9]{48}$/i.test(token) ? { t: token } : { c: codigo }) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { s: r.status, j: j }; }); })
       .then(function (x) {
-        if (x.j && x.j.ok) { datos = x.j; btn.hidden = false; pintar(); pie.hidden = false; pie.textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-PA', { hour: 'numeric', minute: '2-digit' }) + ' · Solo lectura'; }
+        if (x.j && x.j.ok) { datos = x.j; btn.hidden = false; aplicarMarca(x.j.marca); pintar(); hacerInstalable(x.j); pie.hidden = false; pie.textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-PA', { hour: 'numeric', minute: '2-digit' }) + ' · Solo lectura'; }
         else if (x.s === 404) error('Enlace no disponible', 'Este enlace ya no funciona. Pídele a quien administra el negocio uno nuevo.');
         else if (!datos) error('No pude cargar tu agenda', 'Revisa tu conexión y toca Actualizar.');
       })
