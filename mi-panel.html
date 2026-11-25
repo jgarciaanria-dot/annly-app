@@ -66,6 +66,8 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
 .mes .nn.pc{background:var(--amberbg);color:var(--amber)}
 .mes .nn.v{visibility:hidden}
 .mes button.d.sel .nn{background:rgba(255,255,255,.9);color:var(--purple)}
+.salir-wrap{text-align:center;margin:18px 0 6px}
+.salir{color:var(--soft);padding:10px 20px}
 .nota{font-size:12px;color:var(--soft);margin:6px 2px 0}
 .vacio,.error{text-align:center;color:var(--soft);padding:34px 12px}
 .error h2{color:var(--ink);font-size:18px;margin:0 0 6px}
@@ -96,6 +98,7 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
   </div>
   <main id="lista"><div class="vacio">Cargando tus citas…</div></main>
   <div class="pie" id="pie" hidden></div>
+  <div class="salir-wrap"><button class="act salir" id="salir" type="button" hidden>Cerrar sesión</button></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script src="sheets.js?v=71"></script>
@@ -362,7 +365,7 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
         ids.forEach(function (id) { var o = el('option', null, nombres[id]); o.value = id; sel.appendChild(o); }); sel.value = filtroEmp; sel.hidden = false;
       } else { sel.hidden = true; filtroEmp = ''; }
       if (!cargado && !silencioso) { var hayPc = items.some(function (it) { return it.c.estado === 'por_confirmar'; }); if (hayPc) modo = 'pc'; }
-      cargado = true; barra.hidden = false; btnRef.hidden = false; pintar();
+      cargado = true; barra.hidden = false; btnRef.hidden = false; document.getElementById('salir').hidden = false; pintar();
       var pie = document.getElementById('pie'); pie.hidden = false; pie.textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-PA', { hour: 'numeric', minute: '2-digit' });
       if (window.ANNLY_SUSPENDIDA) pie.textContent += ' · Cuenta suspendida: solo lectura';
     } catch (e) {
@@ -372,6 +375,10 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
     }
     btnRef.disabled = false;
   }
+  document.getElementById('salir').addEventListener('click', function () {
+    this.disabled = true; this.textContent = 'Saliendo…';
+    Promise.resolve(window.AnnlyAuth.logout()).catch(function () { location.reload(); });
+  });
   btnRef.addEventListener('click', function () { cargar(true); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && cargado && !document.querySelector('.ov')) cargar(true); });
   setInterval(function () { if (!document.hidden && cargado && !ocupado && !document.querySelector('.ov')) cargar(true); }, 90000);
