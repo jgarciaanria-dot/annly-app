@@ -109,6 +109,7 @@ button.act:disabled{opacity:.6}
   function css(c) { return 'rgb(' + c.join(',') + ')'; }
   function aplicarMarca(m) {
     if (!m) return;
+    var r0 = document.documentElement.style; ['--purple', '--onp', '--bg', '--line', '--ink', '--soft'].forEach(function (k) { r0.removeProperty(k); }); document.body.classList.remove('elegante');
     var r = document.documentElement.style, c1 = hexRgb(m.color), c2 = hexRgb(m.color2), base = c1 || c2;
     if (base) {
       var oscuro = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches, acc = c2 || c1, i = 0;
