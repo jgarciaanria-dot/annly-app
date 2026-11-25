@@ -61,6 +61,9 @@ button.act:disabled{opacity:.6}
 .mes .n.pc{background:var(--amberbg);color:var(--amber)}
 .mes .n.v{visibility:hidden}
 .mes button.d.sel .n{background:rgba(255,255,255,.9);color:var(--purple)}
+.inst{text-align:center;margin:14px 0 0}
+.inst .act{padding:10px 18px}
+.inst-ios{font-size:13px;color:var(--soft);margin-top:6px}
 .pie{text-align:center;font-size:12px;color:var(--soft);margin-top:22px}
 </style>
 </head>
@@ -74,7 +77,9 @@ button.act:disabled{opacity:.6}
   <div id="nav"></div>
   <main id="lista"><div class="vacio">Cargando tu agenda…</div></main>
   <div class="pie" id="pie" hidden></div>
+  <div class="inst" id="instalar" hidden><button class="act" id="instalarBtn" type="button" hidden>Instalar en tu celular</button><div class="inst-ios" id="instalarIos" hidden>En iPhone: toca <b>Compartir</b> y luego <b>Agregar a inicio</b> para tenerla como app.</div></div>
 </div>
+<script src="/instalable.js?v=1"></script>
 <script>
 (function () {
   var URL_FN = 'https://hokrimtsyseuqfjjvmxu.supabase.co/functions/v1/agenda-profesional';
@@ -235,13 +240,20 @@ button.act:disabled{opacity:.6}
   document.getElementById('vSem').addEventListener('click', function () { cambiar('semana'); });
   document.getElementById('vMes').addEventListener('click', function () { cambiar('mes'); });
 
+  var instalada = false;
+  function hacerInstalable(d) {
+    if (instalada || !window.annlyInstalable) return; instalada = true;
+    var cod = /^[a-z0-9-]{1,40}-[a-f0-9]{12}$/.test(codigo);
+    window.annlyInstalable({ nombre: 'Agenda de ' + d.profesional + (d.negocio ? ' · ' + d.negocio : ''), corto: String(d.profesional || 'Mi agenda').split(' ')[0],
+      startUrl: location.origin + (cod ? '/agenda/' + codigo : '/mi-agenda.html' + location.search), scope: location.origin + (cod ? '/agenda/' + codigo : '/mi-agenda.html'), logo: d.marca && d.marca.logo });
+  }
   function cargar() {
     if (!/^[a-f0-9]{48}$/i.test(token) && !/^[a-z0-9-]{1,40}-[a-f0-9]{12}$/.test(codigo)) { error('Enlace no válido', 'Pídele a quien administra el negocio que te envíe de nuevo tu enlace.'); return Promise.resolve(); }
     btn.disabled = true;
     return fetch(URL_FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(/^[a-f0-9]{48}$/i.test(token) ? { t: token } : { c: codigo }) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { s: r.status, j: j }; }); })
       .then(function (x) {
-        if (x.j && x.j.ok) { datos = x.j; btn.hidden = false; aplicarMarca(x.j.marca); pintar(); pie.hidden = false; pie.textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-PA', { hour: 'numeric', minute: '2-digit' }) + ' · Solo lectura'; }
+        if (x.j && x.j.ok) { datos = x.j; btn.hidden = false; aplicarMarca(x.j.marca); pintar(); hacerInstalable(x.j); pie.hidden = false; pie.textContent = 'Actualizado a las ' + new Date().toLocaleTimeString('es-PA', { hour: 'numeric', minute: '2-digit' }) + ' · Solo lectura'; }
         else if (x.s === 404) error('Enlace no disponible', 'Este enlace ya no funciona. Pídele a quien administra el negocio uno nuevo.');
         else if (!datos) error('No pude cargar tu agenda', 'Revisa tu conexión y toca Actualizar.');
       })
