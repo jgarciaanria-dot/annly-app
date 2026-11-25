@@ -310,6 +310,20 @@ function annlyBannerPastel(p, s){
 
 // El encabezado solo se anima cuando ya tiene el nombre, el eslogan y el logo reales
 // (antes se animaba con "TU NEGOCIO" y luego saltaba). Si algo tarda, a los 2.5 s arranca igual.
+// Footer: la dirección ("Obarrio | Salón Plaza | Suite 114") se muestra en líneas lógicas y el horario sin gritar
+function annlyDireccionHtml(txt){
+  const partes = String(txt || '').split('|').map(x => x.trim()).filter(Boolean);
+  if (!partes.length) return '';
+  const e = escSuc;
+  return partes.length === 1 ? e(partes[0]) : e(partes[0]) + '<br>' + partes.slice(1).map(e).join(' · ');
+}
+function annlyHorarioHtml(txt){
+  return String(txt || '').split('|').map(x => x.trim()).filter(Boolean).map(l => {
+    const t = escSuc(l.replace(/(\d)\s?(AM|PM)\b/gi, (m, d, ap) => d + ap.toLowerCase()));
+    return /cerrado/i.test(l) ? '<span class="ft-cerrado">' + t + '</span>' : t;
+  }).join('<br>');
+}
+
 let esperaLogo = false;
 function annlyHeaderListo(){ const h = document.querySelector('.hdr'); if (h) h.classList.add('listo'); }
 setTimeout(annlyHeaderListo, 2500);
@@ -431,9 +445,9 @@ window.AnnlyReady.then(() => {
 
     // Horario y dirección
     const horEl = document.getElementById('footer-horario');
-    if (horEl) horEl.innerHTML = (b.horario_texto || 'Consulta disponibilidad').replace(/\|/g, '<br>');
+    if (horEl) horEl.innerHTML = annlyHorarioHtml(b.horario_texto || 'Consulta disponibilidad');
     const dirEl = document.getElementById('footer-direccion');
-    if (dirEl) dirEl.textContent = b.direccion || '';
+    if (dirEl) dirEl.innerHTML = annlyDireccionHtml(b.direccion);
     const copyEl = document.getElementById('footer-copyright');
     if (copyEl) copyEl.textContent = '© ' + (b.nombre || 'Annly') + ' · Powered by Annly';
 
@@ -558,10 +572,10 @@ function aplicarSucursalSitio(suc, conSelector){
 
   // Dirección, horario y WhatsApp de la sucursal (con los del negocio como respaldo)
   const dirEl = document.getElementById('footer-direccion');
-  if (dirEl) dirEl.textContent = suc.direccion || b.direccion || '';
+  if (dirEl) dirEl.innerHTML = annlyDireccionHtml(suc.direccion || b.direccion);
   const horEl = document.getElementById('footer-horario');
   const horTxt = textoHorarioSitio(suc.horario) || b.horario_texto || 'Consulta disponibilidad';
-  if (horEl) horEl.innerHTML = escSuc(horTxt).replace(/\|/g, '<br>');
+  if (horEl) horEl.innerHTML = annlyHorarioHtml(horTxt);
   const waLink = document.getElementById('wa-float-link');
   const wa = suc.telefono ? telefonoWhatsApp(suc.telefono) : (b.whatsapp || '');
   if (waLink){
