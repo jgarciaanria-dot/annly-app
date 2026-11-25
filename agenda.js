@@ -308,6 +308,12 @@ function annlyBannerPastel(p, s){
   };
 }
 
+// El encabezado solo se anima cuando ya tiene el nombre, el eslogan y el logo reales
+// (antes se animaba con "TU NEGOCIO" y luego saltaba). Si algo tarda, a los 2.5 s arranca igual.
+let esperaLogo = false;
+function annlyHeaderListo(){ const h = document.querySelector('.hdr'); if (h) h.classList.add('listo'); }
+setTimeout(annlyHeaderListo, 2500);
+
 window.AnnlyReady.then(() => {
   const b = window.ANNLY_BUSINESS;
   if (b) {
@@ -340,8 +346,18 @@ window.AnnlyReady.then(() => {
     const h1 = document.getElementById('hdr-nombre');
     if (h1 && b.nombre) h1.textContent = b.nombre.toUpperCase();
     if (b.logo_url) {
-      document.getElementById('hdr-logo').innerHTML =
+      const logoBox = document.getElementById('hdr-logo');
+      logoBox.innerHTML =
         `<img src="${b.logo_url}" alt="${b.nombre || ''}" style="width:130px;height:130px;object-fit:contain;border-radius:50%;"/>`;
+      const logoImg = logoBox.querySelector('img');
+      // Logo ancho (más de 1.25 veces más ancho que alto): se muestra completo, sin círculo
+      const marcarAncho = () => { if (logoImg.naturalHeight && logoImg.naturalWidth / logoImg.naturalHeight > 1.25) logoBox.classList.add('logo-ancho'); };
+      if (logoImg.complete) { marcarAncho(); }
+      else {
+        logoImg.addEventListener('load', () => { marcarAncho(); annlyHeaderListo(); });
+        logoImg.addEventListener('error', annlyHeaderListo);
+        esperaLogo = true;
+      }
     } else {
       const inicial = (b.nombre || 'A').trim().charAt(0).toUpperCase();
       document.getElementById('hdr-logo-fallback').textContent = inicial;
@@ -350,6 +366,7 @@ window.AnnlyReady.then(() => {
 
     // Tipografía de títulos: elegante (Vicelly) o básica sans-serif (default para negocios nuevos)
     const esFuenteElegante = (b.fuente || '').toLowerCase().includes('garamond');
+    document.body.classList.toggle('fuente-elegante', esFuenteElegante);
     document.documentElement.style.setProperty('--font-heading',
       esFuenteElegante ? "'Cormorant Garamond', serif" : "'Inter', sans-serif");
 
@@ -394,6 +411,7 @@ window.AnnlyReady.then(() => {
     // Tagline
     const tagEl = document.getElementById('hdr-tagline');
     if (tagEl) tagEl.textContent = b.tagline || '';
+    if (!esperaLogo) annlyHeaderListo();
     const footerTagEl = document.getElementById('footer-tagline');
     if (footerTagEl) footerTagEl.textContent = b.footer_mensaje || '';
 
