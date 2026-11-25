@@ -2,7 +2,7 @@
   "name": "Annly · Mis citas",
   "short_name": "Mis citas",
   "start_url": "/mi-panel.html",
-  "scope": "/",
+  "scope": "/mi-panel.html",
   "display": "standalone",
   "background_color": "#faf7fc",
   "theme_color": "#7c3aed",
