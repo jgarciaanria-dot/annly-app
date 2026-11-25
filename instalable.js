@@ -47,7 +47,6 @@
       ap.href = lista[lista.length - 1].src;
       var t = document.querySelector('meta[name=apple-mobile-web-app-title]'); if (!t) { t = document.createElement('meta'); t.name = 'apple-mobile-web-app-title'; document.head.appendChild(t); }
       t.content = m.short_name;
-      var tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.setAttribute('content', acento);
     });
     try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); } catch (e) {}
     // iPhone no tiene botón de instalar: se le explica el camino
