@@ -110,7 +110,7 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script src="sheets.js?v=71"></script>
-<script src="/instalable.js?v=1"></script>
+<script src="/instalable.js?v=2"></script>
 <script>
 (function () {
   var lista = document.getElementById('lista'), btnRef = document.getElementById('refrescar'), barra = document.getElementById('barra');
@@ -166,6 +166,9 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
       if (!document.getElementById('fuente-elegante')) { var l = document.createElement('link'); l.id = 'fuente-elegante'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap'; document.head.appendChild(l); }
       document.body.classList.add('elegante');
     }
+    // Barra de estado del celular: del color de fondo de la página (también cuando está instalada como app)
+    var tc2 = document.querySelector('meta[name=theme-color]'), bgc = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    if (tc2 && bgc) tc2.setAttribute('content', bgc);
     var lg = document.getElementById('logo');
     if (lg && /^https:\/\//i.test(m.logo || '')) { lg.src = m.logo; lg.hidden = false; lg.onerror = function () { lg.hidden = true; }; }
   }
