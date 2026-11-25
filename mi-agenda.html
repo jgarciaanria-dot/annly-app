@@ -46,6 +46,17 @@ button.act:disabled{opacity:.6}
 .vacio,.error{text-align:center;color:var(--soft);padding:36px 12px}
 .error h2{color:var(--ink);font-size:18px;margin:0 0 6px}
 .mas{display:block;margin:14px auto 0}
+.mes{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0 4px}
+.mes .h{text-align:center;font-size:11px;font-weight:700;color:var(--soft);padding:2px 0}
+.mes button.d{aspect-ratio:1/1.1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;padding:0}
+.mes .vac{visibility:hidden}
+.mes button.d:disabled{opacity:.35;cursor:default}
+.mes button.d.hoy{border-color:var(--purple);box-shadow:inset 0 0 0 1px var(--purple)}
+.mes button.d.sel{background:var(--purple);border-color:var(--purple);color:#fff}
+.mes .n{font-size:10px;font-weight:800;line-height:1.2;min-width:16px;border-radius:999px;padding:0 5px;background:var(--greenbg);color:var(--green)}
+.mes .n.pc{background:var(--amberbg);color:var(--amber)}
+.mes .n.v{visibility:hidden}
+.mes button.d.sel .n{background:rgba(255,255,255,.9);color:var(--purple)}
 .pie{text-align:center;font-size:12px;color:var(--soft);margin-top:22px}
 </style>
 </head>
@@ -55,7 +66,7 @@ button.act:disabled{opacity:.6}
     <div><h1 id="titulo">Mi agenda</h1><div class="neg" id="neg"></div></div>
     <button class="act" id="refrescar" type="button" hidden>Actualizar</button>
   </header>
-  <div class="barra"><div class="seg" role="tablist"><button type="button" id="vDia" class="on">Día</button><button type="button" id="vSem">Semana</button></div></div>
+  <div class="barra"><div class="seg" role="tablist"><button type="button" id="vDia" class="on">Día</button><button type="button" id="vSem">Semana</button><button type="button" id="vMes">Calendario</button></div></div>
   <div id="nav"></div>
   <main id="lista"><div class="vacio">Cargando tu agenda…</div></main>
   <div class="pie" id="pie" hidden></div>
@@ -65,7 +76,7 @@ button.act:disabled{opacity:.6}
   var URL_FN = 'https://hokrimtsyseuqfjjvmxu.supabase.co/functions/v1/agenda-profesional';
   var lista = document.getElementById('lista'), btn = document.getElementById('refrescar'), pie = document.getElementById('pie');
   var token = (new URLSearchParams(location.search).get('t') || '').trim();
-  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'], MESES_L = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   var datos = null;
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -87,7 +98,7 @@ button.act:disabled{opacity:.6}
   function error(t, d) { lista.textContent = ''; document.getElementById('nav').textContent = ''; document.querySelector('.barra').hidden = true; var b = el('div', 'error'); b.appendChild(el('h2', null, t)); b.appendChild(el('div', null, d)); lista.appendChild(b); btn.hidden = true; }
 
   var modo = 'dia', ref = null, MIN = null, MAX = null;
-  try { if (localStorage.getItem('annlyAgendaModo') === 'semana') modo = 'semana'; } catch (e) {}
+  try { var gm = localStorage.getItem('annlyAgendaModo'); if (gm === 'semana' || gm === 'mes') modo = gm; } catch (e) {}
   var NOM3 = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   function lunesDe(iso) { var d = parteFecha(iso), k = (d.getDay() + 6) % 7; return suma(iso, -k); }
   function tarjeta(c) {
@@ -117,6 +128,7 @@ button.act:disabled{opacity:.6}
     document.title = 'Agenda de ' + d.profesional + ' · Annly';
     document.getElementById('vDia').className = modo === 'dia' ? 'on' : '';
     document.getElementById('vSem').className = modo === 'semana' ? 'on' : '';
+    document.getElementById('vMes').className = modo === 'mes' ? 'on' : '';
     MIN = suma(d.hoy, -7); MAX = suma(d.hoy, 60);
     if (!ref) ref = d.hoy;
     var por = {}; d.citas.forEach(function (c) { (por[c.fecha] = por[c.fecha] || []).push(c); });
@@ -132,6 +144,37 @@ button.act:disabled{opacity:.6}
       if (irHoy) { var hb = el('div'); hb.style.textAlign = 'center'; var hbtn = el('button', 'hoy-btn', 'Ir a hoy'); hbtn.type = 'button'; hbtn.addEventListener('click', function () { ref = d.hoy; pintar(); }); hb.appendChild(hbtn); nav.appendChild(hb); }
       if (!cant) lista.appendChild(el('div', 'vacio', ref < d.hoy ? 'No hubo citas este día.' : 'No tienes citas este día.'));
       (por[ref] || []).forEach(function (c) { lista.appendChild(tarjeta(c)); });
+    } else if (modo === 'mes') {
+      var pr = ref.slice(0, 8) + '01', dm = parteFecha(pr), primerMes = MIN.slice(0, 8) + '01', ultMes = MAX.slice(0, 8) + '01';
+      function irMes(delta) {
+        var x = new Date(dm.getFullYear(), dm.getMonth() + delta, 1), f = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-01';
+        ref = d.hoy.slice(0, 7) === f.slice(0, 7) ? d.hoy : (f < MIN ? MIN : (f > MAX ? MAX : f)); pintar();
+      }
+      ctr.appendChild(document.createTextNode(MESES_L[dm.getMonth()].charAt(0).toUpperCase() + MESES_L[dm.getMonth()].slice(1) + ' ' + dm.getFullYear()));
+      n.appendChild(boton('‹', function () { irMes(-1); }, pr <= primerMes, 'Mes anterior')); n.appendChild(ctr);
+      n.appendChild(boton('›', function () { irMes(1); }, pr >= ultMes, 'Mes siguiente'));
+      nav.appendChild(n);
+      if (ref.slice(0, 7) !== d.hoy.slice(0, 7) || ref !== d.hoy) { var hb3 = el('div'); hb3.style.textAlign = 'center'; var hbtn3 = el('button', 'hoy-btn', 'Ir a hoy'); hbtn3.type = 'button'; hbtn3.addEventListener('click', function () { ref = d.hoy; pintar(); }); hb3.appendChild(hbtn3); nav.appendChild(hb3); }
+      var cuad = el('div', 'mes'), k;
+      NOM3.forEach(function (t) { cuad.appendChild(el('div', 'h', t)); });
+      for (k = 0; k < (dm.getDay() + 6) % 7; k++) cuad.appendChild(el('div', 'vac'));
+      var diasMes = new Date(dm.getFullYear(), dm.getMonth() + 1, 0).getDate();
+      for (k = 1; k <= diasMes; k++) {
+        (function (dia) {
+          var f = pr.slice(0, 8) + String(dia).padStart(2, '0'), ls = por[f] || [], b = el('button', 'd' + (f === d.hoy ? ' hoy' : '') + (f === ref ? ' sel' : ''));
+          b.type = 'button'; b.appendChild(document.createTextNode(String(dia)));
+          var pc = ls.some(function (c) { return c.estado === 'por_confirmar' || c.estado === 'pendiente'; });
+          b.appendChild(el('span', 'n' + (pc ? ' pc' : '') + (ls.length ? '' : ' v'), String(ls.length || 0)));
+          if (f < MIN || f > MAX) b.disabled = true; else b.addEventListener('click', function () { ref = f; pintar(); });
+          b.setAttribute('aria-label', dia + ' de ' + MESES_L[dm.getMonth()] + ': ' + (ls.length ? ls.length + (ls.length === 1 ? ' cita' : ' citas') : 'sin citas'));
+          cuad.appendChild(b);
+        })(k);
+      }
+      lista.appendChild(cuad);
+      var sel = por[ref] || [];
+      lista.appendChild(titDia(ref, sel.length, d.hoy));
+      if (!sel.length) lista.appendChild(el('div', 'libre', ref < d.hoy ? 'No hubo citas este día.' : 'Libre'));
+      sel.forEach(function (c) { lista.appendChild(tarjeta(c)); });
     } else {
       var lun = lunesDe(ref), dom = suma(lun, 6), total = 0, i;
       for (i = 0; i < 7; i++) total += (por[suma(lun, i)] || []).length;
@@ -153,6 +196,7 @@ button.act:disabled{opacity:.6}
   function cambiar(m) { modo = m; try { localStorage.setItem('annlyAgendaModo', m); } catch (e) {} if (datos) pintar(); }
   document.getElementById('vDia').addEventListener('click', function () { cambiar('dia'); });
   document.getElementById('vSem').addEventListener('click', function () { cambiar('semana'); });
+  document.getElementById('vMes').addEventListener('click', function () { cambiar('mes'); });
 
   function cargar() {
     if (!/^[a-f0-9]{48}$/i.test(token)) { error('Enlace no válido', 'Pídele a quien administra el negocio que te envíe de nuevo tu enlace.'); return Promise.resolve(); }
