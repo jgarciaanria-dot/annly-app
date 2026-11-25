@@ -23,9 +23,9 @@ button{font-family:inherit}
 .act{border:1px solid var(--line);background:var(--card);color:var(--purple);border-radius:999px;padding:9px 14px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
 .act:disabled{opacity:.55}
 .tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;margin:6px 0}
-.tabs button{flex:1;white-space:nowrap;border:0;background:none;color:var(--soft);font-weight:700;font-size:13px;padding:8px 4px;border-radius:999px;cursor:pointer}
+.tabs button{flex:1;white-space:nowrap;border:0;background:none;color:var(--soft);font-weight:700;font-size:11.5px;padding:8px 1px;border-radius:999px;cursor:pointer}
 .tabs button.on{background:var(--purple);color:#fff}
-.tabs .n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--amber);color:#fff;font-size:12px;line-height:20px}
+.tabs .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:3px;border-radius:999px;background:var(--amber);color:#fff;font-size:12px;line-height:20px}
 .tabs button.on .n{background:#fff;color:var(--purple)}
 select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:14px;font-family:inherit}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 4px}
@@ -55,6 +55,17 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
 .acc .si{background:var(--green);border-color:var(--green);color:#fff}
 .acc .no{color:var(--red);border-color:var(--red);background:var(--redbg)}
 .acc button:disabled{opacity:.5}
+.mes{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0 4px}
+.mes .h{text-align:center;font-size:11px;font-weight:700;color:var(--soft);padding:2px 0}
+.mes button.d{aspect-ratio:1/1.1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:15px;font-weight:600;cursor:pointer;padding:0}
+.mes .vac{visibility:hidden}
+.mes button.d:disabled{opacity:.35;cursor:default}
+.mes button.d.hoy{border-color:var(--purple);box-shadow:inset 0 0 0 1px var(--purple)}
+.mes button.d.sel{background:var(--purple);border-color:var(--purple);color:#fff}
+.mes .nn{font-size:10px;font-weight:800;line-height:1.2;min-width:16px;border-radius:999px;padding:0 5px;background:var(--greenbg);color:var(--green)}
+.mes .nn.pc{background:var(--amberbg);color:var(--amber)}
+.mes .nn.v{visibility:hidden}
+.mes button.d.sel .nn{background:rgba(255,255,255,.9);color:var(--purple)}
 .nota{font-size:12px;color:var(--soft);margin:6px 2px 0}
 .vacio,.error{text-align:center;color:var(--soft);padding:34px 12px}
 .error h2{color:var(--ink);font-size:18px;margin:0 0 6px}
@@ -78,7 +89,7 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
     <button class="act" id="refrescar" type="button" hidden>Actualizar</button>
   </header>
   <div id="barra" hidden>
-    <div class="tabs" role="tablist"><button type="button" id="tPc">Por confirmar<span class="n" id="nPc" hidden>0</span></button><button type="button" id="tDia">Día</button><button type="button" id="tSem">Semana</button></div>
+    <div class="tabs" role="tablist"><button type="button" id="tPc">Por confirmar<span class="n" id="nPc" hidden>0</span></button><button type="button" id="tDia">Día</button><button type="button" id="tSem">Semana</button><button type="button" id="tMes">Calendario</button></div>
     <select id="fNeg" aria-label="Negocio" hidden></select>
     <select id="fEmp" aria-label="Filtrar por profesional" hidden></select>
     <div id="nav"></div>
@@ -91,9 +102,9 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
 <script>
 (function () {
   var lista = document.getElementById('lista'), btnRef = document.getElementById('refrescar'), barra = document.getElementById('barra');
-  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'], MESES_L = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'], NOM3 = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   var items = [], modo = 'dia', ref = null, filtroEmp = '', ocupado = false, cargado = false;
-  try { var m0 = localStorage.getItem('annlyPanelModo'); if (m0 === 'semana' || m0 === 'dia') modo = m0; } catch (e) {}
+  try { var m0 = localStorage.getItem('annlyPanelModo'); if (m0 === 'semana' || m0 === 'dia' || m0 === 'mes') modo = m0; } catch (e) {}
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function parteFecha(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
@@ -225,8 +236,8 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
     lista.textContent = ''; nav.textContent = '';
     var pcs = vis.filter(function (it) { return it.c.estado === 'por_confirmar'; });
     var nPc = document.getElementById('nPc'); nPc.hidden = !pcs.length; nPc.textContent = pcs.length;
-    ['tPc', 'tDia', 'tSem'].forEach(function (id) { document.getElementById(id).className = ''; });
-    document.getElementById(modo === 'pc' ? 'tPc' : modo === 'dia' ? 'tDia' : 'tSem').className = 'on';
+    ['tPc', 'tDia', 'tSem', 'tMes'].forEach(function (id) { document.getElementById(id).className = ''; });
+    document.getElementById(modo === 'pc' ? 'tPc' : modo === 'dia' ? 'tDia' : modo === 'mes' ? 'tMes' : 'tSem').className = 'on';
     if (!ref) ref = hoy;
     var MIN = suma(hoy, -30), MAX = suma(hoy, 90);
     var por = {}; vis.forEach(function (it) { (por[it.c.fechaISO] = por[it.c.fechaISO] || []).push(it); });
@@ -243,6 +254,35 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
       nav.appendChild(n); if (ref !== hoy) nav.appendChild(linkBtn('Ir a hoy', function () { ref = hoy; pintar(); }));
       if (!lst.length) lista.appendChild(el('div', 'vacio', ref < hoy ? 'No hubo citas este día.' : 'No hay citas este día.'));
       lst.forEach(function (it) { lista.appendChild(tarjeta(it, hoy, P.min)); });
+    } else if (modo === 'mes') {
+      var pr = ref.slice(0, 8) + '01', dm = parteFecha(pr), primerMes = MIN.slice(0, 8) + '01', ultMes = MAX.slice(0, 8) + '01';
+      var irMes = function (delta) {
+        var x = new Date(dm.getFullYear(), dm.getMonth() + delta, 1), f = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-01';
+        ref = hoy.slice(0, 7) === f.slice(0, 7) ? hoy : (f < MIN ? MIN : (f > MAX ? MAX : f)); pintar();
+      };
+      ctr.appendChild(document.createTextNode(MESES_L[dm.getMonth()].charAt(0).toUpperCase() + MESES_L[dm.getMonth()].slice(1) + ' ' + dm.getFullYear()));
+      n.appendChild(boton('‹', function () { irMes(-1); }, pr <= primerMes, 'Mes anterior')); n.appendChild(ctr); n.appendChild(boton('›', function () { irMes(1); }, pr >= ultMes, 'Mes siguiente'));
+      nav.appendChild(n); if (ref !== hoy) nav.appendChild(linkBtn('Ir a hoy', function () { ref = hoy; pintar(); }));
+      var cuad = el('div', 'mes'), k;
+      NOM3.forEach(function (t) { cuad.appendChild(el('div', 'h', t)); });
+      for (k = 0; k < (dm.getDay() + 6) % 7; k++) cuad.appendChild(el('div', 'vac'));
+      var diasMes = new Date(dm.getFullYear(), dm.getMonth() + 1, 0).getDate();
+      for (k = 1; k <= diasMes; k++) {
+        (function (dia) {
+          var f = pr.slice(0, 8) + String(dia).padStart(2, '0'), ls = por[f] || [], b = el('button', 'd' + (f === hoy ? ' hoy' : '') + (f === ref ? ' sel' : ''));
+          b.type = 'button'; b.appendChild(document.createTextNode(String(dia)));
+          var pc = ls.some(function (it) { return it.c.estado === 'por_confirmar'; });
+          b.appendChild(el('span', 'nn' + (pc ? ' pc' : '') + (ls.length ? '' : ' v'), String(ls.length || 0)));
+          if (f < MIN || f > MAX) b.disabled = true; else b.addEventListener('click', function () { ref = f; pintar(); });
+          b.setAttribute('aria-label', dia + ' de ' + MESES_L[dm.getMonth()] + ': ' + (ls.length ? ls.length + (ls.length === 1 ? ' cita' : ' citas') : 'sin citas'));
+          cuad.appendChild(b);
+        })(k);
+      }
+      lista.appendChild(cuad);
+      var sel2 = por[ref] || [];
+      lista.appendChild(titDia(ref, sel2.length, hoy));
+      if (!sel2.length) lista.appendChild(el('div', 'libre', ref < hoy ? 'No hubo citas este día.' : 'Libre'));
+      sel2.forEach(function (it) { lista.appendChild(tarjeta(it, hoy, P.min)); });
     } else {
       var lun = lunesDe(ref), dom = suma(lun, 6), total = 0, i;
       for (i = 0; i < 7; i++) total += (por[suma(lun, i)] || []).length;
@@ -261,6 +301,7 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
   document.getElementById('tPc').addEventListener('click', function () { cambiar('pc'); });
   document.getElementById('tDia').addEventListener('click', function () { cambiar('dia'); });
   document.getElementById('tSem').addEventListener('click', function () { cambiar('semana'); });
+  document.getElementById('tMes').addEventListener('click', function () { cambiar('mes'); });
   document.getElementById('fNeg').addEventListener('change', function (e) {
     var id = e.target.value; try { localStorage.setItem('annlyPanelNegocio', id); } catch (x) {}
     filtroEmp = ''; items = []; window.AnnlyAuth.seleccionarNegocio(id).then(function () { return cargar(true); });
