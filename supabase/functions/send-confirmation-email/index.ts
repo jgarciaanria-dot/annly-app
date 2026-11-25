@@ -106,88 +106,95 @@ async function enviarCorreo(destinatario, nombreRemitente, asunto, html, claveUn
 }
 
 // ---------- Molde único de tabla HTML (mismo diseño para todos los correos) ----------
+// Diseño: una sola columna que se adapta al celular (sin columnas angostas), título centrado en serif,
+// datos como lista limpia (etiqueta pequeña + valor) y botones a todo el ancho.
+function mezclarConBlanco(hex, k) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+  if (!m) return "#f4efe8";
+  const n = parseInt(m[1], 16), c = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => Math.round(v + (255 - v) * k));
+  return "#" + c.map(v => v.toString(16).padStart(2, "0")).join("");
+}
 function armarPlantillaCorreo({ nombreNegocio, tagline, colorAcento, emojiHeader, titulo, saludo, subtitulo, filas, botones, notaTitulo, notaTexto, direccion }) {
-  const filasHtml = filas.map(f => `
-                <tr>
-                  <td style="padding:18px 20px;border-bottom:1px solid #eeeeee;">
-                    <table width="100%"><tr>
-                      <td width="45" valign="middle">
-                        <div style="width:38px;height:38px;background:#f5f0e8;border-radius:50%;text-align:center;line-height:38px;font-size:18px;">${f.emoji}</div>
-                      </td>
-                      <td>
-                        <div style="font-size:12px;color:#737b8b;letter-spacing:.5px;margin-bottom:4px;">${f.etiqueta}</div>
-                        <div style="font-size:17px;color:#151b2d;font-weight:${f.negrita !== false ? 600 : 400};${f.tachado ? "text-decoration:line-through;color:#a3a8b3;" : ""}">${f.valor}</div>
-                      </td>
-                    </tr></table>
-                  </td>
-                </tr>`).join("");
+  const SERIF = "Georgia,'Times New Roman',serif";
+  const SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+  const tinte = mezclarConBlanco(colorAcento, 0.86);
+  // El emoji del calendario muestra siempre "JUL 17" en algunos teléfonos: se cambia por una marca de verificación
+  const marca = (emojiHeader === "📅" || emojiHeader === "✅") ? "✓" : emojiHeader;
+  const filasHtml = filas.map((f, i) => `
+              <tr>
+                <td style="padding:14px 0;${i ? "border-top:1px solid #eee8e1;" : ""}">
+                  <div style="font-family:${SANS};font-size:11px;line-height:14px;letter-spacing:1.4px;color:#8c8580;text-transform:uppercase;margin-bottom:4px;">${f.etiqueta}</div>
+                  <div style="font-family:${SANS};font-size:16px;line-height:22px;color:#241f21;font-weight:${f.negrita !== false ? 600 : 400};${f.tachado ? "text-decoration:line-through;color:#a8a29d;" : ""}">${f.valor}</div>
+                </td>
+              </tr>`).join("");
 
   const botonesHtml = (botones || []).map((b, i) => `
           <tr>
-            <td align="center" style="padding:0 35px ${i === botones.length - 1 ? "25px" : "12px"};">
-              <a href="${b.url}" target="_blank" style="display:block;background:${b.color};color:#ffffff;text-decoration:none;padding:17px 20px;border-radius:9px;font-size:16px;font-weight:bold;text-align:center;">
-                ${b.emoji} &nbsp; ${b.texto} &nbsp; →
-              </a>
+            <td style="padding:0 24px ${i === botones.length - 1 ? "28px" : "10px"};">
+              <a href="${b.url}" target="_blank" style="display:block;${i === 0 ? `background:${colorAcento};color:#ffffff;border:1px solid ${colorAcento};` : `background:#ffffff;color:${colorAcento};border:1px solid ${colorAcento};`}text-decoration:none;padding:14px 18px;border-radius:10px;font-family:${SANS};font-size:15px;font-weight:600;text-align:center;">${b.emoji ? `<span style="font-size:17px;vertical-align:-1px;">${b.emoji === "📆" ? "🗓️" : b.emoji}</span>&nbsp;&nbsp;` : ""}${b.texto}</a>
             </td>
           </tr>`).join("");
 
   const notaHtml = notaTitulo ? `
           <tr>
-            <td style="padding:0 35px 30px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f8f7;border-radius:10px;">
-                <tr>
-                  <td width="55" valign="middle" style="padding:17px 10px 17px 18px;">
-                    <div style="width:32px;height:32px;border-radius:50%;background:#ffffff;text-align:center;line-height:32px;font-size:17px;">ℹ</div>
-                  </td>
-                  <td style="padding:15px 15px 15px 0;">
-                    <div style="font-size:15px;font-weight:bold;color:#151b2d;margin-bottom:4px;">${notaTitulo}</div>
-                    <div style="font-size:14px;color:#6d7483;">${notaTexto}</div>
-                  </td>
-                </tr>
+            <td style="padding:0 24px 28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f5f1;border-left:3px solid ${colorAcento};border-radius:6px;">
+                <tr><td style="padding:14px 16px;">
+                  <div style="font-family:${SANS};font-size:14px;font-weight:700;color:#241f21;margin-bottom:4px;">${notaTitulo}</div>
+                  <div style="font-family:${SANS};font-size:13.5px;line-height:20px;color:#6b645f;">${notaTexto}</div>
+                </td></tr>
               </table>
             </td>
           </tr>` : "";
 
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${titulo}</title></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial, Helvetica, sans-serif;color:#202536;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5;padding:30px 15px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e5e5;">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${titulo}</title></head>
+<body style="margin:0;padding:0;background:#f1ece6;color:#241f21;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1ece6;">
+    <tr><td align="center" style="padding:20px 10px;">
+      <table width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;">
 
-        <tr><td align="center" style="padding:28px 25px 24px;background:#ffffff;border-bottom:1px solid #e7d7bd;">
-          <div style="font-size:20px;letter-spacing:4px;font-weight:500;color:${colorAcento};">${nombreNegocio.toUpperCase()}</div>
-          ${tagline ? `<div style="margin-top:8px;font-size:11px;letter-spacing:3px;color:#8a8f9d;">${tagline}</div>` : ""}
+        <tr><td style="height:4px;line-height:4px;font-size:0;background:${colorAcento};">&nbsp;</td></tr>
+
+        <tr><td align="center" style="padding:26px 24px 6px;">
+          <div style="font-family:${SERIF};font-size:19px;line-height:24px;letter-spacing:3px;font-weight:600;color:#241f21;">${nombreNegocio.toUpperCase()}</div>
+          ${tagline ? `<div style="font-family:${SANS};margin-top:6px;font-size:10.5px;letter-spacing:2.4px;color:#9a938d;text-transform:uppercase;">${tagline}</div>` : ""}
         </td></tr>
 
-        <tr><td style="padding:38px 35px 25px;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="80" valign="top">
-              <div style="width:64px;height:64px;background:#f4f0e9;border-radius:50%;text-align:center;line-height:64px;font-size:30px;">${emojiHeader}</div>
-            </td>
-            <td valign="top" style="padding-left:15px;">
-              <div style="font-size:28px;line-height:34px;font-weight:700;color:#151b2d;">${titulo}</div>
-              <div style="margin-top:10px;font-size:16px;line-height:23px;color:#626b7d;"><strong>${saludo}</strong><br>${subtitulo}</div>
-            </td>
+        <tr><td align="center" style="padding:22px 24px 4px;">
+          <table cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+            <td align="center" valign="middle" width="56" height="56" style="width:56px;height:56px;border-radius:28px;background:${tinte};font-family:${SANS};font-size:${marca === "✓" || marca === "✕" ? "26px" : "24px"};line-height:56px;font-weight:700;color:${colorAcento};text-align:center;">${marca}</td>
           </tr></table>
         </td></tr>
 
-        <tr><td style="padding:0 35px 25px;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e5e5e5;border-radius:12px;background:#ffffff;">
-            ${filasHtml}
+        <tr><td align="center" style="padding:14px 24px 4px;">
+          <div style="font-family:${SERIF};font-size:26px;line-height:32px;font-weight:700;color:#241f21;">${titulo}</div>
+        </td></tr>
+        <tr><td align="center" style="padding:10px 28px 22px;">
+          <div style="font-family:${SANS};font-size:15px;line-height:23px;color:#6b645f;"><strong style="color:#241f21;">${saludo}</strong><br>${subtitulo}</div>
+        </td></tr>
+
+        <tr><td style="padding:0 24px 22px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e6dfd7;border-bottom:1px solid #e6dfd7;">
+            <tr><td>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                ${filasHtml}
+              </table>
+            </td></tr>
           </table>
         </td></tr>
 
         ${botonesHtml}
         ${notaHtml}
 
-        <tr><td style="padding:22px 35px;border-top:1px solid #eeeeee;background:#fafafa;">
-          <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:#4b5261;">${nombreNegocio.toUpperCase()}</div>
-          ${direccion ? `<div style="margin-top:6px;font-size:13px;color:#858b97;">${direccion}</div>` : ""}
+        <tr><td align="center" style="padding:20px 24px 24px;background:#faf7f4;">
+          <div style="font-family:${SERIF};font-size:13px;font-weight:600;letter-spacing:2px;color:#4f4843;">${nombreNegocio.toUpperCase()}</div>
+          ${direccion ? `<div style="font-family:${SANS};margin-top:6px;font-size:12.5px;line-height:18px;color:#8c8580;">${direccion}</div>` : ""}
         </td></tr>
 
       </table>
+      <div style="font-family:${SANS};font-size:11px;color:#a39c96;padding:14px 10px 4px;">Enviado con Annly</div>
     </td></tr>
   </table>
 </body>
