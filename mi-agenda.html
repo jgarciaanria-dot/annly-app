@@ -16,7 +16,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,
 header{padding:calc(18px + env(safe-area-inset-top)) 0 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 h1{font-size:22px;margin:0}
 .logo{display:block;max-height:46px;max-width:150px;object-fit:contain;margin:0 0 8px}
-body.elegante h1,body.elegante .nav .ctr,body.elegante .hora,body.elegante .srv{font-family:'Cormorant Garamond',Georgia,serif}
+body.elegante h1,body.elegante .nav .ctr,body.elegante .hora,body.elegante .nom,body.elegante .srv{font-family:'Cormorant Garamond',Georgia,serif}
 body.elegante{font-variant-numeric:lining-nums}
 body.elegante h1{font-size:25px}
 .neg{font-size:13px;color:var(--soft);margin-top:2px}
@@ -40,7 +40,8 @@ button.act:disabled{opacity:.6}
 .hora{min-width:64px;font-weight:800;font-size:17px;line-height:1.15}
 .hora small{display:block;font-weight:500;font-size:12px;color:var(--soft)}
 .info{flex:1;min-width:0}
-.srv{font-weight:700}
+.nom{font-weight:800;font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.srv{font-weight:600;color:var(--soft);font-size:14.5px;margin-top:1px}
 .cli{color:var(--soft);font-size:14px;margin-top:2px;overflow-wrap:anywhere}
 .cli a{color:var(--purple);text-decoration:none;font-weight:600}
 .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-top:6px;margin-right:6px}
@@ -149,9 +150,9 @@ button.act:disabled{opacity:.6}
   function tarjeta(c) {
     var card = el('div', 'cita'), hr = el('div', 'hora', hora12(c.hora)), fin = horaFin(c.hora, c.duracion);
     if (fin) hr.appendChild(el('small', null, 'hasta ' + fin));
-    var inf = el('div', 'info'); inf.appendChild(el('div', 'srv', c.servicio || 'Cita'));
-    var cl = el('div', 'cli', c.cliente || 'Cliente'), t = solo(c.telefono);
-    if (t) { cl.appendChild(document.createTextNode(' · ')); var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, ' WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
+    var inf = el('div', 'info'); inf.appendChild(el('div', 'nom', c.cliente || 'Cliente')); inf.appendChild(el('div', 'srv', c.servicio || 'Cita'));
+    var cl = el('div', 'cli'), t = solo(c.telefono);
+    if (t) { var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, ' WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
     inf.appendChild(cl);
     if (c.estado === 'por_confirmar' || c.estado === 'pendiente') inf.appendChild(el('span', 'tag pc', 'Por confirmar'));
     else inf.appendChild(el('span', 'tag ok', 'Confirmada'));

@@ -19,7 +19,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,
 header{padding:calc(16px + env(safe-area-inset-top)) 0 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 h1{font-size:21px;margin:0}
 .logo{display:block;max-height:46px;max-width:150px;object-fit:contain;margin:0 0 8px}
-body.elegante h1,body.elegante .nav .ctr,body.elegante .hora,body.elegante .srv{font-family:'Cormorant Garamond',Georgia,serif}
+body.elegante h1,body.elegante .nav .ctr,body.elegante .hora,body.elegante .nom,body.elegante .srv{font-family:'Cormorant Garamond',Georgia,serif}
 body.elegante{font-variant-numeric:lining-nums}
 body.elegante h1{font-size:24px}
 .neg{font-size:13px;color:var(--soft);margin-top:2px}
@@ -49,7 +49,8 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
 .hora{min-width:64px;font-weight:800;font-size:17px;line-height:1.15}
 .hora small{display:block;font-weight:500;font-size:12px;color:var(--soft)}
 .info{flex:1;min-width:0}
-.srv{font-weight:700}
+.nom{font-weight:800;font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.srv{font-weight:600;color:var(--soft);font-size:14.5px;margin-top:1px}
 .cli{color:var(--soft);font-size:14px;margin-top:2px;overflow-wrap:anywhere}
 .cli a,.det a{color:var(--purple);text-decoration:none;font-weight:600}
 .det{font-size:13px;color:var(--soft);margin-top:4px}
@@ -241,9 +242,10 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
     var c = it.c, pc = c.estado === 'por_confirmar', card = el('div', 'cita' + (pc ? ' pc' : '')), fila = el('div', 'fila');
     var hr = el('div', 'hora', hora12(c.horaISO)), fin = horaFin(c.horaISO, c.duracion); if (fin) hr.appendChild(el('small', null, 'hasta ' + fin));
     var inf = el('div', 'info'), serv = it.doble ? it.par.map(function (x) { return x.servicio; }).join(' + ') : c.servicio;
+    inf.appendChild(el('div', 'nom', it.doble ? it.par.map(function (x) { return x.nombre; }).join(' y ') : (c.nombre || 'Cliente')));
     inf.appendChild(el('div', 'srv', serv || 'Cita'));
-    var cl = el('div', 'cli', it.doble ? it.par.map(function (x) { return x.nombre; }).join(' y ') : (c.nombre || 'Cliente')), t = solo(c.telefono);
-    if (t) { cl.appendChild(document.createTextNode(' · ')); var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, 'WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
+    var cl = el('div', 'cli'), t = solo(c.telefono);
+    if (t) { var a = el('a', null, c.telefono); a.href = 'tel:' + t; cl.appendChild(a); var w = el('a', null, 'WhatsApp'); w.href = 'https://wa.me/' + (t.length === 8 ? '507' + t : t); w.target = '_blank'; w.rel = 'noopener'; cl.appendChild(document.createTextNode(' · ')); cl.appendChild(w); }
     inf.appendChild(cl);
     var prof = it.par.map(function (x) { return x.empleadoNombre; }).filter(function (v, i, a2) { return v && a2.indexOf(v) === i; }).join(' y ');
     if (prof) inf.appendChild(el('div', 'det', 'Con ' + prof));
