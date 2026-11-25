@@ -11,9 +11,30 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.48.0/dist/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="agenda.css?v=6">
+<link rel="stylesheet" href="agenda.css?v=7">
 </head>
 <body>
+
+<div id="promo-img-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:1rem;">
+  <div style="position:relative;max-width:360px;width:100%;max-height:92vh;">
+    <div onclick="cerrarPromo()" style="position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;">
+      <i class="ti ti-x" style="font-size:16px;color:#444;"></i>
+    </div>
+    <img id="promo-img" alt="Promoción" onclick="agendarPromo()" style="display:block;width:100%;max-height:92vh;object-fit:contain;border-radius:14px;cursor:pointer;box-shadow:0 10px 40px rgba(0,0,0,.35);">
+    <div onclick="agendarPromo()" role="button" aria-label="Agenda tu cita" style="position:absolute;left:5%;right:35%;bottom:1%;height:6%;cursor:pointer;"></div>
+  </div>
+</div>
+
+<div id="promo-opc-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1001;align-items:center;justify-content:center;padding:1rem;">
+  <div style="position:relative;max-width:340px;width:100%;background:#fff;border-radius:16px;padding:20px 18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+    <div onclick="cerrarPromo()" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:#f1f1f1;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+      <i class="ti ti-x" style="font-size:15px;color:#666;"></i>
+    </div>
+    <p style="font-family:var(--font-heading);font-size:20px;font-weight:700;margin:0 0 4px;color:#1a1a1a;">Elige tu promo</p>
+    <p style="font-size:12px;color:#888;margin:0 0 14px;">Toca la que quieres agendar</p>
+    <div id="promo-opc-lista" style="display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+</div>
 
 <div id="promo-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:1rem;padding-top:24vh;">
   <div style="position:relative;max-width:280px;width:100%;background:#fff;border-radius:16px;overflow-y:auto;overflow-x:hidden;max-height:82vh;box-shadow:0 10px 40px rgba(0,0,0,.2);">
@@ -249,10 +270,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script src="config.js?v=4"></script>
-<script src="sheets.js?v=70"></script>
+<script src="sheets.js?v=72"></script>
 <script src="ruleta-frontend.js?v=5"></script>
 <script type="module" src="https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js"></script>
 <script src="horarios.js?v=1"></script>
-<script src="agenda.js?v=45"></script>
+<script src="agenda.js?v=50"></script>
 </body>
 </html>
