@@ -52,10 +52,18 @@
     // iPhone no tiene botón de instalar: se le explica el camino
     var u = ui();
     if (u.ios && /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent)) { u.box && (u.box.hidden = false); u.ios.hidden = false; }
+    // Android: si Chrome no muestra el aviso de instalar por su cuenta, se explica el camino por el menú
+    if (/android/i.test(navigator.userAgent) && u.box && u.ios) {
+      setTimeout(function () {
+        if (evento || ya()) return;
+        u.ios.innerHTML = 'Para tenerla como app: abre el menú <b>⋮</b> de Chrome y toca <b>Instalar app</b> o <b>Agregar a la pantalla de inicio</b>.';
+        u.box.hidden = false; u.ios.hidden = false;
+      }, 3500);
+    }
   };
 
   window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault(); evento = e; var u = ui(); if (u.box && u.btn && !ya()) { u.box.hidden = false; u.btn.hidden = false; }
+    e.preventDefault(); evento = e; var u = ui(); if (u.box && u.btn && !ya()) { u.box.hidden = false; u.btn.hidden = false; if (u.ios) u.ios.hidden = true; }
   });
   window.addEventListener('appinstalled', function () { var u = ui(); if (u.box) u.box.hidden = true; evento = null; });
   document.addEventListener('click', function (e) {
