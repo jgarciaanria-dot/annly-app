@@ -73,6 +73,9 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
 .mes button.d.sel .nn{background:rgba(255,255,255,.9);color:var(--purple)}
 .hbtns{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .salir{color:var(--soft)}
+.inst{text-align:center;margin:14px 0 0}
+.inst .act{padding:10px 18px}
+.inst-ios{font-size:13px;color:var(--soft);margin-top:6px}
 .nota{font-size:12px;color:var(--soft);margin:6px 2px 0}
 .vacio,.error{text-align:center;color:var(--soft);padding:34px 12px}
 .error h2{color:var(--ink);font-size:18px;margin:0 0 6px}
@@ -103,9 +106,11 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
   </div>
   <main id="lista"><div class="vacio">Cargando tus citas…</div></main>
   <div class="pie" id="pie" hidden></div>
+  <div class="inst" id="instalar" hidden><button class="act" id="instalarBtn" type="button" hidden>Instalar en tu celular</button><div class="inst-ios" id="instalarIos" hidden>En iPhone: toca <b>Compartir</b> y luego <b>Agregar a inicio</b> para tenerla como app.</div></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script src="sheets.js?v=71"></script>
+<script src="/instalable.js?v=1"></script>
 <script>
 (function () {
   var lista = document.getElementById('lista'), btnRef = document.getElementById('refrescar'), barra = document.getElementById('barra');
@@ -392,6 +397,7 @@ select{width:100%;margin:6px 0 0;padding:10px 12px;border:1px solid var(--line);
       if (!neg) { pantallaError('No encontré tu negocio', 'Esta pantalla es para la dueña del negocio. Entra con la cuenta con la que lo registraste.'); return; }
       if (neg.tipo_negocio === 'pedidos') { pantallaError('Esta pantalla es para agendas', 'Tu negocio es una tienda; usa el panel para ver tus pedidos.'); return; }
       document.getElementById('neg').textContent = neg.nombre || ''; aplicarMarca(neg);
+      if (window.annlyInstalable && !window.__instalable) { window.__instalable = true; window.annlyInstalable({ nombre: 'Mis citas · ' + (neg.nombre || 'Annly'), corto: 'Mis citas', startUrl: location.origin + '/mi-panel.html', scope: location.origin + '/mi-panel.html', logo: neg.logo_url }); }
       var citas = await Sheets.getCitas();
       items = armar(citas || []);
       var nombres = {}; items.forEach(function (it) { it.par.forEach(function (x) { if (x.empleadoId && x.empleadoNombre) nombres[x.empleadoId] = x.empleadoNombre; }); });
