@@ -122,60 +122,61 @@ function armarPlantillaCorreo({ nombreNegocio, tagline, colorAcento, emojiHeader
   const marca = (emojiHeader === "📅" || emojiHeader === "✅") ? "✓" : emojiHeader;
   const filasHtml = filas.map((f, i) => `
               <tr>
-                <td style="padding:9px 0;${i ? "border-top:1px solid #eee8e1;" : ""}">
-                  <div style="font-family:${SANS};font-size:9px;line-height:12px;letter-spacing:1.1px;color:#9a938d;text-transform:uppercase;margin-bottom:2px;">${f.etiqueta}</div>
-                  <div style="font-family:${SANS};font-size:13px;line-height:18px;color:#241f21;font-weight:${f.negrita !== false ? 600 : 400};${f.tachado ? "text-decoration:line-through;color:#a8a29d;" : ""}">${f.valor}</div>
+                <td style="padding:10px 0;${i ? "border-top:1px solid #eee8e1;" : ""}">
+                  <div style="font-family:${SANS};font-size:10px;line-height:13px;letter-spacing:1.2px;color:#8c8580;text-transform:uppercase;margin-bottom:3px;">${f.etiqueta}</div>
+                  <div style="font-family:${SANS};font-size:14.5px;line-height:20px;color:#241f21;font-weight:${f.negrita !== false ? 600 : 400};${f.tachado ? "text-decoration:line-through;color:#a8a29d;" : ""}">${f.valor}</div>
                 </td>
               </tr>`).join("");
 
   const botonesHtml = (botones || []).map((b, i) => `
           <tr>
-            <td style="padding:0 18px ${i === botones.length - 1 ? "18px" : "7px"};">
-              <a href="${b.url}" target="_blank" style="display:block;${i === 0 ? `background:${colorAcento};color:#ffffff;border:1px solid ${colorAcento};` : `background:#ffffff;color:${colorAcento};border:1px solid ${colorAcento};`}text-decoration:none;padding:10px 12px;border-radius:8px;font-family:${SANS};font-size:12.5px;font-weight:600;text-align:center;">${b.emoji ? `<span style="font-size:13px;vertical-align:-1px;">${b.emoji === "📆" ? "🗓️" : b.emoji}</span>&nbsp;&nbsp;` : ""}${b.texto}</a>
+            <td style="padding:0 20px ${i === botones.length - 1 ? "22px" : "8px"};">
+              <a href="${b.url}" target="_blank" style="display:block;${i === 0 ? `background:${colorAcento};color:#ffffff;border:1px solid ${colorAcento};` : `background:#ffffff;color:${colorAcento};border:1px solid ${colorAcento};`}text-decoration:none;padding:12px 14px;border-radius:9px;font-family:${SANS};font-size:14px;font-weight:600;text-align:center;">${b.emoji ? `<span style="font-size:15px;vertical-align:-1px;">${b.emoji === "📆" ? "🗓️" : b.emoji}</span>&nbsp;&nbsp;` : ""}${b.texto}</a>
             </td>
           </tr>`).join("");
 
   const notaHtml = notaTitulo ? `
           <tr>
-            <td style="padding:0 18px 18px;">
+            <td style="padding:0 20px 22px;">
               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f5f1;border-left:3px solid ${colorAcento};border-radius:6px;">
-                <tr><td style="padding:10px 12px;">
-                  <div style="font-family:${SANS};font-size:12px;font-weight:700;color:#241f21;margin-bottom:2px;">${notaTitulo}</div>
-                  <div style="font-family:${SANS};font-size:11.5px;line-height:16px;color:#6b645f;">${notaTexto}</div>
+                <tr><td style="padding:12px 14px;">
+                  <div style="font-family:${SANS};font-size:13px;font-weight:700;color:#241f21;margin-bottom:3px;">${notaTitulo}</div>
+                  <div style="font-family:${SANS};font-size:12.5px;line-height:18px;color:#6b645f;">${notaTexto}</div>
                 </td></tr>
               </table>
             </td>
           </tr>` : "";
 
   return `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${titulo}</title></head>
-<body style="margin:0;padding:0;background:#f1ece6;color:#241f21;">
+<html lang="es" style="-webkit-text-size-adjust:100%;text-size-adjust:100%;">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${titulo}</title>
+<style>html,body,table,td,div,a,span,p{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:100%;}</style></head>
+<body style="margin:0;padding:0;background:#f1ece6;color:#241f21;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:100%;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1ece6;">
-    <tr><td align="center" style="padding:22px 26px;">
-      <table width="420" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:420px;background:#ffffff;border-radius:14px;overflow:hidden;">
+    <tr><td align="center" style="padding:20px 18px;">
+      <table width="440" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:440px;background:#ffffff;border-radius:14px;overflow:hidden;">
 
         <tr><td style="height:4px;line-height:4px;font-size:0;background:${colorAcento};">&nbsp;</td></tr>
 
-        <tr><td align="center" style="padding:18px 18px 2px;">
-          <div style="font-family:${SERIF};font-size:13.5px;line-height:18px;letter-spacing:2.2px;font-weight:600;color:#241f21;">${nombreNegocio.toUpperCase()}</div>
-          ${tagline ? `<div style="font-family:${SANS};margin-top:4px;font-size:8.5px;letter-spacing:1.8px;color:#9a938d;text-transform:uppercase;">${tagline}</div>` : ""}
+        <tr><td align="center" style="padding:20px 20px 4px;">
+          <div style="font-family:${SERIF};font-size:16px;line-height:20px;letter-spacing:2.5px;font-weight:600;color:#241f21;">${nombreNegocio.toUpperCase()}</div>
+          ${tagline ? `<div style="font-family:${SANS};margin-top:5px;font-size:9.5px;letter-spacing:2px;color:#9a938d;text-transform:uppercase;">${tagline}</div>` : ""}
         </td></tr>
 
-        <tr><td align="center" style="padding:12px 18px 2px;">
+        <tr><td align="center" style="padding:16px 20px 2px;">
           <table cellpadding="0" cellspacing="0" border="0" align="center"><tr>
-            <td align="center" valign="middle" width="36" height="36" style="width:36px;height:36px;border-radius:18px;background:${tinte};font-family:${SANS};font-size:${marca === "✓" || marca === "✕" ? "16px" : "15px"};line-height:36px;font-weight:700;color:${colorAcento};text-align:center;">${marca}</td>
+            <td align="center" valign="middle" width="44" height="44" style="width:44px;height:44px;border-radius:22px;background:${tinte};font-family:${SANS};font-size:${marca === "✓" || marca === "✕" ? "20px" : "19px"};line-height:44px;font-weight:700;color:${colorAcento};text-align:center;">${marca}</td>
           </tr></table>
         </td></tr>
 
-        <tr><td align="center" style="padding:8px 18px 2px;">
-          <div style="font-family:${SERIF};font-size:18px;line-height:24px;font-weight:700;color:#241f21;">${titulo}</div>
+        <tr><td align="center" style="padding:10px 20px 2px;">
+          <div style="font-family:${SERIF};font-size:21px;line-height:27px;font-weight:700;color:#241f21;">${titulo}</div>
         </td></tr>
-        <tr><td align="center" style="padding:6px 22px 14px;">
-          <div style="font-family:${SANS};font-size:12px;line-height:18px;color:#6b645f;"><strong style="color:#241f21;">${saludo}</strong><br>${subtitulo}</div>
+        <tr><td align="center" style="padding:8px 24px 16px;">
+          <div style="font-family:${SANS};font-size:13.5px;line-height:20px;color:#6b645f;"><strong style="color:#241f21;">${saludo}</strong><br>${subtitulo}</div>
         </td></tr>
 
-        <tr><td style="padding:0 18px 14px;">
+        <tr><td style="padding:0 20px 16px;">
           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e6dfd7;border-bottom:1px solid #e6dfd7;">
             <tr><td>
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -188,13 +189,13 @@ function armarPlantillaCorreo({ nombreNegocio, tagline, colorAcento, emojiHeader
         ${botonesHtml}
         ${notaHtml}
 
-        <tr><td align="center" style="padding:14px 18px 16px;background:#faf7f4;">
-          <div style="font-family:${SERIF};font-size:10.5px;font-weight:600;letter-spacing:1.6px;color:#4f4843;">${nombreNegocio.toUpperCase()}</div>
-          ${direccion ? `<div style="font-family:${SANS};margin-top:3px;font-size:10.5px;line-height:15px;color:#8c8580;">${direccion}</div>` : ""}
+        <tr><td align="center" style="padding:16px 20px 18px;background:#faf7f4;">
+          <div style="font-family:${SERIF};font-size:12px;font-weight:600;letter-spacing:1.8px;color:#4f4843;">${nombreNegocio.toUpperCase()}</div>
+          ${direccion ? `<div style="font-family:${SANS};margin-top:4px;font-size:11.5px;line-height:16px;color:#8c8580;">${direccion}</div>` : ""}
         </td></tr>
 
       </table>
-      <div style="font-family:${SANS};font-size:10px;color:#a39c96;padding:8px 10px 0;">Enviado con Annly</div>
+      <div style="font-family:${SANS};font-size:10.5px;color:#a39c96;padding:10px 10px 2px;">Enviado con Annly</div>
     </td></tr>
   </table>
 </body>
