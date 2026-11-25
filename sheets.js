@@ -2408,7 +2408,13 @@ const Sheets = {
         data.precio_promo,
 
       vigencia:
-        data.vigencia
+        data.vigencia,
+
+      imagen:
+        data.imagen_url || '',
+
+      opciones:
+        Array.isArray(data.opciones) ? data.opciones : []
 
     };
   },
@@ -2419,7 +2425,7 @@ const Sheets = {
     await window.AnnlyReady;
 
 
-    await sbClient
+    const { error } = await sbClient
       .from('promo_banner')
       .upsert({
 
@@ -2448,9 +2454,49 @@ const Sheets = {
           promo.precioPromo || null,
 
         vigencia:
-          promo.vigencia
+          promo.vigencia,
+
+        imagen_url:
+          promo.imagen || null,
+
+        opciones:
+          (promo.opciones && promo.opciones.length) ? promo.opciones : null
 
       });
+
+    return !error;
+  },
+
+
+  async subirImagenPromo(file) {
+
+    await window.AnnlyReady;
+
+    const ext =
+      (
+        file.name
+          .split('.')
+          .pop() || 'jpg'
+      ).toLowerCase();
+
+    const path =
+      `${BUSINESS_ID}-promo-${Date.now()}.${ext}`;
+
+    const { error: upErr } = await sbClient
+      .storage
+      .from('servicios')
+      .upload(path, file, { upsert: true });
+
+    if (upErr) {
+      throw upErr;
+    }
+
+    const { data } = sbClient
+      .storage
+      .from('servicios')
+      .getPublicUrl(path);
+
+    return data.publicUrl;
   },
 
 

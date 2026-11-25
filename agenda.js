@@ -449,7 +449,7 @@ window.AnnlyReady.then(() => {
     window.location.replace(ANNLY_PEDIDOS_URL + '/' + encodeURIComponent(window.ANNLY_BUSINESS.slug) + window.location.search);
     return;
   }
-  Promise.all([loadServices(), cargarSucursalesSitio()]).then(() => { iniciarSucursalSitio(); });
+  window.SERVICIOS_LISTOS = Promise.all([loadServices(), cargarSucursalesSitio()]).then(() => { iniciarSucursalSitio(); });
   loadPromo();
   loadRuletaConfig();
   loadCertificadosModulo();
@@ -2249,6 +2249,21 @@ async function loadPromo(){
   if(!promo || !promo.activa) return;
   PROMO_DATA=promo;
 
+  // Enlace directo (historias): annly.app/tu-negocio?promo=1 abre la promo sin mostrar el banner
+  if(new URLSearchParams(location.search).has('promo')){
+    try{ await window.SERVICIOS_LISTOS; }catch(e){}
+    agendarPromo();
+    return;
+  }
+
+  // Promo con imagen: se muestra la imagen completa y al tocarla se va a agendar
+  if(promo.imagen){
+    const img=document.getElementById('promo-img');
+    img.onload=()=>setTimeout(()=>{document.getElementById('promo-img-ov').style.display='flex';},400);
+    img.src=promo.imagen;
+    return;
+  }
+
   const tema=TEMAS_PROMO[promo.tema]||TEMAS_PROMO.mundial;
   const topEl=document.getElementById('promo-top');
   topEl.style.background=tema.bg;
@@ -2329,18 +2344,57 @@ function animarPromo(tema){
 
 function cerrarPromo(){
   document.getElementById('promo-ov').style.display='none';
+  const i=document.getElementById('promo-img-ov'); if(i) i.style.display='none';
+  const o=document.getElementById('promo-opc-ov'); if(o) o.style.display='none';
 }
 
 function agendarPromo(){
   cerrarPromo();
+  if(!PROMO_DATA) return;
+  const ops=(PROMO_DATA.opciones||[]).filter(o=>o && o.servicio);
+  if(ops.length>1){ mostrarOpcionesPromo(ops); return; }
+  if(ops.length===1){ aplicarOpcionPromo(ops[0]); }
+  abrirServicioPromo();
+}
+
+function mostrarOpcionesPromo(ops){
+  const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const lista=document.getElementById('promo-opc-lista');
+  lista.innerHTML=ops.map((o,i)=>`
+    <button type="button" data-i="${i}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:#F7F4ED;border:1px solid #E5DCC9;border-radius:12px;padding:12px 14px;cursor:pointer;">
+      <span style="font-size:14px;font-weight:600;color:#1a1a1a;line-height:1.3;">${esc(o.servicio)}</span>
+      <span style="font-size:20px;font-weight:700;color:#D95F2B;white-space:nowrap;">${o.precioPromo?'$'+parseFloat(o.precioPromo).toFixed(0):''}</span>
+    </button>`).join('');
+  lista.querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{
+      try{ aplicarOpcionPromo(ops[+b.dataset.i]); cerrarPromo(); abrirServicioPromo(); }
+      catch(e){ console.error('[Promo]',e); alert('No se pudo abrir esta promo. Intenta de nuevo o escríbenos por WhatsApp.'); }
+    };
+  });
+  document.getElementById('promo-opc-ov').style.display='flex';
+}
+
+function aplicarOpcionPromo(o){
+  PROMO_DATA={...PROMO_DATA, servicio:o.servicio, servicioId:o.servicioId||null, precioNormal:o.precioNormal||null, precioPromo:o.precioPromo||null};
+}
+
+function abrirServicioPromo(){
   if(!PROMO_DATA || !PROMO_DATA.servicio){ return; }
-  const norm=s=>s.toLowerCase().trim().replace(/\s+/g,' ');
+  const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');
   const objetivo=norm(PROMO_DATA.servicio);
-  let svc=SERVICES.find(s=>norm(s.name)===objetivo);
+  let svc=PROMO_DATA.servicioId ? SERVICES.find(s=>String(s.id)===String(PROMO_DATA.servicioId)) : null;
+  if(!svc && PROMO_DATA.servicioId){
+    // El servicio de la promo existe pero no está disponible en la agenda (p. ej. sin profesional asignado): no abrir otro por parecido de nombre
+    console.warn('[Promo] servicio no disponible en la agenda:', PROMO_DATA.servicio);
+    alert('Esta promo no está disponible por ahora. Escríbenos por WhatsApp y te ayudamos a agendarla.');
+    return;
+  }
+  if(!svc) svc=SERVICES.find(s=>norm(s.name)===objetivo);
   if(!svc) svc=SERVICES.find(s=>norm(s.name).includes(objetivo)||objetivo.includes(norm(s.name)));
   if(svc){
     openDetail(svc.id, true);
   } else {
+    console.warn('[Promo] servicio no encontrado:', PROMO_DATA.servicio);
     document.querySelector('.servicios-wrap, #servicios, .svc-grid')?.scrollIntoView({behavior:'smooth'});
   }
 }
